@@ -200,14 +200,38 @@ async function readStateJson(
   return state;
 }
 
+export interface PollForNewMissionResult {
+  uuid: string;
+  working_directory: string;
+  matched_expected_cwd: boolean;
+}
+
 /**
- * Poll ~/.factory/missions/ for a new directory whose working_directory.txt
- * matches the expected cwd. Used by droid_mission_start to detect mission
- * orchestration kicking in without waiting for state.json (which appears
- * much later, sometimes never).
+ * Poll ~/.factory/missions/ for a new mission directory. Returns the
+ * first match AS SOON AS one is found. Polls every `interval_ms`
+ * (default 500 ms) until timeout_ms.
  *
- * Returns the new directory uuid as soon as one is found, or null on
- * timeout. Polls every `interval_ms` (default 500 ms).
+ * Matching rules (in order of preference):
+ *
+ *   1. A new uuid (not in beforeUuids) whose working_directory.txt
+ *      content EQUALS `expectedCwd`. This is the ideal case: we spawned
+ *      droid in cwd X and droid created a mission with working
+ *      directory X. Return immediately with matched_expected_cwd=true.
+ *
+ *   2. A new uuid whose working_directory.txt is populated with
+ *      ANYTHING — droid can set a different working directory based on
+ *      paths it sees in the prompt (verified: prompt mentioning
+ *      "/tmp/foo/step1.txt" causes droid to set wd=/tmp/foo, not our
+ *      spawn cwd). Remember as a fallback and keep looking briefly
+ *      for the exact match, but return the fallback if no exact
+ *      match appears. matched_expected_cwd=false.
+ *
+ *   3. A new uuid with no working_directory.txt yet (file still being
+ *      written). Skip it this tick and retry next tick — the file
+ *      appears within the same ~1s window that the directory is created.
+ *
+ *  After `fallback_hold_ms` from first sighting a fallback, commit
+ *  to it rather than waiting forever for a perfect match. Default 5 s.
  */
 export async function pollForNewMissionDir(
   beforeUuids: ReadonlySet<string>,
@@ -215,13 +239,18 @@ export async function pollForNewMissionDir(
   opts: {
     timeout_ms?: number;
     interval_ms?: number;
+    fallback_hold_ms?: number;
     missions_dir?: string;
   } = {},
-): Promise<string | null> {
+): Promise<PollForNewMissionResult | null> {
   const base = missionsDir(opts.missions_dir);
   const timeoutMs = opts.timeout_ms ?? 60_000;
   const intervalMs = opts.interval_ms ?? 500;
+  const fallbackHoldMs = opts.fallback_hold_ms ?? 5_000;
   const start = Date.now();
+
+  let fallback: PollForNewMissionResult | null = null;
+  let fallbackSightedAt: number | null = null;
 
   while (Date.now() - start < timeoutMs) {
     let entries: string[] = [];
@@ -233,14 +262,34 @@ export async function pollForNewMissionDir(
     for (const entry of entries) {
       if (beforeUuids.has(entry)) continue;
       const wd = await readWorkingDirectoryTxt(entry, base);
+      if (wd === undefined) {
+        // Not ready yet — working_directory.txt hasn't been written.
+        continue;
+      }
       if (wd === expectedCwd) {
-        return entry;
+        return { uuid: entry, working_directory: wd, matched_expected_cwd: true };
+      }
+      // Fallback candidate: new mission dir with a different cwd.
+      // Remember it so we can return it if no exact match shows up.
+      if (!fallback) {
+        fallback = { uuid: entry, working_directory: wd, matched_expected_cwd: false };
+        fallbackSightedAt = Date.now();
       }
     }
-    // Brief sleep before next poll
+
+    // If we've been holding a fallback for long enough, commit to it
+    // rather than keep waiting for a perfect match that's never coming.
+    if (fallback && fallbackSightedAt !== null) {
+      if (Date.now() - fallbackSightedAt >= fallbackHoldMs) {
+        return fallback;
+      }
+    }
+
     await new Promise<void>((resolve) => setTimeout(resolve, intervalMs));
   }
-  return null;
+
+  // Timeout: return whatever fallback we have, or null.
+  return fallback;
 }
 
 export interface ListMissionsOptions {

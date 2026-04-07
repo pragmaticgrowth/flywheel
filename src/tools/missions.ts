@@ -109,13 +109,18 @@ export function registerMissionTools(server: McpServer): void {
           spawnError = `failed to spawn droid: ${err.message}`;
         });
 
-        // Poll for the new mission directory.
-        const newUuid = await pollForNewMissionDir(beforeUuids, resolvedCwd, {
+        // Poll for the new mission directory. The polling logic accepts
+        // ANY new mission dir — droid can set a different working
+        // directory than our spawn cwd if the prompt contains absolute
+        // paths (verified with a prompt mentioning /tmp/foo/step1.txt —
+        // droid set wd=/tmp/foo, not our spawn cwd). Exact cwd match is
+        // preferred but not required.
+        const poll = await pollForNewMissionDir(beforeUuids, resolvedCwd, {
           timeout_ms: pollTimeout,
           interval_ms: 500,
         });
 
-        if (!newUuid) {
+        if (!poll) {
           return createJsonResponse({
             mission_triggered: false,
             reason: spawnError
@@ -131,17 +136,19 @@ export function registerMissionTools(server: McpServer): void {
         // Got a new mission. Read its current status (may have only
         // working_directory.txt + mission.md so far, no state.json yet —
         // readMissionDirState handles that gracefully).
-        const status = await getMissionStatus(newUuid, {
+        const status = await getMissionStatus(poll.uuid, {
           include_progress: true,
           progress_limit: 5,
         });
 
         return createJsonResponse({
           mission_triggered: true,
-          uuid: newUuid,
+          uuid: poll.uuid,
           mission_id: status?.mission_id,
-          working_directory: resolvedCwd,
-          state_file: missionStateFile(newUuid),
+          working_directory: poll.working_directory,
+          spawn_cwd: resolvedCwd,
+          working_directory_matches_spawn_cwd: poll.matched_expected_cwd,
+          state_file: missionStateFile(poll.uuid),
           state_file_exists_yet: status?.state !== "initializing",
           initial_status: status,
           droid_pid: child.pid,
