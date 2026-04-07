@@ -38,3 +38,18 @@ coverage/
 .cache/
 .tmp/
 tmp/
+
+# droid mission debris — when a real mission runs in this cwd with --auto
+# high, droid creates mission scaffolding (init.sh, services.yaml, skills/,
+# validation/, library/) and may also commit it. We don't want any of that
+# in the mcp-droid repo. Project-local droid PROFILES (.factory/droids/)
+# are still allowed since that's a legitimate droid convention.
+.factory/
+!.factory/droids/
+
+# stray files written by mission features that ran in this cwd
+/step1.txt
+/step2.txt
+/step3.txt
+/hello.sh
+/hello.ts
