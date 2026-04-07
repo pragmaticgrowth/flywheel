@@ -97,6 +97,12 @@ describe("buildDroidExecArgs", () => {
         "abc-123",
       ]);
     });
+
+    it("throws when both session_id and fork_session_id are set", () => {
+      expect(() =>
+        buildDroidExecArgs({ session_id: "a", fork_session_id: "b" }),
+      ).toThrow(DroidFlagsError);
+    });
   });
 
   describe("cwd and worktree", () => {
