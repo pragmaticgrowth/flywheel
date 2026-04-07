@@ -93,15 +93,18 @@ export function registerMetaTools(server: McpServer): void {
           );
         }
 
-        // --list-tools writes plain JSON to stdout (not stream-json), so the
-        // parsed shape will be empty. Try JSON.parse on the raw stdout.
-        let payload: unknown = null;
+        // --list-tools writes plain JSON to stdout (not stream-json). Droid
+        // returns a top-level array of tool descriptors — wrap it with a
+        // semantic key so structuredContent stays a JSON object (MCP spec).
         try {
-          payload = JSON.parse(result.stdout);
+          const parsed: unknown = JSON.parse(result.stdout);
+          if (Array.isArray(parsed)) {
+            return createJsonResponse({ count: parsed.length, tools: parsed });
+          }
+          return createJsonResponse(parsed);
         } catch {
-          payload = { raw_stdout: result.stdout };
+          return createJsonResponse({ raw_stdout: result.stdout });
         }
-        return createJsonResponse(payload);
       } catch (err) {
         return createUnexpectedErrorResponse(err);
       }

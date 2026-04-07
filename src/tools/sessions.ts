@@ -180,8 +180,15 @@ export function registerSessionTools(server: McpServer): void {
           );
         }
 
+        // `droid search --json` may return either a top-level array of
+        // hits or an object — normalize to an object so structuredContent
+        // stays a JSON object.
         try {
-          return createJsonResponse(JSON.parse(proc.stdout));
+          const parsed: unknown = JSON.parse(proc.stdout);
+          if (Array.isArray(parsed)) {
+            return createJsonResponse({ count: parsed.length, hits: parsed });
+          }
+          return createJsonResponse(parsed);
         } catch {
           return createJsonResponse({ raw_stdout: proc.stdout });
         }

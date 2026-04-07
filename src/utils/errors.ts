@@ -19,11 +19,20 @@ export function createJsonResponse(
   pretty = true,
 ): McpToolResponse {
   const text = pretty ? JSON.stringify(value, null, 2) : JSON.stringify(value);
+  // MCP spec: structuredContent MUST be a JSON object, not an array or
+  // primitive. Wrap anything that isn't a plain object so callers don't
+  // have to remember this rule.
+  let structured: Record<string, unknown>;
+  if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+    structured = value as Record<string, unknown>;
+  } else if (Array.isArray(value)) {
+    structured = { items: value };
+  } else {
+    structured = { value };
+  }
   return {
     content: [{ type: "text", text }],
-    structuredContent: typeof value === "object" && value !== null
-      ? (value as Record<string, unknown>)
-      : { value },
+    structuredContent: structured,
   };
 }
 
