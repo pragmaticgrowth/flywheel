@@ -1,6 +1,0 @@
-commands:
-  test: npm test
-  typecheck: npx tsc --noEmit
-  lint: echo "no lint"
-
-services: {}
