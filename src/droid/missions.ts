@@ -1,13 +1,28 @@
 /**
  * Read droid missions from `~/.factory/missions/<uuid>/`.
  *
- * Each mission directory contains:
- *   - state.json         — high-level state (verified shape in spec §6.3)
- *   - mission.md         — original mission prompt
- *   - features.json      — feature breakdown
- *   - progress_log.jsonl — event stream
- *   - handoffs/          — per-feature handoff payloads
- *   - evidence/          — optional evidence artifacts
+ * Mission directory lifecycle (verified empirically by triggering a real
+ * `droid exec --mission` and watching the directory):
+ *
+ *   t=0..N s   directory created with:
+ *     - working_directory.txt    (the absolute cwd, plaintext)
+ *     - mission.md               (the mission prompt + plan, markdown)
+ *     - progress_log.jsonl       (one or more events, starting with
+ *                                 `mission_accepted`)
+ *
+ *   t=N..M s   factoryd spawns workers, eventually writing:
+ *     - state.json               (the structured high-level state, only
+ *                                 once a worker actually runs)
+ *     - features.json
+ *     - handoffs/
+ *     - evidence/
+ *
+ * The OLD code keyed off state.json existence — which meant freshly-spawned
+ * missions were invisible until a worker actually wrote state.json (could
+ * be many seconds, sometimes never if the mission stalls). The new code
+ * recognizes a mission dir by the presence of working_directory.txt
+ * (always written first) and falls back gracefully when state.json is
+ * missing — so list/status work for in-flight missions too.
  */
 
 import { readdir, readFile, stat } from "node:fs/promises";
@@ -80,43 +95,152 @@ async function readMissionTitle(uuid: string, baseDir: string): Promise<string |
   }
 }
 
+async function readWorkingDirectoryTxt(
+  uuid: string,
+  baseDir: string,
+): Promise<string | undefined> {
+  try {
+    const txt = await readFile(join(baseDir, uuid, "working_directory.txt"), "utf8");
+    const trimmed = txt.trim();
+    return trimmed || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Read a mission directory and return its high-level state. Tolerates
+ * missions that haven't written state.json yet (early stage / stalled /
+ * killed) by falling back to working_directory.txt + mission.md + dir
+ * mtime. Returns null only if the directory has neither state.json NOR
+ * working_directory.txt (meaning it's not a real mission dir at all).
+ */
 async function readStateJson(
   uuid: string,
   baseDir: string,
   withTitle = false,
 ): Promise<MissionState | null> {
-  let raw: string;
+  // Fast path: real state.json exists.
+  let raw: string | null = null;
   try {
     raw = await readFile(join(baseDir, uuid, "state.json"), "utf8");
   } catch {
-    return null;
+    raw = null;
   }
-  let parsed: RawStateJson;
+  if (raw !== null) {
+    let parsed: RawStateJson;
+    try {
+      parsed = JSON.parse(raw) as RawStateJson;
+    } catch {
+      // state.json exists but is corrupt — fall through to the partial path.
+      raw = null;
+    }
+    if (raw !== null) {
+      const parsedAgain = JSON.parse(raw) as RawStateJson;
+      const state: MissionState = {
+        mission_id: parsedAgain.missionId,
+        uuid,
+        base_session_id: parsedAgain.baseSessionId,
+        state: parsedAgain.state,
+        working_directory: parsedAgain.workingDirectory,
+        current_feature_id: parsedAgain.currentFeatureId,
+        current_worker_session_id: parsedAgain.currentWorkerSessionId,
+        current_worker_pid: parsedAgain.currentWorkerPid,
+        worker_session_ids: parsedAgain.workerSessionIds ?? [],
+        completed_features: parsedAgain.completedFeatures ?? 0,
+        total_features: parsedAgain.totalFeatures ?? 0,
+        created_at: parsedAgain.createdAt,
+        updated_at: parsedAgain.updatedAt,
+      };
+      if (withTitle) {
+        const title = await readMissionTitle(uuid, baseDir);
+        if (title) state.title = title;
+      }
+      return state;
+    }
+  }
+
+  // Slow path: state.json missing or corrupt. If working_directory.txt
+  // exists, this IS a mission dir — just early-stage. Build a partial
+  // MissionState from whatever's available.
+  const workingDirectory = await readWorkingDirectoryTxt(uuid, baseDir);
+  if (workingDirectory === undefined) {
+    return null; // not a mission dir at all
+  }
+
+  let createdAtIso = "";
+  let updatedAtIso = "";
   try {
-    parsed = JSON.parse(raw) as RawStateJson;
+    const st = await stat(join(baseDir, uuid));
+    createdAtIso = st.birthtime.toISOString();
+    updatedAtIso = st.mtime.toISOString();
   } catch {
-    return null;
+    // ignore
   }
+
   const state: MissionState = {
-    mission_id: parsed.missionId,
+    mission_id: `pending-${uuid}`,
     uuid,
-    base_session_id: parsed.baseSessionId,
-    state: parsed.state,
-    working_directory: parsed.workingDirectory,
-    current_feature_id: parsed.currentFeatureId,
-    current_worker_session_id: parsed.currentWorkerSessionId,
-    current_worker_pid: parsed.currentWorkerPid,
-    worker_session_ids: parsed.workerSessionIds ?? [],
-    completed_features: parsed.completedFeatures ?? 0,
-    total_features: parsed.totalFeatures ?? 0,
-    created_at: parsed.createdAt,
-    updated_at: parsed.updatedAt,
+    base_session_id: undefined,
+    state: "initializing",
+    working_directory: workingDirectory,
+    current_feature_id: null,
+    current_worker_session_id: null,
+    current_worker_pid: null,
+    worker_session_ids: [],
+    completed_features: 0,
+    total_features: 0,
+    created_at: createdAtIso,
+    updated_at: updatedAtIso,
   };
   if (withTitle) {
     const title = await readMissionTitle(uuid, baseDir);
     if (title) state.title = title;
   }
   return state;
+}
+
+/**
+ * Poll ~/.factory/missions/ for a new directory whose working_directory.txt
+ * matches the expected cwd. Used by droid_mission_start to detect mission
+ * orchestration kicking in without waiting for state.json (which appears
+ * much later, sometimes never).
+ *
+ * Returns the new directory uuid as soon as one is found, or null on
+ * timeout. Polls every `interval_ms` (default 500 ms).
+ */
+export async function pollForNewMissionDir(
+  beforeUuids: ReadonlySet<string>,
+  expectedCwd: string,
+  opts: {
+    timeout_ms?: number;
+    interval_ms?: number;
+    missions_dir?: string;
+  } = {},
+): Promise<string | null> {
+  const base = missionsDir(opts.missions_dir);
+  const timeoutMs = opts.timeout_ms ?? 60_000;
+  const intervalMs = opts.interval_ms ?? 500;
+  const start = Date.now();
+
+  while (Date.now() - start < timeoutMs) {
+    let entries: string[] = [];
+    try {
+      entries = await readdir(base);
+    } catch {
+      // missions dir doesn't exist yet — keep polling
+    }
+    for (const entry of entries) {
+      if (beforeUuids.has(entry)) continue;
+      const wd = await readWorkingDirectoryTxt(entry, base);
+      if (wd === expectedCwd) {
+        return entry;
+      }
+    }
+    // Brief sleep before next poll
+    await new Promise<void>((resolve) => setTimeout(resolve, intervalMs));
+  }
+  return null;
 }
 
 export interface ListMissionsOptions {

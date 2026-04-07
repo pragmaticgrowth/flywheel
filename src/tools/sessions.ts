@@ -92,7 +92,7 @@ export function registerSessionTools(server: McpServer): void {
     "droid_session_list",
     {
       description:
-        "List droid sessions from ~/.factory/sessions-index.json, filtered by cwd by default (pass all=true to see every session). Returns session_id, title, mtime, messages_count — sorted newest first.",
+        "List droid sessions, filtered by cwd by default (pass all=true to see every session). By default reads ~/.factory/sessions-index.json (fast). Pass scan_disk=true for the COMPLETE list — walks ~/.factory/sessions/<dir>/*.jsonl and reads each first line directly. The index is missing many sessions (notably everything created via `droid exec`, including mcp-droid's own sessions); use scan_disk when completeness matters.",
       inputSchema: {
         cwd: z.string().optional(),
         all: z
@@ -103,18 +103,29 @@ export function registerSessionTools(server: McpServer): void {
           .string()
           .optional()
           .describe("Case-insensitive substring filter on the session title."),
+        scan_disk: z
+          .boolean()
+          .optional()
+          .describe(
+            "Authoritative-mode: walk ~/.factory/sessions/<dir>/*.jsonl directly instead of reading sessions-index.json. Slower (~200-400ms for ~200 sessions) but complete. Required to see sessions created via `droid exec` (which droid's indexer skips).",
+          ),
         limit: z.number().int().positive().optional(),
       },
     },
-    async ({ cwd, all, search, limit }): Promise<McpToolResponse> => {
+    async ({ cwd, all, search, scan_disk, limit }): Promise<McpToolResponse> => {
       try {
         const sessions = await listSessions({
           cwd: resolveCwd(cwd),
           all,
           search,
+          scan_disk,
           limit,
         });
-        return createJsonResponse({ count: sessions.length, sessions });
+        return createJsonResponse({
+          count: sessions.length,
+          source: scan_disk ? "disk_walk" : "sessions_index",
+          sessions,
+        });
       } catch (err) {
         return createUnexpectedErrorResponse(err);
       }

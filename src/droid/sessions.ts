@@ -17,7 +17,7 @@
  */
 
 import { createReadStream } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { readdir, readFile, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
@@ -61,32 +61,29 @@ export interface ListSessionsOptions {
   all?: boolean;
   limit?: number;
   search?: string;
+  /**
+   * When true, walk ~/.factory/sessions/<dir>/*.jsonl and read each
+   * file's first line for authoritative cwd/title. Slower (one stat +
+   * one streaming read per session, parallelized), but COMPLETE — picks
+   * up sessions that droid's own indexer skips (e.g. anything created
+   * via `droid exec` from automation, including mcp-droid itself).
+   * Default: false (use sessions-index.json only, fast but incomplete).
+   */
+  scan_disk?: boolean;
   index_path?: string; // override for tests
+  sessions_dir?: string; // override for tests
 }
 
 export async function listSessions(
   opts: ListSessionsOptions = {},
 ): Promise<SessionEntry[]> {
-  const indexPath =
-    opts.index_path ?? join(homedir(), ".factory", "sessions-index.json");
+  const collected: SessionEntry[] = opts.scan_disk
+    ? await listSessionsFromDisk(opts.sessions_dir)
+    : await listSessionsFromIndex(
+        opts.index_path ?? join(homedir(), ".factory", "sessions-index.json"),
+      );
 
-  let raw: string;
-  try {
-    raw = await readFile(indexPath, "utf8");
-  } catch {
-    return [];
-  }
-
-  let parsed: RawSessionIndex;
-  try {
-    parsed = JSON.parse(raw) as RawSessionIndex;
-  } catch {
-    return [];
-  }
-
-  const all = (parsed.entries ?? []).map(normalize);
-
-  let filtered = all;
+  let filtered = collected;
   if (!opts.all && opts.cwd !== undefined) {
     filtered = filtered.filter((e) => e.cwd === opts.cwd);
   }
@@ -99,6 +96,86 @@ export async function listSessions(
 
   const limit = opts.limit ?? 50;
   return filtered.slice(0, limit);
+}
+
+async function listSessionsFromIndex(indexPath: string): Promise<SessionEntry[]> {
+  let raw: string;
+  try {
+    raw = await readFile(indexPath, "utf8");
+  } catch {
+    return [];
+  }
+  let parsed: RawSessionIndex;
+  try {
+    parsed = JSON.parse(raw) as RawSessionIndex;
+  } catch {
+    return [];
+  }
+  return (parsed.entries ?? []).map(normalize);
+}
+
+/**
+ * Walk every directory under ~/.factory/sessions/, list its .jsonl files,
+ * and read each file's first session_start line to get the authoritative
+ * cwd + title. Mtime comes from `stat`. All file reads run in parallel.
+ *
+ * Cost: O(N) file opens where N is total session count. ~200 sessions on
+ * a typical machine = roughly 200-400ms. Acceptable for an opt-in path
+ * that callers explicitly request.
+ */
+async function listSessionsFromDisk(
+  sessionsDir?: string,
+): Promise<SessionEntry[]> {
+  const root = sessionsDir ?? join(homedir(), ".factory", "sessions");
+  let dirs: string[];
+  try {
+    dirs = await readdir(root);
+  } catch {
+    return [];
+  }
+
+  const allFiles: Array<{ jsonlPath: string }> = [];
+  await Promise.all(
+    dirs.map(async (dir) => {
+      const dirPath = join(root, dir);
+      try {
+        const st = await stat(dirPath);
+        if (!st.isDirectory()) return;
+      } catch {
+        return;
+      }
+      let entries: string[] = [];
+      try {
+        entries = await readdir(dirPath);
+      } catch {
+        return;
+      }
+      for (const entry of entries) {
+        if (entry.endsWith(".jsonl")) {
+          allFiles.push({ jsonlPath: join(dirPath, entry) });
+        }
+      }
+    }),
+  );
+
+  const sessions = await Promise.all(
+    allFiles.map(async ({ jsonlPath }): Promise<SessionEntry | null> => {
+      const [meta, st] = await Promise.all([
+        readSessionMetaFromJsonl(jsonlPath),
+        stat(jsonlPath).catch(() => null),
+      ]);
+      if (!meta.session_id) return null;
+      return {
+        session_id: meta.session_id,
+        mtime: st ? st.mtimeMs : 0,
+        title: meta.title ?? "New Session",
+        cwd: meta.cwd ?? "",
+        messages_count: 0, // not available without parsing the whole file
+      };
+    }),
+  );
+
+  return sessions.filter((s): s is SessionEntry => s !== null);
 }
 
 /**
