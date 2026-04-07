@@ -13,7 +13,7 @@ import {
   type DroidProcessOptions,
 } from "../droid/exec.js";
 import type { DroidExecFlags } from "../droid/flags.js";
-import { listSessions } from "../droid/sessions.js";
+import { listSessions, readSessionMetaFromJsonl } from "../droid/sessions.js";
 import { AutoLevelSchema, ReasoningEffortSchema } from "../schemas/exec.js";
 import { resolveCwd } from "../utils/cwd.js";
 import {
@@ -189,20 +189,16 @@ export function registerSessionTools(server: McpServer): void {
         // `droid search --json` returns { query, sessions: [{sessionId,
         // title, updatedAt, jsonlPath, hits, totals}] }. It does NOT honor
         // cwd at all — results span every project on the machine. We
-        // post-filter by cross-referencing each sessionId against
-        // sessions-index.json, which has the real raw absolute cwd.
+        // enrich each hit with its authoritative cwd by reading the first
+        // line of the session .jsonl (which carries a session_start event
+        // with the cwd). This is the ground truth — sessions-index.json is
+        // incomplete and misses many sessions (notably everything under
+        // ~/.factory/sessions/-Users-serkan-mcp-droid/).
         let parsed: unknown;
         try {
           parsed = JSON.parse(proc.stdout);
         } catch {
           return createJsonResponse({ raw_stdout: proc.stdout });
-        }
-
-        // Build sessionId → cwd lookup from the index.
-        const indexed = await listSessions({ all: true, limit: 100_000 });
-        const cwdBySessionId = new Map<string, string>();
-        for (const entry of indexed) {
-          cwdBySessionId.set(entry.session_id, entry.cwd);
         }
 
         // Normalize to a shape we can work with.
@@ -219,15 +215,36 @@ export function registerSessionTools(server: McpServer): void {
           ? container.sessions
           : [];
 
-        const enriched = rawSessions.map((s) => ({
-          session_id: s.sessionId,
-          title: s.title,
-          updated_at: s.updatedAt,
-          jsonl_path: s.jsonlPath,
-          cwd: s.sessionId !== undefined ? cwdBySessionId.get(s.sessionId) : undefined,
-          hits: s.hits ?? [],
-          totals: s.totals,
-        }));
+        // Read each session's jsonl first-line in parallel for cwd.
+        // Falls back to sessions-index.json only if the jsonl read failed
+        // (permission error, file missing, etc.).
+        const indexed = await listSessions({ all: true, limit: 100_000 });
+        const cwdBySessionId = new Map<string, string>();
+        for (const entry of indexed) {
+          if (entry.cwd) cwdBySessionId.set(entry.session_id, entry.cwd);
+        }
+
+        const enriched = await Promise.all(
+          rawSessions.map(async (s) => {
+            let cwd: string | undefined;
+            if (s.jsonlPath) {
+              const meta = await readSessionMetaFromJsonl(s.jsonlPath);
+              cwd = meta.cwd;
+            }
+            if (!cwd && s.sessionId !== undefined) {
+              cwd = cwdBySessionId.get(s.sessionId);
+            }
+            return {
+              session_id: s.sessionId,
+              title: s.title,
+              updated_at: s.updatedAt,
+              jsonl_path: s.jsonlPath,
+              cwd,
+              hits: s.hits ?? [],
+              totals: s.totals,
+            };
+          }),
+        );
 
         const filtered =
           all === true
