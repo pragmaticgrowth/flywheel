@@ -41,6 +41,8 @@ OUTPUT=$(
     printf '%s\n' '{"jsonrpc":"2.0","id":25,"method":"tools/call","params":{"name":"droid_mission_progress","arguments":{"mission_id":"'"$MISSION_UUID"'","limit":2}}}'
     # Read-only but spawns droid
     printf '%s\n' '{"jsonrpc":"2.0","id":26,"method":"tools/call","params":{"name":"droid_list_tools","arguments":{"model":"custom:glm-5-turbo"}}}'
+    printf '%s\n' '{"jsonrpc":"2.0","id":29,"method":"tools/call","params":{"name":"droid_list_tools","arguments":{"model":"custom:glm-5-turbo","mode":"names"}}}'
+    printf '%s\n' '{"jsonrpc":"2.0","id":30,"method":"tools/call","params":{"name":"droid_list_tools","arguments":{"model":"custom:glm-5-turbo","mode":"full"}}}'
     printf '%s\n' '{"jsonrpc":"2.0","id":27,"method":"tools/call","params":{"name":"droid_session_search","arguments":{"query":"droid","cwd":"/Users/serkan","limit_sessions":2,"limit_hits":1}}}'
     # Real exec — cheapest model + tiny prompt
     printf '%s\n' '{"jsonrpc":"2.0","id":28,"method":"tools/call","params":{"name":"droid_exec","arguments":{"prompt":"reply with exactly: ok","model":"custom:MiniMax-M2.7","auto":"high"}}}'
@@ -53,7 +55,8 @@ const lines = require("fs").readFileSync("/dev/stdin", "utf8").trim().split("\n"
 const labels = {
   20: "list_models", 21: "list_profiles", 22: "session_list",
   23: "mission_list", 24: "mission_status", 25: "mission_progress",
-  26: "list_tools", 27: "session_search", 28: "exec_real",
+  26: "list_tools_default", 27: "session_search", 28: "exec_real",
+  29: "list_tools_names", 30: "list_tools_full",
 };
 const results = {};
 for (const line of lines) {
@@ -77,7 +80,13 @@ for (const line of lines) {
   // Render a compact summary per tool
   let summary = "";
   if (sc.count !== undefined) summary += "count=" + sc.count;
-  if (Array.isArray(sc.tools)) summary += " first_tool=" + JSON.stringify(sc.tools[0] && (sc.tools[0].name || sc.tools[0].id || sc.tools[0])).slice(0, 60);
+  if (sc.mode !== undefined) summary += " mode=" + sc.mode;
+  if (Array.isArray(sc.tools)) {
+    const t0 = sc.tools[0];
+    const sample = typeof t0 === "string" ? t0 : (t0 && (t0.id || t0.name)) || JSON.stringify(t0).slice(0,40);
+    summary += " first_tool=" + sample;
+    summary += " body_bytes=" + JSON.stringify(sc).length;
+  }
   if (Array.isArray(sc.hits)) summary += " first_hit_keys=" + JSON.stringify(Object.keys(sc.hits[0] || {})).slice(0, 80);
   if (Array.isArray(sc.models)) summary += " first_model=" + (sc.models[0] && sc.models[0].id);
   if (Array.isArray(sc.profiles)) summary += " first_profile=" + (sc.profiles[0] && sc.profiles[0].name);

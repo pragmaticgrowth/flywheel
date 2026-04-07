@@ -65,7 +65,7 @@ export function registerMetaTools(server: McpServer): void {
     "droid_list_tools",
     {
       description:
-        "Run `droid exec --list-tools` for a custom model and return the parsed tool catalog. Useful for discovering what tools a model has access to before launching a session. Defaults to custom:glm-5-turbo when no model is specified.",
+        "Run `droid exec --list-tools` for a custom model and return the parsed tool catalog. Useful for discovering what tools a model has access to before launching a session. Defaults to custom:glm-5-turbo. Returns slim metadata by default — pass mode='full' to include descriptions (warning: 100+ tools easily exceeds the MCP per-result token limit).",
       inputSchema: {
         model: z
           .string()
@@ -74,9 +74,15 @@ export function registerMetaTools(server: McpServer): void {
             "Custom model id. Defaults to custom:glm-5-turbo. Use only custom: models — factory built-ins are off-limits.",
           ),
         cwd: z.string().optional(),
+        mode: z
+          .enum(["names", "compact", "full"])
+          .optional()
+          .describe(
+            "Response detail level. names: tool ids only (~5 KB). compact (default): id + display_name + category + allowed flags, no descriptions (~20 KB for 114 tools). full: raw catalog with descriptions (~100 KB — usually exceeds MCP per-result token limit).",
+          ),
       },
     },
-    async ({ model, cwd }): Promise<McpToolResponse> => {
+    async ({ model, cwd, mode }): Promise<McpToolResponse> => {
       try {
         const result = await spawnDroidExec(
           {
@@ -94,17 +100,50 @@ export function registerMetaTools(server: McpServer): void {
         }
 
         // --list-tools writes plain JSON to stdout (not stream-json). Droid
-        // returns a top-level array of tool descriptors — wrap it with a
-        // semantic key so structuredContent stays a JSON object (MCP spec).
+        // returns a top-level array of RawDroidTool descriptors. We project
+        // to a slim shape by default — descriptions are multi-paragraph and
+        // 114 tools × ~800 chars easily blows past Claude Code's per-result
+        // token limit (observed: 24 k tokens / saved-to-side-file).
+        let parsed: unknown;
         try {
-          const parsed: unknown = JSON.parse(result.stdout);
-          if (Array.isArray(parsed)) {
-            return createJsonResponse({ count: parsed.length, tools: parsed });
-          }
-          return createJsonResponse(parsed);
+          parsed = JSON.parse(result.stdout);
         } catch {
           return createJsonResponse({ raw_stdout: result.stdout });
         }
+
+        if (!Array.isArray(parsed)) {
+          return createJsonResponse(parsed);
+        }
+
+        const effectiveMode: "names" | "compact" | "full" = mode ?? "compact";
+        let tools: unknown[];
+        if (effectiveMode === "names") {
+          tools = parsed.map((entry) =>
+            typeof entry === "object" && entry !== null && "id" in entry
+              ? (entry as { id: unknown }).id
+              : entry,
+          );
+        } else if (effectiveMode === "compact") {
+          tools = parsed.map((entry) => {
+            const e = entry as Record<string, unknown>;
+            return {
+              id: e.id,
+              llm_id: e.llmId,
+              display_name: e.displayName,
+              category: e.category,
+              default_allowed: e.defaultAllowed,
+              currently_allowed: e.currentlyAllowed,
+            };
+          });
+        } else {
+          tools = parsed;
+        }
+
+        return createJsonResponse({
+          count: parsed.length,
+          mode: effectiveMode,
+          tools,
+        });
       } catch (err) {
         return createUnexpectedErrorResponse(err);
       }
