@@ -77,8 +77,17 @@ export interface ListSessionsOptions {
 export async function listSessions(
   opts: ListSessionsOptions = {},
 ): Promise<SessionEntry[]> {
+  // When scan_disk is on AND a cwd filter applies, narrow the disk walk
+  // to just the one encoded directory. The encoding /Users/serkan/nt-dev →
+  // -Users-serkan-nt-dev is one-way deterministic, so we can compute the
+  // target dir up front. Cuts I/O ~85% in the typical filtered case (one
+  // dir of ~100 files instead of 7 dirs of ~200 files).
+  const narrowToCwd = opts.scan_disk && !opts.all && opts.cwd !== undefined
+    ? opts.cwd
+    : undefined;
+
   const collected: SessionEntry[] = opts.scan_disk
-    ? await listSessionsFromDisk(opts.sessions_dir)
+    ? await listSessionsFromDisk(opts.sessions_dir, narrowToCwd)
     : await listSessionsFromIndex(
         opts.index_path ?? join(homedir(), ".factory", "sessions-index.json"),
       );
@@ -98,6 +107,17 @@ export async function listSessions(
   return filtered.slice(0, limit);
 }
 
+/**
+ * Encode an absolute cwd into the directory name droid uses on disk:
+ *   /Users/serkan/nt-dev → -Users-serkan-nt-dev
+ * The encoding is one-way and lossy in theory (a literal `-` in a path
+ * segment is indistinguishable from a `/`), so callers should still verify
+ * the returned sessions' cwd field against the exact target.
+ */
+export function encodeCwdToSessionsDir(absCwd: string): string {
+  return absCwd.replace(/^\//, "-").replace(/\//g, "-");
+}
+
 async function listSessionsFromIndex(indexPath: string): Promise<SessionEntry[]> {
   let raw: string;
   try {
@@ -115,23 +135,36 @@ async function listSessionsFromIndex(indexPath: string): Promise<SessionEntry[]>
 }
 
 /**
- * Walk every directory under ~/.factory/sessions/, list its .jsonl files,
- * and read each file's first session_start line to get the authoritative
- * cwd + title. Mtime comes from `stat`. All file reads run in parallel.
+ * Walk session directories under ~/.factory/sessions/, list their .jsonl
+ * files, and read each file's first session_start line to get the
+ * authoritative cwd + title. Mtime comes from `stat`. All file reads run
+ * in parallel.
  *
  * Cost: O(N) file opens where N is total session count. ~200 sessions on
  * a typical machine = roughly 200-400ms. Acceptable for an opt-in path
  * that callers explicitly request.
+ *
+ * If `narrowToCwd` is provided, only walks the single encoded directory
+ * for that cwd (e.g. /Users/serkan/nt-dev → -Users-serkan-nt-dev). This
+ * cuts I/O ~85% in the typical filtered case.
  */
 async function listSessionsFromDisk(
   sessionsDir?: string,
+  narrowToCwd?: string,
 ): Promise<SessionEntry[]> {
   const root = sessionsDir ?? join(homedir(), ".factory", "sessions");
   let dirs: string[];
-  try {
-    dirs = await readdir(root);
-  } catch {
-    return [];
+  if (narrowToCwd !== undefined) {
+    // Skip the readdir entirely — go straight to the one encoded dir.
+    // If it doesn't exist on disk, the inner stat() will fall through
+    // to an empty result and the function returns [].
+    dirs = [encodeCwdToSessionsDir(narrowToCwd)];
+  } else {
+    try {
+      dirs = await readdir(root);
+    } catch {
+      return [];
+    }
   }
 
   const allFiles: Array<{ jsonlPath: string }> = [];

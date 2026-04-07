@@ -74,6 +74,11 @@ export function buildDroidExecArgs(flags: DroidExecFlags): string[] {
       "prompt and prompt_file are mutually exclusive — pass one or the other",
     );
   }
+  if (flags.session_id !== undefined && flags.fork_session_id !== undefined) {
+    throw new DroidFlagsError(
+      "session_id and fork_session_id are mutually exclusive — pass one or the other",
+    );
+  }
   if (flags.auto !== undefined && flags.allow_unsafe === true) {
     throw new DroidFlagsError(
       "auto and allow_unsafe are mutually exclusive — --skip-permissions-unsafe cannot be combined with --auto",

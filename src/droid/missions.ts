@@ -75,7 +75,7 @@ export interface MissionProgressEvent {
   [key: string]: unknown;
 }
 
-export const MISSIONS_DIR_DEFAULT = join(homedir(), ".factory", "missions");
+const MISSIONS_DIR_DEFAULT = join(homedir(), ".factory", "missions");
 
 function missionsDir(override?: string): string {
   return override ?? MISSIONS_DIR_DEFAULT;

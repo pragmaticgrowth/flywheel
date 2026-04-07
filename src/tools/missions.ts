@@ -142,6 +142,15 @@ export function registerMissionTools(server: McpServer): void {
           progress_limit: 5,
         });
 
+        // readStateJson returns mission_id="pending-<uuid>" when state.json
+        // hasn't been written yet (only working_directory.txt + mission.md
+        // exist). That's the authoritative signal — don't key off the
+        // `state` field, since "initializing" is ALSO a real droid state
+        // emitted by state.json once factoryd starts up.
+        const stateJsonExists = !(
+          status?.mission_id?.startsWith("pending-") ?? true
+        );
+
         return createJsonResponse({
           mission_triggered: true,
           uuid: poll.uuid,
@@ -150,7 +159,7 @@ export function registerMissionTools(server: McpServer): void {
           spawn_cwd: resolvedCwd,
           working_directory_matches_spawn_cwd: poll.matched_expected_cwd,
           state_file: missionStateFile(poll.uuid),
-          state_file_exists_yet: status?.state !== "initializing",
+          state_file_exists_yet: stateJsonExists,
           initial_status: status,
           droid_pid: child.pid,
           droid_log: logPath,

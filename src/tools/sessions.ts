@@ -226,14 +226,25 @@ export function registerSessionTools(server: McpServer): void {
           ? container.sessions
           : [];
 
-        // Read each session's jsonl first-line in parallel for cwd.
-        // Falls back to sessions-index.json only if the jsonl read failed
-        // (permission error, file missing, etc.).
-        const indexed = await listSessions({ all: true, limit: 100_000 });
-        const cwdBySessionId = new Map<string, string>();
-        for (const entry of indexed) {
-          if (entry.cwd) cwdBySessionId.set(entry.session_id, entry.cwd);
-        }
+        // Read each session's jsonl first-line in parallel for cwd. The
+        // sessions-index.json fallback (for hits whose .jsonl read failed)
+        // is built lazily — most calls never need it because
+        // readSessionMetaFromJsonl succeeds on every well-formed session
+        // file. Building it eagerly would mean an extra ~10 ms read +
+        // ~142-entry Map allocation on every search call.
+        let cwdBySessionId: Map<string, string> | null = null;
+        const getCwdFromIndex = async (
+          sessionId: string,
+        ): Promise<string | undefined> => {
+          if (cwdBySessionId === null) {
+            const indexed = await listSessions({ all: true, limit: 100_000 });
+            cwdBySessionId = new Map<string, string>();
+            for (const entry of indexed) {
+              if (entry.cwd) cwdBySessionId.set(entry.session_id, entry.cwd);
+            }
+          }
+          return cwdBySessionId.get(sessionId);
+        };
 
         const enriched = await Promise.all(
           rawSessions.map(async (s) => {
@@ -243,7 +254,7 @@ export function registerSessionTools(server: McpServer): void {
               cwd = meta.cwd;
             }
             if (!cwd && s.sessionId !== undefined) {
-              cwd = cwdBySessionId.get(s.sessionId);
+              cwd = await getCwdFromIndex(s.sessionId);
             }
             return {
               session_id: s.sessionId,
