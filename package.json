@@ -1,0 +1,41 @@
+{
+  "name": "mcp-droid",
+  "version": "0.1.0",
+  "description": "Local stdio MCP server that exposes the Factory AI droid CLI as a typed tool surface",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "mcp-droid": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CLAUDE.md",
+    "docs/spec.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "mcp",
+    "droid",
+    "factory",
+    "claude-code"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.2",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.3"
+  }
+}
