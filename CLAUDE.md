@@ -10,24 +10,41 @@ projects.
 
 ## Status
 
-**Phase 2 in progress** — scaffolding + pure parser modules shipped.
+**v0.1.0 complete — all phases shipped, awaiting end-to-end MCP client verification.**
 
-- ✅ Phase 1: package.json, tsconfig, `src/index.ts` (stdio MCP server, zero
-  tools, `initialize` RPC verified)
-- ✅ Phase 2 (partial): `src/droid/flags.ts` (38 unit tests) and
-  `src/droid/output.ts` (18 unit tests) both TDD'd and passing
-- ⏳ Phase 2 (remaining): `src/droid/exec.ts` + real droid smoke test
-- ⏳ Phase 3+: MCP tool registration
+- ✅ Phase 1: scaffold, stdio MCP server boots, `initialize` RPC verified
+- ✅ Phase 2: `flags.ts`, `output.ts`, `exec.ts` (56 unit tests, real droid smoke)
+- ✅ Phase 3: `droid_exec` MCP tool, full stdio round-trip verified
+- ✅ Phase 4: `models.ts`, `profiles.ts`, `sessions.ts`, `missions.ts` fs readers
+- ✅ Phase 5: 23 additional MCP tools — meta (3), presets (11), sessions (4), missions (4), spec (1)
+- ✅ Phase 6: error handling audit, CLAUDE.md updated, smoke tests for all read-only tools
+
+**24 tools registered.** Verified live via stdio JSON-RPC pipes:
+
+- `droid_list_models` → 36 models (built-ins + customs from settings.json)
+- `droid_list_profiles` → 11 profiles from `~/.factory/droids/`
+- `droid_session_list` → reads `sessions-index.json`, raw-cwd filtering works
+- `droid_mission_list` → 24 missions on disk
+- `droid_mission_status` → reads state.json + features.json + progress_log.jsonl
+- `droid_exec` (full happy + failure paths) → real droid spawn round-trips through MCP
+
+**Pending end-to-end verification** (requires registering with a real Claude
+Code session via `.mcp.json`):
+- `droid_research` / `droid_review_code` / etc preset round-trip
+- `droid_session_continue` chained against a captured session_id
+- `droid_session_search` against real session content
+- `droid_mission_start` mission_id capture (tries stream-json init, falls back
+  to dir scan)
 
 **Empirical finding from building the output parser**: droid does NOT emit
 stream-json error *events* for pre-launch failures. Every failure mode tested
 (bad model, bad file, bad enabled-tools, incompatible flags) produces exit
 code ≠ 0 with plain-text stderr instead. The captured error fixture at
 `docs/fixtures/stream-json-error.jsonl` is just stderr text, no JSONL. This
-means `parseStreamJson` treats such input as "empty run" and exec.ts must
-still catch the exit-code + stderr failure path. The parser's `errors[]`
-detection (matching `/error|failed|failure/i` on type/subtype) is retained
-for future-proofing against mid-stream failures.
+means `parseStreamJson` treats such input as "empty run" and exec.ts catches
+the exit-code + stderr failure path via `failure: "nonzero_exit"`. The
+parser's `errors[]` detection (matching `/error|failed|failure/i` on
+type/subtype) is retained for future-proofing.
 
 ## Why This Exists
 

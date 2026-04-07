@@ -8,6 +8,7 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { registerAllTools } from "./tools/index.js";
 
 const VERSION = "0.1.0";
 
@@ -17,7 +18,7 @@ async function main(): Promise<void> {
     version: VERSION,
   });
 
-  // registerAllTools(server) — added in phase 3+
+  registerAllTools(server);
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

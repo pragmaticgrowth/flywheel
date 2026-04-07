@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "mcp-droid": {
+      "command": "node",
+      "args": ["/Users/serkan/mcp-droid/dist/index.js"]
+    }
+  }
+}
