@@ -1,7 +1,0 @@
-commands:
-  install: npm install
-  typecheck: npm run build
-  test: echo "No tests for this mission"
-  lint: echo "No lint for this mission"
-
-services: {}
