@@ -6,7 +6,7 @@
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { spawn } from "node:child_process";
-import { openSync } from "node:fs";
+import { closeSync, openSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join as joinPath } from "node:path";
 import { z } from "zod";
@@ -86,9 +86,7 @@ export function registerMissionTools(server: McpServer): void {
         };
         const argv = ["exec", ...buildDroidExecArgs(flags)];
 
-        // Capture droid stdout + stderr to a temp log so the mission is
-        // debuggable later. Detached children with ignored stdio can drop
-        // output silently — logging to disk preserves it.
+        // Log stdout/stderr to disk — detached children can't inherit our pipes.
         const logPath = joinPath(
           tmpdir(),
           `mcp-droid-mission-${Date.now()}.log`,
@@ -101,6 +99,9 @@ export function registerMissionTools(server: McpServer): void {
           stdio: ["ignore", logFd, logFd],
           detached: true,
         });
+        // The child has dup'd logFd into its own stdout/stderr; the parent's
+        // copy is no longer needed and would otherwise leak one fd per call.
+        closeSync(logFd);
         // unref() lets the parent (mcp-droid server) exit independently of
         // the mission. The mission keeps running under launchd / init.
         child.unref();

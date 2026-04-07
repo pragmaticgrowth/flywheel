@@ -120,44 +120,36 @@ async function readStateJson(
   baseDir: string,
   withTitle = false,
 ): Promise<MissionState | null> {
-  // Fast path: real state.json exists.
-  let raw: string | null = null;
+  // Fast path: real state.json exists and parses cleanly.
+  let parsed: RawStateJson | null = null;
   try {
-    raw = await readFile(join(baseDir, uuid, "state.json"), "utf8");
+    const raw = await readFile(join(baseDir, uuid, "state.json"), "utf8");
+    parsed = JSON.parse(raw) as RawStateJson;
   } catch {
-    raw = null;
+    // state.json missing or corrupt — fall through to the partial path.
+    parsed = null;
   }
-  if (raw !== null) {
-    let parsed: RawStateJson;
-    try {
-      parsed = JSON.parse(raw) as RawStateJson;
-    } catch {
-      // state.json exists but is corrupt — fall through to the partial path.
-      raw = null;
+  if (parsed !== null) {
+    const state: MissionState = {
+      mission_id: parsed.missionId,
+      uuid,
+      base_session_id: parsed.baseSessionId,
+      state: parsed.state,
+      working_directory: parsed.workingDirectory,
+      current_feature_id: parsed.currentFeatureId,
+      current_worker_session_id: parsed.currentWorkerSessionId,
+      current_worker_pid: parsed.currentWorkerPid,
+      worker_session_ids: parsed.workerSessionIds ?? [],
+      completed_features: parsed.completedFeatures ?? 0,
+      total_features: parsed.totalFeatures ?? 0,
+      created_at: parsed.createdAt,
+      updated_at: parsed.updatedAt,
+    };
+    if (withTitle) {
+      const title = await readMissionTitle(uuid, baseDir);
+      if (title) state.title = title;
     }
-    if (raw !== null) {
-      const parsedAgain = JSON.parse(raw) as RawStateJson;
-      const state: MissionState = {
-        mission_id: parsedAgain.missionId,
-        uuid,
-        base_session_id: parsedAgain.baseSessionId,
-        state: parsedAgain.state,
-        working_directory: parsedAgain.workingDirectory,
-        current_feature_id: parsedAgain.currentFeatureId,
-        current_worker_session_id: parsedAgain.currentWorkerSessionId,
-        current_worker_pid: parsedAgain.currentWorkerPid,
-        worker_session_ids: parsedAgain.workerSessionIds ?? [],
-        completed_features: parsedAgain.completedFeatures ?? 0,
-        total_features: parsedAgain.totalFeatures ?? 0,
-        created_at: parsedAgain.createdAt,
-        updated_at: parsedAgain.updatedAt,
-      };
-      if (withTitle) {
-        const title = await readMissionTitle(uuid, baseDir);
-        if (title) state.title = title;
-      }
-      return state;
-    }
+    return state;
   }
 
   // Slow path: state.json missing or corrupt. If working_directory.txt
@@ -259,18 +251,21 @@ export async function pollForNewMissionDir(
     } catch {
       // missions dir doesn't exist yet — keep polling
     }
-    for (const entry of entries) {
-      if (beforeUuids.has(entry)) continue;
-      const wd = await readWorkingDirectoryTxt(entry, base);
-      if (wd === undefined) {
-        // Not ready yet — working_directory.txt hasn't been written.
-        continue;
-      }
+    // Read working_directory.txt for every new entry in parallel — readdir
+    // can return 30+ entries on a populated machine and the I/O is independent.
+    const candidates = entries.filter((entry) => !beforeUuids.has(entry));
+    const reads = await Promise.all(
+      candidates.map(async (entry) => ({
+        entry,
+        wd: await readWorkingDirectoryTxt(entry, base),
+      })),
+    );
+    for (const { entry, wd } of reads) {
+      if (wd === undefined) continue; // working_directory.txt not written yet
       if (wd === expectedCwd) {
         return { uuid: entry, working_directory: wd, matched_expected_cwd: true };
       }
       // Fallback candidate: new mission dir with a different cwd.
-      // Remember it so we can return it if no exact match shows up.
       if (!fallback) {
         fallback = { uuid: entry, working_directory: wd, matched_expected_cwd: false };
         fallbackSightedAt = Date.now();
