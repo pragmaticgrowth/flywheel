@@ -10,12 +10,24 @@ projects.
 
 ## Status
 
-**Scaffolding stage — not yet implemented.** This directory contains Claude
-config, the build brief at [`docs/spec.md`](docs/spec.md), and a captured
-stream-json fixture at [`docs/fixtures/stream-json-hello.jsonl`](docs/fixtures/stream-json-hello.jsonl).
-The build is the next session's job — follow the phased sequence in
-`docs/spec.md` section 14. Several open questions were already resolved live
-during planning (see spec section 1a for the verified-items list).
+**Phase 2 in progress** — scaffolding + pure parser modules shipped.
+
+- ✅ Phase 1: package.json, tsconfig, `src/index.ts` (stdio MCP server, zero
+  tools, `initialize` RPC verified)
+- ✅ Phase 2 (partial): `src/droid/flags.ts` (38 unit tests) and
+  `src/droid/output.ts` (18 unit tests) both TDD'd and passing
+- ⏳ Phase 2 (remaining): `src/droid/exec.ts` + real droid smoke test
+- ⏳ Phase 3+: MCP tool registration
+
+**Empirical finding from building the output parser**: droid does NOT emit
+stream-json error *events* for pre-launch failures. Every failure mode tested
+(bad model, bad file, bad enabled-tools, incompatible flags) produces exit
+code ≠ 0 with plain-text stderr instead. The captured error fixture at
+`docs/fixtures/stream-json-error.jsonl` is just stderr text, no JSONL. This
+means `parseStreamJson` treats such input as "empty run" and exec.ts must
+still catch the exit-code + stderr failure path. The parser's `errors[]`
+detection (matching `/error|failed|failure/i` on type/subtype) is retained
+for future-proofing against mid-stream failures.
 
 ## Why This Exists
 
