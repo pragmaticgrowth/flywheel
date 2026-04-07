@@ -125,10 +125,14 @@ export function registerSessionTools(server: McpServer): void {
     "droid_session_search",
     {
       description:
-        "Full-text search across droid sessions via `droid search <query> --json`. Runs from the given (or default) cwd, so results are scoped to sessions in that project by default.",
+        "Full-text search across droid sessions via `droid search <query> --json`. NOTE: the underlying `droid search` CLI is GLOBAL — it ignores cwd. This tool post-filters the results by cross-referencing each hit's sessionId against ~/.factory/sessions-index.json and dropping sessions whose cwd doesn't match the tool's resolved cwd. Pass all=true to disable the filter and return every match. Each returned session is enriched with its cwd from the index.",
       inputSchema: {
         query: z.string(),
         cwd: z.string().optional(),
+        all: z
+          .boolean()
+          .optional()
+          .describe("Disable the post-filter and return every matching session regardless of cwd."),
         kind: z
           .enum(["message_text", "document", "tool_use", "tool_result", "all"])
           .optional(),
@@ -142,6 +146,7 @@ export function registerSessionTools(server: McpServer): void {
     async ({
       query,
       cwd,
+      all,
       kind,
       limit_sessions,
       limit_hits,
@@ -160,8 +165,9 @@ export function registerSessionTools(server: McpServer): void {
           args.push("--context-chars", String(context_chars));
         if (reindex) args.push("--reindex");
 
+        const resolvedCwd = resolveCwd(cwd);
         const opts: DroidProcessOptions = {
-          cwd: resolveCwd(cwd),
+          cwd: resolvedCwd,
           timeout_ms: timeout_ms ?? 120_000,
         };
         const proc = await runDroidProcess(args, opts);
@@ -180,18 +186,61 @@ export function registerSessionTools(server: McpServer): void {
           );
         }
 
-        // `droid search --json` may return either a top-level array of
-        // hits or an object — normalize to an object so structuredContent
-        // stays a JSON object.
+        // `droid search --json` returns { query, sessions: [{sessionId,
+        // title, updatedAt, jsonlPath, hits, totals}] }. It does NOT honor
+        // cwd at all — results span every project on the machine. We
+        // post-filter by cross-referencing each sessionId against
+        // sessions-index.json, which has the real raw absolute cwd.
+        let parsed: unknown;
         try {
-          const parsed: unknown = JSON.parse(proc.stdout);
-          if (Array.isArray(parsed)) {
-            return createJsonResponse({ count: parsed.length, hits: parsed });
-          }
-          return createJsonResponse(parsed);
+          parsed = JSON.parse(proc.stdout);
         } catch {
           return createJsonResponse({ raw_stdout: proc.stdout });
         }
+
+        // Build sessionId → cwd lookup from the index.
+        const indexed = await listSessions({ all: true, limit: 100_000 });
+        const cwdBySessionId = new Map<string, string>();
+        for (const entry of indexed) {
+          cwdBySessionId.set(entry.session_id, entry.cwd);
+        }
+
+        // Normalize to a shape we can work with.
+        type RawSession = {
+          sessionId?: string;
+          title?: string;
+          updatedAt?: number;
+          jsonlPath?: string;
+          hits?: unknown[];
+          totals?: unknown;
+        };
+        const container = parsed as { query?: string; sessions?: RawSession[] };
+        const rawSessions: RawSession[] = Array.isArray(container?.sessions)
+          ? container.sessions
+          : [];
+
+        const enriched = rawSessions.map((s) => ({
+          session_id: s.sessionId,
+          title: s.title,
+          updated_at: s.updatedAt,
+          jsonl_path: s.jsonlPath,
+          cwd: s.sessionId !== undefined ? cwdBySessionId.get(s.sessionId) : undefined,
+          hits: s.hits ?? [],
+          totals: s.totals,
+        }));
+
+        const filtered =
+          all === true
+            ? enriched
+            : enriched.filter((s) => s.cwd === resolvedCwd);
+
+        return createJsonResponse({
+          query: container?.query ?? query,
+          count: filtered.length,
+          scoped_to: all === true ? "all (post-filter disabled)" : resolvedCwd,
+          sessions: filtered,
+          dropped_by_filter: enriched.length - filtered.length,
+        });
       } catch (err) {
         return createUnexpectedErrorResponse(err);
       }

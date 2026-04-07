@@ -58,13 +58,48 @@ export function execResultToToolResponse(
   result: SpawnDroidExecResult,
 ): McpToolResponse {
   if (!result.ok) {
-    const detail = [
+    // Surface every piece of context we have. Droid has been observed to
+    // exit nonzero with empty stderr and useful content only in stdout
+    // (stream-json events: completion.finalText, tool_result with
+    // isError:true, etc.) — so we include all of it.
+    const sections: string[] = [
       `droid exec failed (${result.failure ?? "unknown"}): ${result.error_message ?? "no message"}`,
-      result.stderr.trim() && `--- stderr ---\n${result.stderr.trim()}`,
-    ]
-      .filter(Boolean)
-      .join("\n");
-    return createErrorResponse(detail);
+      `exit_code=${result.exit_code ?? "null"} signal=${result.signal ?? "null"} duration_ms=${result.duration_ms}`,
+    ];
+    if (result.parsed.session_id) {
+      sections.push(`session_id=${result.parsed.session_id}`);
+    }
+    if (result.parsed.text && result.parsed.text.trim()) {
+      sections.push(`--- parsed.text ---\n${result.parsed.text.trim().slice(0, 2000)}`);
+    }
+    if (result.parsed.errors.length > 0) {
+      sections.push(
+        `--- parsed.errors (${result.parsed.errors.length}) ---\n${JSON.stringify(result.parsed.errors, null, 2).slice(0, 2000)}`,
+      );
+    }
+    // Include up to the last few stream events for context (most recent last).
+    if (result.parsed.events.length > 0) {
+      const tail = result.parsed.events.slice(-5);
+      sections.push(
+        `--- last ${tail.length} stream events (of ${result.parsed.events.length}) ---\n${tail
+          .map((e) => {
+            const type = typeof e.type === "string" ? e.type : "?";
+            const subtype = typeof e.subtype === "string" ? `.${e.subtype}` : "";
+            const preview = JSON.stringify(e).slice(0, 200);
+            return `[${type}${subtype}] ${preview}`;
+          })
+          .join("\n")}`,
+      );
+    }
+    if (result.stderr.trim()) {
+      sections.push(`--- stderr ---\n${result.stderr.trim().slice(0, 2000)}`);
+    }
+    if (result.stdout.trim() && result.parsed.events.length === 0) {
+      // Only show raw stdout if stream parsing failed (no events captured).
+      // Otherwise the parsed summary above is more useful.
+      sections.push(`--- raw stdout tail ---\n${result.stdout.trim().slice(-2000)}`);
+    }
+    return createErrorResponse(sections.join("\n"));
   }
 
   const structured: Record<string, unknown> = {

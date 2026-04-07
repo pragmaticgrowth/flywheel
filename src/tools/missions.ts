@@ -5,6 +5,7 @@
  */
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { setTimeout as delay } from "node:timers/promises";
 import { z } from "zod";
 import { DEFAULT_MODEL } from "../droid/defaults.js";
 import { spawnDroidExec } from "../droid/exec.js";
@@ -28,7 +29,7 @@ export function registerMissionTools(server: McpServer): void {
     "droid_mission_start",
     {
       description:
-        "Start a new droid mission — spawns `droid exec --mission --auto high \"...\"` in the given cwd, captures the new mission_id from the stream-json init event (or falls back to a directory scan), and returns immediately with the mission metadata. The mission runs in the background; poll progress with droid_mission_status / droid_mission_progress.",
+        "Start a new droid mission — spawns `droid exec --mission --auto high \"...\"` in the given cwd and looks for a new mission directory under ~/.factory/missions/. IMPORTANT: droid only spawns mission orchestration (factoryd workers, state.json, progress_log.jsonl) when the PROMPT IS SUBSTANTIAL enough to trigger multi-feature planning. Trivial prompts like 'say hi' complete as a plain exec and never create a mission directory — this tool detects that case and returns mission_triggered=false with the exec result. Real missions typically need a multi-step implementation prompt: 'implement X with tests and docs' or 'refactor Y to use Z with migration path'. Long-running missions: the tool returns as soon as the mission directory appears; poll progress with droid_mission_status / droid_mission_progress.",
       inputSchema: {
         prompt: z.string(),
         cwd: z.string().optional(),
@@ -46,7 +47,7 @@ export function registerMissionTools(server: McpServer): void {
           .positive()
           .optional()
           .describe(
-            "How long to wait for the init event before giving up on capturing mission_id. Default 30 seconds.",
+            "Hard cap on how long we wait for the droid exec subprocess. For long missions use a large value (e.g. 600000 = 10 min) — the tool returns as soon as the mission dir appears on disk, not when the exec completes. Default 120 seconds.",
           ),
       },
     },
@@ -60,13 +61,11 @@ export function registerMissionTools(server: McpServer): void {
     }): Promise<McpToolResponse> => {
       try {
         const resolvedCwd = resolveCwd(cwd);
-        const initTimeout = timeout_ms ?? 30_000;
+        const execTimeout = timeout_ms ?? 120_000;
         const beforeUuids = new Set(
           (await listMissions({ all: true, limit: 100_000 })).map((m) => m.uuid),
         );
 
-        // initTimeout bounds the spawn, not the mission itself — once we
-        // capture the id, the mission keeps running inside factoryd.
         const result = await spawnDroidExec(
           {
             prompt,
@@ -75,10 +74,15 @@ export function registerMissionTools(server: McpServer): void {
             ...(allow_unsafe ? { allow_unsafe: true } : { auto: "high" }),
             tags,
           },
-          { cwd: resolvedCwd, timeout_ms: initTimeout },
+          { cwd: resolvedCwd, timeout_ms: execTimeout },
         );
 
         const sessionId = result.parsed.session_id;
+
+        // Give the filesystem ~500ms to flush any mission state writes
+        // that happened during the exec's final teardown — writes can
+        // post-date the child process exit briefly.
+        await delay(500);
         const afterMissions = await listMissions({ all: true, limit: 100_000 });
 
         // Primary: a new mission directory whose workingDirectory matches.
@@ -95,9 +99,27 @@ export function registerMissionTools(server: McpServer): void {
         }
 
         if (!match) {
-          return createErrorResponse(
-            `mission launched but couldn't capture mission_id within ${initTimeout}ms. Check ~/.factory/missions/ for the newest directory. Spawn status: ok=${result.ok}, failure=${result.failure ?? "none"}, stderr=${result.stderr.slice(0, 300)}`,
-          );
+          // Not an error — this happens for trivial prompts that don't
+          // trigger real mission orchestration (verified: droid exec
+          // --mission "say hi" completes in ~5s as a plain exec with zero
+          // new mission dirs on disk). Return the exec result and let the
+          // caller decide whether to retry with a more substantial prompt.
+          return createJsonResponse({
+            mission_triggered: false,
+            reason:
+              "droid exec --mission completed without creating a new mission directory. Common cause: prompt was too trivial to trigger multi-feature orchestration. Try a prompt like 'implement X with tests and docs' that requires multiple steps.",
+            base_session_id: sessionId,
+            working_directory: resolvedCwd,
+            text: result.parsed.text,
+            spawn: {
+              ok: result.ok,
+              failure: result.failure,
+              exit_code: result.exit_code,
+              duration_ms: result.duration_ms,
+              stderr_tail: result.stderr.trim().slice(0, 500),
+            },
+            usage: result.parsed.usage,
+          });
         }
 
         const status = await getMissionStatus(match.uuid, {
@@ -106,6 +128,7 @@ export function registerMissionTools(server: McpServer): void {
         });
 
         return createJsonResponse({
+          mission_triggered: true,
           mission_id: match.mission_id,
           uuid: match.uuid,
           base_session_id: sessionId,
