@@ -47,9 +47,9 @@ export function registerSpecTool(server: McpServer): void {
           {
             prompt,
             use_spec: true,
-            spec_model,
+            spec_model: spec_model ?? "custom:glm-5.1",
             spec_reasoning_effort,
-            model,
+            model: model ?? "custom:glm-5-turbo",
           },
           { cwd: resolveCwd(cwd), timeout_ms },
         );

@@ -244,9 +244,9 @@ describe("buildDroidExecArgs", () => {
     });
 
     it("maps spec_model to --spec-model", () => {
-      expect(buildDroidExecArgs({ spec_model: "gpt-5.4" })).toEqual([
+      expect(buildDroidExecArgs({ spec_model: "custom:glm-5.1" })).toEqual([
         "--spec-model",
-        "gpt-5.4",
+        "custom:glm-5.1",
       ]);
     });
 

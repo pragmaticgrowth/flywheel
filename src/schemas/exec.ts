@@ -40,7 +40,7 @@ export const DroidExecInputShape = {
     .string()
     .optional()
     .describe(
-      "Model ID. Accepts built-in names (claude-opus-4-6, gpt-5.4, glm-5, ...), long custom IDs (custom:BYOK-GLM-5-Turbo-33), or short aliases (custom:glm-5-turbo).",
+      "Custom model id. Use canonical form (custom:BYOK-GLM-5-Turbo-33) or short alias (custom:glm-5-turbo, custom:MiniMax-M2.7, custom:glm-5.1). Use only custom: models — factory built-ins are off-limits.",
     ),
   auto: AutoLevelSchema.optional().describe(
     "Autonomy level. Omit = read-only (safest). low / medium / high escalate write permissions.",

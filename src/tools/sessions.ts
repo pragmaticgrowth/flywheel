@@ -48,7 +48,13 @@ export function registerSessionTools(server: McpServer): void {
     }): Promise<McpToolResponse> => {
       try {
         const result = await spawnDroidExec(
-          { session_id, prompt, model, auto, reasoning_effort },
+          {
+            session_id,
+            prompt,
+            model: model ?? "custom:glm-5-turbo",
+            auto,
+            reasoning_effort,
+          },
           { cwd: resolveCwd(cwd), timeout_ms },
         );
         return execResultToToolResponse(result);
@@ -87,7 +93,7 @@ export function registerSessionTools(server: McpServer): void {
           {
             fork_session_id: session_id,
             prompt,
-            model,
+            model: model ?? "custom:glm-5-turbo",
             auto,
             reasoning_effort,
           },

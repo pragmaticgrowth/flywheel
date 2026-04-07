@@ -30,7 +30,10 @@ export function registerDroidExec(server: McpServer): void {
         const flags: DroidExecFlags = {
           prompt: input.prompt,
           prompt_file: input.prompt_file,
-          model: input.model,
+          // Force a custom model when none is specified — droid's own
+          // default is claude-opus-4-6 (a built-in) and we never want
+          // to fall through to that.
+          model: input.model ?? "custom:glm-5-turbo",
           auto: input.auto,
           allow_unsafe: input.allow_unsafe,
           output_format: input.output_format,

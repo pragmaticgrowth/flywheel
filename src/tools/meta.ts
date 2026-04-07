@@ -22,7 +22,7 @@ export function registerMetaTools(server: McpServer): void {
     "droid_list_models",
     {
       description:
-        "List every model droid can use: built-ins (claude-opus-4-6, gpt-5.4, glm-5, ...) plus custom models from ~/.factory/settings.json customModels[]. Custom models include their short alias when one is known (e.g. custom:BYOK-GLM-5-Turbo-33 → custom:glm-5-turbo).",
+        "List custom (BYOK) models from ~/.factory/settings.json customModels[]. Each entry includes its canonical id (e.g. custom:BYOK-GLM-5-Turbo-33), a short alias when known (custom:glm-5-turbo), display name, and provider. Factory's built-in models are intentionally NOT listed — use only custom models.",
       inputSchema: {},
     },
     async (): Promise<McpToolResponse> => {
@@ -64,13 +64,13 @@ export function registerMetaTools(server: McpServer): void {
     "droid_list_tools",
     {
       description:
-        "Run `droid exec --list-tools` for the given (or default) model and return the parsed tool catalog. Useful for discovering what tools a model has access to before launching a session.",
+        "Run `droid exec --list-tools` for a custom model and return the parsed tool catalog. Useful for discovering what tools a model has access to before launching a session. Defaults to custom:glm-5-turbo when no model is specified.",
       inputSchema: {
         model: z
           .string()
           .optional()
           .describe(
-            "Model id. Defaults to droid's session default (custom:VP-Opus-4.6-1M-xHigh-44).",
+            "Custom model id. Defaults to custom:glm-5-turbo. Use only custom: models — factory built-ins are off-limits.",
           ),
         cwd: z.string().optional(),
       },
@@ -79,7 +79,7 @@ export function registerMetaTools(server: McpServer): void {
       try {
         const result = await spawnDroidExec(
           {
-            model,
+            model: model ?? "custom:glm-5-turbo",
             list_tools: true,
             output_format: "json",
           },

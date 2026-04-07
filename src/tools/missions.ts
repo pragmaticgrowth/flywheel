@@ -83,7 +83,7 @@ export function registerMissionTools(server: McpServer): void {
         const result = await spawnDroidExec(
           {
             prompt,
-            model,
+            model: model ?? "custom:glm-5-turbo",
             mission: true,
             ...(allow_unsafe ? { allow_unsafe: true } : { auto: "high" }),
             tags,
