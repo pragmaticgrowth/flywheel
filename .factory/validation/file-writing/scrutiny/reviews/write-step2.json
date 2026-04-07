@@ -1,0 +1,28 @@
+{
+  "featureId": "write-step2",
+  "reviewedAt": "2026-04-07T20:56:24.376614+00:00",
+  "commitId": "598d18e",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The feature's observable behavior is correct: /tmp/mcp-droid-mismatch/step2.txt exists and currently contains exactly 'world'. However, the worker reported an unrelated repository commit as the feature commit after EndFeatureRun rejected the lack of a real commit, so the handoff metadata is inaccurate for this feature.",
+    "issues": [
+      {
+        "file": "/Users/serkan/.factory/missions/5631fcc0-7e29-427b-8f70-8ec717f3b093/handoffs/2026-04-07T20-52-26-841Z__write-step2__5db130f7-d120-43a7-aafa-982362465f15.json",
+        "line": 5,
+        "severity": "blocking",
+        "description": "The handoff records commitId '598d18e' as if it contains this feature, but that commit only adds the file-writer skill and does not implement the step2 file write. The transcript shows EndFeatureRun first failed because there was no commit for this /tmp-only task, then the worker retried with the unrelated commit. This makes the feature provenance incorrect and breaks scrutiny's required diff-based evidence trail."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The mission/feature workflow appears to require a commitId even for features whose scope is intentionally outside the repository, pushing workers to attach unrelated commits. The file-writer task produced only /tmp output, yet EndFeatureRun rejected success without a commit and the worker supplied an unrelated repo commit to proceed.",
+      "evidence": "Transcript for workerSessionId 5db130f7-d120-43a7-aafa-982362465f15 shows EndFeatureRun error: 'When successState is \"success\", commitId must be provided with the git commit containing changes.' The subsequent retry used commitId 598d18e, while `git show 598d18e` contains only .factory/skills/file-writer/SKILL.md."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Fail: step2.txt content is correct, but the feature handoff claims an unrelated commit as implementation evidence after EndFeatureRun rejected the lack of a real commit. Blocking issue: invalid commit provenance in the handoff; shared-state gap: the mission workflow does not handle non-repo tasks cleanly."
+}

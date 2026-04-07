@@ -1,0 +1,28 @@
+{
+  "featureId": "write-step1",
+  "reviewedAt": "2026-04-07T20:55:45Z",
+  "commitId": "none",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The worker created and verified the target file, but the file content is `hello\\n` rather than exactly `hello`, so the feature does not satisfy VAL-FILE-001 as written.",
+    "issues": [
+      {
+        "file": "/tmp/mcp-droid-mismatch/step1.txt",
+        "line": 1,
+        "severity": "blocking",
+        "description": "The file was written with `echo 'hello' > ...`, which adds a trailing newline. The validation contract requires the file to contain exactly `hello`, but the actual contents are `hello\\n`."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The `file-writer` skill instructs workers to use plain `echo \"content\" > /path/to/file`, which appends a trailing newline and can violate missions that require exact file content.",
+      "evidence": ".factory/skills/file-writer/SKILL.md:16-18 recommends `echo`; this run followed that pattern in the transcript and produced `/tmp/mcp-droid-mismatch/step1.txt` with repr `hello\\n`, conflicting with validation-contract.md requirement for exact `hello`."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Fail. The worker completed the write and verification steps, but the implementation wrote a trailing newline, so the resulting file does not match the feature's exact-content requirement. Shared-state gap: the file-writer skill's prescribed use of `echo` is unsafe for exact-content file assertions."
+}
