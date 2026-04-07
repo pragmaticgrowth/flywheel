@@ -20,7 +20,7 @@
  * droid's front-matter is a small, predictable subset.
  */
 
-import { readdir, readFile, stat } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
 
@@ -116,22 +116,18 @@ async function readDroidsDir(
   dir: string,
   scope: "global" | "project",
 ): Promise<ProfileInfo[]> {
-  let entries: string[] = [];
+  let entries: string[];
   try {
-    const s = await stat(dir);
-    if (!s.isDirectory()) return [];
     entries = await readdir(dir);
   } catch {
     return [];
   }
 
-  const profiles: ProfileInfo[] = [];
-  for (const entry of entries) {
-    if (!entry.endsWith(".md")) continue;
-    const profile = await readProfileFile(join(dir, entry), scope);
-    if (profile) profiles.push(profile);
-  }
-  return profiles;
+  const mdFiles = entries.filter((e) => e.endsWith(".md"));
+  const profiles = await Promise.all(
+    mdFiles.map((entry) => readProfileFile(join(dir, entry), scope)),
+  );
+  return profiles.filter((p): p is ProfileInfo => p !== null);
 }
 
 export interface ListProfilesOptions {

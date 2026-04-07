@@ -1,29 +1,18 @@
 /**
- * Mission tools: start, list, status, progress.
- *
- * droid_mission_start — wraps `droid exec --mission --auto high "..."`.
- *   Captures the new mission_id by first trying the stream-json init event,
- *   then falling back to scanning ~/.factory/missions/ for a newly created
- *   directory whose workingDirectory matches our cwd.
- *
- * droid_mission_list / status / progress — all fs readers that delegate to
- * src/droid/missions.ts.
- *
- * droid_mission_cancel is intentionally NOT implemented in v1 (spec §6.3) —
- * cancellation semantics are fuzzy and need investigation.
+ * Mission tools: start, list, status, progress. droid_mission_cancel is
+ * intentionally NOT implemented in v1 — cancellation semantics need
+ * investigation (spec §6.3).
  */
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { readdir, stat } from "node:fs/promises";
-import { homedir } from "node:os";
-import { join } from "node:path";
+import { DEFAULT_MODEL } from "../droid/defaults.js";
 import { spawnDroidExec } from "../droid/exec.js";
 import {
   getMissionProgress,
   getMissionStatus,
   listMissions,
-  resolveMissionDir,
+  missionStateFile,
 } from "../droid/missions.js";
 import { TagSpecSchema } from "../schemas/exec.js";
 import { resolveCwd } from "../utils/cwd.js";
@@ -33,8 +22,6 @@ import {
   createUnexpectedErrorResponse,
   type McpToolResponse,
 } from "../utils/errors.js";
-
-const MISSIONS_DIR = join(homedir(), ".factory", "missions");
 
 export function registerMissionTools(server: McpServer): void {
   server.registerTool(
@@ -73,17 +60,17 @@ export function registerMissionTools(server: McpServer): void {
     }): Promise<McpToolResponse> => {
       try {
         const resolvedCwd = resolveCwd(cwd);
-        const beforeDirs = await snapshotMissionDirs();
         const initTimeout = timeout_ms ?? 30_000;
+        const beforeUuids = new Set(
+          (await listMissions({ all: true, limit: 100_000 })).map((m) => m.uuid),
+        );
 
-        // Run droid with --mission + the appropriate autonomy flag. We bound
-        // the spawn to initTimeout — it's a mission launch, not the full
-        // mission run. The mission keeps running inside factoryd after
-        // we capture the id.
+        // initTimeout bounds the spawn, not the mission itself — once we
+        // capture the id, the mission keeps running inside factoryd.
         const result = await spawnDroidExec(
           {
             prompt,
-            model: model ?? "custom:glm-5-turbo",
+            model: model ?? DEFAULT_MODEL,
             mission: true,
             ...(allow_unsafe ? { allow_unsafe: true } : { auto: "high" }),
             tags,
@@ -91,56 +78,39 @@ export function registerMissionTools(server: McpServer): void {
           { cwd: resolvedCwd, timeout_ms: initTimeout },
         );
 
-        // Primary: session_id from init event.
-        let missionUuid: string | undefined;
         const sessionId = result.parsed.session_id;
+        const afterMissions = await listMissions({ all: true, limit: 100_000 });
 
-        // Fallback: scan missions dir for a new directory whose
-        // workingDirectory matches resolvedCwd.
-        const afterDirs = await snapshotMissionDirs();
-        const newDirs: string[] = [];
-        for (const d of afterDirs) {
-          if (!beforeDirs.has(d)) newDirs.push(d);
+        // Primary: a new mission directory whose workingDirectory matches.
+        let match = afterMissions.find(
+          (m) => !beforeUuids.has(m.uuid) && m.working_directory === resolvedCwd,
+        );
+        // Fallback 1: any new directory created during the spawn window.
+        if (!match) {
+          match = afterMissions.find((m) => !beforeUuids.has(m.uuid));
         }
-        if (newDirs.length > 0) {
-          // Find one whose state.json has workingDirectory == resolvedCwd.
-          for (const dir of newDirs) {
-            const status = await getMissionStatus(dir, {
-              include_progress: false,
-              include_features: false,
-            });
-            if (status && status.working_directory === resolvedCwd) {
-              missionUuid = dir;
-              break;
-            }
-          }
-          if (!missionUuid) missionUuid = newDirs[0];
+        // Fallback 2: an existing mission whose baseSessionId == our session_id.
+        if (!match && sessionId) {
+          match = afterMissions.find((m) => m.base_session_id === sessionId);
         }
 
-        if (!missionUuid && sessionId) {
-          // Try to resolve by baseSessionId (which equals our session_id).
-          const missions = await listMissions({ cwd: resolvedCwd, all: true, limit: 200 });
-          const match = missions.find((m) => m.base_session_id === sessionId);
-          if (match) missionUuid = match.uuid;
-        }
-
-        if (!missionUuid) {
+        if (!match) {
           return createErrorResponse(
             `mission launched but couldn't capture mission_id within ${initTimeout}ms. Check ~/.factory/missions/ for the newest directory. Spawn status: ok=${result.ok}, failure=${result.failure ?? "none"}, stderr=${result.stderr.slice(0, 300)}`,
           );
         }
 
-        const status = await getMissionStatus(missionUuid, {
+        const status = await getMissionStatus(match.uuid, {
           include_progress: true,
           progress_limit: 5,
         });
 
         return createJsonResponse({
-          mission_id: status?.mission_id,
-          uuid: missionUuid,
+          mission_id: match.mission_id,
+          uuid: match.uuid,
           base_session_id: sessionId,
           working_directory: resolvedCwd,
-          state_file: join(MISSIONS_DIR, missionUuid, "state.json"),
+          state_file: missionStateFile(match.uuid),
           initial_status: status,
           spawn: {
             ok: result.ok,
@@ -262,22 +232,4 @@ export function registerMissionTools(server: McpServer): void {
       }
     },
   );
-}
-
-async function snapshotMissionDirs(): Promise<Set<string>> {
-  try {
-    const entries = await readdir(MISSIONS_DIR);
-    const dirs = new Set<string>();
-    for (const entry of entries) {
-      try {
-        const s = await stat(join(MISSIONS_DIR, entry));
-        if (s.isDirectory()) dirs.add(entry);
-      } catch {
-        continue;
-      }
-    }
-    return dirs;
-  } catch {
-    return new Set();
-  }
 }

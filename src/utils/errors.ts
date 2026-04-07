@@ -14,15 +14,6 @@ export interface McpToolResponse {
   structuredContent?: Record<string, unknown>;
 }
 
-export function createTextResponse(
-  text: string,
-  structuredContent?: Record<string, unknown>,
-): McpToolResponse {
-  const resp: McpToolResponse = { content: [{ type: "text", text }] };
-  if (structuredContent !== undefined) resp.structuredContent = structuredContent;
-  return resp;
-}
-
 export function createJsonResponse(
   value: unknown,
   pretty = true,

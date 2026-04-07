@@ -69,7 +69,6 @@ function encodeTag(tag: TagSpec): string {
 }
 
 export function buildDroidExecArgs(flags: DroidExecFlags): string[] {
-  // --- mutual exclusion checks -------------------------------------------
   if (flags.prompt !== undefined && flags.prompt_file !== undefined) {
     throw new DroidFlagsError(
       "prompt and prompt_file are mutually exclusive — pass one or the other",
@@ -80,56 +79,41 @@ export function buildDroidExecArgs(flags: DroidExecFlags): string[] {
       "auto and allow_unsafe are mutually exclusive — --skip-permissions-unsafe cannot be combined with --auto",
     );
   }
-  if (flags.mission === true) {
-    const hasHighAuto = flags.auto === "high";
-    const hasUnsafe = flags.allow_unsafe === true;
-    if (!hasHighAuto && !hasUnsafe) {
-      throw new DroidFlagsError(
-        "mission mode requires auto: 'high' or allow_unsafe: true",
-      );
-    }
+  if (flags.mission === true && flags.auto !== "high" && flags.allow_unsafe !== true) {
+    throw new DroidFlagsError(
+      "mission mode requires auto: 'high' or allow_unsafe: true",
+    );
   }
 
   const args: string[] = [];
 
-  // --- prompt source (file only; positional prompt is appended last) -----
   if (flags.prompt_file !== undefined) {
     args.push("--file", flags.prompt_file);
   }
-
-  // --- model + reasoning -------------------------------------------------
   if (flags.model !== undefined) {
     args.push("--model", flags.model);
   }
   if (flags.reasoning_effort !== undefined) {
     args.push("--reasoning-effort", flags.reasoning_effort);
   }
-
-  // --- autonomy ----------------------------------------------------------
   if (flags.auto !== undefined) {
     args.push("--auto", flags.auto);
   }
   if (flags.allow_unsafe === true) {
     args.push("--skip-permissions-unsafe");
   }
-
-  // --- formats -----------------------------------------------------------
   if (flags.output_format !== undefined) {
     args.push("--output-format", flags.output_format);
   }
   if (flags.input_format !== undefined) {
     args.push("--input-format", flags.input_format);
   }
-
-  // --- sessions ----------------------------------------------------------
   if (flags.session_id !== undefined) {
     args.push("--session-id", flags.session_id);
   }
   if (flags.fork_session_id !== undefined) {
     args.push("--fork", flags.fork_session_id);
   }
-
-  // --- cwd + worktree ----------------------------------------------------
   if (flags.cwd !== undefined) {
     args.push("--cwd", flags.cwd);
   }
@@ -141,8 +125,6 @@ export function buildDroidExecArgs(flags: DroidExecFlags): string[] {
   if (flags.worktree_dir !== undefined) {
     args.push("--worktree-dir", flags.worktree_dir);
   }
-
-  // --- tool controls -----------------------------------------------------
   if (flags.enabled_tools !== undefined && flags.enabled_tools.length > 0) {
     args.push("--enabled-tools", flags.enabled_tools.join(","));
   }
@@ -152,8 +134,6 @@ export function buildDroidExecArgs(flags: DroidExecFlags): string[] {
   if (flags.list_tools === true) {
     args.push("--list-tools");
   }
-
-  // --- tags --------------------------------------------------------------
   if (flags.tags !== undefined) {
     for (const tag of flags.tags) {
       args.push("--tag", encodeTag(tag));
@@ -162,21 +142,15 @@ export function buildDroidExecArgs(flags: DroidExecFlags): string[] {
   if (flags.log_group_id !== undefined) {
     args.push("--log-group-id", flags.log_group_id);
   }
-
-  // --- mission -----------------------------------------------------------
   if (flags.mission === true) {
     args.push("--mission");
   }
-
-  // --- system prompt -----------------------------------------------------
   if (flags.system_prompt !== undefined) {
     args.push("--append-system-prompt", flags.system_prompt);
   }
   if (flags.system_prompt_file !== undefined) {
     args.push("--append-system-prompt-file", flags.system_prompt_file);
   }
-
-  // --- spec mode ---------------------------------------------------------
   if (flags.use_spec === true) {
     args.push("--use-spec");
   }
@@ -186,13 +160,11 @@ export function buildDroidExecArgs(flags: DroidExecFlags): string[] {
   if (flags.spec_reasoning_effort !== undefined) {
     args.push("--spec-reasoning-effort", flags.spec_reasoning_effort);
   }
-
-  // --- settings file (undocumented but accepted by droid) ----------------
+  // --settings is undocumented in `droid exec --help` but the binary accepts it.
   if (flags.settings_file !== undefined) {
     args.push("--settings", flags.settings_file);
   }
-
-  // --- positional prompt MUST be last ------------------------------------
+  // Positional prompt MUST be last so it's not consumed as a flag value.
   if (flags.prompt !== undefined) {
     args.push(flags.prompt);
   }

@@ -60,47 +60,63 @@ export interface MissionProgressEvent {
   [key: string]: unknown;
 }
 
-const MISSIONS_DIR_DEFAULT = join(homedir(), ".factory", "missions");
+export const MISSIONS_DIR_DEFAULT = join(homedir(), ".factory", "missions");
 
 function missionsDir(override?: string): string {
   return override ?? MISSIONS_DIR_DEFAULT;
 }
 
+export function missionStateFile(uuid: string, baseDir?: string): string {
+  return join(missionsDir(baseDir), uuid, "state.json");
+}
+
+async function readMissionTitle(uuid: string, baseDir: string): Promise<string | undefined> {
+  try {
+    const md = await readFile(join(baseDir, uuid, "mission.md"), "utf8");
+    const firstLine = md.split("\n").find((l) => l.trim() !== "");
+    return firstLine?.replace(/^#+\s*/, "").trim();
+  } catch {
+    return undefined;
+  }
+}
+
 async function readStateJson(
   uuid: string,
   baseDir: string,
+  withTitle = false,
 ): Promise<MissionState | null> {
+  let raw: string;
   try {
-    const path = join(baseDir, uuid, "state.json");
-    const raw = await readFile(path, "utf8");
-    const parsed = JSON.parse(raw) as RawStateJson;
-    const state: MissionState = {
-      mission_id: parsed.missionId,
-      uuid,
-      base_session_id: parsed.baseSessionId,
-      state: parsed.state,
-      working_directory: parsed.workingDirectory,
-      current_feature_id: parsed.currentFeatureId,
-      current_worker_session_id: parsed.currentWorkerSessionId,
-      current_worker_pid: parsed.currentWorkerPid,
-      worker_session_ids: parsed.workerSessionIds ?? [],
-      completed_features: parsed.completedFeatures ?? 0,
-      total_features: parsed.totalFeatures ?? 0,
-      created_at: parsed.createdAt,
-      updated_at: parsed.updatedAt,
-    };
-    // Opportunistic: pull the first markdown heading from mission.md as title.
-    try {
-      const md = await readFile(join(baseDir, uuid, "mission.md"), "utf8");
-      const firstLine = md.split("\n").find((l) => l.trim() !== "");
-      if (firstLine) state.title = firstLine.replace(/^#+\s*/, "").trim();
-    } catch {
-      // ignore
-    }
-    return state;
+    raw = await readFile(join(baseDir, uuid, "state.json"), "utf8");
   } catch {
     return null;
   }
+  let parsed: RawStateJson;
+  try {
+    parsed = JSON.parse(raw) as RawStateJson;
+  } catch {
+    return null;
+  }
+  const state: MissionState = {
+    mission_id: parsed.missionId,
+    uuid,
+    base_session_id: parsed.baseSessionId,
+    state: parsed.state,
+    working_directory: parsed.workingDirectory,
+    current_feature_id: parsed.currentFeatureId,
+    current_worker_session_id: parsed.currentWorkerSessionId,
+    current_worker_pid: parsed.currentWorkerPid,
+    worker_session_ids: parsed.workerSessionIds ?? [],
+    completed_features: parsed.completedFeatures ?? 0,
+    total_features: parsed.totalFeatures ?? 0,
+    created_at: parsed.createdAt,
+    updated_at: parsed.updatedAt,
+  };
+  if (withTitle) {
+    const title = await readMissionTitle(uuid, baseDir);
+    if (title) state.title = title;
+  }
+  return state;
 }
 
 export interface ListMissionsOptions {
@@ -115,38 +131,33 @@ export async function listMissions(
   opts: ListMissionsOptions = {},
 ): Promise<MissionState[]> {
   const base = missionsDir(opts.missions_dir);
-  let entries: string[] = [];
+  let entries: string[];
   try {
     entries = await readdir(base);
   } catch {
     return [];
   }
 
-  const results: MissionState[] = [];
-  for (const entry of entries) {
-    try {
-      const s = await stat(join(base, entry));
-      if (!s.isDirectory()) continue;
-    } catch {
-      continue;
-    }
-    const state = await readStateJson(entry, base);
-    if (!state) continue;
-    if (!opts.all && opts.cwd !== undefined && state.working_directory !== opts.cwd) {
-      continue;
-    }
-    if (opts.state !== undefined && state.state !== opts.state) continue;
-    results.push(state);
-  }
+  // readStateJson returns null for non-mission entries (e.g. files instead
+  // of dirs, or dirs without state.json) — so we don't need an upfront stat.
+  const states = await Promise.all(
+    entries.map((entry) => readStateJson(entry, base, true)),
+  );
 
-  results.sort((a, b) => {
-    const ta = Date.parse(a.updated_at);
-    const tb = Date.parse(b.updated_at);
-    return tb - ta;
+  const filtered = states.filter((state): state is MissionState => {
+    if (!state) return false;
+    if (!opts.all && opts.cwd !== undefined && state.working_directory !== opts.cwd) {
+      return false;
+    }
+    if (opts.state !== undefined && state.state !== opts.state) return false;
+    return true;
   });
 
-  const limit = opts.limit ?? 50;
-  return results.slice(0, limit);
+  filtered.sort(
+    (a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at),
+  );
+
+  return filtered.slice(0, opts.limit ?? 50);
 }
 
 /**
@@ -267,7 +278,7 @@ export async function getMissionStatus(
   const uuid = await resolveMissionDir(idOrUuid, opts.missions_dir);
   if (!uuid) return null;
 
-  const state = await readStateJson(uuid, base);
+  const state = await readStateJson(uuid, base, true);
   if (!state) return null;
 
   const status: MissionStatus = { ...state };

@@ -5,6 +5,7 @@
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { DEFAULT_MODEL, DEFAULT_SPEC_MODEL } from "../droid/defaults.js";
 import { spawnDroidExec } from "../droid/exec.js";
 import { resolveCwd } from "../utils/cwd.js";
 import {
@@ -47,9 +48,9 @@ export function registerSpecTool(server: McpServer): void {
           {
             prompt,
             use_spec: true,
-            spec_model: spec_model ?? "custom:glm-5.1",
+            spec_model: spec_model ?? DEFAULT_SPEC_MODEL,
             spec_reasoning_effort,
-            model: model ?? "custom:glm-5-turbo",
+            model: model ?? DEFAULT_MODEL,
           },
           { cwd: resolveCwd(cwd), timeout_ms },
         );

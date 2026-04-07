@@ -1,6 +1,5 @@
 /**
- * Central registry. registerAllTools(server) wires up every tool exposed
- * by mcp-droid in one call.
+ * Wires every mcp-droid tool into the server in one call.
  */
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";

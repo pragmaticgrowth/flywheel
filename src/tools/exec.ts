@@ -7,6 +7,7 @@
  */
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { DEFAULT_MODEL } from "../droid/defaults.js";
 import { spawnDroidExec } from "../droid/exec.js";
 import type { DroidExecFlags } from "../droid/flags.js";
 import { DroidExecInputShape, type DroidExecInput } from "../schemas/exec.js";
@@ -27,42 +28,19 @@ export function registerDroidExec(server: McpServer): void {
     },
     async (input: DroidExecInput): Promise<McpToolResponse> => {
       try {
+        // Drop tool-level fields (cwd, timeout_ms) — cwd goes to spawn opts,
+        // timeout_ms is server-side. Everything else maps 1:1 onto flags.ts.
+        const { cwd, timeout_ms, ...rest } = input;
         const flags: DroidExecFlags = {
-          prompt: input.prompt,
-          prompt_file: input.prompt_file,
-          // Force a custom model when none is specified — droid's own
-          // default is claude-opus-4-6 (a built-in) and we never want
-          // to fall through to that.
-          model: input.model ?? "custom:glm-5-turbo",
-          auto: input.auto,
-          allow_unsafe: input.allow_unsafe,
-          output_format: input.output_format,
-          input_format: input.input_format,
-          session_id: input.session_id,
-          fork_session_id: input.fork_session_id,
-          cwd: undefined, // flag-level --cwd; we pass cwd via spawn opts instead
-          worktree: input.worktree,
-          worktree_dir: input.worktree_dir,
-          enabled_tools: input.enabled_tools,
-          disabled_tools: input.disabled_tools,
-          tags: input.tags,
-          log_group_id: input.log_group_id,
-          mission: input.mission,
-          system_prompt: input.system_prompt,
-          system_prompt_file: input.system_prompt_file,
-          reasoning_effort: input.reasoning_effort,
-          spec_model: input.spec_model,
-          spec_reasoning_effort: input.spec_reasoning_effort,
-          use_spec: input.use_spec,
-          settings_file: input.settings_file,
-          list_tools: input.list_tools,
+          ...rest,
+          // Force a custom default — droid's built-in fallback is
+          // claude-opus-4-6, which we never want to use.
+          model: input.model ?? DEFAULT_MODEL,
         };
 
-        const resolvedCwd = resolveCwd(input.cwd);
-
         const result = await spawnDroidExec(flags, {
-          cwd: resolvedCwd,
-          timeout_ms: input.timeout_ms,
+          cwd: resolveCwd(cwd),
+          timeout_ms,
         });
 
         return execResultToToolResponse(result);

@@ -1,15 +1,18 @@
 /**
- * Session tools: continue, fork, list, search.
- *
- * continue + fork wrap `droid exec -s <id>` / `--fork <id>`.
- * list reads ~/.factory/sessions-index.json (raw cwd — no encoding needed).
- * search wraps `droid search <query> --json`.
+ * Session tools: continue, fork, list, search. Continue + fork wrap
+ * `droid exec -s <id>` / `--fork <id>`. List reads sessions-index.json
+ * (raw cwd, no encoding). Search shells out to `droid search <query> --json`.
  */
 
-import { spawn } from "node:child_process";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { spawnDroidExec } from "../droid/exec.js";
+import { DEFAULT_MODEL } from "../droid/defaults.js";
+import {
+  runDroidProcess,
+  spawnDroidExec,
+  type DroidProcessOptions,
+} from "../droid/exec.js";
+import type { DroidExecFlags } from "../droid/flags.js";
 import { listSessions } from "../droid/sessions.js";
 import { AutoLevelSchema, ReasoningEffortSchema } from "../schemas/exec.js";
 import { resolveCwd } from "../utils/cwd.js";
@@ -21,89 +24,68 @@ import {
   type McpToolResponse,
 } from "../utils/errors.js";
 
+interface SessionExecInput {
+  prompt: string;
+  cwd?: string;
+  model?: string;
+  auto?: z.infer<typeof AutoLevelSchema>;
+  reasoning_effort?: z.infer<typeof ReasoningEffortSchema>;
+  timeout_ms?: number;
+}
+
+async function runSessionExec(
+  extra: Pick<DroidExecFlags, "session_id" | "fork_session_id">,
+  input: SessionExecInput,
+): Promise<McpToolResponse> {
+  try {
+    const result = await spawnDroidExec(
+      {
+        ...extra,
+        prompt: input.prompt,
+        model: input.model ?? DEFAULT_MODEL,
+        auto: input.auto,
+        reasoning_effort: input.reasoning_effort,
+      },
+      { cwd: resolveCwd(input.cwd), timeout_ms: input.timeout_ms },
+    );
+    return execResultToToolResponse(result);
+  } catch (err) {
+    return createUnexpectedErrorResponse(err);
+  }
+}
+
+const sessionExecShape = {
+  prompt: z.string(),
+  cwd: z.string().optional(),
+  model: z.string().optional(),
+  auto: AutoLevelSchema.optional(),
+  reasoning_effort: ReasoningEffortSchema.optional(),
+  timeout_ms: z.number().int().positive().optional(),
+};
+
 export function registerSessionTools(server: McpServer): void {
   server.registerTool(
     "droid_session_continue",
     {
       description:
         "Continue an existing droid session by id — loads conversation history for context and runs the new prompt in the same thread. Equivalent to `droid exec -s <session_id> '<prompt>'`.",
-      inputSchema: {
-        session_id: z.string(),
-        prompt: z.string(),
-        cwd: z.string().optional(),
-        model: z.string().optional(),
-        auto: AutoLevelSchema.optional(),
-        reasoning_effort: ReasoningEffortSchema.optional(),
-        timeout_ms: z.number().int().positive().optional(),
-      },
+      inputSchema: { session_id: z.string(), ...sessionExecShape },
     },
-    async ({
-      session_id,
-      prompt,
-      cwd,
-      model,
-      auto,
-      reasoning_effort,
-      timeout_ms,
-    }): Promise<McpToolResponse> => {
-      try {
-        const result = await spawnDroidExec(
-          {
-            session_id,
-            prompt,
-            model: model ?? "custom:glm-5-turbo",
-            auto,
-            reasoning_effort,
-          },
-          { cwd: resolveCwd(cwd), timeout_ms },
-        );
-        return execResultToToolResponse(result);
-      } catch (err) {
-        return createUnexpectedErrorResponse(err);
-      }
-    },
+    async ({ session_id, ...input }) => runSessionExec({ session_id }, input),
   );
 
   server.registerTool(
     "droid_session_fork",
     {
       description:
-        "Fork an existing session into a new one, preserving its history up to the checkpoint. Useful for 'take a different approach from this point'. Returns the NEW session_id in the response metadata.",
+        "Fork an existing session into a new one, preserving its history up to the checkpoint. Useful for 'take a different approach from this point'. The NEW session_id shows up in the response metadata.",
       inputSchema: {
         session_id: z.string().describe("The session to fork from."),
-        prompt: z.string(),
-        cwd: z.string().optional(),
-        model: z.string().optional(),
-        auto: AutoLevelSchema.optional(),
-        reasoning_effort: ReasoningEffortSchema.optional(),
-        timeout_ms: z.number().int().positive().optional(),
+        ...sessionExecShape,
       },
     },
-    async ({
-      session_id,
-      prompt,
-      cwd,
-      model,
-      auto,
-      reasoning_effort,
-      timeout_ms,
-    }): Promise<McpToolResponse> => {
-      try {
-        const result = await spawnDroidExec(
-          {
-            fork_session_id: session_id,
-            prompt,
-            model: model ?? "custom:glm-5-turbo",
-            auto,
-            reasoning_effort,
-          },
-          { cwd: resolveCwd(cwd), timeout_ms },
-        );
-        return execResultToToolResponse(result);
-      } catch (err) {
-        return createUnexpectedErrorResponse(err);
-      }
-    },
+    async ({ session_id, ...input }) =>
+      runSessionExec({ fork_session_id: session_id }, input),
   );
 
   server.registerTool(
@@ -178,79 +160,34 @@ export function registerSessionTools(server: McpServer): void {
           args.push("--context-chars", String(context_chars));
         if (reindex) args.push("--reindex");
 
-        const result = await runDroidSearch(args, {
+        const opts: DroidProcessOptions = {
           cwd: resolveCwd(cwd),
           timeout_ms: timeout_ms ?? 120_000,
-        });
+        };
+        const proc = await runDroidProcess(args, opts);
 
-        if (!result.ok) {
+        if (proc.spawn_error !== null) {
+          return createErrorResponse(`droid search: ${proc.spawn_error}`);
+        }
+        if (proc.timed_out) {
           return createErrorResponse(
-            `droid search failed: ${result.error ?? result.stderr.trim()}`,
+            `droid search timed out after ${opts.timeout_ms}ms`,
+          );
+        }
+        if (proc.exit_code !== 0) {
+          return createErrorResponse(
+            `droid search failed: ${proc.stderr.trim() || `exit ${proc.exit_code}`}`,
           );
         }
 
         try {
-          const parsed = JSON.parse(result.stdout);
-          return createJsonResponse(parsed);
+          return createJsonResponse(JSON.parse(proc.stdout));
         } catch {
-          return createJsonResponse({ raw_stdout: result.stdout });
+          return createJsonResponse({ raw_stdout: proc.stdout });
         }
       } catch (err) {
         return createUnexpectedErrorResponse(err);
       }
     },
   );
-}
-
-interface DroidSearchResult {
-  ok: boolean;
-  stdout: string;
-  stderr: string;
-  exit_code: number | null;
-  error?: string;
-}
-
-async function runDroidSearch(
-  args: string[],
-  opts: { cwd: string; timeout_ms: number },
-): Promise<DroidSearchResult> {
-  return new Promise((resolve) => {
-    const child = spawn("droid", args, {
-      cwd: opts.cwd,
-      env: process.env,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    let stdout = "";
-    let stderr = "";
-    const timer = setTimeout(() => {
-      child.kill("SIGTERM");
-    }, opts.timeout_ms);
-
-    child.stdout?.on("data", (d: Buffer) => {
-      stdout += d.toString("utf8");
-    });
-    child.stderr?.on("data", (d: Buffer) => {
-      stderr += d.toString("utf8");
-    });
-    child.on("error", (err) => {
-      clearTimeout(timer);
-      resolve({
-        ok: false,
-        stdout,
-        stderr,
-        exit_code: null,
-        error: `spawn error: ${err.message}`,
-      });
-    });
-    child.on("close", (code) => {
-      clearTimeout(timer);
-      resolve({
-        ok: code === 0,
-        stdout,
-        stderr,
-        exit_code: code,
-        error: code !== 0 ? stderr.trim() || `exit ${code}` : undefined,
-      });
-    });
-  });
 }

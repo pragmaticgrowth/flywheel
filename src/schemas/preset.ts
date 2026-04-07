@@ -1,8 +1,8 @@
 /**
- * Shared input schema for all specialized preset tools
- * (droid_research, droid_review_code, droid_explore_code, ...).
- * Each preset overrides the default model + auto + system prompt file at
- * registration time but accepts the same user-facing input shape.
+ * Shared input schema for all specialized preset tools (droid_research,
+ * droid_review_code, droid_explore_code, ...). Each preset overrides the
+ * default model + auto + system prompt file at registration time but
+ * accepts the same user-facing input shape.
  */
 
 import { z } from "zod";
@@ -36,13 +36,5 @@ export const PresetInputShape = {
   timeout_ms: z.number().int().positive().optional(),
 };
 
-export type PresetInput = {
-  prompt: string;
-  cwd?: string;
-  model?: string;
-  auto?: "low" | "medium" | "high";
-  reasoning_effort?: z.infer<typeof ReasoningEffortSchema>;
-  session_id?: string;
-  tags?: z.infer<typeof TagSpecSchema>[];
-  timeout_ms?: number;
-};
+export const PresetInputSchema = z.object(PresetInputShape);
+export type PresetInput = z.infer<typeof PresetInputSchema>;

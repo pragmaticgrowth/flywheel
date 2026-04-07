@@ -6,6 +6,7 @@
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { DEFAULT_MODEL } from "../droid/defaults.js";
 import { spawnDroidExec } from "../droid/exec.js";
 import { listModels } from "../droid/models.js";
 import { listProfiles } from "../droid/profiles.js";
@@ -79,7 +80,7 @@ export function registerMetaTools(server: McpServer): void {
       try {
         const result = await spawnDroidExec(
           {
-            model: model ?? "custom:glm-5-turbo",
+            model: model ?? DEFAULT_MODEL,
             list_tools: true,
             output_format: "json",
           },
@@ -88,7 +89,7 @@ export function registerMetaTools(server: McpServer): void {
 
         if (!result.ok) {
           return createErrorResponse(
-            `droid exec --list-tools failed: ${result.error_message ?? result.stderr.trim() ?? "unknown error"}`,
+            `droid exec --list-tools failed: ${result.error_message || result.stderr.trim() || "unknown error"}`,
           );
         }
 

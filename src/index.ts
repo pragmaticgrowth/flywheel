@@ -1,9 +1,6 @@
 #!/usr/bin/env node
 /**
  * mcp-droid — local stdio MCP server that wraps the Factory AI `droid` CLI.
- *
- * Phase 1 scaffolding: registers zero tools, just proves the stdio transport
- * boots cleanly. Tools will be registered via registerAllTools() in later phases.
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";

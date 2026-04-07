@@ -19,7 +19,6 @@ import { join } from "node:path";
 export interface ModelInfo {
   id: string;
   display_name?: string;
-  kind: "custom";
   /** Short alias droid also accepts. */
   alias?: string;
   provider?: string;
@@ -78,7 +77,6 @@ export async function listModels(
     const info: ModelInfo = {
       id: m.id,
       display_name: m.displayName,
-      kind: "custom",
     };
     if (CUSTOM_MODEL_ALIASES[m.id] !== undefined) {
       info.alias = CUSTOM_MODEL_ALIASES[m.id];
