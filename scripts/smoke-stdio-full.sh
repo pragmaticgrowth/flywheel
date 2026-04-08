@@ -1,16 +1,25 @@
 #!/usr/bin/env bash
 # Comprehensive stdio smoke test — exercises every tool that previously
-# failed, every tool with a latent fix, plus a real droid exec round-trip.
+# failed, every tool with a latent fix, plus a real droid exec round-trip
+# and a real session-chaining flow (exec → continue → fork).
 #
-# What it covers (in addition to smoke-stdio-readonly.sh):
-#   - droid_list_tools           (the original Zod structuredContent failure)
-#   - droid_session_search       (latent same-bug fix)
-#   - droid_mission_status       (with a real mission_id from the list)
-#   - droid_mission_progress     (with the same mission_id)
-#   - droid_exec                 (real MiniMax round-trip — costs a few cents)
+# What it covers:
+#   - droid_list_models           (fs read)
+#   - droid_list_profiles         (fs read)
+#   - droid_session_list          (fs read)
+#   - droid_mission_list          (fs read)
+#   - droid_mission_status        (fs read with a real mission id)
+#   - droid_mission_progress      (fs read with a real mission id)
+#   - droid_list_tools × 3 modes  (spawns droid)
+#   - droid_session_search        (spawns droid search, post-filters)
+#   - droid_exec                  (REAL MiniMax round-trip)
+#   - droid_session_continue      (chains context forward via captured session_id)
+#   - droid_session_fork          (branches off captured session_id into a new one)
 #
-# Each tools/call is given its own request id so we can correlate response
-# to call. Failures are summarized at the end with their full content[0].text.
+# Runs in two phases because session_continue + session_fork need the
+# session_id captured from the exec call. Phase 1 issues every tool up
+# to and including exec. Phase 2 parses the captured session_id from
+# phase 1's output and issues the continue + fork calls with it.
 #
 # Usage: bash scripts/smoke-stdio-full.sh
 
@@ -28,7 +37,10 @@ fi
 MISSION_UUID=$(ls -1 ~/.factory/missions 2>/dev/null | head -1 || true)
 if [ -z "$MISSION_UUID" ]; then MISSION_UUID="00000000-0000-0000-0000-000000000000"; fi
 
-OUTPUT=$(
+# ─────────────────────────────────────────────────────────────────────
+# Phase 1: everything that doesn't depend on a captured session_id
+# ─────────────────────────────────────────────────────────────────────
+OUTPUT_PHASE1=$(
   (
     printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"smoke-full","version":"0"}}}'
     printf '%s\n' '{"jsonrpc":"2.0","method":"notifications/initialized"}'
@@ -44,19 +56,60 @@ OUTPUT=$(
     printf '%s\n' '{"jsonrpc":"2.0","id":29,"method":"tools/call","params":{"name":"droid_list_tools","arguments":{"model":"custom:glm-5-turbo","mode":"names"}}}'
     printf '%s\n' '{"jsonrpc":"2.0","id":30,"method":"tools/call","params":{"name":"droid_list_tools","arguments":{"model":"custom:glm-5-turbo","mode":"full"}}}'
     printf '%s\n' '{"jsonrpc":"2.0","id":27,"method":"tools/call","params":{"name":"droid_session_search","arguments":{"query":"droid","cwd":"/Users/serkan","limit_sessions":2,"limit_hits":1}}}'
-    # Real exec — cheapest model + tiny prompt
-    printf '%s\n' '{"jsonrpc":"2.0","id":28,"method":"tools/call","params":{"name":"droid_exec","arguments":{"prompt":"reply with exactly: ok","model":"custom:MiniMax-M2.7","auto":"high"}}}'
+    # Real exec — cheapest model + tiny prompt. We'll capture session_id
+    # from this response and reuse it in phase 2.
+    printf '%s\n' '{"jsonrpc":"2.0","id":28,"method":"tools/call","params":{"name":"droid_exec","arguments":{"prompt":"reply with exactly: alpha","model":"custom:MiniMax-M2.7","auto":"high"}}}'
     sleep 90
   ) | node dist/index.js
 )
 
-echo "$OUTPUT" | node -e '
+# Extract session_id from the id=28 (exec) response.
+CAPTURED_SID=$(echo "$OUTPUT_PHASE1" | node -e '
+const lines = require("fs").readFileSync("/dev/stdin","utf8").trim().split("\n");
+for (const line of lines) {
+  try {
+    const m = JSON.parse(line);
+    if (m.id === 28 && m.result && m.result.structuredContent && m.result.structuredContent.session_id) {
+      console.log(m.result.structuredContent.session_id);
+      process.exit(0);
+    }
+  } catch {}
+}
+process.exit(1);
+' 2>/dev/null || echo "")
+
+if [ -z "$CAPTURED_SID" ]; then
+  echo "WARNING: could not capture session_id from exec response — skipping session-chain phase" >&2
+  OUTPUT_PHASE2=""
+else
+  # ───────────────────────────────────────────────────────────────────
+  # Phase 2: session_continue + session_fork with the captured sid
+  # ───────────────────────────────────────────────────────────────────
+  OUTPUT_PHASE2=$(
+    (
+      printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"smoke-full-phase2","version":"0"}}}'
+      printf '%s\n' '{"jsonrpc":"2.0","method":"notifications/initialized"}'
+      # Continue the session captured from phase 1 — verify context recall
+      printf '%s\n' '{"jsonrpc":"2.0","id":31,"method":"tools/call","params":{"name":"droid_session_continue","arguments":{"session_id":"'"$CAPTURED_SID"'","prompt":"what exactly did i just ask you to reply?","model":"custom:MiniMax-M2.7","auto":"high"}}}'
+      # Fork the same session and ask for a different reply — verify NEW session_id returned
+      printf '%s\n' '{"jsonrpc":"2.0","id":32,"method":"tools/call","params":{"name":"droid_session_fork","arguments":{"session_id":"'"$CAPTURED_SID"'","prompt":"now reply with exactly: beta","model":"custom:MiniMax-M2.7","auto":"high"}}}'
+      sleep 60
+    ) | node dist/index.js
+  )
+fi
+
+# Concatenate both phases for unified grading.
+OUTPUT="${OUTPUT_PHASE1}"$'\n'"${OUTPUT_PHASE2}"
+
+echo "$OUTPUT" | CAPTURED_SID="$CAPTURED_SID" node -e '
+const captured = process.env.CAPTURED_SID || "";
 const lines = require("fs").readFileSync("/dev/stdin", "utf8").trim().split("\n");
 const labels = {
   20: "list_models", 21: "list_profiles", 22: "session_list",
   23: "mission_list", 24: "mission_status", 25: "mission_progress",
   26: "list_tools_default", 27: "session_search", 28: "exec_real",
   29: "list_tools_names", 30: "list_tools_full",
+  31: "session_continue", 32: "session_fork",
 };
 const results = {};
 for (const line of lines) {
@@ -94,9 +147,39 @@ for (const line of lines) {
   if (Array.isArray(sc.missions)) summary += " first_mission=" + (sc.missions[0] && (sc.missions[0].mission_id + "/" + sc.missions[0].state));
   if (sc.events !== undefined) summary += " events_len=" + (Array.isArray(sc.events) ? sc.events.length : "?");
   if (sc.recent_events !== undefined) summary += " recent_events_len=" + (Array.isArray(sc.recent_events) ? sc.recent_events.length : "?");
-  if (sc.text !== undefined) summary += " text=" + JSON.stringify((sc.text || "").slice(0, 30));
+  if (sc.text !== undefined) summary += " text=" + JSON.stringify((sc.text || "").slice(0, 60));
   if (sc.session_id !== undefined) summary += " sid=" + sc.session_id;
   if (sc.usage && sc.usage.input_tokens) summary += " in_tok=" + sc.usage.input_tokens;
+
+  // Extra assertions for the session-chain tests
+  if (label === "session_continue") {
+    // Verify the session_id matches what we captured from exec_real
+    if (captured && sc.session_id === captured) {
+      summary += " [SID_MATCHES_CAPTURED]";
+    } else if (captured) {
+      summary += " [SID_MISMATCH captured=" + captured + "]";
+    }
+    // Verify the response references "alpha" (what the first exec was asked to reply)
+    const text = (sc.text || "").toLowerCase();
+    if (text.includes("alpha")) {
+      summary += " [RECALLED_CONTEXT]";
+    } else {
+      summary += " [NO_CONTEXT_RECALL]";
+    }
+  }
+  if (label === "session_fork") {
+    // Verify the returned session_id is DIFFERENT from captured (fork creates new id)
+    if (captured && sc.session_id && sc.session_id !== captured) {
+      summary += " [NEW_SID]";
+    } else if (captured && sc.session_id === captured) {
+      summary += " [SID_NOT_NEW]";
+    }
+    // Verify the response contains "beta" (the new ask)
+    const text = (sc.text || "").toLowerCase();
+    if (text.includes("beta")) {
+      summary += " [REPLIED_BETA]";
+    }
+  }
   results[label] = { kind: "ok", text: summary.trim() || "(empty)" };
 }
 const order = Object.values(labels);
@@ -110,10 +193,11 @@ for (const label of order) {
     continue;
   }
   const tag = r.kind === "ok" ? "OK" : r.kind === "ok_no_struct" ? "OK*" : r.kind === "tool_error" ? "TOOL_ERR" : "RPC_ERR";
-  console.log("[" + label + "] " + tag + " — " + r.text.slice(0, 280));
+  console.log("[" + label + "] " + tag + " — " + r.text.slice(0, 320));
   if (r.kind === "ok" || r.kind === "ok_no_struct") pass++; else fail++;
 }
 console.log("===");
 console.log("PASS=" + pass + " FAIL=" + fail + " TOTAL=" + order.length);
+if (captured) console.log("captured session_id from exec: " + captured);
 process.exit(fail === 0 ? 0 : 1);
 '
