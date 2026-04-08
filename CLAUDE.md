@@ -10,41 +10,72 @@ projects.
 
 ## Status
 
-**v0.1.0 complete — all phases shipped, awaiting end-to-end MCP client verification.**
+**v0.1.0 verified end-to-end.** Published at https://github.com/pragmaticgrowth/mcp-droid
+(private). Registered at user scope in `~/.claude.json` — available
+from every Claude Code session regardless of cwd.
 
-- ✅ Phase 1: scaffold, stdio MCP server boots, `initialize` RPC verified
-- ✅ Phase 2: `flags.ts`, `output.ts`, `exec.ts` (56 unit tests, real droid smoke)
-- ✅ Phase 3: `droid_exec` MCP tool, full stdio round-trip verified
-- ✅ Phase 4: `models.ts`, `profiles.ts`, `sessions.ts`, `missions.ts` fs readers
-- ✅ Phase 5: 23 additional MCP tools — meta (3), presets (11), sessions (4), missions (4), spec (1)
-- ✅ Phase 6: error handling audit, CLAUDE.md updated, smoke tests for all read-only tools
+### Verification
 
-**24 tools registered.** Verified live via stdio JSON-RPC pipes:
+| Check | Result |
+|---|---|
+| `npm run build` (tsc) | clean |
+| `npm test` (vitest) | **172 passed** in 8 files (~1.7s) |
+| `bash scripts/smoke-stdio-full.sh` | 11/11 tools (includes real MiniMax round-trip) |
+| `bash scripts/smoke-stdio-presets.sh` | 11/11 specialized presets |
+| Live MCP-client rounds | 71/71 tool calls across 5 separate verification sessions |
+| Cross-project cwd inheritance | verified from /Users/serkan/nt-dev |
+| Real mission orchestration | verified (mis_662293c0 "Simple File Writing Mission") |
 
-- `droid_list_models` → 36 models (built-ins + customs from settings.json)
-- `droid_list_profiles` → 11 profiles from `~/.factory/droids/`
-- `droid_session_list` → reads `sessions-index.json`, raw-cwd filtering works
-- `droid_mission_list` → 24 missions on disk
-- `droid_mission_status` → reads state.json + features.json + progress_log.jsonl
-- `droid_exec` (full happy + failure paths) → real droid spawn round-trips through MCP
+### Tool surface (24 tools, all verified)
 
-**Pending end-to-end verification** (requires registering with a real Claude
-Code session via `.mcp.json`):
-- `droid_research` / `droid_review_code` / etc preset round-trip
-- `droid_session_continue` chained against a captured session_id
-- `droid_session_search` against real session content
-- `droid_mission_start` mission_id capture (tries stream-json init, falls back
-  to dir scan)
+- **Generic (4)**: `droid_exec`, `droid_list_tools`, `droid_list_models`, `droid_list_profiles`
+- **Specialized presets (11)**: `droid_research`, `droid_research_fast`, `droid_review_code`, `droid_explore_code`, `droid_architect`, `droid_simplify`, `droid_silent_failure_scan`, `droid_pr_test_analyzer`, `droid_type_design_analyzer`, `droid_scrutiny_review`, `droid_user_testing_validator`
+- **Sessions (4)**: `droid_session_continue`, `droid_session_fork`, `droid_session_list` (with `scan_disk` opt-in), `droid_session_search` (post-filters global `droid search` by reading each hit's jsonl)
+- **Missions (5)**: `droid_mission_start` (detached spawn + polling), `droid_mission_list`, `droid_mission_status`, `droid_mission_progress`, `droid_mission_cancel`
+- **Spec mode (1)**: `droid_spec` (defaults to `auto: "low"`)
 
-**Empirical finding from building the output parser**: droid does NOT emit
-stream-json error *events* for pre-launch failures. Every failure mode tested
-(bad model, bad file, bad enabled-tools, incompatible flags) produces exit
-code ≠ 0 with plain-text stderr instead. The captured error fixture at
-`docs/fixtures/stream-json-error.jsonl` is just stderr text, no JSONL. This
-means `parseStreamJson` treats such input as "empty run" and exec.ts catches
-the exit-code + stderr failure path via `failure: "nonzero_exit"`. The
-parser's `errors[]` detection (matching `/error|failed|failure/i` on
-type/subtype) is retained for future-proofing.
+### Companion skill
+
+The user-facing usage skill lives at `.claude/skills/droid-mcp/` in
+this repo (2,229 lines: main SKILL.md + 4 reference files + the
+`mission-manager.sh` tmux helper). It's **symlinked** from
+`~/.claude/skills/droid-mcp` so editing files here instantly updates
+what Claude Code loads in any project.
+
+### Empirical findings baked into the code
+
+- **`stream-json` is the only safe output format.** Plain `json` can
+  return exit 0 with errors hidden in the payload. `parseStreamJson`
+  in `src/droid/output.ts` scans for `error|failed|failure` event
+  types and flags the run as failed even if exit code is 0.
+- **sessions-index.json is incomplete.** Droid's indexer skips
+  sessions created via `droid exec` (which is how mcp-droid creates
+  every session). The index has ~142 entries vs ~214 `.jsonl` files
+  on disk in a mature install. `droid_session_list` has a
+  `scan_disk: true` opt-in that walks `~/.factory/sessions/<dir>/*.jsonl`
+  directly.
+- **`droid search` is fully global** — it has no cwd flag and ignores
+  the cwd it's run from. `droid_session_search` post-filters by
+  reading each hit's `.jsonl` first line for the authoritative cwd
+  via `readSessionMetaFromJsonl`.
+- **Mission directories have `working_directory.txt` BEFORE `state.json`.**
+  Freshly-spawned missions are recognized by `working_directory.txt`;
+  `state.json` only appears once factoryd actually starts a worker
+  (sometimes never, if factoryd fails). `readStateJson` has a slow-path
+  fallback that builds a partial `MissionState` with
+  `mission_id: "pending-<uuid>"` when state.json is missing.
+- **Trivial prompts don't trigger missions.** `droid exec --mission
+  "say hi"` completes in ~5s as a plain exec and creates zero new
+  mission directories. `droid_mission_start` detects this and returns
+  `{ mission_triggered: false, reason: "..." }` — not an error.
+- **Missions are fully non-interactive.** Verified: zero `AskUser`
+  calls and zero user-input-needed events across 26 existing missions.
+  Missions run with `--auto high` and auto-decide everything. If you
+  need back-and-forth, use sessions, not missions.
+- **Droid commits mission scaffolding into whatever cwd it sees as a
+  git repo** when running with `--auto high`. ALWAYS spawn missions
+  in `/tmp/` or a throwaway dir — never in a repo you care about. Hit
+  three times while building this project.
 
 ## Why This Exists
 
