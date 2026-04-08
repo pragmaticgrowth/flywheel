@@ -304,10 +304,12 @@ export function registerMissionTools(server: McpServer): void {
 
         const killResults = await Promise.all(
           pidsToKill.map(async ({ pid, role }) => {
-            // force=true: skip the graceful_ms wait by sending SIGKILL
-            // via a 0-second graceful window.
+            // force=true: skip SIGTERM entirely and send SIGKILL
+            // immediately. Useful for processes that ignore SIGTERM
+            // or when the caller wants instant teardown.
             const result = await killProcessGracefully(pid, {
-              graceful_ms: force === true ? 0 : 2_000,
+              force: force === true,
+              graceful_ms: 2_000,
             });
             return { pid, role, ...result };
           }),

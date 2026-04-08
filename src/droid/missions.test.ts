@@ -664,14 +664,8 @@ describe("markMissionState", () => {
     expect(result).toBe(false);
   });
 
-  it("returns false when state.json is missing", async () => {
-    // Create the dir but without state.json (just working_directory.txt).
-    await createMissionDir("no-state", "/Users/serkan/nt-dev");
-    const result = await markMissionState("no-state", "cancelled", {
-      missions_dir: tmpMissions,
-    });
-    expect(result).toBe(false);
-  });
+  // (the "returns false when state.json is missing" test was deleted
+  //  — that behavior was a bug, fixed by the synthesis path below)
 
   it("writes the new state + resets transient fields + updates timestamp", async () => {
     await createFullMissionDir("uuid-1", {
@@ -726,6 +720,82 @@ describe("markMissionState", () => {
     });
     expect(result).toBe(false);
   });
+
+  it("SYNTHESIZES a new state.json from working_directory.txt when state.json is missing", async () => {
+    // Partial-mission case: droid created the directory with
+    // working_directory.txt + mission.md but factoryd hasn't yet
+    // written state.json. Cancel must handle this by creating
+    // state.json from scratch, otherwise the mission gets stuck at
+    // whatever readStateJson's slow-path returns (initializing).
+    await createMissionDir("pending-cancel", "/Users/serkan/foo", {
+      missionMd: "# Pending Mission",
+    });
+    // Confirm there's no state.json to start
+    await expect(
+      readFile(join(tmpMissions, "pending-cancel", "state.json"), "utf8"),
+    ).rejects.toThrow();
+
+    const result = await markMissionState("pending-cancel", "cancelled", {
+      missions_dir: tmpMissions,
+    });
+    expect(result).toBe(true);
+
+    // Now verify state.json exists with the synthesized shape
+    const raw = await readFile(
+      join(tmpMissions, "pending-cancel", "state.json"),
+      "utf8",
+    );
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    expect(parsed.state).toBe("cancelled");
+    expect(parsed.workingDirectory).toBe("/Users/serkan/foo");
+    expect(parsed.missionId).toBe("pending-pending-cancel");
+    expect(parsed.currentFeatureId).toBeNull();
+    expect(parsed.currentWorkerSessionId).toBeNull();
+    expect(parsed.currentWorkerPid).toBeNull();
+    expect(parsed.workerSessionIds).toEqual([]);
+    expect(parsed.completedFeatures).toBe(0);
+    expect(parsed.totalFeatures).toBe(0);
+    expect(typeof parsed.createdAt).toBe("string");
+    expect(typeof parsed.updatedAt).toBe("string");
+  });
+
+  it("downstream: getMissionStatus reads the synthesized state as state=cancelled", async () => {
+    // End-to-end: synthesize state.json via markMissionState, then
+    // verify listMissions / getMissionStatus report the new state.
+    await createMissionDir("e2e-cancel", "/Users/serkan/bar", {
+      missionMd: "# E2E Mission",
+    });
+    const wrote = await markMissionState("e2e-cancel", "cancelled", {
+      missions_dir: tmpMissions,
+    });
+    expect(wrote).toBe(true);
+
+    const { getMissionStatus, listMissions } = await import("./missions.js");
+    const status = await getMissionStatus("e2e-cancel", {
+      missions_dir: tmpMissions,
+      include_progress: false,
+      include_features: false,
+    });
+    expect(status?.state).toBe("cancelled");
+    expect(status?.working_directory).toBe("/Users/serkan/bar");
+
+    const list = await listMissions({
+      missions_dir: tmpMissions,
+      all: true,
+      state: "cancelled",
+    });
+    expect(list).toHaveLength(1);
+    expect(list[0]?.uuid).toBe("e2e-cancel");
+  });
+
+  it("returns false when the mission directory doesn't exist at all", async () => {
+    // No directory means no working_directory.txt, no way to
+    // synthesize anything meaningful.
+    const result = await markMissionState("ghost", "cancelled", {
+      missions_dir: tmpMissions,
+    });
+    expect(result).toBe(false);
+  });
 });
 
 describe("killProcessGracefully", () => {
@@ -772,5 +842,45 @@ describe("killProcessGracefully", () => {
     });
     expect(result.killed).toBe(true);
     expect(result.required_sigkill).toBe(true);
+  });
+
+  it("force:true skips SIGTERM entirely and sends SIGKILL immediately", async () => {
+    // Spawn a Node process that handles SIGTERM by exiting with a
+    // SPECIFIC non-zero code (7) so we can detect whether it received
+    // SIGTERM or just SIGKILL.
+    //
+    // Note: SIGKILL can't be trapped by the process, so its exit
+    // isn't observable from the child's own handler — we detect it
+    // via the parent tracking the exit code/signal of the child.
+    const child = spawn("node", [
+      "-e",
+      "process.on('SIGTERM', () => process.exit(7)); setInterval(() => {}, 1000);",
+    ]);
+    expect(child.pid).toBeDefined();
+
+    // Capture the exit signal/code
+    let exitCode: number | null = null;
+    let exitSignal: NodeJS.Signals | null = null;
+    const exitPromise = new Promise<void>((resolve) => {
+      child.on("exit", (code, signal) => {
+        exitCode = code;
+        exitSignal = signal;
+        resolve();
+      });
+    });
+
+    // Give the SIGTERM handler a moment to register
+    await new Promise<void>((resolve) => setTimeout(resolve, 100));
+
+    const result = await killProcessGracefully(child.pid!, { force: true });
+    await exitPromise;
+
+    expect(result.killed).toBe(true);
+    expect(result.required_sigkill).toBe(true);
+    // If SIGTERM had been sent first, the child would exit with code 7.
+    // If SIGKILL was sent directly (as force:true should), the exit
+    // signal should be SIGKILL with no code.
+    expect(exitSignal).toBe("SIGKILL");
+    expect(exitCode).toBeNull();
   });
 });

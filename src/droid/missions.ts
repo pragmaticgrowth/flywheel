@@ -491,10 +491,17 @@ export interface MissionProgressResult {
 const TERMINAL_STATES = new Set(["completed", "failed", "cancelled"]);
 
 /**
- * Best-effort process kill with SIGTERM → (wait up to gracefulMs) →
- * SIGKILL escalation. Returns { killed, reason } with honest reporting
- * of what happened. Never throws — all errors are folded into the
- * result object.
+ * Best-effort process kill.
+ *
+ * Default path (force=false): SIGTERM → wait up to gracefulMs →
+ * SIGKILL if still alive. Returns `required_sigkill: false` when
+ * SIGTERM was enough, `true` when we had to escalate.
+ *
+ * Force path (force=true): skip SIGTERM entirely and send SIGKILL
+ * immediately. Always reports `required_sigkill: true`. Use for
+ * processes that ignore SIGTERM or when you need instant cleanup.
+ *
+ * Never throws — all errors are folded into the result object.
  *
  * `process.kill(pid, 0)` is the standard Node trick for "check whether
  * this pid exists without signalling it" — it throws ESRCH if the
@@ -502,8 +509,13 @@ const TERMINAL_STATES = new Set(["completed", "failed", "cancelled"]);
  */
 export async function killProcessGracefully(
   pid: number,
-  opts: { graceful_ms?: number; check_interval_ms?: number } = {},
+  opts: {
+    graceful_ms?: number;
+    check_interval_ms?: number;
+    force?: boolean;
+  } = {},
 ): Promise<{ killed: boolean; required_sigkill: boolean; reason?: string }> {
+  const force = opts.force === true;
   const gracefulMs = opts.graceful_ms ?? 2_000;
   const checkIntervalMs = opts.check_interval_ms ?? 100;
 
@@ -512,6 +524,17 @@ export async function killProcessGracefully(
     process.kill(pid, 0);
   } catch {
     return { killed: false, required_sigkill: false, reason: "process not running" };
+  }
+
+  if (force) {
+    // Skip SIGTERM entirely — go straight to SIGKILL.
+    try {
+      process.kill(pid, "SIGKILL");
+      return { killed: true, required_sigkill: true };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { killed: false, required_sigkill: true, reason: `SIGKILL failed: ${message}` };
+    }
   }
 
   // SIGTERM
@@ -544,14 +567,34 @@ export async function killProcessGracefully(
 }
 
 /**
- * Overwrite a mission's state.json with the given terminal state.
- * Used by droid_mission_cancel to mark a mission as cancelled after
- * killing its processes. Returns `true` on success, `false` if the
- * file couldn't be written (permissions, missing dir, etc.).
+ * Mark a mission's state by writing state.json. Create-or-update:
+ *
+ *   - If state.json already exists and parses, update its state field
+ *     + updatedAt + null out the transient currentFeatureId /
+ *     currentWorkerSessionId / currentWorkerPid. Preserves
+ *     missionId, baseSessionId, workerSessionIds, feature counts,
+ *     createdAt.
+ *
+ *   - If state.json doesn't exist (early-stage mission: directory
+ *     has only working_directory.txt + mission.md + progress_log.jsonl
+ *     because factoryd hasn't spawned a worker yet), synthesize a
+ *     minimal state.json from working_directory.txt + the directory's
+ *     birthtime. missionId becomes "pending-<uuid>" to match the
+ *     convention in readStateJson's slow path.
+ *
+ *   - If neither state.json nor working_directory.txt exists, or if
+ *     the mission directory itself is missing, return false without
+ *     writing anything (can't synthesize a meaningful state file with
+ *     no ground truth).
+ *
+ *   - If state.json exists but is corrupt JSON, also return false
+ *     rather than silently overwriting the corrupt file (caller
+ *     should investigate).
  *
  * WARNING: if the mission orchestrator is still alive when this is
- * called, it may overwrite state.json again. Always kill the
- * orchestrator FIRST, then write state.
+ * called, it may overwrite state.json again (or the synthesized file
+ * we just wrote). Always kill the orchestrator FIRST, then write
+ * state. droid_mission_cancel follows that ordering.
  */
 export async function markMissionState(
   uuid: string,
@@ -559,26 +602,83 @@ export async function markMissionState(
   opts: { missions_dir?: string } = {},
 ): Promise<boolean> {
   const base = missionsDir(opts.missions_dir);
-  const statePath = join(base, uuid, "state.json");
-  let raw: string;
+  const missionDir = join(base, uuid);
+  const statePath = join(missionDir, "state.json");
+  const now = new Date().toISOString();
+
+  // Verify the mission directory exists at all.
   try {
-    raw = await readFile(statePath, "utf8");
+    const st = await stat(missionDir);
+    if (!st.isDirectory()) return false;
   } catch {
     return false;
   }
-  let parsed: RawStateJson;
+
+  // Try the update-in-place path first.
+  let existing: RawStateJson | null = null;
+  let stateJsonCorrupt = false;
   try {
-    parsed = JSON.parse(raw) as RawStateJson;
+    const raw = await readFile(statePath, "utf8");
+    try {
+      existing = JSON.parse(raw) as RawStateJson;
+    } catch {
+      stateJsonCorrupt = true;
+    }
   } catch {
+    // state.json doesn't exist — fall through to synthesis.
+  }
+
+  // state.json exists but is corrupt — bail out rather than overwrite.
+  // The caller should investigate the corrupt file manually.
+  if (stateJsonCorrupt) return false;
+
+  if (existing !== null) {
+    // Update-in-place path.
+    existing.state = newState;
+    existing.updatedAt = now;
+    existing.currentFeatureId = null;
+    existing.currentWorkerSessionId = null;
+    existing.currentWorkerPid = null;
+    try {
+      await writeFile(statePath, JSON.stringify(existing, null, 2));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  // Synthesis path — no state.json yet. Need working_directory.txt to
+  // confirm this is actually a mission dir and get the cwd.
+  const wd = await readWorkingDirectoryTxt(uuid, base);
+  if (wd === undefined) {
+    // Not a mission dir (or at least not a recognizable one).
     return false;
   }
-  parsed.state = newState;
-  parsed.updatedAt = new Date().toISOString();
-  parsed.currentFeatureId = null;
-  parsed.currentWorkerSessionId = null;
-  parsed.currentWorkerPid = null;
+
+  // Prefer directory birthtime for createdAt; fall back to now.
+  let createdAtIso = now;
   try {
-    await writeFile(statePath, JSON.stringify(parsed, null, 2));
+    const st = await stat(missionDir);
+    createdAtIso = st.birthtime.toISOString();
+  } catch {
+    // keep default
+  }
+
+  const synthesized: RawStateJson = {
+    missionId: `pending-${uuid}`,
+    state: newState,
+    workingDirectory: wd,
+    currentFeatureId: null,
+    currentWorkerSessionId: null,
+    currentWorkerPid: null,
+    workerSessionIds: [],
+    completedFeatures: 0,
+    totalFeatures: 0,
+    createdAt: createdAtIso,
+    updatedAt: now,
+  };
+  try {
+    await writeFile(statePath, JSON.stringify(synthesized, null, 2));
     return true;
   } catch {
     return false;
