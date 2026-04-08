@@ -15,9 +15,12 @@ import { buildDroidExecArgs, type DroidExecFlags } from "../droid/flags.js";
 import {
   getMissionProgress,
   getMissionStatus,
+  killProcessGracefully,
   listMissions,
+  markMissionState,
   missionStateFile,
   pollForNewMissionDir,
+  resolveMissionDir,
 } from "../droid/missions.js";
 import { TagSpecSchema } from "../schemas/exec.js";
 import { resolveCwd } from "../utils/cwd.js";
@@ -233,6 +236,114 @@ export function registerMissionTools(server: McpServer): void {
           );
         }
         return createJsonResponse(status);
+      } catch (err) {
+        return createUnexpectedErrorResponse(err);
+      }
+    },
+  );
+
+  server.registerTool(
+    "droid_mission_cancel",
+    {
+      description:
+        "Best-effort cancel of a running droid mission. Sends SIGTERM → (wait 2s) → SIGKILL to the orchestrator process (via droid_pid, if provided) and the current worker process (via currentWorkerPid read from state.json). Then writes state.json with state='cancelled'. IMPORTANT: droid has no official cancel API — this is a pragmatic kill + manual state update. If the orchestrator or factoryd is still alive and touching state.json, our write may race. If you didn't save the droid_pid from the original droid_mission_start call, we can only kill the current worker (if state.json has currentWorkerPid) and mark state.json cancelled. Residual factoryd-spawned processes may need manual cleanup via pkill -f droid.",
+      inputSchema: {
+        mission_id: z
+          .string()
+          .describe("The mission id (mis_xxx) OR the directory uuid."),
+        droid_pid: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe(
+            "The orchestrator pid returned by droid_mission_start. Optional but strongly recommended — without it we can only kill the currently-running worker, not the orchestrator that will spawn the next one.",
+          ),
+        force: z
+          .boolean()
+          .optional()
+          .describe(
+            "If true, skip SIGTERM and go straight to SIGKILL. Use for truly stuck processes that ignore SIGTERM. Default false.",
+          ),
+        write_state: z
+          .boolean()
+          .optional()
+          .describe(
+            "Write state.json with state='cancelled' after killing processes. Default true. Set to false if you want to preserve the raw state for investigation.",
+          ),
+      },
+    },
+    async ({
+      mission_id,
+      droid_pid,
+      force,
+      write_state,
+    }): Promise<McpToolResponse> => {
+      try {
+        const uuid = await resolveMissionDir(mission_id);
+        if (!uuid) {
+          return createErrorResponse(
+            `mission not found: ${mission_id}. Use droid_mission_list to see available missions.`,
+          );
+        }
+
+        // Read current state for currentWorkerPid before we kill anything.
+        const beforeState = await getMissionStatus(uuid, {
+          include_progress: false,
+          include_features: false,
+        });
+
+        const workerPid = beforeState?.current_worker_pid ?? null;
+        const pidsToKill: Array<{ pid: number; role: string }> = [];
+        if (typeof droid_pid === "number") {
+          pidsToKill.push({ pid: droid_pid, role: "orchestrator" });
+        }
+        if (typeof workerPid === "number" && workerPid !== droid_pid) {
+          pidsToKill.push({ pid: workerPid, role: "worker" });
+        }
+
+        const killResults = await Promise.all(
+          pidsToKill.map(async ({ pid, role }) => {
+            // force=true: skip the graceful_ms wait by sending SIGKILL
+            // via a 0-second graceful window.
+            const result = await killProcessGracefully(pid, {
+              graceful_ms: force === true ? 0 : 2_000,
+            });
+            return { pid, role, ...result };
+          }),
+        );
+
+        let stateUpdated = false;
+        if (write_state !== false) {
+          stateUpdated = await markMissionState(uuid, "cancelled");
+        }
+
+        const warnings: string[] = [];
+        if (pidsToKill.length === 0) {
+          warnings.push(
+            "no pids to kill: droid_pid not provided and state.json had no currentWorkerPid. Mission may still be running under factoryd — check `pgrep -f 'droid exec --mission'`.",
+          );
+        }
+        if (write_state !== false && !stateUpdated) {
+          warnings.push(
+            "failed to write state.json with state='cancelled'. The mission may not show as cancelled in droid_mission_list until something else updates it.",
+          );
+        }
+
+        const afterState = await getMissionStatus(uuid, {
+          include_progress: false,
+          include_features: false,
+        });
+
+        return createJsonResponse({
+          mission_id: beforeState?.mission_id ?? `pending-${uuid}`,
+          uuid,
+          killed: killResults,
+          state_before: beforeState?.state,
+          state_after: afterState?.state,
+          state_file_updated: stateUpdated,
+          warnings,
+        });
       } catch (err) {
         return createUnexpectedErrorResponse(err);
       }

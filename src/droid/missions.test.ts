@@ -6,14 +6,17 @@
  * state.json present/absent, etc.) without spawning real droid missions.
  */
 
+import { spawn } from "node:child_process";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   getMissionProgress,
   getMissionStatus,
+  killProcessGracefully,
   listMissions,
+  markMissionState,
   pollForNewMissionDir,
   resolveMissionDir,
 } from "./missions.js";
@@ -650,5 +653,124 @@ describe("getMissionProgress", () => {
       exclude_handoffs: false,
     });
     expect(unsummarized?.events[0]).toHaveProperty("handoff");
+  });
+});
+
+describe("markMissionState", () => {
+  it("returns false when the mission dir doesn't exist", async () => {
+    const result = await markMissionState("nope", "cancelled", {
+      missions_dir: tmpMissions,
+    });
+    expect(result).toBe(false);
+  });
+
+  it("returns false when state.json is missing", async () => {
+    // Create the dir but without state.json (just working_directory.txt).
+    await createMissionDir("no-state", "/Users/serkan/nt-dev");
+    const result = await markMissionState("no-state", "cancelled", {
+      missions_dir: tmpMissions,
+    });
+    expect(result).toBe(false);
+  });
+
+  it("writes the new state + resets transient fields + updates timestamp", async () => {
+    await createFullMissionDir("uuid-1", {
+      state: sampleState({
+        state: "running",
+        currentFeatureId: "f1",
+        currentWorkerSessionId: "worker-session-1",
+        currentWorkerPid: 12345,
+      }),
+    });
+    const before = Date.now();
+    const result = await markMissionState("uuid-1", "cancelled", {
+      missions_dir: tmpMissions,
+    });
+    expect(result).toBe(true);
+
+    const raw = await readFile(
+      join(tmpMissions, "uuid-1", "state.json"),
+      "utf8",
+    );
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    expect(parsed.state).toBe("cancelled");
+    expect(parsed.currentFeatureId).toBeNull();
+    expect(parsed.currentWorkerSessionId).toBeNull();
+    expect(parsed.currentWorkerPid).toBeNull();
+    // updatedAt should be a fresh ISO timestamp, within seconds of `before`.
+    const updatedAtMs = Date.parse(parsed.updatedAt as string);
+    expect(updatedAtMs).toBeGreaterThanOrEqual(before - 100);
+    expect(updatedAtMs).toBeLessThanOrEqual(Date.now() + 100);
+  });
+
+  it("preserves mission_id and other identifying fields", async () => {
+    await createFullMissionDir("uuid-1", {
+      state: sampleState({ missionId: "mis_preserved" }),
+    });
+    await markMissionState("uuid-1", "cancelled", {
+      missions_dir: tmpMissions,
+    });
+    const parsed = JSON.parse(
+      await readFile(join(tmpMissions, "uuid-1", "state.json"), "utf8"),
+    ) as Record<string, unknown>;
+    expect(parsed.missionId).toBe("mis_preserved");
+  });
+
+  it("returns false when state.json is corrupt JSON", async () => {
+    const dir = join(tmpMissions, "broken");
+    await mkdir(dir, { recursive: true });
+    await writeFile(join(dir, "working_directory.txt"), "/x");
+    await writeFile(join(dir, "state.json"), "not json {{");
+    const result = await markMissionState("broken", "cancelled", {
+      missions_dir: tmpMissions,
+    });
+    expect(result).toBe(false);
+  });
+});
+
+describe("killProcessGracefully", () => {
+  it("returns { killed: false, reason: 'process not running' } for a nonexistent pid", async () => {
+    // PID 1 is init/launchd; 999999 is very unlikely to exist.
+    const result = await killProcessGracefully(999999, { graceful_ms: 100 });
+    expect(result.killed).toBe(false);
+    expect(result.required_sigkill).toBe(false);
+    expect(result.reason).toContain("not running");
+  });
+
+  it("gracefully kills a child process that respects SIGTERM", async () => {
+    // Spawn a Node process that handles SIGTERM and exits cleanly.
+    const child = spawn("node", [
+      "-e",
+      "process.on('SIGTERM', () => process.exit(0)); setInterval(() => {}, 1000);",
+    ]);
+    expect(child.pid).toBeDefined();
+
+    // Give it a moment to register its SIGTERM handler.
+    await new Promise<void>((resolve) => setTimeout(resolve, 100));
+
+    const result = await killProcessGracefully(child.pid!, {
+      graceful_ms: 2_000,
+    });
+    expect(result.killed).toBe(true);
+    expect(result.required_sigkill).toBe(false);
+  });
+
+  it("escalates to SIGKILL when SIGTERM is ignored", async () => {
+    // Spawn a Node process that explicitly ignores SIGTERM.
+    const child = spawn("node", [
+      "-e",
+      "process.on('SIGTERM', () => { /* ignore */ }); setInterval(() => {}, 1000);",
+    ]);
+    expect(child.pid).toBeDefined();
+
+    // Give it a moment to register the SIGTERM handler.
+    await new Promise<void>((resolve) => setTimeout(resolve, 100));
+
+    const result = await killProcessGracefully(child.pid!, {
+      graceful_ms: 300,
+      check_interval_ms: 50,
+    });
+    expect(result.killed).toBe(true);
+    expect(result.required_sigkill).toBe(true);
   });
 });

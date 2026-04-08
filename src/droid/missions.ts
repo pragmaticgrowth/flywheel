@@ -25,7 +25,7 @@
  * missing — so list/status work for in-flight missions too.
  */
 
-import { readdir, readFile, stat } from "node:fs/promises";
+import { readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -489,6 +489,101 @@ export interface MissionProgressResult {
 }
 
 const TERMINAL_STATES = new Set(["completed", "failed", "cancelled"]);
+
+/**
+ * Best-effort process kill with SIGTERM → (wait up to gracefulMs) →
+ * SIGKILL escalation. Returns { killed, reason } with honest reporting
+ * of what happened. Never throws — all errors are folded into the
+ * result object.
+ *
+ * `process.kill(pid, 0)` is the standard Node trick for "check whether
+ * this pid exists without signalling it" — it throws ESRCH if the
+ * process is gone, no-ops if it's alive.
+ */
+export async function killProcessGracefully(
+  pid: number,
+  opts: { graceful_ms?: number; check_interval_ms?: number } = {},
+): Promise<{ killed: boolean; required_sigkill: boolean; reason?: string }> {
+  const gracefulMs = opts.graceful_ms ?? 2_000;
+  const checkIntervalMs = opts.check_interval_ms ?? 100;
+
+  // Check alive
+  try {
+    process.kill(pid, 0);
+  } catch {
+    return { killed: false, required_sigkill: false, reason: "process not running" };
+  }
+
+  // SIGTERM
+  try {
+    process.kill(pid, "SIGTERM");
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { killed: false, required_sigkill: false, reason: `SIGTERM failed: ${message}` };
+  }
+
+  // Wait for graceful exit
+  const maxChecks = Math.max(1, Math.floor(gracefulMs / checkIntervalMs));
+  for (let i = 0; i < maxChecks; i++) {
+    await new Promise<void>((resolve) => setTimeout(resolve, checkIntervalMs));
+    try {
+      process.kill(pid, 0);
+    } catch {
+      return { killed: true, required_sigkill: false };
+    }
+  }
+
+  // Still alive — escalate to SIGKILL
+  try {
+    process.kill(pid, "SIGKILL");
+    return { killed: true, required_sigkill: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { killed: false, required_sigkill: true, reason: `SIGKILL failed: ${message}` };
+  }
+}
+
+/**
+ * Overwrite a mission's state.json with the given terminal state.
+ * Used by droid_mission_cancel to mark a mission as cancelled after
+ * killing its processes. Returns `true` on success, `false` if the
+ * file couldn't be written (permissions, missing dir, etc.).
+ *
+ * WARNING: if the mission orchestrator is still alive when this is
+ * called, it may overwrite state.json again. Always kill the
+ * orchestrator FIRST, then write state.
+ */
+export async function markMissionState(
+  uuid: string,
+  newState: string,
+  opts: { missions_dir?: string } = {},
+): Promise<boolean> {
+  const base = missionsDir(opts.missions_dir);
+  const statePath = join(base, uuid, "state.json");
+  let raw: string;
+  try {
+    raw = await readFile(statePath, "utf8");
+  } catch {
+    return false;
+  }
+  let parsed: RawStateJson;
+  try {
+    parsed = JSON.parse(raw) as RawStateJson;
+  } catch {
+    return false;
+  }
+  parsed.state = newState;
+  parsed.updatedAt = new Date().toISOString();
+  parsed.currentFeatureId = null;
+  parsed.currentWorkerSessionId = null;
+  parsed.currentWorkerPid = null;
+  try {
+    await writeFile(statePath, JSON.stringify(parsed, null, 2));
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export async function getMissionProgress(
   idOrUuid: string,
