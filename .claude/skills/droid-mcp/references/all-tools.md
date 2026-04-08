@@ -1,6 +1,6 @@
 # mcp-droid full tool catalog
 
-24 tools across 5 categories. Every tool inherits the caller's `cwd` by
+25 tools across 5 categories. Every tool inherits the caller's `cwd` by
 default and accepts an optional `cwd` parameter. All defaults use custom
 BYOK models, never Factory built-ins.
 
@@ -219,7 +219,7 @@ mcp__mcp-droid__droid_session_search({
 Returns each session enriched with the authoritative `cwd` field plus
 counts of matching events per kind.
 
-## Missions (4)
+## Missions (5)
 
 Mission state lives on disk in `~/.factory/missions/<uuid>/` with files
 appearing in this order during a mission's lifecycle:
@@ -344,6 +344,67 @@ Returns:
 
 `is_complete: true` when the mission is in a terminal state
 (`completed` / `failed` / `cancelled`).
+
+### `droid_mission_cancel`
+Best-effort cancel of a running mission. Droid has NO cancel API, NO
+control-file pattern, NO pause subcommand (verified empirically across
+26 existing missions and every `droid --help` depth). This tool is
+pragmatic: kill the processes we have handles to, then write
+`state: "cancelled"` to state.json.
+
+```typescript
+mcp__mcp-droid__droid_mission_cancel({
+  mission_id: "<uuid or mis_xxx>",
+  droid_pid: 97486,        // optional but strongly recommended — from mission_start response
+  // force: true,          // skip SIGTERM, SIGKILL directly
+  // write_state: false,   // preserve state.json for investigation
+})
+```
+
+**Flow:**
+
+1. `resolveMissionDir(mission_id)` → uuid (accepts either `mis_xxx` or directory uuid)
+2. Read state.json for `currentWorkerPid` via `getMissionStatus`
+3. In parallel: `killProcessGracefully` on `droid_pid` (if provided) and `currentWorkerPid` (if state.json has one)
+4. `markMissionState(uuid, "cancelled")` — **create-or-update**:
+   - If state.json exists + parses → update state field + null transient fields
+   - If state.json is missing but `working_directory.txt` exists → **synthesize** a new state.json with `missionId: "pending-<uuid>"`, `state: "cancelled"`, `workingDirectory` from the txt file, `createdAt` from directory birthtime
+   - If neither file exists → return false (not a recognizable mission dir)
+   - If state.json is corrupt JSON → return false (don't overwrite)
+
+**Kill semantics** (`killProcessGracefully`):
+
+- Default (`force: false`): SIGTERM → wait up to 2 seconds → SIGKILL if still alive. Reports `required_sigkill: true` if the escalation happened.
+- Force (`force: true`): skip SIGTERM entirely, send SIGKILL immediately. Always reports `required_sigkill: true`. Use for processes that ignore SIGTERM.
+
+**Returns:**
+
+```json
+{
+  "mission_id": "mis_xxx or pending-<uuid>",
+  "uuid": "<uuid>",
+  "killed": [
+    { "pid": 97486, "role": "orchestrator", "killed": true, "required_sigkill": false }
+  ],
+  "state_before": "initializing" or "running" or "orchestrator_turn",
+  "state_after": "cancelled",
+  "state_file_updated": true,
+  "warnings": []
+}
+```
+
+**Warnings you might see:**
+
+- `"no pids to kill: droid_pid not provided and state.json had no currentWorkerPid. Mission may still be running under factoryd — check pgrep -f 'droid exec --mission'."` → You forgot to save `droid_pid` from `mission_start`. The tool still marked state.json cancelled, but factoryd could spawn new workers. Manual cleanup: `pkill -f "droid exec --mission"`.
+- `"failed to write state.json with state='cancelled'..."` → only happens if state.json exists but is corrupt, OR the mission dir doesn't have working_directory.txt (not a valid mission dir at all).
+
+**Known limitations** (documented in the tool description):
+
+- factoryd-spawned sibling workers may survive the orchestrator kill. The tool warns about this case.
+- If the orchestrator/factoryd is still alive when the tool writes state.json, it may race and overwrite our update. Mitigation: we kill processes BEFORE writing.
+- For a multi-day mission deeply nested in factoryd's state machine, `pkill -f droid` is the nuclear option.
+
+**Verified 10/10 end-to-end**: mid-flight cancel with droid_pid + worker kill, cancel without droid_pid (graceful fallback), cancel of nonexistent mission, cancel with `force: true` (SIGKILL verified via child exit signal).
 
 ## Spec mode (1)
 

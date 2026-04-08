@@ -279,16 +279,41 @@ events for many minutes — no new `worker_started` / `worker_completed`.
 
 ## How to kill a runaway mission
 
-**For mcp-droid missions:** No `droid_mission_cancel` tool exists in
-v1. Kill the droid process directly:
-```bash
-# Find the pid (mcp-droid returned droid_pid in the start response)
-kill <droid_pid>
-# Or find via process name
-pkill -f "droid exec --mission"
+**For mcp-droid missions: use `droid_mission_cancel`.** It's a
+best-effort tool but it handles every edge case we've empirically
+verified.
+
+```typescript
+// Normal cancel — SIGTERM → 2s grace → SIGKILL, then mark state.json
+mcp__mcp-droid__droid_mission_cancel({
+  mission_id: "<uuid or mis_xxx>",
+  droid_pid: <from mission_start response>,
+})
+
+// Force cancel — skip SIGTERM, go straight to SIGKILL
+mcp__mcp-droid__droid_mission_cancel({
+  mission_id: "<uuid or mis_xxx>",
+  droid_pid: <pid>,
+  force: true,
+})
 ```
-Note: this kills the orchestrator. factoryd workers may still be
-running — `pkill -f "droid"` more aggressively if needed.
+
+What it handles:
+
+- Kills the orchestrator (if you provide `droid_pid`) and any current worker (from state.json's `currentWorkerPid`)
+- Writes state.json with `state: "cancelled"` — CREATES it from scratch if factoryd hasn't written one yet (verified bug fix in commit `b064382`; early-stage missions only have `working_directory.txt` + `mission.md` at the moment of cancel)
+- Returns `warnings[]` if it couldn't kill the orchestrator (e.g. you didn't save `droid_pid`). Read the warnings!
+
+What it can't handle:
+
+- factoryd-spawned sibling workers may survive the orchestrator kill.
+  The tool warns about this. Manual aggressive cleanup:
+  ```bash
+  pkill -f "droid exec --mission"
+  ```
+- If the mission has no `droid_pid` (you lost it) AND state.json has
+  no `currentWorkerPid` (no worker running yet), cancel can't kill
+  anything — it can only mark state.json. Same manual cleanup applies.
 
 **For tmux/REPL missions:**
 ```bash

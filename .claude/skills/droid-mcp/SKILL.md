@@ -31,6 +31,7 @@ The `mcp-droid` server is registered at user scope (works from anywhere), so the
 | Search across past droid sessions | `droid_session_search` |
 | List custom models / profiles / tools | `droid_list_models` / `droid_list_profiles` / `droid_list_tools` |
 | Multi-feature autonomous mission (1–2 hours, fire-and-forget) | `mcp__mcp-droid__droid_mission_start` |
+| Cancel a runaway / stuck / unwanted mission | `mcp__mcp-droid__droid_mission_cancel` (best-effort kill + state.json write) |
 | Multi-day mission with live observability needs | tmux + `droid` REPL (see "Tmux fallback" below) |
 | Mission with required mid-run human intervention | tmux + REPL (mcp-droid missions are non-interactive) |
 | Quick bug fix in a single file | Handle in Claude Code directly — no droid |
@@ -54,7 +55,7 @@ Before working on a task, check for these signals:
 
 When suggesting: **always draft the full mission prompt yourself** so the user just has to review and click. Tell them which path you're suggesting (`mcp-droid mission_start` vs tmux REPL) and why.
 
-## mcp-droid quick reference (24 tools)
+## mcp-droid quick reference (25 tools)
 
 Full catalog with examples in [`references/all-tools.md`](references/all-tools.md).
 
@@ -64,7 +65,7 @@ Full catalog with examples in [`references/all-tools.md`](references/all-tools.m
 
 **Sessions (4):** `droid_session_continue`, `droid_session_fork`, `droid_session_list`, `droid_session_search`
 
-**Missions (4):** `droid_mission_start`, `droid_mission_list`, `droid_mission_status`, `droid_mission_progress`
+**Missions (5):** `droid_mission_start`, `droid_mission_list`, `droid_mission_status`, `droid_mission_progress`, `droid_mission_cancel`
 
 **Spec mode (1):** `droid_spec`
 
@@ -307,6 +308,56 @@ After the mission reaches `state: "completed"`, **always** run a post-mission au
    ```
 3. **Check for scope leaks** — did the mission touch files outside its declared scope?
 4. **Read any test cases the mission added** to make sure they're meaningful and not green-rubber-stamps.
+
+### 8. Cancel a runaway or unwanted mission
+
+If a mission is misbehaving, stuck, or you just decided you don't want the work anymore, call `droid_mission_cancel`. It's a **best-effort** tool — droid has no official cancel API, so mcp-droid kills the processes we have handles to and writes `state: "cancelled"` to `state.json`.
+
+```typescript
+mcp__mcp-droid__droid_mission_cancel({
+  mission_id: "<uuid or mis_xxx>",
+  droid_pid: <the droid_pid from mission_start's response>,
+  // force: true,           // skip SIGTERM, go straight to SIGKILL
+  // write_state: false,    // don't touch state.json (preserve for investigation)
+})
+```
+
+**What it does:**
+
+1. Resolves `mission_id` → directory uuid
+2. Reads state.json for `currentWorkerPid`
+3. In parallel: SIGTERM → (2 s wait) → SIGKILL for `droid_pid` AND `currentWorkerPid` (if either exists)
+4. Writes state.json with `state: "cancelled"` (**creates it from scratch** via synthesis from `working_directory.txt` if factoryd hasn't written state.json yet — verified bug fix in commit `b064382`)
+
+**What it returns:**
+
+```json
+{
+  "mission_id": "mis_xxx or pending-<uuid>",
+  "uuid": "<uuid>",
+  "killed": [
+    { "pid": 97486, "role": "orchestrator", "killed": true, "required_sigkill": false }
+  ],
+  "state_before": "initializing",
+  "state_after": "cancelled",
+  "state_file_updated": true,
+  "warnings": []
+}
+```
+
+**Known limitations** (honest about what it can't do):
+
+- **If you didn't save `droid_pid`** from the original `mission_start` response, the tool can't kill the orchestrator. It'll still kill `currentWorkerPid` (if any) and write `state: "cancelled"`, and the response will include a warning telling you to `pkill -f "droid exec --mission"` manually.
+- **factoryd-spawned sibling processes** may survive the orchestrator kill. The warning will point this out. Manual cleanup: `pkill -f "droid exec --mission"`.
+- **If factoryd/orchestrator is still alive** when cancel runs, it may overwrite our state.json write. We mitigate by killing processes BEFORE writing state — but it's inherently a race if the daemon is still spawning workers.
+- **`force: true` skips SIGTERM entirely** and sends SIGKILL immediately. Use for processes that ignore SIGTERM or when you need instant teardown. Normal `force: false` (default) tries SIGTERM first with a 2-second grace window.
+
+**When NOT to use cancel:**
+
+- If the mission is actually working and you're just impatient — wait it out or use `droid_mission_progress` to watch.
+- If you cancelled a mission and it still shows as running, run `pgrep -f "droid exec --mission"` to see if a factoryd worker survived. If so, `pkill -f "droid exec --mission"` for aggressive cleanup.
+
+**Verified 10/10 in a real end-to-end round-trip**: mid-flight cancel with droid_pid, cancel without droid_pid (graceful fallback + warning), cancel of a nonexistent mission (clean isError), cancel with `force: true` (required_sigkill=true confirms SIGKILL was used directly).
 
 ## Tmux fallback (only when mcp-droid isn't enough)
 
