@@ -72,7 +72,7 @@ function buildReviewPrompt(userPrompt: string): string {
 ${userPrompt}`;
 }
 
-const DEFAULT_TIMEOUT_MS = 180_000;
+const DEFAULT_TIMEOUT_MS = 240_000;
 
 interface ModelResult {
   model: string;
