@@ -26,12 +26,13 @@ from every Claude Code session regardless of cwd.
 | Cross-project cwd inheritance | verified from /Users/serkan/nt-dev |
 | Real mission orchestration | verified (mis_662293c0 "Simple File Writing Mission") |
 
-### Tool surface (24 tools, all verified)
+### Tool surface (26 tools)
 
 - **Generic (4)**: `droid_exec`, `droid_list_tools`, `droid_list_models`, `droid_list_profiles`
 - **Specialized presets (11)**: `droid_research`, `droid_research_fast`, `droid_review_code`, `droid_explore_code`, `droid_architect`, `droid_simplify`, `droid_silent_failure_scan`, `droid_pr_test_analyzer`, `droid_type_design_analyzer`, `droid_scrutiny_review`, `droid_user_testing_validator`
 - **Sessions (4)**: `droid_session_continue`, `droid_session_fork`, `droid_session_list` (with `scan_disk` opt-in), `droid_session_search` (post-filters global `droid search` by reading each hit's jsonl)
 - **Missions (5)**: `droid_mission_start` (detached spawn + polling), `droid_mission_list`, `droid_mission_status`, `droid_mission_progress`, `droid_mission_cancel`
+- **Cross-model (1)**: `droid_cross_review` (parallel review via GLM-5-Turbo + GPT-5.4-Mini + GLM-5.1)
 - **Spec mode (1)**: `droid_spec` (defaults to `auto: "low"`)
 
 ### Companion skill
@@ -186,7 +187,7 @@ Full schemas and behaviour live in [`docs/spec.md`](docs/spec.md). Summary:
 `droid_exec` with a preset model + `--append-system-prompt-file`
 
 - `droid_research` (deep-researcher.md, default `custom:BYOK-GLM-5-Turbo-33`, `--auto high`)
-- `droid_research_fast` (deep-researcher.md, default `custom:BYOK-MiniMax-M2.7-30`)
+- `droid_research_fast` (deep-researcher.md, default `custom:MiniMax-M2.7`)
 - `droid_review_code` (code-reviewer.md)
 - `droid_explore_code` (code-explorer.md)
 - `droid_architect` (code-architect.md, default `custom:BYOK-GLM-5.1-31`)
@@ -250,7 +251,10 @@ Custom (from `~/.factory/settings.json` `customModels[]`):
 | `custom:glm-5-turbo` | `custom:BYOK-GLM-5-Turbo-33` | Default for research / review presets |
 | `custom:glm-5.1` | `custom:BYOK-GLM-5.1-31` | Slow but deepest analysis; default for `droid_architect` |
 | `custom:glm-5` | `custom:BYOK-GLM-5-32` | |
-| `custom:MiniMax-M2.7` | `custom:BYOK-MiniMax-M2.7-30` | Fastest; default for `droid_research_fast` |
+| `custom:MiniMax-M2.7` | `custom:BYOK-MiniMax-M2.7-30` | Fastest; smoke tests and non-tool-calling batch work |
+| `custom:gpt-5.4-mini` | `custom:VP-GPT-5.4-Mini-48` | VP; cross-review default |
+| `custom:qwen-3.6-coder` | `custom:VP-Qwen3.6-Plus-Coder-5` | VP |
+| `custom:gpt-5.4` | `custom:VP-GPT-5.4-15` | VP |
 | `custom:VP-Opus-4.6-1M-xHigh-44` | (same) | Session default in droid itself |
 
 **Verified during planning**: droid accepts **both** short and canonical forms

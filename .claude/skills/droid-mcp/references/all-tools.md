@@ -102,7 +102,7 @@ All presets share the same input shape:
 | Tool | Profile (`~/.factory/droids/`) | Default model | Default auto | When to use |
 |---|---|---|---|---|
 | `droid_research` | `deep-researcher.md` | `custom:glm-5-turbo` | `high` | Deep web research with parallel search (web/Reddit/HN/X/news + Context7) |
-| `droid_research_fast` | `deep-researcher.md` | `custom:MiniMax-M2.7` | `high` | Quick research lookups; cheaper |
+| `droid_research_fast` | `deep-researcher.md` | `custom:MiniMax-M2.7` | `high` | Quick/cheap research lookups; use `droid_research` for quality |
 | `droid_review_code` | `code-reviewer.md` | `custom:glm-5-turbo` | (none) | Structured code review (bugs/security/design/style) |
 | `droid_explore_code` | `code-explorer.md` | `custom:glm-5-turbo` | (none) | "Where is X?" / "How does Y work?" navigation |
 | `droid_architect` | `code-architect.md` | `custom:glm-5.1` | (none) | High-level architecture analysis (slowest, deepest) |
@@ -112,6 +112,30 @@ All presets share the same input shape:
 | `droid_type_design_analyzer` | `type-design-analyzer.md` | `custom:glm-5-turbo` | (none) | Flag `any` leaks, loose unions, missing discriminators |
 | `droid_scrutiny_review` | `scrutiny-feature-reviewer.md` | `custom:glm-5-turbo` | (none) | Deep-dive review of a single feature |
 | `droid_user_testing_validator` | `user-testing-flow-validator.md` | `custom:glm-5-turbo` | (none) | Validate user-facing flows |
+
+### 5. Cross-model review (1 tool)
+
+| Tool | Default models | When to use |
+|---|---|---|
+| `droid_cross_review` | GLM-5-Turbo + GPT-5.4-Mini + GLM-5.1 | 3 models in parallel — each gets structured instructions, returns merged file:line findings |
+
+**Example: cross-model review**
+```typescript
+mcp__mcp-droid__droid_cross_review({
+  prompt: "Review src/tools/presets.ts for bugs, edge cases, and design issues. Be specific — cite line numbers. Max 200 words per model."
+})
+// Returns merged report: ## GLM-5-Turbo [...] ## GPT-5.4-Mini [...] ## GLM-5.1 [...]
+```
+
+**Example: custom model set**
+```typescript
+mcp__mcp-droid__droid_cross_review({
+  prompt: "Review this migration for safety under concurrent writes.",
+  models: ["custom:glm-5-turbo", "custom:VP-GPT-5.4-15", "custom:glm-5.1"]
+})
+```
+
+---
 
 **Example: research a library change**
 ```typescript

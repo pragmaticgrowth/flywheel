@@ -17,7 +17,8 @@ The `mcp-droid` server is registered at user scope (works from anywhere), so the
 | Task | Use |
 |---|---|
 | Research a library / API / concept | `mcp__mcp-droid__droid_research` (or `_fast` for quick lookups) |
-| Code review of recent edits | `mcp__mcp-droid__droid_review_code` |
+| Code review of recent edits (single model) | `mcp__mcp-droid__droid_review_code` |
+| Code review with cross-model verification | `mcp__mcp-droid__droid_cross_review` — 3 models in parallel, merged report |
 | "Where is X?" / "How does Y work?" navigation | `mcp__mcp-droid__droid_explore_code` |
 | High-level architecture analysis | `mcp__mcp-droid__droid_architect` |
 | Find empty catches / silent failures | `mcp__mcp-droid__droid_silent_failure_scan` |
@@ -52,16 +53,20 @@ Before working on a task, check for these signals:
 | Quick bug fix, single file | Handle in Claude Code |
 | Needs browser verification / live prod data | Handle in Claude Code |
 | Scope unclear, needs exploration | Brainstorm first, then mission |
+| Pre-commit review of significant changes | `droid_cross_review` (3 models catch more than 1) |
+| Security / payment / auth code review | `droid_cross_review` (non-negotiable for sensitive code) |
 
 When suggesting: **always draft the full mission prompt yourself** so the user just has to review and click. Tell them which path you're suggesting (`mcp-droid mission_start` vs tmux REPL) and why.
 
-## mcp-droid quick reference (25 tools)
+## mcp-droid quick reference (26 tools)
 
 Full catalog with examples in [`references/all-tools.md`](references/all-tools.md).
 
 **Generic / power-user (4):** `droid_exec`, `droid_list_tools`, `droid_list_models`, `droid_list_profiles`
 
 **Specialized presets (11):** `droid_research`, `droid_research_fast`, `droid_review_code`, `droid_explore_code`, `droid_architect`, `droid_simplify`, `droid_silent_failure_scan`, `droid_pr_test_analyzer`, `droid_type_design_analyzer`, `droid_scrutiny_review`, `droid_user_testing_validator`
+
+**Cross-model (1):** `droid_cross_review` — runs the same review prompt through 3 models (GLM-5-Turbo, GPT-5.4-Mini, GLM-5.1) in parallel, returns merged report. Each model gets structured instructions to produce actionable file:line findings. Different training lineages = different blind spots.
 
 **Sessions (4):** `droid_session_continue`, `droid_session_fork`, `droid_session_list`, `droid_session_search`
 
@@ -92,9 +97,9 @@ mcp__mcp-droid__droid_mission_start({
 
 The mission's outputs end up in `/tmp/mission-feature-x/`, you read them later, and if droid commits scaffolding into that throwaway dir it doesn't matter.
 
-### Rule 2: Only custom BYOK models, never Factory built-ins
+### Rule 2: Only custom BYOK/VP models, never Factory built-ins
 
-Use `custom:glm-5-turbo`, `custom:MiniMax-M2.7`, `custom:glm-5.1`, `custom:VP-Opus-4.6-1M-xHigh-44`, etc. **Never** `claude-opus-4-6`, `gpt-5.4`, `gemini-3-flash-preview`, `glm-5`, `kimi-k2.5`, etc — those are factory built-ins and not part of this user's workflow.
+Use `custom:glm-5-turbo`, `custom:MiniMax-M2.7`, `custom:glm-5.1`, `custom:VP-GPT-5.4-Mini-48`, `custom:VP-GPT-5.4-15`, `custom:VP-Opus-4.6-1M-xHigh-44`, etc. **Never** `claude-opus-4-6`, `gpt-5.4`, `gpt-5.4-mini`, `gemini-3-flash-preview`, `glm-5`, `kimi-k2.5`, etc — those are factory built-ins (402 Payment Required) and not part of this user's workflow.
 
 The mcp-droid presets already default to custom models. Only override `model:` with a custom id.
 
@@ -454,22 +459,32 @@ Mission quality is determined entirely by the prompt — there's no mid-run corr
 
 ### Token-saving research from inside Claude Code
 
-Default to `droid_research_fast` when in doubt. It uses MiniMax M2.7 + the deep-researcher profile and replaces 10–30 KB of Context7/web-search responses with a clean summary:
+Default to `droid_research_fast` for quick lookups. It uses MiniMax M2.7 + the deep-researcher profile and replaces 10–30 KB of Context7/web-search responses with a clean summary:
 
 ```typescript
 mcp__mcp-droid__droid_research_fast({ prompt: "what changed in TypeScript 5.6 around control flow analysis?" })
 ```
 
-For high-quality research where MiniMax isn't enough, use `droid_research` (defaults to GLM-5-Turbo).
+For quality research with reliable tool calling, use `droid_research` (GLM-5-Turbo).
 
 ### Code review after editing nt-dev files
 
+**Single-model review** (fast, one perspective):
 ```typescript
 mcp__mcp-droid__droid_review_code({
   prompt: "review the changes in src/features/federal-tax/api/admin/[id].ts for security and DDD-layering issues. Compare against .claude/rules/api.md.",
-  model: "custom:glm-5-turbo",
 })
 ```
+
+**Cross-model review** (3 models in parallel, catches 3-5x more issues):
+```typescript
+mcp__mcp-droid__droid_cross_review({
+  prompt: "review the changes in src/features/federal-tax/api/admin/[id].ts for bugs, security issues, edge cases, and DDD-layering violations. Be specific — cite line numbers.",
+})
+// Returns merged report: ## GLM-5-Turbo [...] ## GPT-5.4-Mini [...] ## GLM-5.1 [...]
+```
+
+**When to use which:** Use `droid_review_code` for quick checks on small edits. Use `droid_cross_review` before committing significant changes, after completing a feature, or when the code touches security/payment/auth — different model families have different blind spots and the overlap is small.
 
 ### Find where something is implemented
 
