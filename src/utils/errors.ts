@@ -70,11 +70,15 @@ export function execResultToToolResponse(
       sections.push(`session_id=${result.parsed.session_id}`);
     }
     if (result.parsed.text && result.parsed.text.trim()) {
-      sections.push(`--- parsed.text ---\n${result.parsed.text.trim().slice(0, 2000)}`);
+      const trimmed = result.parsed.text.trim();
+      const sliced = trimmed.slice(0, 2000);
+      sections.push(`--- parsed.text ---\n${sliced}${sliced.length < trimmed.length ? "\n… (truncated)" : ""}`);
     }
     if (result.parsed.errors.length > 0) {
+      const errJson = JSON.stringify(result.parsed.errors, null, 2);
+      const sliced = errJson.slice(0, 2000);
       sections.push(
-        `--- parsed.errors (${result.parsed.errors.length}) ---\n${JSON.stringify(result.parsed.errors, null, 2).slice(0, 2000)}`,
+        `--- parsed.errors (${result.parsed.errors.length}) ---\n${sliced}${sliced.length < errJson.length ? "\n… (truncated)" : ""}`,
       );
     }
     // Include up to the last few stream events for context (most recent last).

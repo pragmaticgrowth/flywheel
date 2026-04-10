@@ -47,6 +47,9 @@ export const CUSTOM_MODEL_ALIASES: Record<string, string> = {
   "custom:BYOK-GLM-5-Turbo-33": "custom:glm-5-turbo",
   "custom:BYOK-GLM-5.1-31": "custom:glm-5.1",
   "custom:BYOK-GLM-5-32": "custom:glm-5",
+  "custom:VP-GPT-5.4-Mini-48": "custom:gpt-5.4-mini",
+  "custom:VP-Qwen3.6-Plus-Coder-5": "custom:qwen-3.6-coder",
+  "custom:VP-GPT-5.4-15": "custom:gpt-5.4",
 };
 
 export interface ListModelsOptions {
