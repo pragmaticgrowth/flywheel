@@ -3,6 +3,7 @@
  */
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { registerCrossReviewTool } from "./cross-review.js";
 import { registerDroidExec } from "./exec.js";
 import { registerMetaTools } from "./meta.js";
 import { registerMissionTools } from "./missions.js";
@@ -17,4 +18,5 @@ export function registerAllTools(server: McpServer): void {
   registerMissionTools(server);
   registerSpecTool(server);
   registerPresetTools(server);
+  registerCrossReviewTool(server);
 }
