@@ -49,7 +49,7 @@ const PRESETS: PresetSpec[] = [
   {
     name: "droid_research_fast",
     description:
-      "Cheap/fast web research via the deep-researcher profile, backed by MiniMax M2.7. Use for quick lookups where GLM-5-Turbo would be overkill.",
+      "Cheap/fast web research via the deep-researcher profile, backed by MiniMax M2.7. Use for simple lookups where speed matters more than tool-calling depth. For quality research use droid_research (GLM-5-Turbo).",
     profile_file: join(DROIDS_DIR, "deep-researcher.md"),
     default_model: "custom:MiniMax-M2.7",
     default_auto: "high",
