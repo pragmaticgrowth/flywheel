@@ -31,7 +31,7 @@ export const PresetInputShape = {
     .string()
     .optional()
     .describe(
-      "Override model. Accepts short aliases (glm-5-turbo, gpt-5.4-mini) or provider-specific IDs.",
+      "Override model. Accepts short aliases (glm-5-turbo, gpt-5.4, gpt-5.4-high) or provider-specific IDs.",
     ),
   auto: AutoLevelSchema.optional().describe(
     "Autonomy level (droid only). low / medium / high.",

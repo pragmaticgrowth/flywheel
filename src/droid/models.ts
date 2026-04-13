@@ -54,8 +54,6 @@ export const CUSTOM_MODEL_ALIASES: Record<string, string> = {
   "custom:YK-GPT-5.4-Med-62": "custom:gpt-5.4-med",
   "custom:YK-GPT-5.4-High-63": "custom:gpt-5.4-high",
   "custom:YK-GPT-5.4-xHigh-64": "custom:gpt-5.4-xhigh",
-  // VP (fallback — no YK Mini exists)
-  "custom:VP-GPT-5.4-Mini-48": "custom:gpt-5.4-mini",
 };
 
 export interface ListModelsOptions {

@@ -77,8 +77,8 @@ const MODEL_ALIASES: Record<string, Record<ProviderName, string>> = {
     opencode: "yk/gpt-5.4",
   },
   "gpt-5.4-mini": {
-    droid: "custom:VP-GPT-5.4-Mini-48", // no YK Mini exists
-    opencode: "yk/gpt-5.4", // no Mini in opencode either, use base
+    droid: "custom:YK-GPT-5.4-Med-62", // no YK Mini exists, remap to Med
+    opencode: "yk/gpt-5.4(medium)",
   },
   "gpt-5.4-low": {
     droid: "custom:YK-GPT-5.4-Low-61",
@@ -132,12 +132,12 @@ export const FAST_MODELS: Record<ProviderName, string> = {
 export const CROSS_REVIEW_MODELS: Record<ProviderName, string[]> = {
   droid: [
     "custom:glm-5-turbo",
-    "custom:YK-GPT-5.4-Low-61",
+    "custom:YK-GPT-5.4-High-63",
     "custom:glm-5.1",
   ],
   opencode: [
     "zai-coding-plan/glm-5-turbo",
-    "yk/gpt-5.4(low)",
+    "yk/gpt-5.4(high)",
     "minimax-coding-plan/MiniMax-M2.7",
   ],
 };
@@ -161,8 +161,7 @@ export const MODEL_LABELS: Record<string, string> = {
   "custom:YK-GPT-5.4-Med-62": "GPT-5.4 Med (OpenAI YK)",
   "custom:YK-GPT-5.4-High-63": "GPT-5.4 High (OpenAI YK)",
   "custom:YK-GPT-5.4-xHigh-64": "GPT-5.4 xHigh (OpenAI YK)",
-  // VP — OpenAI (fallback, no YK Mini exists)
-  "custom:VP-GPT-5.4-Mini-48": "GPT-5.4-Mini (OpenAI VP)",
+  // VP — OpenAI (legacy, not actively used)
   "custom:VP-GPT-5.4-15": "GPT-5.4 (OpenAI VP)",
   // OpenCode providers
   "zai-coding-plan/glm-5-turbo": "GLM-5-Turbo (Zhipu)",
