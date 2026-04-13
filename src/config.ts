@@ -142,6 +142,11 @@ export const CROSS_REVIEW_MODELS: Record<ProviderName, string[]> = {
   ],
 };
 
+export const PR_REVIEW_MODELS: Record<ProviderName, string> = {
+  droid: "custom:YK-GPT-5.4-xHigh-64",
+  opencode: "yk/gpt-5.4(xhigh)",
+};
+
 // ---------------------------------------------------------------------------
 // Model labels (human-readable, for reports)
 // ---------------------------------------------------------------------------
