@@ -1,4 +1,4 @@
-# do_* Tool Catalog (13 tools)
+# do_* Tool Catalog (15 tools)
 
 All tools are MCP tools accessed via `mcp__mcp-do__<tool_name>`. Every tool inherits the caller's cwd by default and accepts an optional `cwd` parameter.
 
@@ -61,7 +61,7 @@ Architecture analysis — evaluates structure, identifies risks, recommends impr
 
 ```typescript
 mcp__mcp-do__do_architect({
-  prompt: "Analyze the mcp-droid architecture: provider layer, tool registration, config system",
+  prompt: "Analyze the mcp-do architecture: provider layer, tool registration, config system",
 })
 ```
 
@@ -80,6 +80,16 @@ TypeScript type design review — flags any leaks, unsafe casts, missing nullabi
 ```typescript
 mcp__mcp-do__do_type_check({
   prompt: "Review type design in src/providers/ and src/config.ts",
+})
+```
+
+### do_adversarial_review
+Adversarial review that challenges design choices, assumptions, and tradeoffs — not just code quality. Actively tries to break confidence in the change. Returns structured verdict with severity-rated findings.
+
+```typescript
+mcp__mcp-do__do_adversarial_review({
+  prompt: "Challenge whether this caching approach is safe:\n\n<git diff output>",
+  provider: "droid",
 })
 ```
 

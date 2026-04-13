@@ -49,7 +49,7 @@ Delegate research, review, architecture analysis, and bug hunting to headless AI
 Every execution tool accepts `provider: "droid" | "opencode"`. Default is set by:
 1. Per-call `provider` parameter (highest priority)
 2. `DO_DEFAULT_PROVIDER` environment variable
-3. `~/.config/mcp-droid/config.json` → `default_provider`
+3. `~/.config/mcp-do/config.json` → `default_provider`
 4. Built-in default: `"droid"`
 
 ## Core Operational Rules
@@ -72,7 +72,7 @@ Different model families (Zhipu, OpenAI, MiniMax) have different blind spots and
 
 ### Rule 4: Session list is incomplete by default
 
-`do_session_list` reads `~/.factory/sessions-index.json` by default — and that index skips sessions created via `droid exec` (which is how mcp-droid creates them). Pass `scan_disk: true` for the complete set.
+`do_session_list` reads `~/.factory/sessions-index.json` by default — and that index skips sessions created via `droid exec` (which is how mcp-do creates them). Pass `scan_disk: true` for the complete set.
 
 ### Rule 5: Model aliases resolve per-provider
 
@@ -118,7 +118,7 @@ The gate only reviews code changes from the immediately previous turn. Status up
 
 ## Full Tool Catalog
 
-See [`references/tool-catalog.md`](references/tool-catalog.md) for all 13 tools with parameter details and examples.
+See [`references/tool-catalog.md`](references/tool-catalog.md) for all 15 tools with parameter details and examples.
 
 ## Troubleshooting
 

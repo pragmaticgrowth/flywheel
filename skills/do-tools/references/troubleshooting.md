@@ -9,7 +9,7 @@ Each entry: symptom, cause, fix. All verified empirically.
 **Cause:** The MCP server process isn't running or crashed.
 
 **Fix:**
-1. Check if `mcp-droid` binary is on PATH: `which mcp-do`
+1. Check if `mcp-do` binary is on PATH: `which mcp-do`
 2. Try rebuilding: `cd /Users/serkan/mcp-do && npm run build`
 3. Verify in Claude Code: the MCP server should auto-restart on next tool call
 4. Check `~/.claude.json` for the user-scope registration
@@ -18,7 +18,7 @@ Each entry: symptom, cause, fix. All verified empirically.
 
 **Symptom:** A `do_*` tool with `provider: "droid"` fails silently — `ok: false` but no useful error message.
 
-**Cause:** Usually `stream-json` output format producing error events that exit code 0 wouldn't surface. The mcp-droid parser detects these.
+**Cause:** Usually `stream-json` output format producing error events that exit code 0 wouldn't surface. The mcp-do parser detects these.
 
 **Fix:**
 1. Check the `error_message` field in the response
@@ -48,7 +48,7 @@ Each entry: symptom, cause, fix. All verified empirically.
 
 **Symptom:** `do_session_list` returns fewer sessions than expected. Sessions you created via MCP tools are missing.
 
-**Cause:** `~/.factory/sessions-index.json` is incomplete — droid's indexer skips sessions created via `droid exec` (which is how mcp-droid creates every session).
+**Cause:** `~/.factory/sessions-index.json` is incomplete — droid's indexer skips sessions created via `droid exec` (which is how mcp-do creates every session).
 
 **Fix:** Pass `scan_disk: true` to `do_session_list` for the authoritative list. This walks `~/.factory/sessions/<dir>/*.jsonl` directly (~200-400ms for ~200 sessions).
 

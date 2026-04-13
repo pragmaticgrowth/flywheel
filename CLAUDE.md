@@ -21,10 +21,10 @@ resolution.
 | `npm test` (vitest) | **183 passed** in 8 files |
 | Provider abstraction | droid + opencode adapters verified |
 
-### Tool surface (14 tools)
+### Tool surface (15 tools)
 
 - **Generic (1)**: `do_exec` (provider param)
-- **Specialized presets (8)**: `do_research`, `do_research_fast`, `do_review`, `do_explore`, `do_architect`, `do_silent_scan`, `do_type_check`, `do_pr_review`
+- **Specialized presets (9)**: `do_research`, `do_research_fast`, `do_review`, `do_explore`, `do_architect`, `do_silent_scan`, `do_type_check`, `do_pr_review`, `do_adversarial_review`
 - **Cross-model (1)**: `do_cross_review` (3 models in parallel, provider param)
 - **Sessions (2)**: `do_session_continue`, `do_session_list`
 - **Meta (2)**: `do_list_models`, `do_list_profiles`
