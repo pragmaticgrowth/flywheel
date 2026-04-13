@@ -1,7 +1,7 @@
 {
   "mcpServers": {
-    "mcp-droid": {
-      "command": "mcp-droid",
+    "mcp-do": {
+      "command": "mcp-do",
       "args": []
     }
   }

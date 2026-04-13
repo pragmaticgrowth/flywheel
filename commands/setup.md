@@ -1,7 +1,7 @@
 ---
 description: Verify droid + opencode installations, check config, sync opencode agents
 argument-hint: '[--sync-agents] [--check-only]'
-allowed-tools: Bash(which:*), Bash(droid:*), Bash(opencode:*), Bash(node:*), Bash(cat:*), Bash(ls:*), Bash(cp:*), Bash(mkdir:*), mcp__mcp-droid__do_list_models, AskUserQuestion
+allowed-tools: Bash(which:*), Bash(droid:*), Bash(opencode:*), Bash(node:*), Bash(cat:*), Bash(ls:*), Bash(cp:*), Bash(mkdir:*), mcp__mcp-do__do_list_models, AskUserQuestion
 ---
 
 Verify and configure the "do" plugin environment.
@@ -12,7 +12,7 @@ Verify and configure the "do" plugin environment.
 
 1. **droid CLI**: Run `which droid` — report path or "not found"
 2. **opencode CLI**: Run `which opencode` — report path or "not found"
-3. **MCP server**: Call `mcp__mcp-droid__do_list_models` — if it responds, server is alive; count models
+3. **MCP server**: Call `mcp__mcp-do__do_list_models` — if it responds, server is alive; count models
 4. **Config file**: Check if `~/.config/mcp-droid/config.json` exists, read and report `default_provider`
 5. **Opencode agents**: Check if `~/.config/opencode/agents/research.md`, `review.md`, `droid-explore.md` exist
 

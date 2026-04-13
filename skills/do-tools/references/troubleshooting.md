@@ -4,13 +4,13 @@ Each entry: symptom, cause, fix. All verified empirically.
 
 ## MCP server not responding
 
-**Symptom:** `mcp__mcp-droid__do_list_models` or any tool returns "server not found" or times out.
+**Symptom:** `mcp__mcp-do__do_list_models` or any tool returns "server not found" or times out.
 
 **Cause:** The MCP server process isn't running or crashed.
 
 **Fix:**
-1. Check if `mcp-droid` binary is on PATH: `which mcp-droid`
-2. Try rebuilding: `cd /Users/serkan/mcp-droid && npm run build`
+1. Check if `mcp-droid` binary is on PATH: `which mcp-do`
+2. Try rebuilding: `cd /Users/serkan/mcp-do && npm run build`
 3. Verify in Claude Code: the MCP server should auto-restart on next tool call
 4. Check `~/.claude.json` for the user-scope registration
 

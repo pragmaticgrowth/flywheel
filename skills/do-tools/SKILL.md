@@ -1,11 +1,11 @@
 ---
 name: do-tools
-description: Use the "do" plugin (mcp-droid MCP server) to delegate work to headless AI models via droid and opencode backends. Trigger whenever the user mentions droid, opencode, research, review, explore, architect, "delegate to", "ask the researcher", "have droid look at", "run a review", "audit X", "scan for", or wants to offload any task to a cheap BYOK model (GLM-5-Turbo, MiniMax-M2.7, GLM-5.1). ALSO trigger for do_research, do_review, do_explore, do_architect, do_cross_review, do_silent_scan, do_type_check, do_exec, or any do_* MCP tool name. This is the "3rd eye" for Claude Code — offloads analysis, research, and auditing to keep the main context focused.
+description: Use the "do" plugin (mcp-do MCP server) to delegate work to headless AI models via droid and opencode backends. Trigger whenever the user mentions droid, opencode, research, review, explore, architect, "delegate to", "ask the researcher", "have droid look at", "run a review", "audit X", "scan for", or wants to offload any task to a cheap BYOK model (GLM-5-Turbo, MiniMax-M2.7, GLM-5.1). ALSO trigger for do_research, do_review, do_explore, do_architect, do_cross_review, do_silent_scan, do_type_check, do_exec, or any do_* MCP tool name. This is the "3rd eye" for Claude Code — offloads analysis, research, and auditing to keep the main context focused.
 ---
 
 # do-tools — 3rd Eye for Claude Code
 
-Delegate research, review, architecture analysis, and bug hunting to headless AI models via the mcp-droid MCP server. Supports two backends: **droid** (Factory.ai) and **opencode** (SST). Each tool includes intelligent structured prompts (task + output contract + grounding rules).
+Delegate research, review, architecture analysis, and bug hunting to headless AI models via the mcp-do MCP server. Supports two backends: **droid** (Factory.ai) and **opencode** (SST). Each tool includes intelligent structured prompts (task + output contract + grounding rules).
 
 ## Slash Commands
 

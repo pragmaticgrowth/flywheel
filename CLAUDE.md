@@ -1,4 +1,4 @@
-# mcp-droid
+# mcp-do
 
 ## Project Overview
 
@@ -45,7 +45,7 @@ The plugin lives in this repo: `.claude-plugin/plugin.json` (name: "do").
   in `src/droid/output.ts` scans for `error|failed|failure` event
   types and flags the run as failed even if exit code is 0.
 - **sessions-index.json is incomplete.** Droid's indexer skips
-  sessions created via `droid exec` (which is how mcp-droid creates
+  sessions created via `droid exec` (which is how mcp-do creates
   every session). `do_session_list` has a `scan_disk: true` opt-in
   that walks `~/.factory/sessions/<dir>/*.jsonl` directly.
 
@@ -57,7 +57,7 @@ silent failure scans, etc. That works but is unstructured: every call is a raw
 shell string, output parsing is ad-hoc, sessions can't be discovered, mission
 state is invisible.
 
-`mcp-droid` gives the same functionality a typed surface:
+`mcp-do` gives the same functionality a typed surface:
 
 - One MCP tool per droid profile (research, review, explore, simplify, …)
 - Mission start / list / status / progress backed by `~/.factory/missions/`
@@ -83,7 +83,7 @@ state is invisible.
 ## Project Structure (planned)
 
 ```
-mcp-droid/
+mcp-do/
 ├── CLAUDE.md                  # this file
 ├── AGENTS.md                  # pointer to CLAUDE.md + research rule
 ├── README.md                  # public-facing
@@ -126,7 +126,7 @@ npm run dev                     # tsx src/index.ts (stdio loopback for testing)
 npm start                       # node dist/index.js
 
 # Register with Claude Code (after build)
-claude mcp add mcp-droid -- node /Users/serkan/mcp-droid/dist/index.js
+claude mcp add mcp-do -- node /Users/serkan/mcp-do/dist/index.js
 ```
 
 ## How Droid Is Invoked
@@ -279,7 +279,7 @@ droid exec --model "custom:glm-5-turbo" --auto high \
 # Run via Bash tool with run_in_background: true
 ```
 
-Once `mcp-droid` is built, this becomes `droid_research({ prompt: "..." })`
+Once `mcp-do` is built, this becomes `droid_research({ prompt: "..." })`
 instead.
 
 ## Skills & Slash Commands

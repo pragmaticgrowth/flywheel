@@ -1,10 +1,10 @@
 ---
 description: Code review against local git state — single model or cross-model (--cross)
 argument-hint: '[--cross] [--provider droid|opencode] [focus area...]'
-allowed-tools: Bash(git:*), mcp__mcp-droid__do_review, mcp__mcp-droid__do_cross_review
+allowed-tools: Bash(git:*), mcp__mcp-do__do_review, mcp__mcp-do__do_cross_review
 ---
 
-Run a code review through the mcp-droid MCP server using intelligent structured prompts.
+Run a code review through the mcp-do MCP server using intelligent structured prompts.
 
 **Raw arguments:** `$ARGUMENTS`
 
@@ -22,8 +22,8 @@ Run a code review through the mcp-droid MCP server using intelligent structured 
 
 ## Tool Selection
 
-- If `--cross` flag is present: use `mcp__mcp-droid__do_cross_review` (3 models in parallel)
-- Otherwise: use `mcp__mcp-droid__do_review` (single model, faster)
+- If `--cross` flag is present: use `mcp__mcp-do__do_cross_review` (3 models in parallel)
+- Otherwise: use `mcp__mcp-do__do_review` (single model, faster)
 
 ## Provider
 
