@@ -28,6 +28,7 @@ import {
   buildArchitectPrompt,
   buildSilentScanPrompt,
   buildTypeCheckPrompt,
+  buildAdversarialReviewPrompt,
 } from "../prompts/index.js";
 import { PresetInputShape, type PresetInput } from "../schemas/preset.js";
 import { resolveCwd } from "../utils/cwd.js";
@@ -149,6 +150,21 @@ const PRESETS: PresetSpec[] = [
       default_model: DEFAULT_MODELS.droid,
     },
     opencode: {
+      default_model: DEFAULT_MODELS.opencode,
+    },
+  },
+  {
+    name: "do_adversarial_review",
+    description:
+      "Adversarial review that challenges design choices, assumptions, and tradeoffs — not just code quality. Returns structured verdict with severity-rated findings.",
+    promptBuilder: buildAdversarialReviewPrompt,
+    droid: {
+      profile_file: join(DROIDS_DIR, "code-reviewer.md"),
+      default_model: DEFAULT_MODELS.droid,
+      default_auto: "high",
+    },
+    opencode: {
+      agent: "review",
       default_model: DEFAULT_MODELS.opencode,
     },
   },
