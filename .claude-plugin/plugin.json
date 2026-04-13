@@ -8,8 +8,8 @@
   "repository": "https://github.com/pragmaticgrowth/mcp-do",
   "mcpServers": {
     "mcp-do": {
-      "command": "mcp-do",
-      "args": []
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/index.js"]
     }
   }
 }
