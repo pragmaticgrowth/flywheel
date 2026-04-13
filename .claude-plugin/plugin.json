@@ -5,5 +5,11 @@
   "author": {
     "name": "pragmaticgrowth"
   },
-  "repository": "https://github.com/pragmaticgrowth/mcp-do"
+  "repository": "https://github.com/pragmaticgrowth/mcp-do",
+  "mcpServers": {
+    "mcp-do": {
+      "command": "mcp-do",
+      "args": []
+    }
+  }
 }
