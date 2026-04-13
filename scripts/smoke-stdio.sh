@@ -20,7 +20,7 @@ fi
   printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"smoke","version":"0"}}}'
   printf '%s\n' '{"jsonrpc":"2.0","method":"notifications/initialized"}'
   printf '%s\n' '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
-  printf '%s\n' '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"droid_exec","arguments":{"prompt":"reply with exactly: hi","model":"custom:glm-5-turbo"}}}'
+  printf '%s\n' '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"do_exec","arguments":{"prompt":"reply with exactly: hi","model":"custom:glm-5-turbo"}}}'
   # Keep stdin open long enough for droid to finish.
   sleep 60
 ) | node dist/index.js

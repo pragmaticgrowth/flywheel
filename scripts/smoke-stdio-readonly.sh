@@ -18,8 +18,8 @@ OUTPUT=$(
   (
     printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"smoke","version":"0"}}}'
     printf '%s\n' '{"jsonrpc":"2.0","method":"notifications/initialized"}'
-    printf '%s\n' '{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"droid_list_models","arguments":{}}}'
-    printf '%s\n' '{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"droid_list_profiles","arguments":{}}}'
+    printf '%s\n' '{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"do_list_models","arguments":{}}}'
+    printf '%s\n' '{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"do_list_profiles","arguments":{}}}'
     printf '%s\n' '{"jsonrpc":"2.0","id":12,"method":"tools/call","params":{"name":"droid_session_list","arguments":{"all":true,"limit":3}}}'
     printf '%s\n' '{"jsonrpc":"2.0","id":13,"method":"tools/call","params":{"name":"droid_mission_list","arguments":{"all":true,"limit":3}}}'
     sleep 1

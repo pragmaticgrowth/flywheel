@@ -2,46 +2,41 @@
 
 ## Project Overview
 
-Local **stdio MCP server** that exposes the Factory AI `droid` CLI as a typed
-tool surface inside Claude Code (and any other MCP client). Wraps `droid exec`
-via `child_process.spawn`, surfaces missions and sessions by reading
-`~/.factory/`, and inherits the caller's `cwd` so it works across sibling
-projects.
+Local **stdio MCP server** and Claude Code **"do" plugin** that exposes
+Factory AI `droid` CLI and `opencode` CLI as a unified typed tool surface.
+Wraps both backends via `child_process.spawn` with intelligent structured
+prompts (Codex-inspired: task + output contract + grounding rules). Supports
+provider selection (`droid` | `opencode`) per tool call with model alias
+resolution.
 
 ## Status
 
-**v0.1.0 verified end-to-end.** Published at https://github.com/pragmaticgrowth/mcp-droid
-(private). Registered at user scope in `~/.claude.json` — available
-from every Claude Code session regardless of cwd.
+**v0.2.0** — unified droid + opencode backend with "do" plugin.
 
 ### Verification
 
 | Check | Result |
 |---|---|
 | `npm run build` (tsc) | clean |
-| `npm test` (vitest) | **172 passed** in 8 files (~1.7s) |
-| `bash scripts/smoke-stdio-full.sh` | 11/11 tools (includes real MiniMax round-trip) |
-| `bash scripts/smoke-stdio-presets.sh` | 11/11 specialized presets |
-| Live MCP-client rounds | 71/71 tool calls across 5 separate verification sessions |
-| Cross-project cwd inheritance | verified from /Users/serkan/nt-dev |
-| Real mission orchestration | verified (mis_662293c0 "Simple File Writing Mission") |
+| `npm test` (vitest) | **183 passed** in 8 files |
+| Provider abstraction | droid + opencode adapters verified |
 
-### Tool surface (26 tools)
+### Tool surface (13 tools)
 
-- **Generic (4)**: `droid_exec`, `droid_list_tools`, `droid_list_models`, `droid_list_profiles`
-- **Specialized presets (11)**: `droid_research`, `droid_research_fast`, `droid_review_code`, `droid_explore_code`, `droid_architect`, `droid_simplify`, `droid_silent_failure_scan`, `droid_pr_test_analyzer`, `droid_type_design_analyzer`, `droid_scrutiny_review`, `droid_user_testing_validator`
-- **Sessions (4)**: `droid_session_continue`, `droid_session_fork`, `droid_session_list` (with `scan_disk` opt-in), `droid_session_search` (post-filters global `droid search` by reading each hit's jsonl)
-- **Missions (5)**: `droid_mission_start` (detached spawn + polling), `droid_mission_list`, `droid_mission_status`, `droid_mission_progress`, `droid_mission_cancel`
-- **Cross-model (1)**: `droid_cross_review` (parallel review via GLM-5-Turbo + GPT-5.4-Mini + GLM-5.1)
-- **Spec mode (1)**: `droid_spec` (defaults to `auto: "low"`)
+- **Generic (1)**: `do_exec` (provider param)
+- **Specialized presets (7)**: `do_research`, `do_research_fast`, `do_review`, `do_explore`, `do_architect`, `do_silent_scan`, `do_type_check`
+- **Cross-model (1)**: `do_cross_review` (3 models in parallel, provider param)
+- **Sessions (2)**: `do_session_continue`, `do_session_list`
+- **Meta (2)**: `do_list_models`, `do_list_profiles`
 
-### Companion skill
+### "do" Plugin
 
-The user-facing usage skill lives at `.claude/skills/droid-mcp/` in
-this repo (2,229 lines: main SKILL.md + 4 reference files + the
-`mission-manager.sh` tmux helper). It's **symlinked** from
-`~/.claude/skills/droid-mcp` so editing files here instantly updates
-what Claude Code loads in any project.
+The plugin lives in this repo: `.claude-plugin/plugin.json` (name: "do").
+
+- **10 slash commands**: `/do:review`, `/do:research`, `/do:explore`, `/do:architect`, `/do:scan`, `/do:types`, `/do:exec`, `/do:session`, `/do:status`, `/do:setup`
+- **3 subagents**: `do-researcher`, `do-reviewer`, `do-explorer` (thin forwarders)
+- **1 skill**: `do-tools` — decision matrix + core rules
+- **Bundled MCP server**: via `.mcp.json`
 
 ### Empirical findings baked into the code
 
@@ -51,32 +46,8 @@ what Claude Code loads in any project.
   types and flags the run as failed even if exit code is 0.
 - **sessions-index.json is incomplete.** Droid's indexer skips
   sessions created via `droid exec` (which is how mcp-droid creates
-  every session). The index has ~142 entries vs ~214 `.jsonl` files
-  on disk in a mature install. `droid_session_list` has a
-  `scan_disk: true` opt-in that walks `~/.factory/sessions/<dir>/*.jsonl`
-  directly.
-- **`droid search` is fully global** — it has no cwd flag and ignores
-  the cwd it's run from. `droid_session_search` post-filters by
-  reading each hit's `.jsonl` first line for the authoritative cwd
-  via `readSessionMetaFromJsonl`.
-- **Mission directories have `working_directory.txt` BEFORE `state.json`.**
-  Freshly-spawned missions are recognized by `working_directory.txt`;
-  `state.json` only appears once factoryd actually starts a worker
-  (sometimes never, if factoryd fails). `readStateJson` has a slow-path
-  fallback that builds a partial `MissionState` with
-  `mission_id: "pending-<uuid>"` when state.json is missing.
-- **Trivial prompts don't trigger missions.** `droid exec --mission
-  "say hi"` completes in ~5s as a plain exec and creates zero new
-  mission directories. `droid_mission_start` detects this and returns
-  `{ mission_triggered: false, reason: "..." }` — not an error.
-- **Missions are fully non-interactive.** Verified: zero `AskUser`
-  calls and zero user-input-needed events across 26 existing missions.
-  Missions run with `--auto high` and auto-decide everything. If you
-  need back-and-forth, use sessions, not missions.
-- **Droid commits mission scaffolding into whatever cwd it sees as a
-  git repo** when running with `--auto high`. ALWAYS spawn missions
-  in `/tmp/` or a throwaway dir — never in a repo you care about. Hit
-  three times while building this project.
+  every session). `do_session_list` has a `scan_disk: true` opt-in
+  that walks `~/.factory/sessions/<dir>/*.jsonl` directly.
 
 ## Why This Exists
 

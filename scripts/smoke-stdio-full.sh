@@ -45,8 +45,8 @@ OUTPUT_PHASE1=$(
     printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"smoke-full","version":"0"}}}'
     printf '%s\n' '{"jsonrpc":"2.0","method":"notifications/initialized"}'
     # Read-only and cheap (no droid spawn)
-    printf '%s\n' '{"jsonrpc":"2.0","id":20,"method":"tools/call","params":{"name":"droid_list_models","arguments":{}}}'
-    printf '%s\n' '{"jsonrpc":"2.0","id":21,"method":"tools/call","params":{"name":"droid_list_profiles","arguments":{}}}'
+    printf '%s\n' '{"jsonrpc":"2.0","id":20,"method":"tools/call","params":{"name":"do_list_models","arguments":{}}}'
+    printf '%s\n' '{"jsonrpc":"2.0","id":21,"method":"tools/call","params":{"name":"do_list_profiles","arguments":{}}}'
     printf '%s\n' '{"jsonrpc":"2.0","id":22,"method":"tools/call","params":{"name":"droid_session_list","arguments":{"all":true,"limit":3}}}'
     printf '%s\n' '{"jsonrpc":"2.0","id":23,"method":"tools/call","params":{"name":"droid_mission_list","arguments":{"all":true,"limit":3}}}'
     printf '%s\n' '{"jsonrpc":"2.0","id":24,"method":"tools/call","params":{"name":"droid_mission_status","arguments":{"mission_id":"'"$MISSION_UUID"'","progress_limit":3}}}'
@@ -58,7 +58,7 @@ OUTPUT_PHASE1=$(
     printf '%s\n' '{"jsonrpc":"2.0","id":27,"method":"tools/call","params":{"name":"droid_session_search","arguments":{"query":"droid","cwd":"/Users/serkan","limit_sessions":2,"limit_hits":1}}}'
     # Real exec — cheapest model + tiny prompt. We'll capture session_id
     # from this response and reuse it in phase 2.
-    printf '%s\n' '{"jsonrpc":"2.0","id":28,"method":"tools/call","params":{"name":"droid_exec","arguments":{"prompt":"reply with exactly: alpha","model":"custom:MiniMax-M2.7","auto":"high"}}}'
+    printf '%s\n' '{"jsonrpc":"2.0","id":28,"method":"tools/call","params":{"name":"do_exec","arguments":{"prompt":"reply with exactly: alpha","model":"custom:MiniMax-M2.7","auto":"high"}}}'
     sleep 90
   ) | node dist/index.js
 )

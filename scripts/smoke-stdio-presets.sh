@@ -30,11 +30,11 @@ OUTPUT=$(
     # Each preset gets its own keyword and id. Using MiniMax for everything
     # — even the architect preset which normally defaults to glm-5.1 — to
     # keep cost minimal during smoke.
-    printf '%s\n' '{"jsonrpc":"2.0","id":40,"method":"tools/call","params":{"name":"droid_research","arguments":{"prompt":"reply with exactly: RESEARCH_OK and stop","model":"custom:MiniMax-M2.7","auto":"high"}}}'
+    printf '%s\n' '{"jsonrpc":"2.0","id":40,"method":"tools/call","params":{"name":"do_research","arguments":{"prompt":"reply with exactly: RESEARCH_OK and stop","model":"custom:MiniMax-M2.7","auto":"high"}}}'
     printf '%s\n' '{"jsonrpc":"2.0","id":41,"method":"tools/call","params":{"name":"droid_research_fast","arguments":{"prompt":"reply with exactly: RESEARCH_FAST_OK and stop"}}}'
     printf '%s\n' '{"jsonrpc":"2.0","id":42,"method":"tools/call","params":{"name":"droid_review_code","arguments":{"prompt":"reply with exactly: REVIEW_CODE_OK and stop","model":"custom:MiniMax-M2.7"}}}'
     printf '%s\n' '{"jsonrpc":"2.0","id":43,"method":"tools/call","params":{"name":"droid_explore_code","arguments":{"prompt":"reply with exactly: EXPLORE_CODE_OK and stop","model":"custom:MiniMax-M2.7"}}}'
-    printf '%s\n' '{"jsonrpc":"2.0","id":44,"method":"tools/call","params":{"name":"droid_architect","arguments":{"prompt":"reply with exactly: ARCHITECT_OK and stop","model":"custom:MiniMax-M2.7"}}}'
+    printf '%s\n' '{"jsonrpc":"2.0","id":44,"method":"tools/call","params":{"name":"do_architect","arguments":{"prompt":"reply with exactly: ARCHITECT_OK and stop","model":"custom:MiniMax-M2.7"}}}'
     printf '%s\n' '{"jsonrpc":"2.0","id":45,"method":"tools/call","params":{"name":"droid_simplify","arguments":{"prompt":"reply with exactly: SIMPLIFY_OK and stop","model":"custom:MiniMax-M2.7"}}}'
     printf '%s\n' '{"jsonrpc":"2.0","id":46,"method":"tools/call","params":{"name":"droid_silent_failure_scan","arguments":{"prompt":"reply with exactly: SILENT_OK and stop","model":"custom:MiniMax-M2.7"}}}'
     printf '%s\n' '{"jsonrpc":"2.0","id":47,"method":"tools/call","params":{"name":"droid_pr_test_analyzer","arguments":{"prompt":"reply with exactly: PR_TEST_OK and stop","model":"custom:MiniMax-M2.7"}}}'
@@ -48,11 +48,11 @@ OUTPUT=$(
 echo "$OUTPUT" | node -e '
 const lines = require("fs").readFileSync("/dev/stdin","utf8").trim().split("\n");
 const expectations = {
-  40: { name: "droid_research",                expect: "RESEARCH_OK" },
+  40: { name: "do_research",                expect: "RESEARCH_OK" },
   41: { name: "droid_research_fast",           expect: "RESEARCH_FAST_OK" },
   42: { name: "droid_review_code",             expect: "REVIEW_CODE_OK" },
   43: { name: "droid_explore_code",            expect: "EXPLORE_CODE_OK" },
-  44: { name: "droid_architect",               expect: "ARCHITECT_OK" },
+  44: { name: "do_architect",               expect: "ARCHITECT_OK" },
   45: { name: "droid_simplify",                expect: "SIMPLIFY_OK" },
   46: { name: "droid_silent_failure_scan",     expect: "SILENT_OK" },
   47: { name: "droid_pr_test_analyzer",        expect: "PR_TEST_OK" },
