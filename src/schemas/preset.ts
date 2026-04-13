@@ -15,7 +15,7 @@ export const ProviderSchema = z
   .enum(["droid", "opencode"])
   .optional()
   .describe(
-    "Execution backend. Defaults to the server's configured default (DO_DEFAULT_PROVIDER env or ~/.config/mcp-droid/config.json).",
+    "Execution backend. Defaults to the server's configured default (DO_DEFAULT_PROVIDER env or ~/.config/mcp-do/config.json).",
   );
 
 export const PresetInputShape = {

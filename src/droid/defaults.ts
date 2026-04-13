@@ -4,7 +4,7 @@
  *
  * `DEFAULT_MODEL` is the universal fallback. We never let droid pick its
  * own default (claude-opus-4-6) because the user uses BYOK custom models
- * exclusively — see ~/.claude/projects/-Users-serkan-mcp-droid/memory/.
+ * exclusively — see ~/.claude/projects/-Users-serkan-mcp-do/memory/.
  */
 
 export const DEFAULT_MODEL = "custom:glm-5-turbo";

@@ -3,7 +3,7 @@
  *
  * Resolution order:
  *   1. Environment variable DO_DEFAULT_PROVIDER
- *   2. Config file ~/.config/mcp-droid/config.json
+ *   2. Config file ~/.config/mcp-do/config.json
  *   3. Built-in default ("droid")
  */
 
@@ -17,7 +17,7 @@ export interface McpDroidConfig {
   default_provider: ProviderName;
 }
 
-const CONFIG_PATH = join(homedir(), ".config", "mcp-droid", "config.json");
+const CONFIG_PATH = join(homedir(), ".config", "mcp-do", "config.json");
 
 const BUILTIN_DEFAULTS: McpDroidConfig = {
   default_provider: "droid",

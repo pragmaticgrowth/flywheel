@@ -45,7 +45,7 @@ function resolveOpencodeBin(): string {
 /**
  * Build a PATH that includes ~/.opencode/bin so `opencode` resolves even when
  * the MCP server was launched from a minimal shell environment (common when
- * Claude Code spawns mcp-droid at user scope).
+ * Claude Code spawns mcp-do at user scope).
  */
 function buildEnv(): NodeJS.ProcessEnv {
   const existing = process.env.PATH ?? "";

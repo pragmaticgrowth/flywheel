@@ -8,9 +8,9 @@
  * cwd filtering. `mtime` is unix milliseconds.
  *
  * IMPORTANT: sessions-index.json is INCOMPLETE. Verified: droid skips
- * sessions created via `droid exec` (the automation path mcp-droid itself
+ * sessions created via `droid exec` (the automation path mcp-do itself
  * uses), so the index misses many real on-disk sessions — including every
- * session under ~/.factory/sessions/-Users-serkan-mcp-droid/. The
+ * session under ~/.factory/sessions/-Users-serkan-mcp-do/. The
  * authoritative cwd lives inside each session's .jsonl file as the `cwd`
  * field on the first `session_start` event. Use `readSessionMetaFromJsonl`
  * to extract it when you need ground truth for search results.
@@ -66,7 +66,7 @@ export interface ListSessionsOptions {
    * file's first line for authoritative cwd/title. Slower (one stat +
    * one streaming read per session, parallelized), but COMPLETE — picks
    * up sessions that droid's own indexer skips (e.g. anything created
-   * via `droid exec` from automation, including mcp-droid itself).
+   * via `droid exec` from automation, including mcp-do itself).
    * Default: false (use sessions-index.json only, fast but incomplete).
    */
   scan_disk?: boolean;
