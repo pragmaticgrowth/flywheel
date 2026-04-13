@@ -6,6 +6,9 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { homedir } from "node:os";
+import { join } from "node:path";
+import { access } from "node:fs/promises";
 import {
   type ProviderName,
   resolveProvider,
@@ -32,6 +35,12 @@ const execFileAsync = promisify(execFile);
 const DEFAULT_TIMEOUT_MS = 300_000;
 const MAX_DIFF_BYTES = 80_000;
 const BASE_CANDIDATES = ["main", "master", "develop"];
+const PR_REVIEWER_PROFILE = join(
+  homedir(),
+  ".factory",
+  "droids",
+  "pr-reviewer.md",
+);
 
 async function git(
   args: string[],
@@ -49,11 +58,11 @@ async function git(
 }
 
 async function detectBase(cwd: string): Promise<string | null> {
-  for (const candidate of BASE_CANDIDATES) {
-    const { ok } = await git(["rev-parse", "--verify", candidate], cwd);
-    if (ok) return candidate;
-  }
-  return null;
+  const results = await Promise.all(
+    BASE_CANDIDATES.map((c) => git(["rev-parse", "--verify", c], cwd)),
+  );
+  const idx = results.findIndex((r) => r.ok);
+  return idx >= 0 ? BASE_CANDIDATES[idx] : null;
 }
 
 interface GitContext {
@@ -107,7 +116,9 @@ async function gatherGitContext(
   const diffBytes = Buffer.byteLength(diff, "utf8");
 
   if (diffBytes > MAX_DIFF_BYTES) {
-    diff = diff.slice(0, MAX_DIFF_BYTES);
+    diff = Buffer.from(diff, "utf8")
+      .subarray(0, MAX_DIFF_BYTES)
+      .toString("utf8");
     diffTruncated = true;
   }
 
@@ -191,13 +202,25 @@ export function registerPrReviewTool(server: McpServer): void {
         const model = resolveModel(input.model ?? defaultModel, provider);
         const timeoutMs = input.timeout_ms ?? DEFAULT_TIMEOUT_MS;
 
+        // Use pr-reviewer droid profile if available
+        let systemPromptFile: string | undefined;
+        if (provider === "droid") {
+          try {
+            await access(PR_REVIEWER_PROFILE);
+            systemPromptFile = PR_REVIEWER_PROFILE;
+          } catch {
+            // Profile not synced yet — prompt template is self-contained
+          }
+        }
+
         const result = await runWithProvider(provider, {
           prompt,
           model,
           cwd,
           timeout_ms: timeoutMs,
           auto: "high",
-          system_prompt_file: undefined,
+          system_prompt_file: systemPromptFile,
+          agent: provider === "opencode" ? "pr-reviewer" : undefined,
         });
 
         const structured: Record<string, unknown> = {
