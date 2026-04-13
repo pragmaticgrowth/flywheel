@@ -1,6 +1,8 @@
 {
-  "mcp-do": {
-    "command": "mcp-do",
-    "args": []
+  "mcpServers": {
+    "mcp-do": {
+      "command": "mcp-do",
+      "args": []
+    }
   }
 }
