@@ -26,7 +26,7 @@ import { loadPromptTemplate, interpolateTemplate } from "./lib/prompts.mjs";
 const STOP_REVIEW_TIMEOUT_MS = 10 * 60 * 1000;
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.resolve(SCRIPT_DIR, "..");
-const MODEL = "custom:glm-5-turbo";
+const MODEL = "custom:YK-GPT-5.4-xHigh-64";
 
 function isDroidAvailable() {
   try {
