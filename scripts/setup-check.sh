@@ -16,7 +16,7 @@ check_binary() {
 }
 
 check_config() {
-  local config_path="$HOME/.config/mcp-droid/config.json"
+  local config_path="$HOME/.config/mcp-do/config.json"
   if [ -f "$config_path" ]; then
     local provider
     provider=$(grep -o '"default_provider"[[:space:]]*:[[:space:]]*"[^"]*"' "$config_path" 2>/dev/null | head -1 | sed 's/.*: *"\([^"]*\)"/\1/')
