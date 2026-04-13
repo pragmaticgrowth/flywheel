@@ -1,16 +1,20 @@
 /**
- * Register the generic `droid_exec` MCP tool.
- *
- * One-to-one passthrough: every flag from droid_exec --help is exposed as a
- * typed parameter. For convenience wrappers (research, review, etc.) see
- * src/tools/presets.ts.
+ * do_exec — generic passthrough for power users.
+ * Supports both droid and opencode backends via provider param.
  */
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { DEFAULT_MODEL } from "../droid/defaults.js";
+import {
+  resolveProvider,
+  resolveModel,
+  DEFAULT_MODELS,
+  type ProviderName,
+} from "../config.js";
 import { spawnDroidExec } from "../droid/exec.js";
 import type { DroidExecFlags } from "../droid/flags.js";
 import { DroidExecInputShape, type DroidExecInput } from "../schemas/exec.js";
+import { ProviderSchema } from "../schemas/preset.js";
+import { runWithProvider } from "../providers/index.js";
 import { resolveCwd } from "../utils/cwd.js";
 import {
   createUnexpectedErrorResponse,
@@ -18,24 +22,67 @@ import {
   type McpToolResponse,
 } from "../utils/errors.js";
 
-export function registerDroidExec(server: McpServer): void {
+export function registerExecTool(server: McpServer): void {
   server.registerTool(
-    "droid_exec",
+    "do_exec",
     {
       description:
-        "Generic droid-exec passthrough. Runs `droid exec [flags] <prompt>` with every CLI flag exposed as a typed parameter. Defaults output to stream-json and inherits the MCP server's cwd unless overridden. Prefer droid_research / droid_review_code / etc. for common workflows.",
-      inputSchema: DroidExecInputShape,
+        "Generic execution passthrough. For droid: every CLI flag is exposed. For opencode: runs `opencode run` with model + agent + prompt. Prefer specialized tools (do_research, do_review, etc.) for common workflows — they include intelligent prompts.",
+      inputSchema: {
+        ...DroidExecInputShape,
+        provider: ProviderSchema,
+      },
     },
-    async (input: DroidExecInput): Promise<McpToolResponse> => {
+    async (
+      input: DroidExecInput & { provider?: string },
+    ): Promise<McpToolResponse> => {
       try {
-        // Drop tool-level fields (cwd, timeout_ms) — cwd goes to spawn opts,
-        // timeout_ms is server-side. Everything else maps 1:1 onto flags.ts.
-        const { cwd, timeout_ms, ...rest } = input;
+        const provider: ProviderName = resolveProvider(input.provider);
+
+        if (provider === "opencode") {
+          // Opencode path — simpler, only prompt + model + agent
+          const model = resolveModel(
+            input.model ?? DEFAULT_MODELS.opencode,
+            "opencode",
+          );
+          const result = await runWithProvider("opencode", {
+            prompt: input.prompt ?? "",
+            model,
+            cwd: resolveCwd(input.cwd),
+            timeout_ms: input.timeout_ms,
+            agent: undefined, // generic exec, no preset agent
+          });
+
+          const structured: Record<string, unknown> = {
+            provider: "opencode",
+            model: result.model,
+            duration_ms: result.duration_ms,
+          };
+
+          if (!result.ok) {
+            return {
+              content: [
+                { type: "text", text: result.error_message || "opencode run failed" },
+              ],
+              structuredContent: structured,
+              isError: true,
+            };
+          }
+
+          return {
+            content: [{ type: "text", text: result.text }],
+            structuredContent: structured,
+          };
+        }
+
+        // Droid path — full flag passthrough
+        const { cwd, timeout_ms, provider: _p, ...rest } = input;
         const flags: DroidExecFlags = {
           ...rest,
-          // Force a custom default — droid's built-in fallback is
-          // claude-opus-4-6, which we never want to use.
-          model: input.model ?? DEFAULT_MODEL,
+          model: resolveModel(
+            input.model ?? DEFAULT_MODELS.droid,
+            "droid",
+          ),
         };
 
         const result = await spawnDroidExec(flags, {

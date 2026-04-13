@@ -1,18 +1,14 @@
 /**
- * Meta tools — surface droid's catalog of models, profiles, and tools
- * without running an actual completion. All three are read-only and very
- * cheap (filesystem reads + at most one --list-tools spawn).
+ * Meta tools — surface droid's catalog of models and profiles.
+ * Read-only, filesystem-based, no provider dispatch needed.
  */
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { DEFAULT_MODEL } from "../droid/defaults.js";
-import { spawnDroidExec } from "../droid/exec.js";
 import { listModels } from "../droid/models.js";
 import { listProfiles } from "../droid/profiles.js";
 import { resolveCwd } from "../utils/cwd.js";
 import {
-  createErrorResponse,
   createJsonResponse,
   createUnexpectedErrorResponse,
   type McpToolResponse,
@@ -20,10 +16,10 @@ import {
 
 export function registerMetaTools(server: McpServer): void {
   server.registerTool(
-    "droid_list_models",
+    "do_list_models",
     {
       description:
-        "List custom (BYOK) models from ~/.factory/settings.json customModels[]. Each entry includes its canonical id (e.g. custom:BYOK-GLM-5-Turbo-33), a short alias when known (custom:glm-5-turbo), display name, and provider. Factory's built-in models are intentionally NOT listed — use only custom models.",
+        "List custom (BYOK) models from ~/.factory/settings.json. Returns canonical id, short alias, display name, and provider.",
       inputSchema: {},
     },
     async (): Promise<McpToolResponse> => {
@@ -37,17 +33,12 @@ export function registerMetaTools(server: McpServer): void {
   );
 
   server.registerTool(
-    "droid_list_profiles",
+    "do_list_profiles",
     {
       description:
-        "List droid agent profiles from ~/.factory/droids/*.md (global) and <cwd>/.factory/droids/*.md (project-local override). Project-local profiles shadow global ones with the same name. Each profile is a markdown file with a YAML front-matter block (name, description, model, tools).",
+        "List droid agent profiles from ~/.factory/droids/*.md (global) and <cwd>/.factory/droids/*.md (project-local). Project profiles shadow global ones.",
       inputSchema: {
-        cwd: z
-          .string()
-          .optional()
-          .describe(
-            "Working directory to scan for project-local profiles. Defaults to the MCP server's cwd.",
-          ),
+        cwd: z.string().optional().describe("Working directory for project-local profiles."),
       },
     },
     async ({ cwd }): Promise<McpToolResponse> => {
@@ -55,95 +46,6 @@ export function registerMetaTools(server: McpServer): void {
         const resolved = resolveCwd(cwd);
         const profiles = await listProfiles({ cwd: resolved });
         return createJsonResponse({ count: profiles.length, profiles });
-      } catch (err) {
-        return createUnexpectedErrorResponse(err);
-      }
-    },
-  );
-
-  server.registerTool(
-    "droid_list_tools",
-    {
-      description:
-        "Run `droid exec --list-tools` for a custom model and return the parsed tool catalog. Useful for discovering what tools a model has access to before launching a session. Defaults to custom:glm-5-turbo. Returns slim metadata by default — pass mode='full' to include descriptions (warning: 100+ tools easily exceeds the MCP per-result token limit).",
-      inputSchema: {
-        model: z
-          .string()
-          .optional()
-          .describe(
-            "Custom model id. Defaults to custom:glm-5-turbo. Use only custom: models — factory built-ins are off-limits.",
-          ),
-        cwd: z.string().optional(),
-        mode: z
-          .enum(["names", "compact", "full"])
-          .optional()
-          .describe(
-            "Response detail level. names: tool ids only (~5 KB). compact (default): id + display_name + category + allowed flags, no descriptions (~20 KB for 114 tools). full: raw catalog with descriptions (~100 KB — usually exceeds MCP per-result token limit).",
-          ),
-      },
-    },
-    async ({ model, cwd, mode }): Promise<McpToolResponse> => {
-      try {
-        const result = await spawnDroidExec(
-          {
-            model: model ?? DEFAULT_MODEL,
-            list_tools: true,
-            output_format: "json",
-          },
-          { cwd: resolveCwd(cwd) },
-        );
-
-        if (!result.ok) {
-          return createErrorResponse(
-            `droid exec --list-tools failed: ${result.error_message || result.stderr.trim() || "unknown error"}`,
-          );
-        }
-
-        // --list-tools writes plain JSON to stdout (not stream-json). Droid
-        // returns a top-level array of RawDroidTool descriptors. We project
-        // to a slim shape by default — descriptions are multi-paragraph and
-        // 114 tools × ~800 chars easily blows past Claude Code's per-result
-        // token limit (observed: 24 k tokens / saved-to-side-file).
-        let parsed: unknown;
-        try {
-          parsed = JSON.parse(result.stdout);
-        } catch {
-          return createJsonResponse({ raw_stdout: result.stdout });
-        }
-
-        if (!Array.isArray(parsed)) {
-          return createJsonResponse(parsed);
-        }
-
-        const effectiveMode: "names" | "compact" | "full" = mode ?? "compact";
-        let tools: unknown[];
-        if (effectiveMode === "names") {
-          tools = parsed.map((entry) =>
-            typeof entry === "object" && entry !== null && "id" in entry
-              ? (entry as { id: unknown }).id
-              : entry,
-          );
-        } else if (effectiveMode === "compact") {
-          tools = parsed.map((entry) => {
-            const e = entry as Record<string, unknown>;
-            return {
-              id: e.id,
-              llm_id: e.llmId,
-              display_name: e.displayName,
-              category: e.category,
-              default_allowed: e.defaultAllowed,
-              currently_allowed: e.currentlyAllowed,
-            };
-          });
-        } else {
-          tools = parsed;
-        }
-
-        return createJsonResponse({
-          count: parsed.length,
-          mode: effectiveMode,
-          tools,
-        });
       } catch (err) {
         return createUnexpectedErrorResponse(err);
       }

@@ -1,23 +1,26 @@
 /**
- * droid_cross_review — runs the same review prompt through multiple model
- * families in parallel and returns a merged report with each model's findings
- * labeled by name.
- *
- * Default models: GLM-5-Turbo (Zhipu), GPT-5.4-Mini (OpenAI VP),
- * GLM-5.1 (Zhipu deepest).
- * Multiple training lineages = multiple blind spots covered.
+ * do_cross_review — unified cross-model code review.
+ * Runs the same review prompt through 3 models from different training
+ * lineages in parallel and merges findings. Works with both droid and opencode.
  */
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { access } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { spawnDroidExec } from "../droid/exec.js";
+import {
+  type ProviderName,
+  resolveProvider,
+  CROSS_REVIEW_MODELS,
+  labelFor,
+} from "../config.js";
+import { runWithProvider } from "../providers/index.js";
+import { buildCrossReviewPrompt } from "../prompts/index.js";
 import {
   CrossReviewInputShape,
   type CrossReviewInput,
 } from "../schemas/cross-review.js";
 import { resolveCwd } from "../utils/cwd.js";
-import { access } from "node:fs/promises";
 import {
   createErrorResponse,
   createUnexpectedErrorResponse,
@@ -30,47 +33,6 @@ const REVIEWER_PROFILE = join(
   "droids",
   "code-reviewer.md",
 );
-
-async function profileExists(path: string): Promise<boolean> {
-  try {
-    await access(path);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-const DEFAULT_MODELS = [
-  "custom:glm-5-turbo",
-  "custom:VP-GPT-5.4-Mini-48",
-  "custom:glm-5.1",
-];
-
-const MODEL_LABELS: Record<string, string> = {
-  "custom:glm-5-turbo": "GLM-5-Turbo (Zhipu)",
-  "custom:BYOK-GLM-5-Turbo-33": "GLM-5-Turbo (Zhipu)",
-  "custom:VP-GPT-5.4-Mini-48": "GPT-5.4-Mini (OpenAI)",
-  "custom:VP-GPT-5.4-15": "GPT-5.4 (OpenAI)",
-  "custom:glm-5.1": "GLM-5.1 (Zhipu Deep)",
-  "custom:BYOK-GLM-5.1-31": "GLM-5.1 (Zhipu Deep)",
-  "custom:MiniMax-M2.7": "MiniMax M2.7",
-  "custom:BYOK-MiniMax-M2.7-30": "MiniMax M2.7",
-};
-
-function labelFor(model: string): string {
-  return MODEL_LABELS[model] ?? model;
-}
-
-/**
- * Wraps the user's prompt with cross-review framing so each model
- * produces structured, actionable output even if the caller's prompt is terse.
- * Kept minimal to avoid conflicting with the code-reviewer.md system prompt.
- */
-function buildReviewPrompt(userPrompt: string): string {
-  return `Your findings will be merged with independent reviews from other models. Be specific: cite file:line for every finding. Focus on real bugs and edge cases, not style. Max 300 words.
-
-${userPrompt}`;
-}
 
 const DEFAULT_TIMEOUT_MS = 240_000;
 
@@ -85,63 +47,74 @@ interface ModelResult {
 
 export function registerCrossReviewTool(server: McpServer): void {
   server.registerTool(
-    "droid_cross_review",
+    "do_cross_review",
     {
       description:
-        "Cross-model code review — runs the same review prompt through 3 different models (GLM-5-Turbo, GPT-5.4-Mini, GLM-5.1) in parallel and merges findings. Different models have different blind spots, so this catches more issues than single-model review. Each model gets structured instructions to produce actionable, file:line-specific findings.",
+        "Cross-model code review — runs the same review through 3 different model families in parallel and merges findings. Different training lineages have different blind spots, catching 3-5x more issues combined. Includes structured grounding rules to prevent hallucinated findings.",
       inputSchema: CrossReviewInputShape,
     },
     async (input: CrossReviewInput): Promise<McpToolResponse> => {
       try {
-        const models = input.models ?? DEFAULT_MODELS;
+        const provider: ProviderName = resolveProvider(input.provider);
+        const models = input.models ?? CROSS_REVIEW_MODELS[provider];
         if (models.length === 0) {
           return createErrorResponse("models array must not be empty");
         }
 
-        if (!(await profileExists(REVIEWER_PROFILE))) {
-          return createErrorResponse(
-            `code-reviewer profile not found at ${REVIEWER_PROFILE}`,
-          );
+        // Droid: check profile exists
+        if (provider === "droid") {
+          try {
+            await access(REVIEWER_PROFILE);
+          } catch {
+            return createErrorResponse(
+              `code-reviewer profile not found at ${REVIEWER_PROFILE}`,
+            );
+          }
         }
 
         const cwd = resolveCwd(input.cwd);
         const timeoutMs = input.timeout_ms ?? DEFAULT_TIMEOUT_MS;
-        const reviewPrompt = buildReviewPrompt(input.prompt);
+        const reviewPrompt = buildCrossReviewPrompt(input.prompt);
+        const agent = input.agent ?? "review";
 
-        // Run all models in parallel
         const results = await Promise.allSettled(
           models.map(async (model): Promise<ModelResult> => {
-            const result = await spawnDroidExec(
-              {
-                prompt: reviewPrompt,
-                model,
-                auto: "high",
-                system_prompt_file: REVIEWER_PROFILE,
-              },
-              { cwd, timeout_ms: timeoutMs },
-            );
+            const result = await runWithProvider(provider, {
+              prompt: reviewPrompt,
+              model,
+              cwd,
+              timeout_ms: timeoutMs,
+              // Droid
+              auto: "high",
+              system_prompt_file:
+                provider === "droid" ? REVIEWER_PROFILE : undefined,
+              // Opencode
+              agent: provider === "opencode" ? agent : undefined,
+            });
 
             return {
               model,
               label: labelFor(model),
               ok: result.ok,
               text: result.ok
-                ? result.parsed.text || "(no output)"
-                : result.error_message || "failed",
+                ? result.text || "(no output)"
+                : result.error_message ?? "failed",
               duration_ms: result.duration_ms,
-              session_id: result.parsed.session_id,
+              session_id: result.session_id,
             };
           }),
         );
 
-        // Merge results
         const modelResults: ModelResult[] = results.map((r, i) => {
           if (r.status === "fulfilled") return r.value;
           return {
             model: models[i],
             label: labelFor(models[i]),
             ok: false,
-            text: r.reason instanceof Error ? r.reason.message : String(r.reason),
+            text:
+              r.reason instanceof Error
+                ? r.reason.message
+                : String(r.reason),
             duration_ms: 0,
           };
         });
@@ -149,17 +122,16 @@ export function registerCrossReviewTool(server: McpServer): void {
         const succeeded = modelResults.filter((r) => r.ok);
         const failed = modelResults.filter((r) => !r.ok);
 
-        // Build merged report
         const sections: string[] = [];
         sections.push(
-          `# Cross-Model Review (${succeeded.length}/${modelResults.length} models responded)\n`,
+          `# Cross-Model Review [${provider}] (${succeeded.length}/${modelResults.length} models responded)\n`,
         );
 
         for (const r of modelResults) {
           const status = r.ok ? `${r.duration_ms}ms` : "FAILED";
           sections.push(`## ${r.label} [${status}]\n`);
           sections.push(r.text);
-          sections.push(""); // blank line between sections
+          sections.push("");
         }
 
         if (failed.length > 0) {
@@ -169,10 +141,8 @@ export function registerCrossReviewTool(server: McpServer): void {
         }
 
         const text = sections.join("\n");
-
-        // structuredContent omits full text per model to avoid duplicating
-        // what's already in content.text — callers use the text report.
         const structured: Record<string, unknown> = {
+          provider,
           models_requested: models.length,
           models_succeeded: succeeded.length,
           models_failed: failed.length,

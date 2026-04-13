@@ -1,58 +1,22 @@
 /**
- * Session tools: continue, fork, list, search. Continue + fork wrap
- * `droid exec -s <id>` / `--fork <id>`. List reads sessions-index.json
- * (raw cwd, no encoding). Search shells out to `droid search <query> --json`.
+ * Session tools: do_session_continue + do_session_list.
+ * Sessions remain droid-only — opencode session management requires
+ * a running `opencode serve` instance.
  */
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { DEFAULT_MODEL } from "../droid/defaults.js";
-import {
-  runDroidProcess,
-  spawnDroidExec,
-  type DroidProcessOptions,
-} from "../droid/exec.js";
-import type { DroidExecFlags } from "../droid/flags.js";
-import { listSessions, readSessionMetaFromJsonl } from "../droid/sessions.js";
+import { DEFAULT_MODELS } from "../config.js";
+import { spawnDroidExec } from "../droid/exec.js";
+import { listSessions } from "../droid/sessions.js";
 import { AutoLevelSchema, ReasoningEffortSchema } from "../schemas/exec.js";
 import { resolveCwd } from "../utils/cwd.js";
 import {
-  createErrorResponse,
   createJsonResponse,
   createUnexpectedErrorResponse,
   execResultToToolResponse,
   type McpToolResponse,
 } from "../utils/errors.js";
-
-interface SessionExecInput {
-  prompt: string;
-  cwd?: string;
-  model?: string;
-  auto?: z.infer<typeof AutoLevelSchema>;
-  reasoning_effort?: z.infer<typeof ReasoningEffortSchema>;
-  timeout_ms?: number;
-}
-
-async function runSessionExec(
-  extra: Pick<DroidExecFlags, "session_id" | "fork_session_id">,
-  input: SessionExecInput,
-): Promise<McpToolResponse> {
-  try {
-    const result = await spawnDroidExec(
-      {
-        ...extra,
-        prompt: input.prompt,
-        model: input.model ?? DEFAULT_MODEL,
-        auto: input.auto,
-        reasoning_effort: input.reasoning_effort,
-      },
-      { cwd: resolveCwd(input.cwd), timeout_ms: input.timeout_ms },
-    );
-    return execResultToToolResponse(result);
-  } catch (err) {
-    return createUnexpectedErrorResponse(err);
-  }
-}
 
 const sessionExecShape = {
   prompt: z.string(),
@@ -65,50 +29,52 @@ const sessionExecShape = {
 
 export function registerSessionTools(server: McpServer): void {
   server.registerTool(
-    "droid_session_continue",
+    "do_session_continue",
     {
       description:
-        "Continue an existing droid session by id — loads conversation history for context and runs the new prompt in the same thread. Equivalent to `droid exec -s <session_id> '<prompt>'`.",
+        "Continue an existing droid session by id — loads conversation history and runs the new prompt in the same thread.",
       inputSchema: { session_id: z.string(), ...sessionExecShape },
     },
-    async ({ session_id, ...input }) => runSessionExec({ session_id }, input),
-  );
-
-  server.registerTool(
-    "droid_session_fork",
-    {
-      description:
-        "Fork an existing session into a new one, preserving its history up to the checkpoint. Useful for 'take a different approach from this point'. The NEW session_id shows up in the response metadata.",
-      inputSchema: {
-        session_id: z.string().describe("The session to fork from."),
-        ...sessionExecShape,
-      },
+    async ({
+      session_id,
+      prompt,
+      cwd,
+      model,
+      auto,
+      reasoning_effort,
+      timeout_ms,
+    }): Promise<McpToolResponse> => {
+      try {
+        const result = await spawnDroidExec(
+          {
+            session_id,
+            prompt,
+            model: model ?? DEFAULT_MODELS.droid,
+            auto,
+            reasoning_effort,
+          },
+          { cwd: resolveCwd(cwd), timeout_ms },
+        );
+        return execResultToToolResponse(result);
+      } catch (err) {
+        return createUnexpectedErrorResponse(err);
+      }
     },
-    async ({ session_id, ...input }) =>
-      runSessionExec({ fork_session_id: session_id }, input),
   );
 
   server.registerTool(
-    "droid_session_list",
+    "do_session_list",
     {
       description:
-        "List droid sessions, filtered by cwd by default (pass all=true to see every session). By default reads ~/.factory/sessions-index.json (fast). Pass scan_disk=true for the COMPLETE list — walks ~/.factory/sessions/<dir>/*.jsonl and reads each first line directly. The index is missing many sessions (notably everything created via `droid exec`, including mcp-droid's own sessions); use scan_disk when completeness matters.",
+        "List droid sessions, filtered by cwd by default. Pass scan_disk=true for the complete list (sessions-index.json is incomplete for `droid exec` sessions).",
       inputSchema: {
         cwd: z.string().optional(),
-        all: z
-          .boolean()
-          .optional()
-          .describe("Ignore the cwd filter and return every session."),
-        search: z
-          .string()
-          .optional()
-          .describe("Case-insensitive substring filter on the session title."),
+        all: z.boolean().optional().describe("Ignore cwd filter."),
+        search: z.string().optional().describe("Substring filter on title."),
         scan_disk: z
           .boolean()
           .optional()
-          .describe(
-            "Authoritative-mode: walk ~/.factory/sessions/<dir>/*.jsonl directly instead of reading sessions-index.json. Slower (~200-400ms for ~200 sessions) but complete. Required to see sessions created via `droid exec` (which droid's indexer skips).",
-          ),
+          .describe("Walk disk for complete results (slower but authoritative)."),
         limit: z.number().int().positive().optional(),
       },
     },
@@ -125,160 +91,6 @@ export function registerSessionTools(server: McpServer): void {
           count: sessions.length,
           source: scan_disk ? "disk_walk" : "sessions_index",
           sessions,
-        });
-      } catch (err) {
-        return createUnexpectedErrorResponse(err);
-      }
-    },
-  );
-
-  server.registerTool(
-    "droid_session_search",
-    {
-      description:
-        "Full-text search across droid sessions via `droid search <query> --json`. NOTE: the underlying `droid search` CLI is GLOBAL — it ignores cwd. This tool post-filters the results by cross-referencing each hit's sessionId against ~/.factory/sessions-index.json and dropping sessions whose cwd doesn't match the tool's resolved cwd. Pass all=true to disable the filter and return every match. Each returned session is enriched with its cwd from the index.",
-      inputSchema: {
-        query: z.string(),
-        cwd: z.string().optional(),
-        all: z
-          .boolean()
-          .optional()
-          .describe("Disable the post-filter and return every matching session regardless of cwd."),
-        kind: z
-          .enum(["message_text", "document", "tool_use", "tool_result", "all"])
-          .optional(),
-        limit_sessions: z.number().int().positive().optional(),
-        limit_hits: z.number().int().positive().optional(),
-        context_chars: z.number().int().positive().optional(),
-        reindex: z.boolean().optional(),
-        timeout_ms: z.number().int().positive().optional(),
-      },
-    },
-    async ({
-      query,
-      cwd,
-      all,
-      kind,
-      limit_sessions,
-      limit_hits,
-      context_chars,
-      reindex,
-      timeout_ms,
-    }): Promise<McpToolResponse> => {
-      try {
-        const args = ["search", query, "--json"];
-        if (kind) args.push("--kind", kind);
-        if (limit_sessions !== undefined)
-          args.push("--limit-sessions", String(limit_sessions));
-        if (limit_hits !== undefined)
-          args.push("--limit-hits", String(limit_hits));
-        if (context_chars !== undefined)
-          args.push("--context-chars", String(context_chars));
-        if (reindex) args.push("--reindex");
-
-        const resolvedCwd = resolveCwd(cwd);
-        const opts: DroidProcessOptions = {
-          cwd: resolvedCwd,
-          timeout_ms: timeout_ms ?? 120_000,
-        };
-        const proc = await runDroidProcess(args, opts);
-
-        if (proc.spawn_error !== null) {
-          return createErrorResponse(`droid search: ${proc.spawn_error}`);
-        }
-        if (proc.timed_out) {
-          return createErrorResponse(
-            `droid search timed out after ${opts.timeout_ms}ms`,
-          );
-        }
-        if (proc.exit_code !== 0) {
-          return createErrorResponse(
-            `droid search failed: ${proc.stderr.trim() || `exit ${proc.exit_code}`}`,
-          );
-        }
-
-        // `droid search --json` returns { query, sessions: [{sessionId,
-        // title, updatedAt, jsonlPath, hits, totals}] }. It does NOT honor
-        // cwd at all — results span every project on the machine. We
-        // enrich each hit with its authoritative cwd by reading the first
-        // line of the session .jsonl (which carries a session_start event
-        // with the cwd). This is the ground truth — sessions-index.json is
-        // incomplete and misses many sessions (notably everything under
-        // ~/.factory/sessions/-Users-serkan-mcp-droid/).
-        let parsed: unknown;
-        try {
-          parsed = JSON.parse(proc.stdout);
-        } catch {
-          return createJsonResponse({ raw_stdout: proc.stdout });
-        }
-
-        // Normalize to a shape we can work with.
-        type RawSession = {
-          sessionId?: string;
-          title?: string;
-          updatedAt?: number;
-          jsonlPath?: string;
-          hits?: unknown[];
-          totals?: unknown;
-        };
-        const container = parsed as { query?: string; sessions?: RawSession[] };
-        const rawSessions: RawSession[] = Array.isArray(container?.sessions)
-          ? container.sessions
-          : [];
-
-        // Read each session's jsonl first-line in parallel for cwd. The
-        // sessions-index.json fallback (for hits whose .jsonl read failed)
-        // is built lazily — most calls never need it because
-        // readSessionMetaFromJsonl succeeds on every well-formed session
-        // file. Building it eagerly would mean an extra ~10 ms read +
-        // ~142-entry Map allocation on every search call.
-        let cwdBySessionId: Map<string, string> | null = null;
-        const getCwdFromIndex = async (
-          sessionId: string,
-        ): Promise<string | undefined> => {
-          if (cwdBySessionId === null) {
-            const indexed = await listSessions({ all: true, limit: 100_000 });
-            cwdBySessionId = new Map<string, string>();
-            for (const entry of indexed) {
-              if (entry.cwd) cwdBySessionId.set(entry.session_id, entry.cwd);
-            }
-          }
-          return cwdBySessionId.get(sessionId);
-        };
-
-        const enriched = await Promise.all(
-          rawSessions.map(async (s) => {
-            let cwd: string | undefined;
-            if (s.jsonlPath) {
-              const meta = await readSessionMetaFromJsonl(s.jsonlPath);
-              cwd = meta.cwd;
-            }
-            if (!cwd && s.sessionId !== undefined) {
-              cwd = await getCwdFromIndex(s.sessionId);
-            }
-            return {
-              session_id: s.sessionId,
-              title: s.title,
-              updated_at: s.updatedAt,
-              jsonl_path: s.jsonlPath,
-              cwd,
-              hits: s.hits ?? [],
-              totals: s.totals,
-            };
-          }),
-        );
-
-        const filtered =
-          all === true
-            ? enriched
-            : enriched.filter((s) => s.cwd === resolvedCwd);
-
-        return createJsonResponse({
-          query: container?.query ?? query,
-          count: filtered.length,
-          scoped_to: all === true ? "all (post-filter disabled)" : resolvedCwd,
-          sessions: filtered,
-          dropped_by_filter: enriched.length - filtered.length,
         });
       } catch (err) {
         return createUnexpectedErrorResponse(err);

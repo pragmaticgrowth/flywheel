@@ -1,22 +1,18 @@
 /**
- * Wires every mcp-droid tool into the server in one call.
+ * Wires every tool into the server in one call.
  */
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { registerCrossReviewTool } from "./cross-review.js";
-import { registerDroidExec } from "./exec.js";
+import { registerExecTool } from "./exec.js";
 import { registerMetaTools } from "./meta.js";
-import { registerMissionTools } from "./missions.js";
 import { registerPresetTools } from "./presets.js";
 import { registerSessionTools } from "./sessions.js";
-import { registerSpecTool } from "./spec.js";
 
 export function registerAllTools(server: McpServer): void {
-  registerDroidExec(server);
+  registerExecTool(server);
   registerMetaTools(server);
   registerSessionTools(server);
-  registerMissionTools(server);
-  registerSpecTool(server);
   registerPresetTools(server);
   registerCrossReviewTool(server);
 }
