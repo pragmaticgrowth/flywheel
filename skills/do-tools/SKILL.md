@@ -1,6 +1,6 @@
 ---
 name: do-tools
-description: Use the "do" plugin (mcp-do MCP server) to delegate work to headless AI models via droid and opencode backends. Trigger whenever the user mentions droid, opencode, research, review, explore, architect, "delegate to", "ask the researcher", "have droid look at", "run a review", "audit X", "scan for", or wants to offload any task to a cheap BYOK model (GLM-5-Turbo, MiniMax-M2.7, GLM-5.1). ALSO trigger for do_research, do_review, do_explore, do_architect, do_cross_review, do_silent_scan, do_type_check, do_exec, or any do_* MCP tool name. This is the "3rd eye" for Claude Code — offloads analysis, research, and auditing to keep the main context focused.
+description: Use the "do" plugin (mcp-do MCP server) to delegate work to headless AI models via droid and opencode backends. Trigger whenever the user mentions droid, opencode, research, review, explore, architect, "delegate to", "ask the researcher", "have droid look at", "run a review", "audit X", "scan for", "adversarial review", "challenge review", "review gate", or wants to offload any task to a cheap BYOK model (GLM-5-Turbo, MiniMax-M2.7, GLM-5.1). ALSO trigger for do_research, do_review, do_adversarial_review, do_explore, do_architect, do_cross_review, do_silent_scan, do_type_check, do_exec, or any do_* MCP tool name. This is the "3rd eye" for Claude Code — offloads analysis, research, and auditing to keep the main context focused.
 ---
 
 # do-tools — 3rd Eye for Claude Code
@@ -12,6 +12,7 @@ Delegate research, review, architecture analysis, and bug hunting to headless AI
 | Command | What it does |
 |---------|-------------|
 | `/do:review [--cross]` | Code review against git diff. `--cross` for 3-model parallel review |
+| `/do:adversarial-review [focus]` | Adversarial review — challenges design choices, not just code quality |
 | `/do:research [--fast] <question>` | Web research. `--fast` for quick lookup |
 | `/do:explore <question>` | Codebase navigation with file:line references |
 | `/do:architect <scope>` | Architecture analysis with trade-off assessments |
@@ -20,7 +21,8 @@ Delegate research, review, architecture analysis, and bug hunting to headless AI
 | `/do:exec <prompt>` | Power-user passthrough with all flags |
 | `/do:session [continue\|list]` | Droid session management |
 | `/do:status [models\|profiles]` | Show available models and profiles |
-| `/do:setup [--sync-agents]` | Verify installations, sync opencode agents |
+| `/do:setup [--sync-agents] [--enable-review-gate]` | Verify installations, sync agents, toggle review gate |
+| `/do:pr [--base] [--focus]` | Comprehensive PR review with GPT-5.4 xHigh. Auto-gathers git context |
 
 ## Decision Matrix — which tool to use
 
@@ -29,6 +31,7 @@ Delegate research, review, architecture analysis, and bug hunting to headless AI
 | Research a library / API / concept | `do_research` | `/do:research` |
 | Quick factual lookup | `do_research_fast` | `/do:research --fast` |
 | Code review of recent edits | `do_review` | `/do:review` |
+| Adversarial review (challenge design, not just code) | `do_adversarial_review` | `/do:adversarial-review` |
 | Cross-model review (3 models, security/auth code) | `do_cross_review` | `/do:review --cross` |
 | "Where is X?" / "How does Y work?" | `do_explore` | `/do:explore` |
 | High-level architecture analysis | `do_architect` | `/do:architect` |
@@ -36,6 +39,7 @@ Delegate research, review, architecture analysis, and bug hunting to headless AI
 | Review TypeScript type design | `do_type_check` | `/do:types` |
 | Generic single-shot call | `do_exec` | `/do:exec` |
 | Continue a previous session | `do_session_continue` | `/do:session continue` |
+| PR review (comprehensive) | `do_pr_review` | `/do:pr` |
 | List models / profiles | `do_list_models` / `do_list_profiles` | `/do:status` |
 | Quick bug fix, single file | Handle in Claude Code directly — no delegation |
 | Needs browser verification / live prod data | Handle in Claude Code directly |
@@ -99,6 +103,18 @@ Three thin-forwarder agents are available for proactive delegation:
 - **do-explorer** — routes codebase questions to `do_explore`
 
 Use these when you want Claude to proactively delegate without a slash command.
+
+## Stop Review Gate
+
+When enabled, a `Stop` hook automatically runs a droid review before Claude stops working. If the review finds material issues, the stop is blocked and Claude must fix them first.
+
+- **Enable**: `/do:setup --enable-review-gate`
+- **Disable**: `/do:setup --disable-review-gate`
+- **Default**: disabled
+- **Model**: `custom:glm-5-turbo` (fast, good quality)
+- **Fail-open**: if droid is unavailable or times out, the stop is allowed (never hard-blocks)
+
+The gate only reviews code changes from the immediately previous turn. Status updates, setup output, and review results are automatically ALLOWed without inspection.
 
 ## Full Tool Catalog
 
