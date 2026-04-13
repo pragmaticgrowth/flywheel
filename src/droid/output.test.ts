@@ -24,7 +24,7 @@ describe("parseStreamJson — success fixture (stream-json-hello.jsonl)", () => 
   });
 
   it("captures cwd from the init event", () => {
-    expect(parsed.cwd).toBe("/Users/serkan/mcp-droid");
+    expect(parsed.cwd).toBe("/Users/serkan/mcp-do");
   });
 
   it("uses completion.finalText as the canonical text", () => {

@@ -20,7 +20,7 @@ let tmpIndex: string;
 let tmpSessionsDir: string;
 
 beforeEach(async () => {
-  tmpRoot = await mkdtemp(join(tmpdir(), "mcp-droid-sessions-test-"));
+  tmpRoot = await mkdtemp(join(tmpdir(), "mcp-do-sessions-test-"));
   tmpIndex = join(tmpRoot, "sessions-index.json");
   tmpSessionsDir = join(tmpRoot, "sessions");
   await mkdir(tmpSessionsDir, { recursive: true });
@@ -81,10 +81,10 @@ describe("encodeCwdToSessionsDir", () => {
   });
 
   it("preserves dashes within segments (lossy but deterministic)", () => {
-    // /Users/serkan/mcp-droid → -Users-serkan-mcp-droid
-    // (the dash in "mcp-droid" is preserved as-is)
-    expect(encodeCwdToSessionsDir("/Users/serkan/mcp-droid")).toBe(
-      "-Users-serkan-mcp-droid",
+    // /Users/serkan/mcp-do → -Users-serkan-mcp-do
+    // (the dash in "mcp-do" is preserved as-is)
+    expect(encodeCwdToSessionsDir("/Users/serkan/mcp-do")).toBe(
+      "-Users-serkan-mcp-do",
     );
   });
 });
@@ -208,8 +208,8 @@ describe("listSessions — disk walk path (scan_disk=true)", () => {
       cwd: "/Users/serkan/nt-dev",
       title: "B",
     });
-    await writeSessionFile("-Users-serkan-mcp-droid", "s3", {
-      cwd: "/Users/serkan/mcp-droid",
+    await writeSessionFile("-Users-serkan-mcp-do", "s3", {
+      cwd: "/Users/serkan/mcp-do",
       title: "C",
     });
     const result = await listSessions({
@@ -222,7 +222,7 @@ describe("listSessions — disk walk path (scan_disk=true)", () => {
       new Set([
         "/Users/serkan",
         "/Users/serkan/nt-dev",
-        "/Users/serkan/mcp-droid",
+        "/Users/serkan/mcp-do",
       ]),
     );
   });

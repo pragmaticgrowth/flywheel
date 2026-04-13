@@ -12,7 +12,7 @@ import { listProfiles, parseFrontMatter } from "./profiles.js";
 let tmpRoot: string;
 
 beforeEach(async () => {
-  tmpRoot = await mkdtemp(join(tmpdir(), "mcp-droid-profiles-test-"));
+  tmpRoot = await mkdtemp(join(tmpdir(), "mcp-do-profiles-test-"));
 });
 
 afterEach(async () => {

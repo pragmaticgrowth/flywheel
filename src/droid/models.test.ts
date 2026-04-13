@@ -13,7 +13,7 @@ let tmpDir: string;
 let tmpSettings: string;
 
 beforeEach(async () => {
-  tmpDir = await mkdtemp(join(tmpdir(), "mcp-droid-models-test-"));
+  tmpDir = await mkdtemp(join(tmpdir(), "mcp-do-models-test-"));
   tmpSettings = join(tmpDir, "settings.json");
 });
 
