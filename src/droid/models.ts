@@ -43,13 +43,19 @@ interface RawSettingsJson {
  * accepts (verified during planning, see CLAUDE.md §Available Models).
  */
 export const CUSTOM_MODEL_ALIASES: Record<string, string> = {
+  // BYOK
   "custom:BYOK-MiniMax-M2.7-30": "custom:MiniMax-M2.7",
   "custom:BYOK-GLM-5-Turbo-33": "custom:glm-5-turbo",
   "custom:BYOK-GLM-5.1-31": "custom:glm-5.1",
   "custom:BYOK-GLM-5-32": "custom:glm-5",
+  // YK — OpenAI (your key, preferred for GPT)
+  "custom:YK-GPT-5.4-60": "custom:gpt-5.4",
+  "custom:YK-GPT-5.4-Low-61": "custom:gpt-5.4-low",
+  "custom:YK-GPT-5.4-Med-62": "custom:gpt-5.4-med",
+  "custom:YK-GPT-5.4-High-63": "custom:gpt-5.4-high",
+  "custom:YK-GPT-5.4-xHigh-64": "custom:gpt-5.4-xhigh",
+  // VP (fallback — no YK Mini exists)
   "custom:VP-GPT-5.4-Mini-48": "custom:gpt-5.4-mini",
-  "custom:VP-Qwen3.6-Plus-Coder-5": "custom:qwen-3.6-coder",
-  "custom:VP-GPT-5.4-15": "custom:gpt-5.4",
 };
 
 export interface ListModelsOptions {

@@ -67,17 +67,34 @@ const MODEL_ALIASES: Record<string, Record<ProviderName, string>> = {
     droid: "custom:glm-5.1",
     opencode: "zai-coding-plan/glm-5.1",
   },
-  "gpt-5.4-mini": {
-    droid: "custom:VP-GPT-5.4-Mini-48",
-    opencode: "openai/gpt-5.4-mini",
-  },
   "minimax-m2.7": {
     droid: "custom:MiniMax-M2.7",
     opencode: "minimax-coding-plan/MiniMax-M2.7",
   },
+  // GPT — YK (your key) preferred over VP
   "gpt-5.4": {
-    droid: "custom:gpt-5.4",
-    opencode: "openai/gpt-5.4",
+    droid: "custom:YK-GPT-5.4-60",
+    opencode: "yk/gpt-5.4",
+  },
+  "gpt-5.4-mini": {
+    droid: "custom:VP-GPT-5.4-Mini-48", // no YK Mini exists
+    opencode: "yk/gpt-5.4", // no Mini in opencode either, use base
+  },
+  "gpt-5.4-low": {
+    droid: "custom:YK-GPT-5.4-Low-61",
+    opencode: "yk/gpt-5.4(low)",
+  },
+  "gpt-5.4-med": {
+    droid: "custom:YK-GPT-5.4-Med-62",
+    opencode: "yk/gpt-5.4(medium)",
+  },
+  "gpt-5.4-high": {
+    droid: "custom:YK-GPT-5.4-High-63",
+    opencode: "yk/gpt-5.4(high)",
+  },
+  "gpt-5.4-xhigh": {
+    droid: "custom:YK-GPT-5.4-xHigh-64",
+    opencode: "yk/gpt-5.4(xhigh)",
   },
 };
 
@@ -115,12 +132,12 @@ export const FAST_MODELS: Record<ProviderName, string> = {
 export const CROSS_REVIEW_MODELS: Record<ProviderName, string[]> = {
   droid: [
     "custom:glm-5-turbo",
-    "custom:VP-GPT-5.4-Mini-48",
+    "custom:YK-GPT-5.4-Low-61",
     "custom:glm-5.1",
   ],
   opencode: [
     "zai-coding-plan/glm-5-turbo",
-    "openai/gpt-5.4-mini",
+    "yk/gpt-5.4(low)",
     "minimax-coding-plan/MiniMax-M2.7",
   ],
 };
@@ -130,19 +147,32 @@ export const CROSS_REVIEW_MODELS: Record<ProviderName, string[]> = {
 // ---------------------------------------------------------------------------
 
 export const MODEL_LABELS: Record<string, string> = {
+  // BYOK — Zhipu
   "custom:glm-5-turbo": "GLM-5-Turbo (Zhipu)",
   "custom:BYOK-GLM-5-Turbo-33": "GLM-5-Turbo (Zhipu)",
-  "custom:VP-GPT-5.4-Mini-48": "GPT-5.4-Mini (OpenAI)",
-  "custom:VP-GPT-5.4-15": "GPT-5.4 (OpenAI)",
   "custom:glm-5.1": "GLM-5.1 (Zhipu Deep)",
   "custom:BYOK-GLM-5.1-31": "GLM-5.1 (Zhipu Deep)",
+  // BYOK — MiniMax
   "custom:MiniMax-M2.7": "MiniMax M2.7",
   "custom:BYOK-MiniMax-M2.7-30": "MiniMax M2.7",
+  // YK — OpenAI (your key, preferred)
+  "custom:YK-GPT-5.4-60": "GPT-5.4 (OpenAI YK)",
+  "custom:YK-GPT-5.4-Low-61": "GPT-5.4 Low (OpenAI YK)",
+  "custom:YK-GPT-5.4-Med-62": "GPT-5.4 Med (OpenAI YK)",
+  "custom:YK-GPT-5.4-High-63": "GPT-5.4 High (OpenAI YK)",
+  "custom:YK-GPT-5.4-xHigh-64": "GPT-5.4 xHigh (OpenAI YK)",
+  // VP — OpenAI (fallback, no YK Mini exists)
+  "custom:VP-GPT-5.4-Mini-48": "GPT-5.4-Mini (OpenAI VP)",
+  "custom:VP-GPT-5.4-15": "GPT-5.4 (OpenAI VP)",
+  // OpenCode providers
   "zai-coding-plan/glm-5-turbo": "GLM-5-Turbo (Zhipu)",
   "zai-coding-plan/glm-5.1": "GLM-5.1 (Zhipu Deep)",
-  "openai/gpt-5.4-mini": "GPT-5.4-Mini (OpenAI)",
-  "openai/gpt-5.4": "GPT-5.4 (OpenAI)",
   "minimax-coding-plan/MiniMax-M2.7": "MiniMax M2.7",
+  "yk/gpt-5.4": "GPT-5.4 (OpenAI YK)",
+  "yk/gpt-5.4(low)": "GPT-5.4 Low (OpenAI YK)",
+  "yk/gpt-5.4(medium)": "GPT-5.4 Med (OpenAI YK)",
+  "yk/gpt-5.4(high)": "GPT-5.4 High (OpenAI YK)",
+  "yk/gpt-5.4(xhigh)": "GPT-5.4 xHigh (OpenAI YK)",
 };
 
 export function labelFor(model: string): string {
