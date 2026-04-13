@@ -1,7 +1,5 @@
 {
-  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "pragmatic-growth",
-  "description": "AI-powered developer tools — research, review, architecture analysis, and bug hunting via headless models",
   "owner": {
     "name": "pragmaticgrowth",
     "url": "https://github.com/pragmaticgrowth"
@@ -10,7 +8,7 @@
     {
       "name": "do",
       "description": "3rd eye for Claude Code — delegate research, review, architecture analysis, and bug hunting to headless AI models via droid and opencode backends",
-      "source": ".",
+      "source": "./",
       "homepage": "https://github.com/pragmaticgrowth/mcp-do",
       "author": {
         "name": "pragmaticgrowth"
