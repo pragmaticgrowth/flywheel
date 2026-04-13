@@ -1,0 +1,9 @@
+{
+  "name": "do",
+  "version": "0.2.0",
+  "description": "3rd eye for Claude Code — delegate research, review, architecture analysis, and bug hunting to headless AI models via droid and opencode.",
+  "author": {
+    "name": "pragmaticgrowth"
+  },
+  "repository": "https://github.com/pragmaticgrowth/mcp-droid"
+}

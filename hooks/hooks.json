@@ -1,0 +1,4 @@
+{
+  "description": "do plugin hooks. Stop-gate review planned for v0.3.0.",
+  "hooks": {}
+}
