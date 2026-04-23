@@ -5,31 +5,25 @@
  * research, review, architecture analysis, and bug hunting to cheap
  * headless models with intelligent structured prompts.
  */
-
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { loadConfig } from "./config.js";
 import { registerAllTools } from "./tools/index.js";
-
 const VERSION = "0.3.0";
-
-async function main(): Promise<void> {
-  // Load config (default provider, etc.) before registering tools.
-  await loadConfig();
-
-  const server = new McpServer({
-    name: "mcp-do",
-    version: VERSION,
-  });
-
-  registerAllTools(server);
-
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
+async function main() {
+    // Load config (default provider, etc.) before registering tools.
+    await loadConfig();
+    const server = new McpServer({
+        name: "mcp-do",
+        version: VERSION,
+    });
+    registerAllTools(server);
+    const transport = new StdioServerTransport();
+    await server.connect(transport);
 }
-
 main().catch((err) => {
-  // stderr is safe — stdout is the MCP transport and must stay clean.
-  console.error("mcp-do fatal:", err);
-  process.exit(1);
+    // stderr is safe — stdout is the MCP transport and must stay clean.
+    console.error("mcp-do fatal:", err);
+    process.exit(1);
 });
+//# sourceMappingURL=index.js.map
