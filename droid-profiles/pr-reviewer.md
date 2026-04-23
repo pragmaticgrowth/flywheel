@@ -1,7 +1,7 @@
 ---
 name: pr-reviewer
 description: Comprehensive PR reviewer. Single-pass deep analysis covering bugs, security, types, test gaps, and breaking changes.
-model: custom:YK-GPT-5.4-xHigh-64
+model: custom:YK-GPT-5.4-xHigh-18
 tools: Read, Glob, Grep, LS
 ---
 

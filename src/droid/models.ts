@@ -48,12 +48,12 @@ export const CUSTOM_MODEL_ALIASES: Record<string, string> = {
   "custom:BYOK-GLM-5-Turbo-33": "custom:glm-5-turbo",
   "custom:BYOK-GLM-5.1-31": "custom:glm-5.1",
   "custom:BYOK-GLM-5-32": "custom:glm-5",
-  // YK — OpenAI (your key, preferred for GPT)
-  "custom:YK-GPT-5.4-60": "custom:gpt-5.4",
-  "custom:YK-GPT-5.4-Low-61": "custom:gpt-5.4-low",
-  "custom:YK-GPT-5.4-Med-62": "custom:gpt-5.4-med",
-  "custom:YK-GPT-5.4-High-63": "custom:gpt-5.4-high",
-  "custom:YK-GPT-5.4-xHigh-64": "custom:gpt-5.4-xhigh",
+  // YK — OpenAI (your key, preferred for GPT). IDs shifted from 60..64 to 14..18 on 2026-04-23.
+  "custom:YK-GPT-5.4-14": "custom:gpt-5.4",
+  "custom:YK-GPT-5.4-Low-15": "custom:gpt-5.4-low",
+  "custom:YK-GPT-5.4-Med-16": "custom:gpt-5.4-med",
+  "custom:YK-GPT-5.4-High-17": "custom:gpt-5.4-high",
+  "custom:YK-GPT-5.4-xHigh-18": "custom:gpt-5.4-xhigh",
 };
 
 export interface ListModelsOptions {

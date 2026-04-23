@@ -71,29 +71,29 @@ const MODEL_ALIASES: Record<string, Record<ProviderName, string>> = {
     droid: "custom:MiniMax-M2.7",
     opencode: "minimax-coding-plan/MiniMax-M2.7",
   },
-  // GPT — YK (your key) preferred over VP
+  // GPT — YK (your key) preferred over VP. Droid IDs updated from 60..64 → 14..18 on 2026-04-23.
   "gpt-5.4": {
-    droid: "custom:YK-GPT-5.4-60",
+    droid: "custom:YK-GPT-5.4-14",
     opencode: "yk/gpt-5.4",
   },
   "gpt-5.4-mini": {
-    droid: "custom:YK-GPT-5.4-Med-62", // no YK Mini exists, remap to Med
+    droid: "custom:YK-GPT-5.4-Med-16", // no YK Mini exists, remap to Med
     opencode: "yk/gpt-5.4(medium)",
   },
   "gpt-5.4-low": {
-    droid: "custom:YK-GPT-5.4-Low-61",
+    droid: "custom:YK-GPT-5.4-Low-15",
     opencode: "yk/gpt-5.4(low)",
   },
   "gpt-5.4-med": {
-    droid: "custom:YK-GPT-5.4-Med-62",
+    droid: "custom:YK-GPT-5.4-Med-16",
     opencode: "yk/gpt-5.4(medium)",
   },
   "gpt-5.4-high": {
-    droid: "custom:YK-GPT-5.4-High-63",
+    droid: "custom:YK-GPT-5.4-High-17",
     opencode: "yk/gpt-5.4(high)",
   },
   "gpt-5.4-xhigh": {
-    droid: "custom:YK-GPT-5.4-xHigh-64",
+    droid: "custom:YK-GPT-5.4-xHigh-18",
     opencode: "yk/gpt-5.4(xhigh)",
   },
 };
@@ -132,7 +132,7 @@ export const FAST_MODELS: Record<ProviderName, string> = {
 export const CROSS_REVIEW_MODELS: Record<ProviderName, string[]> = {
   droid: [
     "custom:glm-5-turbo",
-    "custom:YK-GPT-5.4-High-63",
+    "custom:YK-GPT-5.4-High-17",
     "custom:glm-5.1",
   ],
   opencode: [
@@ -143,7 +143,7 @@ export const CROSS_REVIEW_MODELS: Record<ProviderName, string[]> = {
 };
 
 export const PR_REVIEW_MODELS: Record<ProviderName, string> = {
-  droid: "custom:YK-GPT-5.4-xHigh-64",
+  droid: "custom:YK-GPT-5.4-xHigh-18",
   opencode: "yk/gpt-5.4(xhigh)",
 };
 
@@ -160,12 +160,17 @@ export const MODEL_LABELS: Record<string, string> = {
   // BYOK — MiniMax
   "custom:MiniMax-M2.7": "MiniMax M2.7",
   "custom:BYOK-MiniMax-M2.7-30": "MiniMax M2.7",
-  // YK — OpenAI (your key, preferred)
-  "custom:YK-GPT-5.4-60": "GPT-5.4 (OpenAI YK)",
-  "custom:YK-GPT-5.4-Low-61": "GPT-5.4 Low (OpenAI YK)",
-  "custom:YK-GPT-5.4-Med-62": "GPT-5.4 Med (OpenAI YK)",
-  "custom:YK-GPT-5.4-High-63": "GPT-5.4 High (OpenAI YK)",
-  "custom:YK-GPT-5.4-xHigh-64": "GPT-5.4 xHigh (OpenAI YK)",
+  // YK — OpenAI (your key, preferred). IDs shifted 60..64 → 14..18 on 2026-04-23; both retained here so labels resolve for stale mission/session records.
+  "custom:YK-GPT-5.4-14": "GPT-5.4 (OpenAI YK)",
+  "custom:YK-GPT-5.4-Low-15": "GPT-5.4 Low (OpenAI YK)",
+  "custom:YK-GPT-5.4-Med-16": "GPT-5.4 Med (OpenAI YK)",
+  "custom:YK-GPT-5.4-High-17": "GPT-5.4 High (OpenAI YK)",
+  "custom:YK-GPT-5.4-xHigh-18": "GPT-5.4 xHigh (OpenAI YK)",
+  "custom:YK-GPT-5.4-60": "GPT-5.4 (OpenAI YK) [legacy id]",
+  "custom:YK-GPT-5.4-Low-61": "GPT-5.4 Low (OpenAI YK) [legacy id]",
+  "custom:YK-GPT-5.4-Med-62": "GPT-5.4 Med (OpenAI YK) [legacy id]",
+  "custom:YK-GPT-5.4-High-63": "GPT-5.4 High (OpenAI YK) [legacy id]",
+  "custom:YK-GPT-5.4-xHigh-64": "GPT-5.4 xHigh (OpenAI YK) [legacy id]",
   // VP — OpenAI (legacy, not actively used)
   "custom:VP-GPT-5.4-15": "GPT-5.4 (OpenAI VP)",
   // OpenCode providers
