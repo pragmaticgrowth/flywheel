@@ -16,19 +16,13 @@ import {
   resolveModel,
   DEFAULT_MODELS,
   DEEP_MODELS,
-  FAST_MODELS,
 } from "../config.js";
 import type { AutoLevel } from "../droid/flags.js";
 import { runWithProvider } from "../providers/index.js";
 import {
-  buildResearchPrompt,
-  buildResearchFastPrompt,
   buildReviewPrompt,
   buildExplorePrompt,
   buildArchitectPrompt,
-  buildSilentScanPrompt,
-  buildTypeCheckPrompt,
-  buildAdversarialReviewPrompt,
 } from "../prompts/index.js";
 import { PresetInputShape, type PresetInput } from "../schemas/preset.js";
 import { resolveCwd } from "../utils/cwd.js";
@@ -56,36 +50,6 @@ interface PresetSpec {
 }
 
 const PRESETS: PresetSpec[] = [
-  {
-    name: "do_research",
-    description:
-      "Deep web research — parallel search across web, Reddit, HN, docs. Returns structured findings with source citations and confidence assessment. Prompt includes grounding rules to prevent hallucinated sources.",
-    promptBuilder: buildResearchPrompt,
-    droid: {
-      profile_file: join(DROIDS_DIR, "deep-researcher.md"),
-      default_model: DEFAULT_MODELS.droid,
-      default_auto: "high",
-    },
-    opencode: {
-      agent: "research",
-      default_model: DEFAULT_MODELS.opencode,
-    },
-  },
-  {
-    name: "do_research_fast",
-    description:
-      "Quick research lookup — concise answer under 200 words with primary source and caveats. Uses the fastest/cheapest model. For thorough research use do_research.",
-    promptBuilder: buildResearchFastPrompt,
-    droid: {
-      profile_file: join(DROIDS_DIR, "deep-researcher.md"),
-      default_model: FAST_MODELS.droid,
-      default_auto: "high",
-    },
-    opencode: {
-      agent: "research",
-      default_model: FAST_MODELS.opencode,
-    },
-  },
   {
     name: "do_review",
     description:
@@ -125,47 +89,6 @@ const PRESETS: PresetSpec[] = [
     },
     opencode: {
       default_model: DEEP_MODELS.opencode,
-    },
-  },
-  {
-    name: "do_silent_scan",
-    description:
-      "Silent failure scanner — finds swallowed errors, empty catches, ignored promises, missing error handling on I/O. Orders findings by production risk.",
-    promptBuilder: buildSilentScanPrompt,
-    droid: {
-      profile_file: join(DROIDS_DIR, "silent-failure-hunter.md"),
-      default_model: DEFAULT_MODELS.droid,
-    },
-    opencode: {
-      default_model: DEFAULT_MODELS.opencode,
-    },
-  },
-  {
-    name: "do_type_check",
-    description:
-      "TypeScript type design review — flags any leaks, unsafe casts, missing nullability, incorrect generics. Only reports types that could cause runtime errors.",
-    promptBuilder: buildTypeCheckPrompt,
-    droid: {
-      profile_file: join(DROIDS_DIR, "type-design-analyzer.md"),
-      default_model: DEFAULT_MODELS.droid,
-    },
-    opencode: {
-      default_model: DEFAULT_MODELS.opencode,
-    },
-  },
-  {
-    name: "do_adversarial_review",
-    description:
-      "Adversarial review that challenges design choices, assumptions, and tradeoffs — not just code quality. Returns structured verdict with severity-rated findings.",
-    promptBuilder: buildAdversarialReviewPrompt,
-    droid: {
-      profile_file: join(DROIDS_DIR, "code-reviewer.md"),
-      default_model: DEFAULT_MODELS.droid,
-      default_auto: "high",
-    },
-    opencode: {
-      agent: "review",
-      default_model: DEFAULT_MODELS.opencode,
     },
   },
 ];

@@ -1,10 +1,10 @@
 ---
 description: Adversarial review that challenges design choices — not just code quality
-argument-hint: '[--base <ref>] [--provider droid|opencode] [focus area...]'
-allowed-tools: Bash(git:*), mcp__mcp-do__do_adversarial_review
+argument-hint: '[--base <ref>] [focus area...]'
+allowed-tools: Bash(git:*), mcp__mcp-do__do_audit
 ---
 
-Run an adversarial code review that challenges the chosen implementation, design choices, tradeoffs, and assumptions. This is not just a stricter pass over code defects — it questions whether the current approach is the right one.
+Run an adversarial review via `do_audit` (GPT-5.4 via Codex). Challenges the chosen implementation, design choices, tradeoffs, and assumptions — not just code defects. Returns a typed verdict: pass / concerns / blockers.
 
 **Raw arguments:** `$ARGUMENTS`
 
@@ -18,27 +18,25 @@ Run an adversarial code review that challenges the chosen implementation, design
 ## Scope
 
 - Default: all staged + unstaged changes
-- If the user specified files or directories in `$ARGUMENTS` (after flags), limit `git diff` to those paths
-- If the user specified `--base <ref>`, use `git diff <ref>...HEAD` instead
+- If the user specified `--base <ref>`, use `git diff <ref>...HEAD`
+- If `$ARGUMENTS` contains paths (non-flag text that looks like paths), limit the diff to them
 
 ## Focus Text
 
-Any text in `$ARGUMENTS` that isn't a flag is treated as adversarial focus — areas to pressure-test. Examples:
+Any non-flag text in `$ARGUMENTS` that is NOT a path is adversarial focus — areas to pressure-test. Examples:
 - "challenge whether this was the right caching design"
 - "look for race conditions and question the chosen approach"
 - "focus on rollback safety and data loss scenarios"
 
-## Provider
-
-- If `--provider droid` or `--provider opencode` is specified, pass it as the `provider` parameter
-- Otherwise, let the MCP server use its configured default
-
 ## Execution
 
-Build the review prompt by combining:
-1. The diff output
-2. Any focus text from arguments
+Call `mcp__mcp-do__do_audit` with:
 
-Pass the assembled prompt to `mcp__mcp-do__do_adversarial_review`. **Return the result verbatim.**
+- `context`: the focus text from `$ARGUMENTS`, or the generic adversarial prompt below if none was given:
+  > Challenge the design, tradeoffs, and assumptions — not just code defects. Question whether this was the right approach at all. Pressure-test rollback safety, failure modes, and hidden costs.
+- `diff`: the full git diff output
+- `reasoning_effort`: `"high"` (default is already high; don't override)
+
+**Return the result verbatim.**
 
 Do NOT fix issues. Do NOT apply patches. Do NOT add commentary. Review only.

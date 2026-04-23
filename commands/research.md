@@ -1,21 +1,21 @@
 ---
-description: Deep web research via headless AI — structured findings with source citations
+description: Web research via headless AI — structured findings with source citations
 argument-hint: '[--fast] [--provider droid|opencode] <research question>'
-allowed-tools: mcp__mcp-do__do_research, mcp__mcp-do__do_research_fast
+allowed-tools: mcp__mcp-do__do_research
 ---
 
-Forward a research question to the mcp-do research tool. Results stay in the headless model's context, keeping main conversation clean.
+Forward a research question to `do_research`. Results stay in the headless model's context, keeping the main conversation clean.
 
 **Raw arguments:** `$ARGUMENTS`
 
-## Tool Selection
+## Depth
 
-- If `--fast` flag is present: use `mcp__mcp-do__do_research_fast` (quick lookup, <200 words)
-- Otherwise: use `mcp__mcp-do__do_research` (thorough, parallel web search)
+- If `--fast` is present, pass `depth: "fast"` (concise <200-word answer, MiniMax model)
+- Otherwise, omit `depth` (defaults to `"deep"` — thorough structured report with sources, GLM-5-Turbo)
 
 ## Provider
 
-- If `--provider droid` or `--provider opencode` is specified, pass it
+- If `--provider droid` or `--provider opencode` is specified, pass it as the `provider` parameter
 - Otherwise, let the server use its configured default
 
 ## Execution

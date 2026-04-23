@@ -1,10 +1,14 @@
-# do_* Tool Catalog (15 tools)
+# do_* Tool Catalog (13 tools)
 
 All tools are MCP tools accessed via `mcp__mcp-do__<tool_name>`. Every tool inherits the caller's cwd by default and accepts an optional `cwd` parameter.
 
+Three backends in use:
+- **droid** / **opencode** — BYOK headless models via `droid exec` / `opencode run` spawn-per-call.
+- **Codex MCP** — persistent `codex mcp-server` subprocess (one per mcp-do lifetime) for GPT-5.4 plan discussion and auditing. Used by `do_discuss` and `do_audit`. Follow-up turns are ~10x faster than first turns because the process stays warm.
+
 ---
 
-## Execution Tools (9 — support `provider` param)
+## Execution Tools (6 — support `provider` param)
 
 ### do_exec
 Generic passthrough. For droid: every CLI flag exposed. For opencode: runs `opencode run` with model + agent + prompt.
@@ -19,26 +23,25 @@ mcp__mcp-do__do_exec({
 ```
 
 ### do_research
-Deep web research — parallel search across web, Reddit, HN, docs. Structured findings with source citations and confidence assessment.
+Unified web research. Two depths via the `depth` param — default `"deep"` runs parallel search with structured findings + sources + confidence + open questions; `"fast"` returns a concise <200-word answer for quick lookups (version numbers, API signatures, defaults).
 
 ```typescript
+// Deep (default)
 mcp__mcp-do__do_research({
   prompt: "How does opencode handle session persistence? Compare with droid's approach.",
-  provider: "droid",
 })
-```
 
-### do_research_fast
-Quick lookup — concise answer under 200 words with source and caveats. Uses fastest/cheapest model.
-
-```typescript
-mcp__mcp-do__do_research_fast({
+// Fast lookup (<200 words, MiniMax model)
+mcp__mcp-do__do_research({
   prompt: "What's the default port for opencode serve?",
+  depth: "fast",
 })
 ```
 
 ### do_review
-Code review for bugs, security, edge cases. Returns severity-rated findings with file:line citations. Skeptical by default.
+Code review for bugs, security, edge cases. Returns severity-rated findings with file:line citations. Skeptical by default — only material issues, not style.
+
+Use this tool with a focused prompt prefix for narrow reviews (silent-failure scans, TypeScript type reviews) — the `/do:scan` and `/do:types` slash commands are thin wrappers that do exactly that.
 
 ```typescript
 mcp__mcp-do__do_review({
@@ -48,7 +51,7 @@ mcp__mcp-do__do_review({
 ```
 
 ### do_explore
-Codebase navigation — answers "where is X?" and "how does Y work?" with file:line references and call chains.
+Codebase navigation — answers "where is X?" and "how does Y work?" with file:line references and call chains. Read-only.
 
 ```typescript
 mcp__mcp-do__do_explore({
@@ -57,39 +60,11 @@ mcp__mcp-do__do_explore({
 ```
 
 ### do_architect
-Architecture analysis — evaluates structure, identifies risks, recommends improvements with explicit trade-off assessments. Uses the deepest analysis model.
+Architecture analysis — evaluates structure, identifies risks, recommends improvements with explicit trade-off assessments. Uses the deepest droid model (GLM-5.1).
 
 ```typescript
 mcp__mcp-do__do_architect({
   prompt: "Analyze the mcp-do architecture: provider layer, tool registration, config system",
-})
-```
-
-### do_silent_scan
-Silent failure scanner — finds swallowed errors, empty catches, ignored promises, missing error handling on I/O.
-
-```typescript
-mcp__mcp-do__do_silent_scan({
-  prompt: "Scan src/ for silent failures, focusing on the spawn helpers in droid/exec.ts and opencode/exec.ts",
-})
-```
-
-### do_type_check
-TypeScript type design review — flags any leaks, unsafe casts, missing nullability, incorrect generics.
-
-```typescript
-mcp__mcp-do__do_type_check({
-  prompt: "Review type design in src/providers/ and src/config.ts",
-})
-```
-
-### do_adversarial_review
-Adversarial review that challenges design choices, assumptions, and tradeoffs — not just code quality. Actively tries to break confidence in the change. Returns structured verdict with severity-rated findings.
-
-```typescript
-mcp__mcp-do__do_adversarial_review({
-  prompt: "Challenge whether this caching approach is safe:\n\n<git diff output>",
-  provider: "droid",
 })
 ```
 
@@ -104,9 +79,53 @@ Default models per provider:
 mcp__mcp-do__do_cross_review({
   prompt: "Review changes to the auth middleware:\n\n<git diff output>",
   provider: "droid",
-  // models: ["custom:glm-5-turbo", "custom:VP-GPT-5.4-Mini-48", "custom:glm-5.1"],  // optional override
 })
 ```
+
+### do_pr_review
+Comprehensive PR review with GPT-5.4 xHigh. Auto-gathers git context. See `/do:pr` slash command for the typical invocation path.
+
+---
+
+## Codex Tools (2 — GPT-5.4 via persistent Codex MCP backend)
+
+### do_discuss
+Iterative plan / architecture sounding board with GPT-5.4 xHigh. Returns a structured critique: `objective`, `risks[]`, `blockers[]`, `alternatives[]`, `missing[]`, `verdict` (`proceed` / `proceed-with-changes` / `reconsider`). Pass `thread_id` to continue; follow-ups are ~10x faster than first turn. Read-only sandbox — does not write code.
+
+```typescript
+// Turn 1
+mcp__mcp-do__do_discuss({
+  prompt: "Plan: rename all variables from camelCase to snake_case in one PR across 200k LOC. Good idea?",
+  reasoning_effort: "xhigh",   // default. minimal | low | medium | high | xhigh
+})
+// → { thread_id, verdict: "reconsider", risks: [...], blockers: [...], ... }
+
+// Turn 2 — iterate via thread_id
+mcp__mcp-do__do_discuss({
+  thread_id: "019dbb...",
+  prompt: "What if we split by module boundary into 5 PRs?",
+})
+```
+
+### do_audit
+Post-delivery auditor with GPT-5.4 High. Give it `context` (plan/acceptance criteria) and `diff` (what was delivered), get a typed verdict:
+
+- `verdict`: `"pass"` | `"concerns"` | `"blockers"`
+- `blockers[]`, `concerns[]`, `missed_requirements[]`, `strengths[]`, `next_steps[]` — all typed string arrays
+
+Pass `thread_id` from a prior `do_discuss` to audit inside the same Codex conversation — it remembers the plan it helped shape. Also the right tool for adversarial reviews that challenge design choices.
+
+```typescript
+mcp__mcp-do__do_audit({
+  context: "Add function add(a,b): number with test and TypeError on non-number input.",
+  diff: "+export function add(a: number, b: number) { return a + b; }",
+  thread_id: "019dbb...",     // optional — continues a prior discuss thread
+  reasoning_effort: "high",   // default
+})
+// → { verdict: "blockers", blockers: ["..."], missed_requirements: ["..."], ... }
+```
+
+Typical flow: `do_discuss` to pressure-test a plan → implement → `do_audit` with the same `thread_id` so Codex reviews against the plan it critiqued.
 
 ---
 
@@ -158,10 +177,24 @@ mcp__mcp-do__do_list_profiles({})
 | Parameter | Applies to | Description |
 |-----------|-----------|-------------|
 | `prompt` | All execution tools | The task/question to send |
-| `provider` | All execution tools | `"droid"` or `"opencode"` — overrides default |
+| `provider` | Droid/opencode tools | `"droid"` or `"opencode"` — overrides default |
 | `model` | All execution tools | Model alias or provider-specific ID |
 | `cwd` | All tools | Working directory override |
-| `timeout_ms` | All execution tools | Per-call timeout in ms |
-| `auto` | Presets (droid only) | Autonomy level: `"low"` / `"medium"` / `"high"` |
-| `session_id` | Presets + session_continue | Continue existing session |
-| `scan_disk` | do_session_list | Walk disk for complete session list |
+| `timeout_ms` | Droid/opencode tools | Per-call timeout in ms |
+| `auto` | Droid presets | Autonomy level: `"low"` / `"medium"` / `"high"` |
+| `session_id` | Droid presets + session_continue | Continue existing droid session |
+| `thread_id` | `do_discuss`, `do_audit` | Continue existing Codex thread |
+| `reasoning_effort` | `do_discuss`, `do_audit` | `minimal` / `low` / `medium` / `high` / `xhigh` |
+| `depth` | `do_research` | `"deep"` (default) or `"fast"` |
+| `scan_disk` | `do_session_list` | Walk disk for complete session list |
+
+---
+
+## What changed (April 2026)
+
+Four tools were removed or merged to reduce surface area from 17 to 13:
+
+- `do_silent_scan` → use `do_review` with a silent-failure focus prefix (`/do:scan` slash command does this automatically).
+- `do_type_check` → use `do_review` with a type-review focus prefix (`/do:types` does this automatically).
+- `do_adversarial_review` → use `do_audit`. GPT-5.4 with structured verdict is strictly better at challenging design choices than the old droid-backed adversarial prompt. `/do:adversarial-review` now routes through `do_audit`.
+- `do_research_fast` → merged into `do_research({ depth: "fast" })`.

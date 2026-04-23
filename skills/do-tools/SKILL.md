@@ -1,6 +1,6 @@
 ---
 name: do-tools
-description: Use the "do" plugin (mcp-do MCP server) to delegate work to headless AI models via droid and opencode backends. Trigger whenever the user mentions droid, opencode, research, review, explore, architect, "delegate to", "ask the researcher", "have droid look at", "run a review", "audit X", "scan for", "adversarial review", "challenge review", "review gate", or wants to offload any task to a cheap BYOK model (GLM-5-Turbo, MiniMax-M2.7, GLM-5.1). ALSO trigger for do_research, do_review, do_adversarial_review, do_explore, do_architect, do_cross_review, do_silent_scan, do_type_check, do_exec, or any do_* MCP tool name. This is the "3rd eye" for Claude Code — offloads analysis, research, and auditing to keep the main context focused.
+description: Use the "do" plugin (mcp-do MCP server) to delegate work to headless AI models via droid, opencode, and Codex (GPT-5.4) backends. Trigger whenever the user mentions droid, opencode, research, review, explore, architect, discuss plan, audit delivery, adversarial review, "delegate to", "ask the researcher", "have droid look at", "run a review", "audit X", "scan for", "challenge review", "review gate", or wants to offload any task to a headless model (GLM-5-Turbo, MiniMax-M2.7, GLM-5.1, GPT-5.4). ALSO trigger for do_research, do_review, do_audit, do_discuss, do_explore, do_architect, do_cross_review, do_pr_review, do_exec, or any do_* MCP tool name. This is the "3rd eye" for Claude Code — offloads analysis, research, plan discussion, and post-delivery auditing to keep the main context focused.
 ---
 
 # do-tools — 3rd Eye for Claude Code
@@ -12,12 +12,12 @@ Delegate research, review, architecture analysis, and bug hunting to headless AI
 | Command | What it does |
 |---------|-------------|
 | `/do:review [--cross]` | Code review against git diff. `--cross` for 3-model parallel review |
-| `/do:adversarial-review [focus]` | Adversarial review — challenges design choices, not just code quality |
-| `/do:research [--fast] <question>` | Web research. `--fast` for quick lookup |
+| `/do:adversarial-review [focus]` | Adversarial review via `do_audit` (GPT-5.4) — challenges design choices |
+| `/do:research [--fast] <question>` | Web research. `--fast` for quick <200-word lookup |
 | `/do:explore <question>` | Codebase navigation with file:line references |
 | `/do:architect <scope>` | Architecture analysis with trade-off assessments |
-| `/do:scan [scope]` | Silent failure scan (swallowed errors, empty catches) |
-| `/do:types [scope]` | TypeScript type design review |
+| `/do:scan [scope]` | Silent-failure-focused code review (swallowed errors, empty catches) |
+| `/do:types [scope]` | Type-focused TypeScript review |
 | `/do:exec <prompt>` | Power-user passthrough with all flags |
 | `/do:session [continue\|list]` | Droid session management |
 | `/do:status [models\|profiles]` | Show available models and profiles |
@@ -29,14 +29,15 @@ Delegate research, review, architecture analysis, and bug hunting to headless AI
 | Task | MCP Tool | Slash Command |
 |------|----------|---------------|
 | Research a library / API / concept | `do_research` | `/do:research` |
-| Quick factual lookup | `do_research_fast` | `/do:research --fast` |
+| Quick factual lookup | `do_research({ depth: "fast" })` | `/do:research --fast` |
 | Code review of recent edits | `do_review` | `/do:review` |
-| Adversarial review (challenge design, not just code) | `do_adversarial_review` | `/do:adversarial-review` |
+| Post-delivery audit (typed verdict, Codex GPT-5.4) | `do_audit` | `/do:adversarial-review` |
+| Plan / architecture discussion (iterative, Codex GPT-5.4 xHigh) | `do_discuss` | — |
 | Cross-model review (3 models, security/auth code) | `do_cross_review` | `/do:review --cross` |
 | "Where is X?" / "How does Y work?" | `do_explore` | `/do:explore` |
 | High-level architecture analysis | `do_architect` | `/do:architect` |
-| Find empty catches / silent failures | `do_silent_scan` | `/do:scan` |
-| Review TypeScript type design | `do_type_check` | `/do:types` |
+| Find empty catches / silent failures | `do_review` (silent-failure focus) | `/do:scan` |
+| Review TypeScript type design | `do_review` (type focus) | `/do:types` |
 | Generic single-shot call | `do_exec` | `/do:exec` |
 | Continue a previous session | `do_session_continue` | `/do:session continue` |
 | PR review (comprehensive) | `do_pr_review` | `/do:pr` |
@@ -68,7 +69,7 @@ Different model families (Zhipu, OpenAI, MiniMax) have different blind spots and
 
 ### Rule 3: Research goes through headless, never in main context
 
-**ALL web research MUST go through do_research / do_research_fast.** Never run Research Powerpack or Context7 MCP tools directly in main context — they produce 10k-30k+ tokens per call. Use the `/do:research` command or the `do-researcher` agent instead.
+**ALL web research MUST go through `do_research`** (use `depth: "fast"` for quick lookups). Never run Research Powerpack or Context7 MCP tools directly in main context — they produce 10k-30k+ tokens per call. Use the `/do:research` command or the `do-researcher` agent instead.
 
 ### Rule 4: Session list is incomplete by default
 
@@ -98,8 +99,8 @@ You can use aliases in tool calls — the system resolves to the right provider-
 ## Subagents
 
 Three thin-forwarder agents are available for proactive delegation:
-- **do-researcher** — routes research questions to `do_research` / `do_research_fast`
-- **do-reviewer** — gathers git diff, routes to `do_review` / `do_cross_review`
+- **do-researcher** — routes research questions to `do_research` (with `depth: "fast"` for quick lookups)
+- **do-reviewer** — gathers git diff, routes to `do_review` / `do_cross_review` / `do_audit`
 - **do-explorer** — routes codebase questions to `do_explore`
 
 Use these when you want Claude to proactively delegate without a slash command.
@@ -118,7 +119,7 @@ The gate only reviews code changes from the immediately previous turn. Status up
 
 ## Full Tool Catalog
 
-See [`references/tool-catalog.md`](references/tool-catalog.md) for all 15 tools with parameter details and examples.
+See [`references/tool-catalog.md`](references/tool-catalog.md) for all 13 tools with parameter details and examples.
 
 ## Troubleshooting
 
