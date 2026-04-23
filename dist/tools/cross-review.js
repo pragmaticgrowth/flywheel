@@ -103,7 +103,7 @@ export function registerCrossReviewTool(server) {
             };
             return {
                 content: [{ type: "text", text }],
-                structuredContent: structured,
+                structuredContent: { ...structured, text },
                 isError: succeeded.length === 0 ? true : undefined,
             };
         }

@@ -157,7 +157,7 @@ export function registerCrossReviewTool(server: McpServer): void {
 
         return {
           content: [{ type: "text", text }],
-          structuredContent: structured,
+          structuredContent: { ...structured, text },
           isError: succeeded.length === 0 ? true : undefined,
         };
       } catch (err) {

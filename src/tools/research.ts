@@ -142,7 +142,7 @@ export function registerResearchTool(server: McpServer): void {
 
         return {
           content: [{ type: "text", text: result.text }],
-          structuredContent: structured,
+          structuredContent: { ...structured, text: result.text },
         };
       } catch (err) {
         return createUnexpectedErrorResponse(err);

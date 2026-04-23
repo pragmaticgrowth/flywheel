@@ -177,9 +177,10 @@ export function registerPrReviewTool(server) {
                 };
             }
             const header = `# PR Review [${provider}] — ${ctx.branch} → ${base}\n**Model:** ${labelFor(model)} | **${ctx.commitCount} commits** | **${ctx.filesChanged} files** | ${ctx.diffTruncated ? "diff truncated" : `${ctx.diffBytes} bytes`}\n\n`;
+            const text = header + result.text;
             return {
-                content: [{ type: "text", text: header + result.text }],
-                structuredContent: structured,
+                content: [{ type: "text", text }],
+                structuredContent: { ...structured, text },
             };
         }
         catch (err) {

@@ -11,7 +11,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { loadConfig } from "./config.js";
 import { registerAllTools } from "./tools/index.js";
 
-const VERSION = "0.4.0";
+const VERSION = "0.4.1";
 
 async function main(): Promise<void> {
   // Load config (default provider, etc.) before registering tools.

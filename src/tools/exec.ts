@@ -71,7 +71,7 @@ export function registerExecTool(server: McpServer): void {
 
           return {
             content: [{ type: "text", text: result.text }],
-            structuredContent: structured,
+            structuredContent: { ...structured, text: result.text },
           };
         }
 

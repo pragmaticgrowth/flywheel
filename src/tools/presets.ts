@@ -162,7 +162,7 @@ function makePresetHandler(spec: PresetSpec) {
 
       return {
         content: [{ type: "text", text: result.text }],
-        structuredContent: structured,
+        structuredContent: { ...structured, text: result.text },
       };
     } catch (err) {
       return createUnexpectedErrorResponse(err);

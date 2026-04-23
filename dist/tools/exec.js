@@ -45,7 +45,7 @@ export function registerExecTool(server) {
                 }
                 return {
                     content: [{ type: "text", text: result.text }],
-                    structuredContent: structured,
+                    structuredContent: { ...structured, text: result.text },
                 };
             }
             // Droid path — full flag passthrough
