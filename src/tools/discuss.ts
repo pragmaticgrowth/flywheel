@@ -88,17 +88,87 @@ export function stripDiscussJsonBlock(text: string): string {
   return text.replace(JSON_RE, "").trim();
 }
 
+const BODY_CONTRACT = `Reply with a short critique, then at the very end emit EXACTLY this JSON block:
+
+<discuss-json>
+{"objective":"<one sentence>","risks":["..."],"blockers":["..."],"alternatives":["..."],"missing":["..."],"verdict":"proceed"|"proceed-with-changes"|"reconsider"}
+</discuss-json>`;
+
+export interface DiscussBodyInput {
+  prompt: string;
+  paths?: string[];
+  base_ref?: string;
+}
+
+/**
+ * Build the user-facing body for do_discuss. Pure function — easy to test.
+ *
+ * `prompt` is always the primary input. Optional `paths` and/or `base_ref`
+ * give Codex additional code context to read/inspect itself before
+ * answering (keeps MCP payload small, lets Codex correlate with
+ * surrounding code).
+ */
+export function buildDiscussBody(input: DiscussBodyInput): string {
+  const pathsList =
+    input.paths && input.paths.length > 0
+      ? input.paths.map((p) => `- ${p}`).join("\n")
+      : "";
+  const pathspec =
+    input.paths && input.paths.length > 0
+      ? ` -- ${input.paths.map((p) => JSON.stringify(p)).join(" ")}`
+      : "";
+
+  const contextSections: string[] = [];
+
+  if (input.base_ref) {
+    contextSections.push(
+      `Before responding, read the proposed changes by running:\n\`git diff ${input.base_ref}...HEAD${pathspec}\`\nin the working directory.`,
+    );
+  }
+
+  if (input.paths && input.paths.length > 0 && !input.base_ref) {
+    contextSections.push(
+      `Before responding, read the following file(s) or directories in the working directory to ground your critique:\n${pathsList}`,
+    );
+  }
+
+  const parts: string[] = [];
+  if (contextSections.length > 0) {
+    parts.push(contextSections.join("\n\n"));
+    parts.push("---");
+  }
+  parts.push(input.prompt.trim());
+  parts.push("---");
+  parts.push(BODY_CONTRACT);
+
+  return parts.join("\n\n");
+}
+
 export function registerDiscussTool(server: McpServer): void {
   server.registerTool(
     "do_discuss",
     {
       description:
-        "Discuss a plan, architecture, or approach with GPT-5.4 xHigh via a persistent Codex MCP backend. Sounding board for design decisions — returns a structured critique (objective, risks, blockers, alternatives, missing, verdict) plus the full markdown response. Pass thread_id to continue an existing discussion (follow-ups are ~10x faster than first turn). Read-only sandbox; does not write code.",
+        "Discuss a plan, architecture, or approach with GPT-5.4 xHigh via a persistent Codex MCP backend. Sounding board for design decisions — returns a structured critique (objective, risks, blockers, alternatives, missing, verdict) plus the full markdown response. " +
+        "Optional scope: pass `paths` (files Codex should read) or `base_ref` (e.g. \"main\" — Codex runs `git diff <ref>...HEAD [-- paths]` itself) to ground the discussion in code without embedding it in the prompt. " +
+        "Pass `thread_id` to continue an existing discussion (follow-ups are ~10x faster than first turn). Read-only sandbox; does not write code.",
       inputSchema: {
         prompt: z
           .string()
           .describe(
-            "The plan, proposal, diff, or question to discuss. Include context — acceptance criteria, constraints, prior decisions.",
+            "The plan, proposal, or question to discuss. Include constraints and prior decisions. For code discussions, prefer `paths` / `base_ref` over pasting diffs inline.",
+          ),
+        paths: z
+          .array(z.string())
+          .optional()
+          .describe(
+            "File or directory paths for Codex to read from the working directory before responding. Keeps MCP payload small; Codex has read-only sandbox access so it can read any file in cwd.",
+          ),
+        base_ref: z
+          .string()
+          .optional()
+          .describe(
+            'Git base ref (e.g. "main", "HEAD~3"). When set, Codex runs `git diff base_ref...HEAD [-- paths]` itself before responding. Combine with `paths` to scope the diff.',
           ),
         thread_id: z
           .string()
@@ -124,16 +194,11 @@ export function registerDiscussTool(server: McpServer): void {
       try {
         const client = getCodexMcpClient();
 
-        // Restate the JSON contract in the body of every call so that
-        // resumed threads — including ones that were first started by a
-        // different tool (do_audit) — still emit the discuss JSON shape.
-        const BODY_CONTRACT = `Reply with a short critique, then at the very end emit EXACTLY this JSON block:
-
-<discuss-json>
-{"objective":"<one sentence>","risks":["..."],"blockers":["..."],"alternatives":["..."],"missing":["..."],"verdict":"proceed"|"proceed-with-changes"|"reconsider"}
-</discuss-json>`;
-
-        const bodyWithContract = `${input.prompt}\n\n---\n${BODY_CONTRACT}`;
+        const bodyWithContract = buildDiscussBody({
+          prompt: input.prompt,
+          paths: input.paths,
+          base_ref: input.base_ref,
+        });
 
         const prompt = input.thread_id
           ? bodyWithContract

@@ -23,5 +23,23 @@ export interface AuditStructured {
 }
 export declare function parseAuditJson(text: string): AuditStructured;
 export declare function stripAuditJsonBlock(text: string): string;
+export interface AuditBodyInput {
+    context: string;
+    diff?: string;
+    paths?: string[];
+    base_ref?: string;
+}
+/**
+ * Build the user-facing body for do_audit. Pure function — easy to test.
+ *
+ * Scope resolution (at least one required):
+ *   - diff:      use the inline diff verbatim
+ *   - paths:     tell Codex to read the listed files/dirs itself
+ *   - base_ref:  tell Codex to run `git diff <ref>...HEAD [-- paths]` itself
+ *
+ * diff + (paths|base_ref) can coexist — Codex will use both. paths + base_ref
+ * scope the diff to those paths.
+ */
+export declare function buildAuditBody(input: AuditBodyInput): string;
 export declare function registerAuditTool(server: McpServer): void;
 export {};

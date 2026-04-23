@@ -92,15 +92,31 @@ Comprehensive PR review with GPT-5.4 xHigh. Auto-gathers git context. See `/do:p
 ### do_discuss
 Iterative plan / architecture sounding board with GPT-5.4 xHigh. Returns a structured critique: `objective`, `risks[]`, `blockers[]`, `alternatives[]`, `missing[]`, `verdict` (`proceed` / `proceed-with-changes` / `reconsider`). Pass `thread_id` to continue; follow-ups are ~10x faster than first turn. Read-only sandbox — does not write code.
 
+Optional scope — lets Codex read code itself instead of embedding it in the prompt (keeps MCP payload small):
+- `paths: string[]` — files/directories Codex reads before responding
+- `base_ref: string` — git base ref; Codex runs `git diff <ref>...HEAD [-- paths]` itself
+
 ```typescript
-// Turn 1
+// Plain plan discussion
 mcp__mcp-do__do_discuss({
-  prompt: "Plan: rename all variables from camelCase to snake_case in one PR across 200k LOC. Good idea?",
+  prompt: "Plan: rename all variables from camelCase to snake_case in one PR. Good idea?",
   reasoning_effort: "xhigh",   // default. minimal | low | medium | high | xhigh
 })
-// → { thread_id, verdict: "reconsider", risks: [...], blockers: [...], ... }
 
-// Turn 2 — iterate via thread_id
+// Ground the discussion in actual files — Codex reads them
+mcp__mcp-do__do_discuss({
+  prompt: "Is this auth middleware safe for public traffic?",
+  paths: ["src/auth/middleware.ts", "src/auth/cache.ts"],
+})
+
+// Discuss the proposed diff against main — Codex runs git diff itself
+mcp__mcp-do__do_discuss({
+  prompt: "Is this refactor worth the churn?",
+  base_ref: "main",
+  paths: ["src/auth/"],
+})
+
+// Resume an earlier thread
 mcp__mcp-do__do_discuss({
   thread_id: "019dbb...",
   prompt: "What if we split by module boundary into 5 PRs?",
@@ -108,24 +124,42 @@ mcp__mcp-do__do_discuss({
 ```
 
 ### do_audit
-Post-delivery auditor with GPT-5.4 High. Give it `context` (plan/acceptance criteria) and `diff` (what was delivered), get a typed verdict:
+Post-delivery auditor with GPT-5.4 High. Give it `context` (plan/acceptance criteria) plus a scope, get a typed verdict:
 
 - `verdict`: `"pass"` | `"concerns"` | `"blockers"`
 - `blockers[]`, `concerns[]`, `missed_requirements[]`, `strengths[]`, `next_steps[]` — all typed string arrays
 
+Scope (at least one required):
+- `diff: string` — inline git diff or file contents (best for small changes)
+- `paths: string[]` — file/dir paths; Codex reads them itself (no inline payload)
+- `base_ref: string` — git base ref; Codex runs `git diff <ref>...HEAD [-- paths]` itself
+
 Pass `thread_id` from a prior `do_discuss` to audit inside the same Codex conversation — it remembers the plan it helped shape. Also the right tool for adversarial reviews that challenge design choices.
 
 ```typescript
+// Small inline diff
 mcp__mcp-do__do_audit({
   context: "Add function add(a,b): number with test and TypeError on non-number input.",
   diff: "+export function add(a: number, b: number) { return a + b; }",
-  thread_id: "019dbb...",     // optional — continues a prior discuss thread
   reasoning_effort: "high",   // default
 })
-// → { verdict: "blockers", blockers: ["..."], missed_requirements: ["..."], ... }
+
+// Audit a PR against main — zero diff in the MCP payload, Codex runs git diff itself
+mcp__mcp-do__do_audit({
+  context: "Plan from prior discussion (thread_id).",
+  base_ref: "main",
+  paths: ["src/auth/", "src/api/checkout.ts"],
+  thread_id: "019dbb...",
+})
+
+// Audit the current state of specific files against a spec
+mcp__mcp-do__do_audit({
+  context: "Spec: stable-id assignment, sticky variant, SRM monitoring.",
+  paths: ["src/ab/assignment.ts", "src/ab/metrics.ts"],
+})
 ```
 
-Typical flow: `do_discuss` to pressure-test a plan → implement → `do_audit` with the same `thread_id` so Codex reviews against the plan it critiqued.
+Typical flow: `do_discuss` to pressure-test a plan → implement → `do_audit` with the same `thread_id` (and `base_ref: "main"`) so Codex reviews against the plan it critiqued — no diff in the MCP payload.
 
 ---
 
@@ -185,6 +219,8 @@ mcp__mcp-do__do_list_profiles({})
 | `session_id` | Droid presets + session_continue | Continue existing droid session |
 | `thread_id` | `do_discuss`, `do_audit` | Continue existing Codex thread |
 | `reasoning_effort` | `do_discuss`, `do_audit` | `minimal` / `low` / `medium` / `high` / `xhigh` |
+| `paths` | `do_discuss`, `do_audit` | File/dir paths for Codex to read (no inline payload) |
+| `base_ref` | `do_discuss`, `do_audit` | Git base ref — Codex runs `git diff base_ref...HEAD` itself |
 | `depth` | `do_research` | `"deep"` (default) or `"fast"` |
 | `scan_disk` | `do_session_list` | Walk disk for complete session list |
 

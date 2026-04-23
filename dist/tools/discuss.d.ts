@@ -21,4 +21,18 @@ export interface DiscussStructured {
 }
 export declare function parseDiscussJson(text: string): DiscussStructured;
 export declare function stripDiscussJsonBlock(text: string): string;
+export interface DiscussBodyInput {
+    prompt: string;
+    paths?: string[];
+    base_ref?: string;
+}
+/**
+ * Build the user-facing body for do_discuss. Pure function — easy to test.
+ *
+ * `prompt` is always the primary input. Optional `paths` and/or `base_ref`
+ * give Codex additional code context to read/inspect itself before
+ * answering (keeps MCP payload small, lets Codex correlate with
+ * surrounding code).
+ */
+export declare function buildDiscussBody(input: DiscussBodyInput): string;
 export declare function registerDiscussTool(server: McpServer): void;

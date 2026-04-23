@@ -47,6 +47,9 @@ tmp/
 .factory/
 !.factory/droids/
 
+# plugin-cache artifacts (Claude Code writes these during version bumps)
+.orphaned_at
+
 # stray files written by mission features that ran in this cwd
 /step1.txt
 /step2.txt

@@ -9,7 +9,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { loadConfig } from "./config.js";
 import { registerAllTools } from "./tools/index.js";
-const VERSION = "0.3.0";
+const VERSION = "0.4.0";
 async function main() {
     // Load config (default provider, etc.) before registering tools.
     await loadConfig();

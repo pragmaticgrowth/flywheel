@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseAuditJson, stripAuditJsonBlock } from "./audit.js";
+import { buildAuditBody, parseAuditJson, stripAuditJsonBlock } from "./audit.js";
 
 describe("parseAuditJson", () => {
   it("extracts a full audit JSON block", () => {
@@ -50,6 +50,66 @@ blockers
     const parsed = parseAuditJson(text);
     expect(parsed.verdict).toBeUndefined();
     expect(parsed.blockers).toEqual([]);
+  });
+});
+
+describe("buildAuditBody", () => {
+  it("accepts an inline diff", () => {
+    const body = buildAuditBody({ context: "spec", diff: "+const x = 1;" });
+    expect(body).toContain("# Context");
+    expect(body).toContain("spec");
+    expect(body).toContain("Inline diff / delivered work:");
+    expect(body).toContain("+const x = 1;");
+    expect(body).toContain("<audit-json>");
+  });
+
+  it("accepts paths only (Codex reads files itself)", () => {
+    const body = buildAuditBody({
+      context: "spec",
+      paths: ["src/auth/middleware.ts", "src/auth/cache.ts"],
+    });
+    expect(body).toContain("Read the following file(s) or directories");
+    expect(body).toContain("- src/auth/middleware.ts");
+    expect(body).toContain("- src/auth/cache.ts");
+    expect(body).not.toContain("git diff");
+  });
+
+  it("accepts base_ref only", () => {
+    const body = buildAuditBody({ context: "spec", base_ref: "main" });
+    expect(body).toContain("git diff main...HEAD");
+    expect(body).not.toContain("--"); // no pathspec when no paths
+  });
+
+  it("combines base_ref + paths into a scoped git diff", () => {
+    const body = buildAuditBody({
+      context: "spec",
+      base_ref: "main",
+      paths: ["src/auth/", "tests/"],
+    });
+    expect(body).toContain(`git diff main...HEAD -- "src/auth/" "tests/"`);
+  });
+
+  it("combines inline diff with paths", () => {
+    const body = buildAuditBody({
+      context: "spec",
+      diff: "inline snippet",
+      paths: ["src/foo.ts"],
+    });
+    expect(body).toContain("- src/foo.ts");
+    expect(body).toContain("Inline diff");
+    expect(body).toContain("inline snippet");
+  });
+
+  it("throws when no scope provided", () => {
+    expect(() => buildAuditBody({ context: "spec" })).toThrow(
+      /needs at least one of/,
+    );
+  });
+
+  it("throws when all scopes empty", () => {
+    expect(() =>
+      buildAuditBody({ context: "spec", diff: "   ", paths: [] }),
+    ).toThrow(/needs at least one of/);
   });
 });
 

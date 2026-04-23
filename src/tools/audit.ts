@@ -107,12 +107,83 @@ export function stripAuditJsonBlock(text: string): string {
   return text.replace(JSON_RE, "").trim();
 }
 
+const BODY_CONTRACT = `Produce a markdown audit (## Verdict / ## Blockers / ## Concerns / ## Missed Requirements / ## Strengths / ## Suggested Next Steps), and at the very end emit EXACTLY this JSON block:
+
+<audit-json>
+{"verdict":"pass"|"concerns"|"blockers","blockers":["..."],"concerns":["..."],"missed_requirements":["..."],"strengths":["..."],"next_steps":["..."]}
+</audit-json>`;
+
+export interface AuditBodyInput {
+  context: string;
+  diff?: string;
+  paths?: string[];
+  base_ref?: string;
+}
+
+/**
+ * Build the user-facing body for do_audit. Pure function — easy to test.
+ *
+ * Scope resolution (at least one required):
+ *   - diff:      use the inline diff verbatim
+ *   - paths:     tell Codex to read the listed files/dirs itself
+ *   - base_ref:  tell Codex to run `git diff <ref>...HEAD [-- paths]` itself
+ *
+ * diff + (paths|base_ref) can coexist — Codex will use both. paths + base_ref
+ * scope the diff to those paths.
+ */
+export function buildAuditBody(input: AuditBodyInput): string {
+  const pathsList =
+    input.paths && input.paths.length > 0
+      ? input.paths.map((p) => `- ${p}`).join("\n")
+      : "";
+  const pathspec =
+    input.paths && input.paths.length > 0
+      ? ` -- ${input.paths.map((p) => JSON.stringify(p)).join(" ")}`
+      : "";
+
+  const scopeSections: string[] = [];
+
+  if (input.base_ref) {
+    scopeSections.push(
+      `Run \`git diff ${input.base_ref}...HEAD${pathspec}\` in the working directory and audit the resulting changes against the context.`,
+    );
+  }
+
+  if (input.paths && input.paths.length > 0 && !input.base_ref) {
+    scopeSections.push(
+      `Read the following file(s) or directories in the working directory and audit their current state against the context:\n${pathsList}`,
+    );
+  }
+
+  if (input.diff && input.diff.trim()) {
+    scopeSections.push(`Inline diff / delivered work:\n\n${input.diff.trim()}`);
+  }
+
+  if (scopeSections.length === 0) {
+    throw new Error(
+      "do_audit needs at least one of: `diff`, `paths`, or `base_ref`",
+    );
+  }
+
+  return [
+    "# Context (original plan / acceptance criteria)",
+    input.context.trim(),
+    "",
+    "# Delivered work",
+    scopeSections.join("\n\n"),
+    "",
+    BODY_CONTRACT,
+  ].join("\n");
+}
+
 export function registerAuditTool(server: McpServer): void {
   server.registerTool(
     "do_audit",
     {
       description:
-        "Audit delivered work with GPT-5.4 High via a persistent Codex MCP backend. Returns a fully typed structured verdict: verdict (pass/concerns/blockers), blockers[], concerns[], missed_requirements[], strengths[], next_steps[]. Pass thread_id from a prior do_discuss to audit against that same conversation (Codex remembers the plan it helped shape). Read-only sandbox.",
+        "Audit delivered work with GPT-5.4 High via a persistent Codex MCP backend. Returns a fully typed structured verdict: verdict (pass/concerns/blockers), blockers[], concerns[], missed_requirements[], strengths[], next_steps[]. " +
+        "Scope options (at least one required): `diff` (inline git diff or file contents), `paths` (file/dir paths — Codex reads them itself, no inline payload), `base_ref` (e.g. \"main\" — Codex runs `git diff <ref>...HEAD [-- paths]` itself). `paths` + `base_ref` scope the diff to those paths. " +
+        "Pass `thread_id` from a prior `do_discuss` to audit inside the same conversation. Read-only sandbox.",
       inputSchema: {
         context: z
           .string()
@@ -121,8 +192,21 @@ export function registerAuditTool(server: McpServer): void {
           ),
         diff: z
           .string()
+          .optional()
           .describe(
-            "The delivered work — git diff, file contents, or description of changes.",
+            "Inline delivered work — git diff, file contents, or description of changes. Use this for small diffs. For larger scopes prefer `paths` or `base_ref` so Codex reads the files/diff itself.",
+          ),
+        paths: z
+          .array(z.string())
+          .optional()
+          .describe(
+            "File or directory paths for Codex to read from the working directory. Codex has read-only sandbox access so it can read any file in cwd. Reduces MCP payload size and lets Codex correlate changes with surrounding context.",
+          ),
+        base_ref: z
+          .string()
+          .optional()
+          .describe(
+            'Git base ref (e.g. "main", "HEAD~3"). When set, Codex runs `git diff base_ref...HEAD [-- paths]` itself to get the diff, then audits it against `context`. Combine with `paths` to scope the diff.',
           ),
         thread_id: z
           .string()
@@ -148,26 +232,19 @@ export function registerAuditTool(server: McpServer): void {
       try {
         const client = getCodexMcpClient();
 
-        // The JSON-emit contract must be in EVERY call body, not just the
-        // first-turn system prompt — because this tool may audit on a
-        // thread_id that was started by do_discuss (different JSON format)
-        // or a prior do_audit. Restating the contract keeps the response
-        // shape stable regardless of thread history.
-        const BODY_CONTRACT = `Produce a markdown audit (## Verdict / ## Blockers / ## Concerns / ## Missed Requirements / ## Strengths / ## Suggested Next Steps), and at the very end emit EXACTLY this JSON block:
-
-<audit-json>
-{"verdict":"pass"|"concerns"|"blockers","blockers":["..."],"concerns":["..."],"missed_requirements":["..."],"strengths":["..."],"next_steps":["..."]}
-</audit-json>`;
-
-        const body = [
-          "# Context (original plan / acceptance criteria)",
-          input.context.trim(),
-          "",
-          "# Delivered work",
-          input.diff.trim(),
-          "",
-          BODY_CONTRACT,
-        ].join("\n");
+        let body: string;
+        try {
+          body = buildAuditBody({
+            context: input.context,
+            diff: input.diff,
+            paths: input.paths,
+            base_ref: input.base_ref,
+          });
+        } catch (err) {
+          return createErrorResponse(
+            err instanceof Error ? err.message : String(err),
+          );
+        }
 
         const prompt = input.thread_id
           ? body
