@@ -32,8 +32,9 @@ Before drafting anything, gather from the CURRENT repo:
 2. Interview with AskUserQuestion, max 4 questions per round, non-technical only (who is it
    for; what would they see when it works; what must not break; urgency; out of scope).
    Derive all technical detail yourself by reading the codebase.
-3. Size and split: one issue = one independently shippable change (≈ ≤1 day of agent work).
-   Bigger wishes become multiple ordered issues ("blocked by #N") — tell the user you split.
+3. Size and split: one issue = one independently shippable change. An ambitious but coherent
+   wish can stay a single issue — split only when the parts ship and verify independently,
+   ordering them with "blocked by #N" and telling the user you split.
 
 ## Mode B — batch document (bug reports, feedback lists, audits)
 
@@ -83,13 +84,14 @@ Stop, label `agent-blocked`, comment: attempted paths, evidence, blocker, what w
 /goal <acceptance criteria restated as one transcript-verifiable condition: exact commands +
 expected outputs, the constraints above, and "open a PR titled '<type>(<scope>): <summary>'
 whose description includes Closes #<N>, a plain-language summary for a non-technical
-reviewer, and verification evidence (test output, screenshots)."> Stop after 25 turns.
+reviewer, and verification evidence (test output, screenshots)."> Stop when every acceptance
+criterion verifiably passes, or when blocked (follow "If blocked") — never grind past a blocker.
 ```
 
 ## Rules
 
 - Every issue must be safe for an unattended agent: objective gates, hard rules copied in,
-  blocked-path defined, turn cap in the goal contract.
+  blocked-path defined, outcome-based stop condition in the goal contract.
 - Titles are plain language ("Customers get a receipt email after payment"), not jargon.
 - Confirm with the user before filing (single draft, or the batch table). After filing,
   point at the next step: run `/dispatch` once, or let the `/loop … /dispatch` pick it up.

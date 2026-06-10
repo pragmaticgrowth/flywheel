@@ -1,6 +1,6 @@
 {
   "name": "pg-plugin",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Pragmatic Growth workflow skills for Claude Code — wish (plain-language wants → agent-ready GitHub issues), dispatch (factory orchestrator for the issue queue), and loop-architect (design autonomous loop contracts).",
   "author": {
     "name": "pragmaticgrowth"
