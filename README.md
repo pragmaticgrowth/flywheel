@@ -24,8 +24,10 @@ The intended flow: capture wants with **wish** → work the queue with
 /plugin install pg-plugin@pragmatic-growth
 ```
 
-Skills activate automatically when the conversation matches their
-description, or invoke them directly: `/wish`, `/dispatch`.
+Once installed, the skills surface namespaced as `pg-plugin:wish`,
+`pg-plugin:dispatch`, and `pg-plugin:loop-architect`. They activate
+automatically when the conversation matches their description, or invoke
+them directly: `/wish`, `/dispatch`.
 
 ## Layout
 

@@ -33,9 +33,10 @@ skills/<name>/SKILL.md            # the three skills
   without an explicit ask.
 - **Portability.** Skills must not contain user-specific absolute paths
   (`/Users/...`, `~/.claude/...`). They run in arbitrary repos.
-- **The canonical copies live here.** `~/.claude/skills/{wish,dispatch,
-  loop-architect}` are the user-level originals; once the plugin is
-  installed, edits should land in this repo and version-bump
-  `plugin.json`.
+- **This repo is the single source of truth.** The plugin is installed
+  user-scoped from the `pragmatic-growth` marketplace; the former
+  user-level copies in `~/.claude/skills/` were deleted on 2026-06-10.
+  Skill edits land here, bump the `plugin.json` version, then refresh
+  with `/plugin marketplace update pragmatic-growth`.
 - **Validation.** After changing plugin structure or manifests, run the
   `plugin-dev:plugin-validator` agent before committing.
