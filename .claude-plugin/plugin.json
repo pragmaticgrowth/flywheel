@@ -1,15 +1,11 @@
 {
-  "name": "do",
-  "version": "0.4.1",
-  "description": "3rd eye for Claude Code — delegate research, review, architecture analysis, and bug hunting to headless AI models via droid and opencode.",
+  "name": "pg-plugin",
+  "version": "1.0.0",
+  "description": "Pragmatic Growth workflow skills for Claude Code — wish (plain-language wants → agent-ready GitHub issues), dispatch (factory orchestrator for the issue queue), and loop-architect (design autonomous loop contracts).",
   "author": {
     "name": "pragmaticgrowth"
   },
-  "repository": "https://github.com/pragmaticgrowth/mcp-do",
-  "mcpServers": {
-    "mcp-do": {
-      "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/index.js"]
-    }
-  }
+  "repository": "https://github.com/pragmaticgrowth/pg-plugin",
+  "license": "MIT",
+  "keywords": ["skills", "workflow", "automation", "github-issues", "loops"]
 }

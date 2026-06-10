@@ -6,10 +6,10 @@
   },
   "plugins": [
     {
-      "name": "do",
-      "description": "3rd eye for Claude Code — delegate research, review, architecture analysis, and bug hunting to headless AI models via droid and opencode backends",
+      "name": "pg-plugin",
+      "description": "Pragmatic Growth workflow skills — wish, dispatch, and loop-architect: turn plain-language wants into agent-ready GitHub issues, work the issue queue with isolated implementer agents, and design autonomous loop contracts.",
       "source": "./",
-      "homepage": "https://github.com/pragmaticgrowth/mcp-do",
+      "homepage": "https://github.com/pragmaticgrowth/pg-plugin",
       "author": {
         "name": "pragmaticgrowth"
       }
