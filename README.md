@@ -3,7 +3,7 @@
 Pragmatic Growth workflow skills for Claude Code, distributed via the
 `pragmatic-growth` marketplace.
 
-A skills-only plugin — no MCP servers, no commands, no hooks. Three skills
+A skills-only plugin — no MCP servers, no commands, no hooks. Four skills
 that together form a plain-language → autonomous-execution pipeline:
 
 | Skill | What it does |
@@ -11,6 +11,7 @@ that together form a plain-language → autonomous-execution pipeline:
 | **wish** | Turns plain-language wants ("I want…", "it bothers me that…", `/wish`) — or whole documents of them — into agent-ready GitHub issues with measurable goal contracts. Never implements. |
 | **dispatch** | Factory orchestrator. Shepherds factory PRs through review, claims agent-ready issues, and spawns one isolated implementer agent per issue. Designed to run as `/loop 15m /dispatch`. |
 | **loop-architect** | Designs the loop contract (prompt + verification + stop conditions) for autonomous, scheduled, or long unattended runs instead of just firing off the task. |
+| **define-goal** | Shapes a fuzzy intention into a measurable objective and hands back a copy-pasteable `/goal` line with verification evidence and a stop clause. Adapted from OpenAI's curated `define-goal` skill for Claude Code's `/goal`. |
 
 The intended flow: capture wants with **wish** → work the queue with
 **dispatch** → keep it running unattended with a loop designed by
@@ -25,9 +26,10 @@ The intended flow: capture wants with **wish** → work the queue with
 ```
 
 Once installed, the skills surface namespaced as `pg-plugin:wish`,
-`pg-plugin:dispatch`, and `pg-plugin:loop-architect`. They activate
-automatically when the conversation matches their description, or invoke
-them directly: `/wish`, `/dispatch`.
+`pg-plugin:dispatch`, `pg-plugin:loop-architect`, and
+`pg-plugin:define-goal`. They activate automatically when the conversation
+matches their description, or invoke them directly: `/wish`, `/dispatch`,
+`/define-goal`.
 
 ## Layout
 
@@ -39,7 +41,8 @@ pg-plugin/
 └── skills/
     ├── wish/SKILL.md
     ├── dispatch/SKILL.md
-    └── loop-architect/SKILL.md
+    ├── loop-architect/SKILL.md
+    └── define-goal/SKILL.md
 ```
 
 ## License
