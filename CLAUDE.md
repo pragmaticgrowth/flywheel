@@ -40,7 +40,10 @@ skills/<name>/SKILL.md            # the four skills
 - **This repo is the single source of truth.** The plugin is installed
   user-scoped from the `pragmatic-growth` marketplace; the former
   user-level copies in `~/.claude/skills/` were deleted on 2026-06-10.
-  Skill edits land here, bump the `plugin.json` version, then refresh
-  with `/plugin marketplace update pragmatic-growth`.
+  Skill edits land here, bump the `plugin.json` version, push, then
+  refresh with `/plugin marketplace update pragmatic-growth`.
+- **Push every time.** Pushing to GitHub (`origin main`) after committing
+  is pre-authorized — always push without asking. The installed plugin
+  refreshes from GitHub, so an unpushed commit is an unshipped skill.
 - **Validation.** After changing plugin structure or manifests, run the
   `plugin-dev:plugin-validator` agent before committing.
