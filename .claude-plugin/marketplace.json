@@ -7,7 +7,7 @@
   "plugins": [
     {
       "name": "pg-plugin",
-      "description": "Pragmatic Growth workflow skills — wish, dispatch, loop-architect, and define-goal: turn plain-language wants into agent-ready GitHub issues, work the issue queue with isolated implementer agents, design autonomous loop contracts, and shape fuzzy intent into measurable /goal handoffs.",
+      "description": "Pragmatic Growth workflow skills — define-goal, dispatch, and loop-architect: turn plain-language wants into measurable goal contracts in a docs/goals queue, work the queue with isolated implementer agents, and design autonomous loop contracts.",
       "source": "./",
       "homepage": "https://github.com/pragmaticgrowth/pg-plugin",
       "author": {

@@ -1,11 +1,11 @@
 {
   "name": "pg-plugin",
-  "version": "1.1.0",
-  "description": "Pragmatic Growth workflow skills for Claude Code — wish (plain-language wants → agent-ready GitHub issues), dispatch (factory orchestrator for the issue queue), loop-architect (design autonomous loop contracts), and define-goal (fuzzy intent → measurable /goal handoff).",
+  "version": "2.0.0",
+  "description": "Pragmatic Growth workflow skills for Claude Code — define-goal (plain-language wants → measurable goal contracts, run now via /goal or queued in docs/goals), dispatch (factory orchestrator for the docs/goals queue), and loop-architect (design autonomous loop contracts).",
   "author": {
     "name": "pragmaticgrowth"
   },
   "repository": "https://github.com/pragmaticgrowth/pg-plugin",
   "license": "MIT",
-  "keywords": ["skills", "workflow", "automation", "github-issues", "loops", "goals"]
+  "keywords": ["skills", "workflow", "automation", "goals", "loops", "factory"]
 }
