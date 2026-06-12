@@ -39,7 +39,8 @@ or read files — every clause must be provable by output that appears in the tr
 3. Repair weak goals: rewrite vague goals into measurable objectives when context makes it
    safe; ask one concise question when the missing detail changes the outcome or validation;
    reject pure activity goals ("make progress", "keep investigating") until sharpened.
-4. Heuristics: bugs → reproduce first, failing-then-passing validator; tests → exact command
+4. Heuristics: bugs → success is defined as reproduction first (a failing test the
+   implementer writes — recon never reproduces), fix second; tests → exact command
    + pass condition; performance → metric, threshold, method, run count; research → the
    decision it must enable + evidence standard; operations → healthy state, window,
    rollback trigger.
@@ -62,6 +63,33 @@ what should cause the agent to stop and ask?
 - Interview with AskUserQuestion only for non-technical gaps (who is it for, what would
   they see working, what must not break, urgency, out of scope) — max 4 questions per
   round. Derive technical detail yourself by reading the codebase.
+
+## Recon — parallel investigation for bugs and unfamiliar features
+
+When the want is a bug, or a feature touching code you can't pin from a quick read, do NOT
+investigate in your own context — fan out read-only subagents, all in ONE message so they
+run concurrently:
+
+- **Model economy (mandatory)**: recon never inherits the session model — that burns the
+  weekly limit on search work. Search-shaped angles → the `Explore` agent type (read-only,
+  runs on a fast cheap model by design); no Explore in this environment → a general
+  subagent with `model: haiku`. At most one judgment agent per fan-out with
+  `model: sonnet` to weigh the evidence and rank root-cause hypotheses — search agents
+  report what the code shows (files, call paths, suspect commits); ranking what it means
+  happens in the sonnet agent or your own synthesis.
+- **Angles, 2–4 per fan-out** — for a bug: symptom trace (error strings/log lines → the
+  code that throws and handles them), data/control flow (entry point → failure area),
+  recent-change scan (`git log`/`blame` on suspect areas), config/wiring (flags, env,
+  versions). For a feature: where similar features live, surfaces to touch (routes, UI,
+  schema, jobs), constraints (migrations, auth, test layout).
+- **Contract per subagent**: return a summary, never file dumps — candidate files as
+  `path:line`, a hypothesis WITH evidence, confidence, and what would confirm it.
+- **Synthesize in your context**: agreeing findings → the goal file's Context section and
+  acceptance criteria (for bugs, "failing test reproducing the root cause" is the first
+  criterion). Conflicting hypotheses → record both in the goal file and let the
+  implementer's failing test arbitrate — don't guess a winner.
+- Recon is recon: read-only, no fixes, no heavy repro — the implementer does that. Skip
+  the fan-out entirely when one quick read already pins the area.
 
 ## Pick the destination
 
@@ -196,8 +224,9 @@ When given a document (pasted text, file path, attachment):
 2. **Extract** candidate items with their evidence; **dedupe** against each other and
    against existing entries in `index.yaml` AND `archive.yaml` (an archived goal can
    otherwise be re-filed). Pure questions/opinions → "not goal-able".
-3. **Locate cheaply**: read code to pin the likely area per item; the implementer does the
-   heavy repro.
+3. **Locate cheaply**: pin the likely area per item via Recon above — one fan-out can
+   cover several items (give each subagent the full item list for its angle); the
+   implementer does the heavy repro.
 4. One batched AskUserQuestion round for genuinely ambiguous items only, then an approval
    table before writing anything: `id | proposed title | priority | dup-of | notes`.
 5. On approval, write one goal file + index entry per confirmed item, commit once, reply
