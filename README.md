@@ -25,15 +25,25 @@ merge surface.
 
 ```
 docs/goals/
-├── index.yaml        # queue state — status lives ONLY here
+├── index.yaml        # config + queue state — status lives ONLY here
 ├── 001-<slug>.md     # goal contracts — content only, never status
 └── done/             # archived completed goal files
 ```
 
 Statuses: `not_started` → `in_progress` → `completed`, plus `blocked`
-(with a reason). `define-goal` creates goal files and index entries;
-`dispatch` is the only writer of status afterward; implementer agents
-never touch `docs/goals/` at all.
+(with a reason). The index's `config:` block sets the integration
+branch (`base:` — main, staging, or any other; goals branch from it and
+merge back to it), the merge policy (`pr` = human merges, `auto` = the
+factory rebases, re-verifies, and merges back itself), the parallelism
+cap (`wip:`), and repo-wide `skills:` every implementer must invoke;
+goal files add goal-specific `skills:` in frontmatter.
+
+`define-goal` creates goal files and index entries; status writes go
+through dispatch's claim protocol (pull → flip → commit → push, with
+push acceptance on the base branch as the arbiter), so parallel
+sessions can safely work the same queue. Implementer agents work in
+isolated worktrees branched from `origin/<base>` and never touch
+`docs/goals/` at all.
 
 ## Install
 

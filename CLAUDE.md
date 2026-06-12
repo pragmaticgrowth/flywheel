@@ -15,10 +15,12 @@ file-based goal queue (`docs/goals/` in target repos):
   `define-goal` skill (its `create_goal`/`get_goal` tools don't exist in
   Claude Code).
 - **dispatch** — factory orchestrator for the docs/goals queue: shepherds
-  factory PRs, claims `not_started` goals (status flip committed before
-  spawning), spawns one isolated implementer agent per goal. Sole writer
-  of status in `index.yaml`. Built to run as `/loop 15m /dispatch`;
-  iterations are idempotent.
+  factory PRs, claims `not_started` goals (status flip committed and
+  pushed before spawning), spawns one isolated implementer agent per
+  goal, integrates merge-backs under `merge: auto`. Also has a solo mode
+  ("work goal 005") for interactive sessions. Built to run as
+  `/loop 15m /dispatch`; iterations are idempotent and parallel sessions
+  are safe (push acceptance on the base branch arbitrates claims).
 - **loop-architect** — designs loop contracts (prompt + verification +
   stop conditions) for autonomous /goal, /loop, routine, or remote runs.
 
@@ -27,6 +29,12 @@ lives only in `index.yaml` (never goal-file frontmatter); statuses are
 `not_started | in_progress | completed | blocked` — blocked is required
 to avoid re-dispatch livelock; sequential `NNN-slug` IDs are safe because
 only define-goal mints them; implementers never edit `docs/goals/`.
+Added in v2.1.0: an index `config:` block (`base` integration branch,
+`merge: pr|auto`, `wip` cap, repo `skills:`); goal frontmatter `skills:`
+for goal-specific skill mandates (method skills stay hardcoded in
+dispatch's brief); claim protocol with push-acceptance arbitration so
+parallel sessions are safe; merge-auto integration is orchestrator-only,
+one goal at a time, sync-then-re-verify before every merge.
 
 History note: this repo was previously `mcp-do`, a stdio MCP server
 wrapping droid/opencode CLIs (removed in v1.0.0). The **wish** skill
