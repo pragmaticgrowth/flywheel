@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Skills-only Claude Code plugin from Pragmatic Growth, v2.3.0. No MCP
+Skills-only Claude Code plugin from Pragmatic Growth, v2.4.0. No MCP
 servers, no commands, no agents, no hooks, no build step — three skills
 under `skills/`, each a single `SKILL.md`, forming a plain-language →
 autonomous-execution pipeline around a file-based goal queue
@@ -37,8 +37,15 @@ autonomous-execution pipeline around a file-based goal queue
   only when the work is merged.
 - `index.yaml` `config:` block: `base` (integration branch goals branch
   from and merge back to — main, staging, or other; per-goal `base:`
-  override allowed), `merge: pr|auto`, `wip` parallelism cap, repo-wide
-  `skills`. Defaults: repo default branch, `pr`, 2, none.
+  override allowed), `merge: pr|auto`, `wip` parallelism cap, `model`
+  (inherit|sonnet|haiku — applied to every code agent dispatch spawns;
+  the repo owner's depth-vs-limit trade), repo-wide `skills`. Defaults:
+  repo default branch, `pr`, 2, inherit, none.
+- Goal frontmatter `type: bug|feature|chore` shapes the contract: bugs
+  always lead with a failing-test-reproduces-root-cause criterion (all
+  recon hypotheses recorded); features must fill Out of scope; chores
+  prove "no behavior change" (suite green before and after) plus one
+  mechanical check.
 - Claim protocol: every status write is pull → flip one entry → commit
   (`chore(goals): claim|complete|block|archive <id>`) → push on the base
   branch; push acceptance arbitrates parallel sessions. Same arbitration

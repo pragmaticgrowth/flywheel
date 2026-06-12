@@ -35,8 +35,11 @@ Statuses: `not_started` → `in_progress` → `completed`, plus `blocked`
 branch (`base:` — main, staging, or any other; goals branch from it and
 merge back to it), the merge policy (`pr` = human merges, `auto` = the
 factory rebases, re-verifies, and merges back itself), the parallelism
-cap (`wip:`), and repo-wide `skills:` every implementer must invoke;
-goal files add goal-specific `skills:` in frontmatter.
+cap (`wip:`), the model for spawned code agents (`model:` — inherit,
+sonnet, or haiku to stretch weekly limits), and repo-wide `skills:`
+every implementer must invoke; goal files add goal-specific `skills:`
+and a `type:` (bug | feature | chore) that shapes the contract in
+frontmatter.
 
 `define-goal` creates goal files and index entries; status writes go
 through dispatch's claim protocol (pull → flip → commit → push, with
