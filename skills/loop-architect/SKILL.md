@@ -28,6 +28,7 @@ one-shot prompt instead and say which condition failed.
 | Work until a verifiable end state is true | `/goal` (Haiku evaluator checks after every turn) |
 | Poll/babysit on a cadence while a session is open | `/loop <interval> <skill-or-prompt>` |
 | Recurring default maintenance for this repo | bare `/loop` + a `.claude/loop.md` |
+| A backlog of shippable changes worked unattended | docs/goals queue — fill with `define-goal`, work with `/loop 15m /dispatch` |
 | Must run with the laptop closed | Routine (`/schedule`; cloud; schedule / API / GitHub triggers) |
 | Needs local files, machine on, no session open | Desktop scheduled task |
 | React to external events (CI, chat) instead of polling | Channels (`--channels`) or Routine API trigger |
