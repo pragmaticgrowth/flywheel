@@ -232,6 +232,14 @@ When given a document (pasted text, file path, attachment):
 5. On approval, write one goal file + index entry per confirmed item, commit once, reply
    with a one-line queue summary.
 
+Sizing the orchestration: with ~5+ confirmed items and the Workflow tool available
+(Claude Code ≥2.1.154; can be disabled — never assume it), run the per-item work as one
+workflow — `pipeline(items, locate, draft)` with finder agents on cheap models — instead
+of repeated fan-outs; drafts land in script variables, never as files — the step-4
+approval table still gates every file write. The user also approves the workflow's phase
+plan before it runs. Below that size, or without the tool, the plain Recon fan-out is
+cheaper and simpler — the Claude Code docs' own threshold.
+
 ## Related skills
 
 - Recurring or unattended run rather than a single goal → design the contract with

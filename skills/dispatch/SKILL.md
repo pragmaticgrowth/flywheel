@@ -127,8 +127,11 @@ overrides `config.base` for that goal (epic integration branches).
 
 ## Phase 3 — spawn the implementer (depth 1, background, worktree isolation)
 
-One Agent per claimed goal, `isolation: worktree`, `run_in_background: true`, with this
-brief (fill in `<id>`, `<base>`, and the resolved skill lists):
+One Agent per claimed goal, `isolation: worktree`, `run_in_background: true` — always the
+Agent tool, never a Workflow run: a workflow dies with your session leaving nothing to
+respawn, while a background agent's branch commits plus the stale-claim rule make crashed
+work recoverable. Brief (fill in `<id>`, `<base>`,
+and the resolved skill lists):
 
 ```
 Implement the goal in docs/goals/<id>.md exactly per its "Goal contract" section — read

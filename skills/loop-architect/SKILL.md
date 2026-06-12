@@ -37,6 +37,13 @@ one-shot prompt instead and say which condition failed.
 Combos are normal: workflow + `/goal` for hard completion; skill + `/loop` for cadence;
 routine + channel for laptop-closed with phone telemetry.
 
+Workflow thresholds (per Claude Code docs): >5 independent agents or a multi-stage
+find→verify→synthesize loop → workflow; 2–4 parallel lookups → plain subagents, cheaper
+and simpler; anything that must survive the session (cross-iteration implementers,
+multi-day queues) → background agents + a state file, never a workflow — runs are
+session-bound and don't resume across sessions. The Workflow tool needs Claude Code
+≥2.1.154 and can be disabled; design a plain-subagent fallback.
+
 ## Step 3 — Write the contract
 
 ### For /goal — six elements, one cap (condition max 4,000 chars)
