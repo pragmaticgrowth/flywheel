@@ -21,10 +21,11 @@ alike; it is the repo owner's depth-vs-weekly-limit trade, not yours to override
 
 ## Hard rules (every iteration, before any action)
 
-- Merging follows `config.merge`: under `pr`, NEVER merge — a human merges, always. Under
-  `auto`, only the orchestrator merges (see Integration), sequentially, on a synced and
-  re-verified branch — implementers never self-merge in either mode. Never push protected
-  branches.
+- Merging follows `config.merge`. Under `pr` the human merges — leave even fully verified
+  PRs open and surface them under needs-you. Under `auto`, merging back is the
+  orchestrator's own job: you are expected to run `gh pr merge` yourself per Integration,
+  sequentially, on a synced and re-verified branch. Implementers never self-merge in
+  either mode. Never push protected branches.
 - Read the repo's CLAUDE.md / AGENTS.md hard rules once per session and treat them as law
   (deploy rules, forbidden merges, migration rules). Repeat-check before any git/deploy action.
 - **Every queue write goes through the claim protocol below**, from the `<base>` checkout.
@@ -99,6 +100,15 @@ Apply the stale-claim rule from above to entries with no PR and no live agent.
 
 ## Integration (merge: auto) — orchestrator only, one goal at a time
 
+**Merge-rights preflight** (once per session, before the first integration spends
+anything on sync or gates): the merge step needs the harness to permit `gh pr merge` —
+check for an allow rule matching it (e.g. `Bash(gh pr merge:*)`) in `permissions.allow`
+of the repo's `.claude/settings.json` / `.claude/settings.local.json` or user-scope
+settings. No rule found and the session is unattended (this iteration was fired by a
+schedule, not typed by a human — no one can approve a prompt) → go straight to the
+permission-stall protocol below instead of burning gates on a merge that will be denied.
+Interactive sessions proceed; the permission prompt arbitrates.
+
 Never merge two goals in one breath — re-sync between merges. For the one goal being
 integrated:
 
@@ -117,8 +127,30 @@ integrated:
 3. **Merge**: `gh pr merge --squash --delete-branch` when a PR exists; with no remote
    host, `git merge --no-ff goal/<id>` on the `<base>` checkout and push. Push rejected →
    base moved again → back to step 1 (max 3 attempts this iteration, then leave it for
-   the next).
+   the next). A permission denial of the merge command itself is NOT a push race —
+   permission-stall protocol below.
 4. Flip `completed` via the claim protocol; prune the worktree.
+
+### Permission stall — the harness denies the orchestrator's merge
+
+A denied `gh pr merge` is an environment blocker, not a work failure: don't route around
+it with raw `git merge`, don't retry it blindly each fire, and don't flip the goal
+`blocked` — the work is finished and verified, and `blocked` would free its wip slot,
+letting the factory pile up more PRs against the same wall. Instead:
+
+1. Keep the goal `in_progress` (with `pr:` recorded) — it holds its slot on purpose.
+   State the gate-verified head and base SHAs in your report; that record is what a
+   later fire (or fresh session) compares against. No record → treat as moved.
+2. needs-you carries the exact fix, verbatim: merge the PR manually (`gh pr merge <n>
+   --squash --delete-branch`), or add `"Bash(gh pr merge:*)"` to `permissions.allow` in
+   `.claude/settings.json` — one-time, unblocks every future auto-merge.
+3. Send the stalled-factory notification (Phase 4), once.
+4. Later fires probe cheaply instead of re-running Integration: PR merged by a human →
+   Phase 1 case 1; allow rule now present → resume Integration, re-running gates only
+   if the PR head or base moved since you verified them (the one exception to "a gate
+   that passed before the sync doesn't count" — valid only while both are provably
+   unmoved). Neither → nothing further this fire beyond the Phase 4 report line; no
+   repeat notification.
 
 ## Phase 2 — claim the next goal(s)
 
@@ -184,8 +216,16 @@ the session model — mention it if config.model differs); merge back per `confi
 
 Count `ready`/`total` after this iteration's mutations (total = all index entries).
 needs-you lists everything currently waiting on the human — mergeable PRs and ALL blocked
-goals (noting dependents stuck behind them), every iteration, not only new ones — that
-line is the user's phone notification.
+goals (noting dependents stuck behind them), every iteration, not only new ones.
+
+**Stalled factory → one real notification.** A report line in an unattended /loop has no
+reader. The fire that first finds the factory fully stalled — needs-you non-empty, zero
+live implementers, and nothing this iteration could do about it (a fresh permission
+denial counts immediately, on the fire it happens, even while implementers are still
+running — it gates everything they will produce) — sends the needs-you line via the
+PushNotification tool (ToolSearch loads it if deferred). One notification per distinct
+blocker set; identical no-op fires after it send no further notifications, though the
+report line still goes out every fire — new blocker content notifies again.
 
 ## Hygiene
 
