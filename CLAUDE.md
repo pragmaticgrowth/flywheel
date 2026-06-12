@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Skills-only Claude Code plugin from Pragmatic Growth, v2.4.0. No MCP
+Skills-only Claude Code plugin from Pragmatic Growth, v2.5.0. No MCP
 servers, no commands, no agents, no hooks, no build step — three skills
 under `skills/`, each a single `SKILL.md`, forming a plain-language →
 autonomous-execution pipeline around a file-based goal queue
@@ -55,6 +55,16 @@ autonomous-execution pipeline around a file-based goal queue
   sync-with-current-base then re-verify before every merge; substantive
   conflicts → `blocked`, never guessed through. Implementers never
   merge and never edit `docs/goals/`.
+- `merge: auto` needs merge rights: preflight once per session for a
+  `gh pr merge` allow rule before the first integration. A harness
+  denial of the orchestrator's own merge is an environment blocker,
+  not a work failure (decided 2026-06-12 after a long unattended stall): the goal stays `in_progress` holding its wip slot — never
+  `blocked`, which would free the slot and pile more unmergeable PRs —
+  needs-you carries the exact allow-rule fix verbatim, the stalling
+  fire sends ONE PushNotification per distinct blocker set (a report
+  line in an unattended /loop has no reader), and later fires probe
+  cheaply (PR merged? rule added?) instead of re-running sync/gates on
+  a provably unmoved head.
 - Skills mandates come in three layers: method skills (writing-plans,
   TDD, verification-before-completion) hardcoded in dispatch's brief;
   repo skills in `config.skills`; goal-specific skills in goal
