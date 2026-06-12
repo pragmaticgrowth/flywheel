@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Skills-only Claude Code plugin from Pragmatic Growth, v2.1.0. No MCP
+Skills-only Claude Code plugin from Pragmatic Growth, v2.3.0. No MCP
 servers, no commands, no agents, no hooks, no build step — three skills
 under `skills/`, each a single `SKILL.md`, forming a plain-language →
 autonomous-execution pipeline around a file-based goal queue
@@ -55,6 +55,15 @@ autonomous-execution pipeline around a file-based goal queue
   available skills).
 - Implementer worktrees always branch `goal/<id>` from `origin/<base>`,
   never from inherited HEAD; PRs target `<base>` and carry "Goal: <id>".
+- Recon (define-goal) never inherits the session model: search angles on
+  the Explore agent type (fallback `model: haiku`), at most one judgment
+  agent on `model: sonnet` — weekly-limit economy, doc-backed.
+- Workflow tool only where the docs' thresholds say it wins: define-goal
+  batch mode at ~5+ items (drafts in script variables, approval table
+  gates file writes). Dispatch implementers are NEVER workflows — runs
+  are session-bound; branch commits + the stale-claim rule are the
+  recovery path. The tool needs CLI ≥2.1.154 and can be disabled, so
+  skills never assume it.
 
 History note: this repo was previously `mcp-do`, a stdio MCP server
 wrapping droid/opencode CLIs (removed in v1.0.0 at ac2bd7c). The
