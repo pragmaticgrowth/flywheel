@@ -14,7 +14,10 @@ host exists.
 Read the queue's `config:` block first; defaults when absent:
 `base` = the repo's default branch (the integration branch goals branch FROM and merge
 BACK to — main, staging, or any other), `merge: pr` (human merges; `auto` = the
-orchestrator merges back after gates), `wip: 2`, `skills: []`.
+orchestrator merges back after gates), `wip: 2`, `model: inherit`, `skills: []`.
+`config.model` (when not `inherit`) is passed as the `model` parameter on EVERY
+code-writing agent you spawn — implementers, CI-fix, review-response, and sync agents
+alike; it is the repo owner's depth-vs-weekly-limit trade, not yours to override.
 
 ## Hard rules (every iteration, before any action)
 
@@ -136,7 +139,8 @@ and the resolved skill lists):
 ```
 Implement the goal in docs/goals/<id>.md exactly per its "Goal contract" section — read
 that file first. You own this work end to end — nested subagents are for context isolation
-(explore / write tests / verify in fresh windows), never for passing the whole task down.
+(explore / write tests / verify in fresh windows), never for passing the whole task down;
+spawn helpers at your own model.
 
 Workspace: you are in an isolated worktree. Before anything else: `git fetch origin`,
 then make sure you are on branch goal/<id> created from origin/<base>
@@ -169,9 +173,10 @@ dispatcher will mark the goal blocked.
 When the user points at a specific goal ("work goal 005"), act as a one-goal orchestrator
 instead of spawning: claim it via the protocol; get an isolated workspace with the
 `using-git-worktrees` skill (native worktree tool preferred) on `goal/<id>` from
-`origin/<base>`; implement under the same skill mandates as the brief above; merge back
-per `config.merge` (PR, or the Integration steps); flip status via the protocol from the
-`<base>` checkout. Parallel solo sessions are safe — the claim protocol arbitrates.
+`origin/<base>`; implement under the same skill mandates as the brief above, honoring
+`config.model` for any helpers you spawn (your own in-session work necessarily runs on
+the session model — mention it if config.model differs); merge back per `config.merge`
+(PR, or the Integration steps); flip status via the protocol from the `<base>` checkout. Parallel solo sessions are safe — the claim protocol arbitrates.
 
 ## Phase 4 — report (always, exactly one line)
 
