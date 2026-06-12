@@ -76,7 +76,8 @@ run concurrently:
   subagent with `model: haiku`. At most one judgment agent per fan-out with
   `model: sonnet` to weigh the evidence and rank root-cause hypotheses — search agents
   report what the code shows (files, call paths, suspect commits); ranking what it means
-  happens in the sonnet agent or your own synthesis.
+  happens in the sonnet agent or your own synthesis. The queue's `config.model` never
+  applies here — it governs code-writing agents only.
 - **Angles, 2–4 per fan-out** — for a bug: symptom trace (error strings/log lines → the
   code that throws and handles them), data/control flow (entry point → failure area),
   recent-change scan (`git log`/`blame` on suspect areas), config/wiring (flags, env,
@@ -122,6 +123,7 @@ config:
   base: main        # integration branch — goals branch FROM it and merge BACK to it
   merge: pr         # pr = a human merges | auto = the factory merges after gates pass
   wip: 2            # max goals in progress at once (parallelism)
+  model: inherit    # spawned code agents: inherit | a model alias (sonnet, haiku, opus)
   skills: []        # repo-wide skills every implementer must invoke
 goals:
   001-receipt-emails: {status: not_started, priority: high}
@@ -131,8 +133,10 @@ goals:
 On first queue creation, ask the user once (AskUserQuestion): which branch is the
 integration base (main? staging? other?), and the merge policy (`pr` — safest, a human
 merges every PR; `auto` — the factory rebases, re-verifies, and merges back itself).
-Defaults when unspecified: the repo's default branch, `merge: pr`, `wip: 2`, no repo
-skills. A per-goal `base:` field on an index entry overrides `config.base` (epic branches).
+Defaults when unspecified: the repo's default branch, `merge: pr`, `wip: 2`,
+`model: inherit`, no repo skills. `model: sonnet` trades implementation depth for
+weekly-limit headroom — sensible on simple repos, not on gnarly ones. A per-goal `base:`
+field on an index entry overrides `config.base` (epic branches).
 
 Rules that keep the queue safe:
 
@@ -159,7 +163,8 @@ Rules that keep the queue safe:
 id: 001-receipt-emails
 title: Customers get a receipt email after payment
 created: 2026-06-12
-skills: []   # goal-specific skills the implementer must invoke, e.g. [agent-browser]
+type: feature   # bug | feature | chore — shapes the contract, see below
+skills: []      # goal-specific skills the implementer must invoke, e.g. [agent-browser]
 ---
 
 ## Outcome (plain language)
@@ -207,6 +212,21 @@ only (browser/UI verification, platform skills like Cloudflare or Postgres, a pr
 own skills), at most ~4, never invented names. Method skills (TDD, plans, verification)
 are mandated by `dispatch`'s brief — don't repeat them. Repo-wide skills belong in
 `config.skills` instead; suggest moving one there when every goal would list it.
+
+Shape by `type:` — each type has a non-negotiable element, and it overrides the
+template's stock criteria where they conflict (a bug's failing test goes first, above the
+behavior criteria; a chore's full-suite check replaces the owning-package one):
+
+- **bug** — Context carries the repro evidence and ALL of recon's root-cause hypotheses
+  with their `path:line` evidence (including the losing ones — the implementer's failing
+  test arbitrates). First acceptance criterion, always: "a failing test reproducing the
+  root cause, passing after the fix."
+- **feature** — Outcome reads as what the user sees working; Context lists the surfaces
+  to touch (routes, UI, schema, jobs) from recon; Out of scope is mandatory, never empty —
+  features sprawl.
+- **chore** (refactor, upgrade, migration) — acceptance is "no behavior change": the full
+  test suite green before AND after, plus the one mechanical check that proves the chore
+  itself (dependency version, lint-rule count, migration applied).
 
 The Goal contract section is the implementer's completion condition — `dispatch` hands the
 whole file to its implementer, and the user can run it directly via `claude -p "/goal …"`.
