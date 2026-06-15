@@ -29,13 +29,20 @@ Live-introspected on this machine; `herdr-mode.md` references these verbatim.
 All three require `--term` = the orchestrator's own pane id (`$HERDR_PANE_ID`).
 
 ```
-spawn-exec  --term TERM [--session S] --slug SLUG [--branch BRANCH]
-            [--base BASE] [--reuse] [--cwd CWD]
-            [--backend {claude,codex,hermes,pi}] [--label LABEL]
-dispatch    --term TERM [--session S] [--text TEXT] [--file FILE]
-            [--marker MARKER] [--dry-run] [--clear-stray]
-            [--confirm-secs N] [--force]
-lanes       --term TERM [--session S] [--branch-prefix PREFIX]   # we pass goal/
+spawn-exec   --term TERM [--session S] --slug SLUG [--branch BRANCH]
+             [--base BASE] [--reuse] [--cwd CWD]
+             [--backend {claude,codex,hermes,pi}] [--label LABEL]
+dispatch     --term TERM [--session S] [--text TEXT] [--file FILE]
+             [--marker MARKER] [--dry-run] [--clear-stray]
+             [--confirm-secs N] [--force]
+lanes        --term TERM [--session S] [--branch-prefix PREFIX]   # we pass goal/
+read         [--term TERM] [--session S] [--lines N]
+             [--source {visible,recent,recent-unwrapped,detection}]
+keys         --term TERM [--session S] [keys ...]   # e.g. Down Enter / Esc
+status       [--term TERM] [--session S] [--text TEXT] [--clear] [--ttl-ms N]
+notify       --title TITLE [--body BODY]
+             [--position {...}] [--sound {none,done,request}]
+capabilities (no args)
 ```
 
 **No `--model` flag on `spawn-exec`.** The backend is launched by name only

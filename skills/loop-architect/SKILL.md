@@ -98,7 +98,8 @@ access to the minimum the routine needs.
   work, the canonical ledger is the `docs/goals/index.yaml` queue (created by `define-goal`,
   worked by `/loop 15m /dispatch`) — prefer it over inventing a new state file.
 - **herdr-mode factory loop** (when the queue sets `config.execution: herdr`): run
-  `/loop 15m /dispatch` from an orchestrator inside a herdr pane; it spawns each goal as a
+  `/loop 15m /dispatch` from an orchestrator ideally inside a herdr pane (a plain terminal
+  also works — recovery then leans on `lanes`); it spawns each goal as a
   fresh `/goal` `claude` in its own `goal/NNN` worktree pane, terminated by a unique
   done-marker, and survives client detach via the herdr server. Capability-gated — degrades
   to native in-process agents when herdr is absent. See `dispatch/references/herdr-mode.md`.

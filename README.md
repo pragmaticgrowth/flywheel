@@ -70,7 +70,10 @@ pg-plugin/
 │   └── marketplace.json   # pragmatic-growth marketplace
 └── skills/
     ├── define-goal/SKILL.md
-    ├── dispatch/SKILL.md
+    ├── dispatch/
+    │   ├── SKILL.md
+    │   ├── references/herdr-mode.md   # config.execution: herdr contract
+    │   └── scripts/                   # vendored herdr ops kit (pm.py, MIT)
     └── loop-architect/SKILL.md
 ```
 

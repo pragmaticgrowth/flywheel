@@ -56,9 +56,10 @@ Three preconditions, checked at the gate:
    primitives below → **degrade to native mode** (run the `SKILL.md` native
    path for the rest of the session) and note the degrade + reason in the
    Phase 4 report. This is a warn, never a hard-fail.
-2. **Merge-rights preflight.** `merge: auto` → the existing `gh pr merge`
-   allow-rule preflight in `SKILL.md` (Integration) still applies, once per
-   session, before the first integration.
+2. **Merge-rights preflight.** `merge: auto` → the SAME `gh pr merge` allow-rule
+   preflight defined in `SKILL.md` (Integration), surfaced here only so it isn't
+   missed in herdr's Phase 0 — once per session, before the first integration. Not
+   a second preflight.
 3. **Load the runtime cache.** Read this session's mission cache at
    `~/.local/state/pg-dispatch/<SLUG>/missions.json` — a JSON object
    `{ "<goalId>": {branch, worktree, term, pane, session, marker, started, respawned} }`

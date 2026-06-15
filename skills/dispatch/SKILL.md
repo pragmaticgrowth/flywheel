@@ -62,7 +62,8 @@ while they keep working. Each iteration must be idempotent:
 
 1. **The index is the claim ledger.** A claim is a pushed status flip made BEFORE spawning —
    never claim from inside a worktree, and never spawn a second implementer for an
-   `in_progress` goal that has a live background agent or an open PR.
+   `in_progress` goal that has a live background agent (under `execution: herdr`, a
+   `lanes`-visible pane) or an open PR.
 2. **Stale claim**: `in_progress` + no open PR + no live agent → the implementer died.
    Live = a background agent spawned this session that hasn't finished; from a fresh
    session you can't see prior agents — treat no new commits on `goal/<id>` since
@@ -89,8 +90,10 @@ each implementer as a fresh `claude` in an isolated herdr worktree pane; when se
 **follow `references/herdr-mode.md`** for the spawn substrate (Phases 1/3, monitoring,
 block handling, integration mechanics) — the claim protocol, queue rules, `config`
 semantics, Integration, the permission-stall protocol, and Phase 4 reporting in this
-file are unchanged and still authoritative. If `execution: herdr` but herdr is
-unreachable, degrade to `native` and note it in the report.
+file are unchanged and still authoritative. One behavioral addition: herdr mode adds a
+`config.autonomy`-gated tier that can auto-answer a blocked implementer before falling
+back to the no-progress/`blocked` rule (reference, Phase 4b). If `execution: herdr` but
+herdr is unreachable, degrade to `native` and note it in the report.
 
 ## Phase 1 — shepherd in_progress goals
 
