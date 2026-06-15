@@ -23,7 +23,10 @@ autonomous-execution pipeline around a file-based goal queue
   `merge: auto`. Solo mode ("work goal 005") turns an interactive
   session into a one-goal orchestrator. Built to run as
   `/loop 15m /dispatch`; iterations are idempotent and parallel sessions
-  are safe.
+  are safe. Opt-in `config.execution: herdr` mode runs each implementer as
+  a fresh `/goal` `claude` in its own `goal/NNN` herdr worktree pane
+  (parallel, observable, crash-recoverable); default `native` keeps the
+  in-process path and full portability.
 - **loop-architect** — designs loop contracts (prompt + verification +
   stop conditions) for autonomous /goal, /loop, routine, or remote runs;
   names `docs/goals/index.yaml` the canonical factory ledger.
@@ -39,8 +42,10 @@ autonomous-execution pipeline around a file-based goal queue
   from and merge back to — main, staging, or other; per-goal `base:`
   override allowed), `merge: pr|auto`, `wip` parallelism cap, `model`
   (inherit|sonnet|haiku — applied to every code agent dispatch spawns;
-  the repo owner's depth-vs-limit trade), repo-wide `skills`. Defaults:
-  repo default branch, `pr`, 2, inherit, none.
+  the repo owner's depth-vs-limit trade), repo-wide `skills`,
+  `execution` (native|herdr — spawn substrate), `autonomy`
+  (conservative|balanced|bold — herdr block-handling threshold).
+  Defaults: repo default branch, `pr`, 2, inherit, none, native, balanced.
 - Goal frontmatter `type: bug|feature|chore` shapes the contract: bugs
   always lead with a failing-test-reproduces-root-cause criterion (all
   recon hypotheses recorded); features must fill Out of scope; chores
@@ -65,6 +70,19 @@ autonomous-execution pipeline around a file-based goal queue
   line in an unattended /loop has no reader), and later fires probe
   cheaply (PR merged? rule added?) instead of re-running sync/gates on
   a provably unmoved head.
+- `execution: herdr` runs each implementer as a fresh `claude` in an
+  isolated `goal/<id>` herdr worktree pane (vendored herdr-pm ops kit at
+  `skills/dispatch/scripts/pm.py`, MIT, attributed in `VENDORED.md` — one
+  STATE_ROOT re-root edit, else verbatim), driven by
+  `skills/dispatch/references/herdr-mode.md`. The orchestrator sends
+  `/goal <contract>`; completion is a unique `TASK_DONE_<hex4>` done-marker
+  re-checked from pane scrollback every fire (no reliance on a backgrounded
+  wait); blocked implementers are handled tiered (auto-answer ≤ escalate)
+  per `config.autonomy`. State is three-tier: `index.yaml` (claim truth) +
+  `~/.local/state/pg-dispatch/` (runtime cache, with a `PAUSE` all-stop) +
+  herdr/git (reality), reconciled by `pm.py lanes`. Default
+  `execution: native` preserves the in-process path and full portability;
+  herdr unreachable → degrade to native.
 - Skills mandates come in three layers: method skills (writing-plans,
   TDD, verification-before-completion) hardcoded in dispatch's brief;
   repo skills in `config.skills`; goal-specific skills in goal
