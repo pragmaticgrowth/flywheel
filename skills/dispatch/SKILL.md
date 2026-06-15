@@ -18,6 +18,8 @@ orchestrator merges back after gates), `wip: 2`, `model: inherit`, `skills: []`.
 `config.model` (when not `inherit`) is passed as the `model` parameter on EVERY
 code-writing agent you spawn — implementers, CI-fix, review-response, and sync agents
 alike; it is the repo owner's depth-vs-weekly-limit trade, not yours to override.
+`execution` (default `native`) and `autonomy` (default `balanced`, herdr-mode only)
+are read here too — see the execution-substrate note in Phase 0.
 
 ## Hard rules (every iteration, before any action)
 
@@ -66,7 +68,10 @@ while they keep working. Each iteration must be idempotent:
    session you can't see prior agents — treat no new commits on `goal/<id>` since
    `claimed` as dead. If the implementer's final report named a blocker, set `blocked`
    with that reason. Otherwise respawn once with a note of what already exists on its
-   branch; if it dies again, set `blocked`.
+   branch; if it dies again, set `blocked`. Under `execution: herdr`, "live" instead
+   means a `lanes`-visible pane on `goal/<id>` (cross-session visible via the herdr
+   server), and respawn-once is tracked by the mission's `respawned` flag — see
+   `references/herdr-mode.md`.
 3. **Shepherd before claiming** (Phase 1 before Phase 2) so finished work always beats new work.
 
 ## Phase 0 — sync and read the queue
@@ -77,6 +82,15 @@ stop and report rather than stash silently). If `docs/goals/index.yaml` is missi
 flagged in the report rather than silently fixed: every entry has its goal file and vice
 versa; no circular `depends_on`; no `depends_on` pointing at a missing entry; warn when a
 goal and its dependency declare different `base` branches.
+
+**Execution substrate (`config.execution`, default `native`).** `native` = this
+document's in-process background-agent path (Phases 1–3, Integration). `herdr` = spawn
+each implementer as a fresh `claude` in an isolated herdr worktree pane; when set,
+**follow `references/herdr-mode.md`** for the spawn substrate (Phases 1/3, monitoring,
+block handling, integration mechanics) — the claim protocol, queue rules, `config`
+semantics, Integration, the permission-stall protocol, and Phase 4 reporting in this
+file are unchanged and still authoritative. If `execution: herdr` but herdr is
+unreachable, degrade to `native` and note it in the report.
 
 ## Phase 1 — shepherd in_progress goals
 
