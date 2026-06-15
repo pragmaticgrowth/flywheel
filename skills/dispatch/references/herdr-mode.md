@@ -72,28 +72,36 @@ Run `python3 skills/dispatch/scripts/pm.py lanes --term "$ORCH" --branch-prefix 
 to get the worktree×agent reconcile filtered to `goal/` branches (foreign
 worktrees are counted but ignored). In herdr mode **"live agent" = a
 `lanes`-visible pane on `goal/<id>`** — cross-session visible, strictly better
-than native's "spawned this session". Classify each `in_progress` goal:
+than native's "spawned this session". Classify each `in_progress` goal **in
+this order — a lane with no live agent is NOT automatically a zombie.** A goal
+that just finished its `/goal` goes idle, so `lanes` reports `zombie: true` for
+it even though the work is done; the marker/commit checks below therefore take
+precedence over the zombie rule:
 
-- **live** — lane present and its agent is `working`/`idle` → leave it; if the
-  lane reports `blocked` → Step 7 (Phase 4b).
-- **marker fired** — `pm.py read --term "<exec_term>" --session "<sid>"` for the
-  mission's pane, grep its output for the mission's recorded `marker` (from
-  `missions.json`); present → Step 8 (Phase 5). (Same authoritative check as
-  Step 6.)
-- **zombie** — `lanes` shows the `goal/NNN` worktree but no live agent (`zombie:
-  true`: checkout exists, no open workspace / live agent) → the implementer
-  died. If the mission entry already has `respawned: true` → it died a second
-  time → set `blocked` (claim protocol) with the reason. Otherwise respawn ONCE
-  via Step 5 with `--reuse`, reuse the worktree, note in the contract what is
-  already committed on `goal/NNN`, and set `respawned: true` on the entry.
-  (`missions.json` is machine-local, so on a fresh session this counter is gone
-  — the `SKILL.md` commit-since-`claimed` heuristic is the cross-session
-  backstop: with no cache entry, a zombie whose `goal/NNN` already has commits
-  that did NOT advance since the prior fire is treated as a second death →
-  `blocked`, not a blind re-spawn. Only an empty or freshly-advancing branch
-  earns the one respawn.)
-- **committed-but-unintegrated** — commits exist on `goal/NNN` but no live
-  agent and not yet integrated → Step 8 (Phase 5).
+- **marker fired (done)** — `pm.py read --term "<exec_term>" --session "<sid>"`
+  for the mission's pane and grep its output for the recorded `marker` **alone
+  on a line** — `grep -E "^[[:space:]]*<MARKER>[[:space:]]*$"`, NEVER a
+  substring match. The dispatched `/goal` text itself contains the marker
+  string, so a substring grep false-fires on the prompt echo; only the agent's
+  own final standalone print counts. Present → Step 8 (Phase 5). (Same
+  authoritative check as Step 6.)
+- **committed-but-unintegrated** — no marker, but commits exist on `goal/NNN`
+  (`git ls-remote origin goal/NNN`, or `git -C <worktree> log`) and it is not
+  yet integrated → Step 8 (Phase 5). This is the pane-gone-but-work-landed case.
+- **live** — lane present, agent `working`/`idle`, and no marker yet → leave it;
+  if the lane reports `blocked` → Step 7 (Phase 4b).
+- **zombie (truly dead)** — `lanes` shows the `goal/NNN` worktree but no live
+  agent, AND there is no marker and no committed work to integrate → the
+  implementer died before finishing. If the mission entry already has
+  `respawned: true` → it died a second time → set `blocked` (claim protocol)
+  with the reason. Otherwise respawn ONCE via Step 5 with `--reuse`, reuse the
+  worktree, note in the contract what is already committed on `goal/NNN`, and
+  set `respawned: true` on the entry. (`missions.json` is machine-local, so on a
+  fresh session this counter is gone — the `SKILL.md` commit-since-`claimed`
+  heuristic is the cross-session backstop: with no cache entry, a zombie whose
+  `goal/NNN` already has commits that did NOT advance since the prior fire is
+  treated as a second death → `blocked`, not a blind re-spawn. Only an empty or
+  freshly-advancing branch earns the one respawn.)
 
 Heal `index.yaml`↔reality drift via the `SKILL.md` stale-claim rule (an
 `in_progress` entry with no live lane and no open PR is a dead/stale claim).
@@ -135,7 +143,20 @@ Per claimed goal `NNN` (resolved `<base>` = per-goal `base:` else `config.base`)
    BOTH the executor's `exec_term` (terminal_id → `<exec_term>`) and `exec_pane`
    (pane_id → `<exec_pane>`), plus the session id (`<sid>`) and `worktree_path` —
    you need all of them for the later calls to this pane.
-3. **Set the model** (only if `config.model != inherit`). `spawn-exec` has NO
+3. **Clear the folder-trust prompt.** A fresh `claude` in a new worktree opens
+   on Claude Code's "Is this a project you trust?" gate; `spawn-exec` reports it
+   as `trust_accepted: false`. Clear it BEFORE any dispatch (a `/goal` sent into
+   the trust widget is lost). `read` to confirm, then accept the pre-highlighted
+   "Yes, I trust this folder" with `keys`:
+
+   ```
+   python3 skills/dispatch/scripts/pm.py read --term "<exec_term>"          # see the prompt
+   python3 skills/dispatch/scripts/pm.py keys --term "<exec_term>" Enter    # option 1 pre-highlighted
+   ```
+
+   Re-read until the composer (`❯`) is ready. When `trust_accepted: true` (e.g.
+   `--reuse` of an already-trusted worktree) and no prompt is present, skip this.
+4. **Set the model** (only if `config.model != inherit`). `spawn-exec` has NO
    `--model` flag — the backend launches as plain `claude`. Send the model
    selector into the fresh pane FIRST:
 
@@ -144,8 +165,8 @@ Per claimed goal `NNN` (resolved `<base>` = per-goal `base:` else `config.base`)
      --term "<exec_term>" --text "/model <config.model>"
    ```
 
-4. **Mint a unique marker** (see Conventions) → `<MARKER>`.
-5. **Dispatch the goal.** Send `/goal` as literal text (`--text` sends literally
+5. **Mint a unique marker** (see Conventions) → `<MARKER>`.
+6. **Dispatch the goal.** Send `/goal` as literal text (`--text` sends literally
    with no auto-minted marker — you mint your own; `--file` would auto-mint and
    send a "read & execute, print marker" pointer, which we are not using here):
 
@@ -176,7 +197,7 @@ Per claimed goal `NNN` (resolved `<base>` = per-goal `base:` else `config.base`)
    criteria + the brief above + the marker line; do NOT inline the full goal
    file — it is in the worktree as `docs/goals/NNN.md` for the agent to read.
 
-6. **Record the mission** to `~/.local/state/pg-dispatch/<SLUG>/missions.json`:
+7. **Record the mission** to `~/.local/state/pg-dispatch/<SLUG>/missions.json`:
    `"NNN": {branch: "goal/NNN", worktree: "<worktree_path>", term: "<exec_term>",
    pane: "<exec_pane>", session: "<sid>", marker: "<MARKER>", started: "<date>",
    respawned: false}` — `term` for `pm.py --term` calls, `pane` for raw
@@ -194,15 +215,19 @@ fire. So per live mission, the **authoritative completion check happens fresh
 EVERY fire** by reading the pane, not by trusting a backgrounded wait:
 
 1. **Completion check (authoritative, every fire).** Read the pane and grep its
-   output for the mission's recorded `marker`:
+   output for the mission's recorded `marker` **alone on a line**:
 
    ```
-   python3 skills/dispatch/scripts/pm.py read --term "<exec_term>" --session "<sid>"
+   python3 skills/dispatch/scripts/pm.py read --term "<exec_term>" --session "<sid>" \
+     | grep -E "^[[:space:]]*<MARKER>[[:space:]]*$"
    ```
 
-   Marker present in the output → Step 8 (Phase 5). This re-derives completion
-   from current reality each fire, so a marker printed between fires is never
-   lost.
+   Match the marker ONLY when it stands alone on a line — NEVER as a substring.
+   The `/goal` text you dispatched contains the marker string, so a substring
+   grep matches the prompt echo and false-fires; only the agent's own final
+   standalone print counts. Anchored match present → Step 8 (Phase 5). This
+   re-derives completion from current reality each fire, so a marker printed
+   between fires is never lost.
 2. **Agent status** comes from the Step 3 `lanes` result already gathered — read
    `agent_status` for this mission's `goal/NNN` lane: `working` → leave it for
    the next fire; `blocked` → Step 7 (Phase 4b). (Marker is handled by step 1
@@ -212,10 +237,11 @@ EVERY fire** by reading the pane, not by trusting a backgrounded wait:
    than waiting for the next fire, you may background a wait:
 
    ```
-   herdr wait output "<exec_pane>" --match "<MARKER>" --regex --timeout 600000 &
+   herdr wait output "<exec_pane>" --match "^[[:space:]]*<MARKER>[[:space:]]*$" --regex --timeout 600000 &
    ```
 
-   (positional `<exec_pane>`; `--regex` matches the exact minted marker.) Its
+   (positional `<exec_pane>`; anchor the `--regex` to the marker alone on a line,
+   same as the authoritative check, so the prompt echo doesn't wake it.) Its
    result is a convenience only — a raw wait can miss a marker printed between
    re-arms, and a background process's result is lost across fires; the step-1
    read+grep is what actually decides completion.
