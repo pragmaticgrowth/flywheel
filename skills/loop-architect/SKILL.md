@@ -97,6 +97,11 @@ access to the minimum the routine needs.
   so the next run resumes instead of restarting. Name the file in the prompt. For factory
   work, the canonical ledger is the `docs/goals/index.yaml` queue (created by `define-goal`,
   worked by `/loop 15m /dispatch`) — prefer it over inventing a new state file.
+- **herdr-mode factory loop** (when the queue sets `config.execution: herdr`): run
+  `/loop 15m /dispatch` from an orchestrator inside a herdr pane; it spawns each goal as a
+  fresh `/goal` `claude` in its own `goal/NNN` worktree pane, terminated by a unique
+  done-marker, and survives client detach via the herdr server. Capability-gated — degrades
+  to native in-process agents when herdr is absent. See `dispatch/references/herdr-mode.md`.
 - **Self-verification tooling** (Boris's #1, "2-3x the quality"): browser extension for web
   UI, simulator MCP for mobile, runnable server + tests for backend. Name the tool in the
   prompt and describe it.
