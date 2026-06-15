@@ -100,11 +100,13 @@ BACKEND_ARGV = {
     "hermes": ["hermes"],
 }
 AUTH_WALL = ("token_revoked", "sign in again", "refresh token")
-# Leaf stays "herdr-pm" (not "herdr-pm-init") on purpose: internal runtime path
-# shared verbatim with discover_and_spawn.py. Keep the two in lockstep — the skill
-# renamed, this dir did not (renaming would orphan in-flight assignments/missions).
+# pg-plugin vendoring: leaf re-rooted "herdr-pm" -> "pg-dispatch" so PAUSE +
+# state live in this plugin's namespace. STATE_ROOT is used only by the PAUSE
+# file and the capabilities report here, so this change is functionally inert.
+# See scripts/VENDORED.md. (Upstream shared this dir with discover_and_spawn.py,
+# which pg-plugin does not vendor.)
 STATE_ROOT = os.path.join(
-    os.path.expanduser(os.environ.get("XDG_STATE_HOME") or "~/.local/state"), "herdr-pm")
+    os.path.expanduser(os.environ.get("XDG_STATE_HOME") or "~/.local/state"), "pg-dispatch")
 PAUSE_FILE = os.path.join(STATE_ROOT, "PAUSE")
 
 
