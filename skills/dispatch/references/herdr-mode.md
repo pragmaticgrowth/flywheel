@@ -88,7 +88,10 @@ than native's "spawned this session". Classify each `in_progress` goal:
   already committed on `goal/NNN`, and set `respawned: true` on the entry.
   (`missions.json` is machine-local, so on a fresh session this counter is gone
   — the `SKILL.md` commit-since-`claimed` heuristic is the cross-session
-  backstop for the same "died again" call.)
+  backstop: with no cache entry, a zombie whose `goal/NNN` already has commits
+  that did NOT advance since the prior fire is treated as a second death →
+  `blocked`, not a blind re-spawn. Only an empty or freshly-advancing branch
+  earns the one respawn.)
 - **committed-but-unintegrated** — commits exist on `goal/NNN` but no live
   agent and not yet integrated → Step 8 (Phase 5).
 
@@ -99,6 +102,11 @@ CI red / unaddressed review comments / green+addressed / newly opened) —
 unchanged; do that before claiming new work so finished work always beats new.
 
 ## Step 4 — Phase 2: capacity & claim
+
+**PAUSE guard first:** if `~/.local/state/pg-dispatch/PAUSE` exists, skip this
+phase AND Phase 3 entirely (claiming pushes via `git`, which the brake does not
+auto-block — claiming now would strand an `in_progress` goal you cannot spawn).
+Reconcile + report only until it is `rm`-ed.
 
 `free = config.wip − live implementers` (count `goal/`-lane live agents from
 Step 3). For each free slot, pick the next ready `not_started` goal honoring
@@ -233,15 +241,19 @@ python3 skills/dispatch/scripts/pm.py read --term "<exec_term>" --session "<sid>
 never a stale id.)
 
 - **Tier 1 — auto-answer.** The question is answerable from the goal contract +
-  the repo's CLAUDE.md/AGENTS.md + a quick recon. Answer by sending text:
+  the repo's CLAUDE.md/AGENTS.md + a quick recon. **A `blocked` pane is answered
+  with `keys`, not `dispatch`** — `dispatch` refuses a `blocked` pane on purpose
+  (text sent there could ESC-cancel the question widget). Claude's question is a
+  selectable widget: from the `pm.py read` output, choose the option, then drive
+  the widget with arrow keys + Enter:
 
   ```
-  python3 skills/dispatch/scripts/pm.py dispatch --term "<exec_term>" --text "<answer>"
+  python3 skills/dispatch/scripts/pm.py keys --term "<exec_term>" --session "<sid>" Down Enter
   ```
 
-  For an arrow-widget / gate (a menu, not free text), use `keys` instead:
-  `python3 skills/dispatch/scripts/pm.py keys --term "<exec_term>" --session "<sid>" Down Enter`
-  (herdr key vocab: `Esc Up Down Left Right Tab Enter`). The agent resumes.
+  (herdr key vocab: `Esc Up Down Left Right Tab Enter`; repeat `Down`/`Up` to land
+  on the chosen option before `Enter`.) The agent resumes. Use `dispatch --text`
+  ONLY for an idle/working pane (a nudge), never to answer a block.
   `autonomy: conservative` lowers the bar to escalate (escalate sooner); `bold`
   raises it (auto-answer more); `balanced` (default) is the behavior described
   here.
@@ -305,9 +317,15 @@ Tier 3 win and Tier 2 is rebuilt:
 - **State cache lost (new machine)** → `missions.json` is only a cache;
   reconstruct from `index.yaml` + git + any live panes. The claim ledger and
   branch commits are durable.
-- **All-stop (human)** → `touch ~/.local/state/pg-dispatch/PAUSE` makes every
-  mutating `pm.py` op refuse with reason `"paused"`; `rm` it to resume. This is
-  the human's out-of-band all-stop.
+- **All-stop (human)** → `touch ~/.local/state/pg-dispatch/PAUSE` makes the
+  mutating `pm.py` ops (`dispatch`, `keys`, `spawn-exec`) refuse with reason
+  `"paused"`; the read-only ops (`capabilities`, `lanes`, `read`, `status`)
+  still work, so a paused orchestrator can still reconcile and report. `rm` it
+  to resume. **Check PAUSE before claiming:** the claim protocol pushes through
+  `git` (not `pm.py`), so it is NOT auto-blocked — when PAUSE is present, skip
+  Phase 2 (claim) and Phase 3 (spawn) entirely this fire so you never strand an
+  `in_progress` goal with no pane. In-flight missions are left untouched;
+  integration mutations also wait for the un-pause.
 
 ## Step 10 — Worktree hard-cases ("perfect" management)
 
