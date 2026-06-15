@@ -74,10 +74,15 @@ autonomous-execution pipeline around a file-based goal queue
   isolated `goal/<id>` herdr worktree pane (vendored herdr-pm ops kit at
   `skills/dispatch/scripts/pm.py`, MIT, attributed in `VENDORED.md` — one
   STATE_ROOT re-root edit, else verbatim), driven by
-  `skills/dispatch/references/herdr-mode.md`. The orchestrator sends
-  `/goal <contract>`; completion is a unique `TASK_DONE_<hex4>` done-marker
-  re-checked from pane scrollback every fire (no reliance on a backgrounded
-  wait); blocked implementers are handled tiered (auto-answer ≤ escalate)
+  `skills/dispatch/references/herdr-mode.md` (the kit SHIPS INSIDE the plugin —
+  no runtime dependency on the upstream repo; the herdr-pm name is MIT
+  attribution only). The orchestrator resolves `pm.py`'s plugin path (into `$PM`)
+  and its own `terminal_id` (into `$ORCH`, not `$HERDR_PANE_ID`) at preflight,
+  then sends each implementer a plain-prose mission brief via `pm.py dispatch
+  --file` (there is no `/goal` slash command to send); pm.py mints + anchors a
+  unique `TASK_DONE_<hex4>` marker, re-checked from pane scrollback every fire
+  (no reliance on a backgrounded wait); blocked implementers are handled tiered
+  (auto-answer ≤ escalate)
   per `config.autonomy`. State is three-tier: `index.yaml` (claim truth) +
   `~/.local/state/pg-dispatch/` (runtime cache, with a `PAUSE` all-stop) +
   herdr/git (reality), reconciled by `pm.py lanes`. Default

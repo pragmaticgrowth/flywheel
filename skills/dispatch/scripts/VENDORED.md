@@ -1,5 +1,10 @@
 # Vendored: herdr-pm ops kit
 
+**These scripts ship inside this plugin and are self-contained — there is NO
+runtime dependency on the upstream repo, and nothing is fetched at run time. The
+reference below is MIT attribution only.** The dispatch brain resolves the
+plugin's install path into `$PM` and runs `python3 "$PM" …`.
+
 `pm.py` and `resolve_ids.py` are vendored **verbatim** from
 [yigitkonur/herdr-pm](https://github.com/yigitkonur/herdr-pm)
 (`skills/herdr-pm-agent/scripts/`), MIT-licensed — see `LICENSE-herdr-pm`.

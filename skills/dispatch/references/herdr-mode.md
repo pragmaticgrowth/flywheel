@@ -6,16 +6,37 @@ implementers as persistent herdr panes instead of in-process background agents.
 Everything else — the claim protocol, queue rules, `config` semantics, the
 Integration steps, the permission-stall protocol, and Phase 4 reporting — is
 UNCHANGED and lives in `SKILL.md`; this file defers back to it by name and never
-restates it. The vendored ops kit is `skills/dispatch/scripts/pm.py` (herdr
-client 0.6.10, protocol 13); use its confirmed flags verbatim (see
-`skills/dispatch/scripts/VENDORED.md`) — never invent a flag.
+restates it. The ops kit `pm.py` SHIPS INSIDE THIS PLUGIN (it is not in the target repo and
+is not fetched from anywhere at runtime — it is vendored under this skill's
+`scripts/`). Because the orchestrator's cwd is the target repo, you must resolve
+its absolute path into `$PM` at preflight (Step 2) and invoke `python3 "$PM"`
+everywhere. Use its confirmed flags verbatim (see this skill's `scripts/VENDORED.md`)
+— never invent a flag. (herdr client 0.6.10, protocol 13.)
 
 Conventions (set once at the top of every fire):
 
-- `ORCH="$HERDR_PANE_ID"` — the orchestrator's own pane id, passed as `--term`
-  to `spawn-exec`, `dispatch`, and `lanes` (all three require it).
-- `SLUG=$(basename "$PWD" | tr -c 'A-Za-z0-9' '-')` — the repo slug for the
-  runtime cache path.
+- `PM` — absolute path to the plugin's vendored `pm.py` (it is NOT in the target
+  repo, so a bare `skills/dispatch/scripts/pm.py` will not resolve). Set once at
+  preflight (Step 2) and use `python3 "$PM"` everywhere:
+
+  ```
+  PM="${CLAUDE_PLUGIN_ROOT:-}/skills/dispatch/scripts/pm.py"
+  [ -f "$PM" ] || PM=$(ls -t ~/.claude/plugins/cache/*/pg-plugin/*/skills/dispatch/scripts/pm.py \
+                       ~/.claude/plugins/marketplaces/*/skills/dispatch/scripts/pm.py 2>/dev/null | head -1)
+  ```
+
+- `ORCH` — the orchestrator's own `terminal_id` (a `term_…`). NOT `$HERDR_PANE_ID`
+  (that is a `p_NN` pane id which `pm.py --term` rejects). Resolve it from the pane
+  whose cwd is the repo root, and pass `--term "$ORCH"` to `spawn-exec` and `lanes`
+  (it tells them which workspace/repo to act in):
+
+  ```
+  ORCH=$(herdr pane list | python3 -c "import sys,json,os; r=os.path.realpath('.'); \
+    print(next(p['terminal_id'] for p in json.load(sys.stdin)['result']['panes'] \
+    if os.path.realpath(p.get('cwd','')) == r))")
+  ```
+
+- `SLUG=$(basename "$PWD" | tr -c 'A-Za-z0-9' '-')` — repo slug for the cache path.
 - Two DIFFERENT executor ids, both returned by `spawn-exec` (`exec_term` and
   `exec_pane` in its JSON) — record BOTH, use each in its own place, never
   rename one to the other:
@@ -23,9 +44,9 @@ Conventions (set once at the top of every fire):
     `--term` (`dispatch`, `read`, `keys`, `status`).
   - `<exec_pane>` = the executor's `pane_id`. Use it for any RAW herdr pane
     command (`herdr wait output <pane>`).
-- Mint a UNIQUE marker per dispatch:
-  `python3 -c 'import secrets;print("TASK_DONE_"+secrets.token_hex(2).upper())'`.
-  Reusing a marker false-fires the next wait.
+- The completion marker is minted BY `pm.py dispatch --file` (Step 5), which
+  returns `marker` + an anchored `wait_regex` — record and reuse those VERBATIM;
+  never hand-mint or reuse a marker (a reused marker false-fires the next wait).
 
 ## Step 1 — When this file applies (the gate)
 
@@ -37,11 +58,11 @@ Three preconditions, checked at the gate:
 
 1. **herdr reachable** — `capabilities` reports `ok` (Step 2). Unreachable →
    degrade to native + warn; do not hard-fail.
-2. **Orchestrator ideally inside a herdr pane** — `$HERDR_PANE_ID` is set, so
-   `ORCH` self-targets. If it is absent (a plain `/loop` terminal), the mode
-   still works: recovery leans on `lanes` and the orchestrator must pass a
-   known orchestrator pane id as the `--term` for `spawn-exec`/`dispatch`/`lanes`
-   in place of `$HERDR_PANE_ID`. Never override `$HERDR_SOCKET_PATH`.
+2. **Orchestrator inside a herdr pane** — you resolve `ORCH` to your own pane's
+   `terminal_id` (Conventions; NOT `$HERDR_PANE_ID`, a `p_NN` id `pm.py` rejects).
+   If `ORCH` resolution finds nothing (a plain `/loop` terminal not registered as
+   a herdr pane), use the `terminal_id` of any agent pane in the repo's herdr
+   workspace as `--term`, or degrade to native. Never override `$HERDR_SOCKET_PATH`.
 3. **Claim protocol + queue rules unchanged** — every `index.yaml` write still
    goes through the `SKILL.md` claim protocol from the `<base>` checkout;
    WIP cap, ready/`depends_on`/`priority`, the stale-claim rule, and "implementers
@@ -50,25 +71,30 @@ Three preconditions, checked at the gate:
 
 ## Step 2 — Phase 0: preflight (once per session)
 
-1. **Probe herdr.** `python3 skills/dispatch/scripts/pm.py capabilities`. If
+1. **Resolve the kit + your pane.** Set `$PM` (the plugin's `pm.py`) and `$ORCH`
+   (your `terminal_id`) per Conventions. Empty `$PM` → the plugin isn't installed
+   where expected; report and degrade to native. Optional, one-time per machine
+   (recommended — sharpens blocked/working/done detection):
+   `herdr integration install claude`.
+2. **Probe herdr.** `python3 "$PM" capabilities`. If
    the result is `ok:false`, or `server.running:false` (server stopped — it
    still reports client/protocol), or the protocol/version is too old for the
    primitives below → **degrade to native mode** (run the `SKILL.md` native
    path for the rest of the session) and note the degrade + reason in the
    Phase 4 report. This is a warn, never a hard-fail.
-2. **Merge-rights preflight.** `merge: auto` → the SAME `gh pr merge` allow-rule
+3. **Merge-rights preflight.** `merge: auto` → the SAME `gh pr merge` allow-rule
    preflight defined in `SKILL.md` (Integration), surfaced here only so it isn't
    missed in herdr's Phase 0 — once per session, before the first integration. Not
    a second preflight.
-3. **Load the runtime cache.** Read this session's mission cache at
+4. **Load the runtime cache.** Read this session's mission cache at
    `~/.local/state/pg-dispatch/<SLUG>/missions.json` — a JSON object
-   `{ "<goalId>": {branch, worktree, term, pane, session, marker, started, respawned} }`
+   `{ "<goalId>": {branch, worktree, term, pane, session, marker, wait_regex, started, respawned} }`
    (full schema in Step 9). Absent → start with an empty `{}`. This Tier-2 cache is machine-local and
    rebuildable (Step 9); it is never the source of truth.
 
 ## Step 3 — Phase 1: reconcile (every fire)
 
-Run `python3 skills/dispatch/scripts/pm.py lanes --term "$ORCH" --branch-prefix goal/`
+Run `python3 "$PM" lanes --term "$ORCH" --branch-prefix goal/`
 to get the worktree×agent reconcile filtered to `goal/` branches (foreign
 worktrees are counted but ignored). In herdr mode **"live agent" = a
 `lanes`-visible pane on `goal/<id>`** — cross-session visible, strictly better
@@ -78,13 +104,12 @@ that just finished its `/goal` goes idle, so `lanes` reports `zombie: true` for
 it even though the work is done; the marker/commit checks below therefore take
 precedence over the zombie rule:
 
-- **marker fired (done)** — `pm.py read --term "<exec_term>" --session "<sid>"`
-  for the mission's pane and grep its output for the recorded `marker` **alone
-  on a line** — `grep -E "^[[:space:]]*<MARKER>[[:space:]]*$"`, NEVER a
-  substring match. The dispatched `/goal` text itself contains the marker
-  string, so a substring grep false-fires on the prompt echo; only the agent's
-  own final standalone print counts. Present → Step 8 (Phase 5). (Same
-  authoritative check as Step 6.)
+- **marker fired (done)** — `python3 "$PM" read --term "<exec_term>" --session
+  "<sid>"` for the mission's pane and grep its output with the recorded
+  `wait_regex` (anchored — the marker alone on a line), NEVER a bare substring:
+  the dispatched pointer contains the marker string, so a substring grep
+  false-fires on the prompt echo; only the agent's own final standalone print
+  counts. Present → Step 8 (Phase 5). (Same authoritative check as Step 6.)
 - **committed-but-unintegrated** — no marker, but commits exist on `goal/NNN`
   (`git ls-remote origin goal/NNN`, or `git -C <worktree> log`) and it is not
   yet integrated → Step 8 (Phase 5). This is the pane-gone-but-work-landed case.
@@ -133,7 +158,7 @@ Per claimed goal `NNN` (resolved `<base>` = per-goal `base:` else `config.base`)
    tab in one call; fresh `claude --dangerously-skip-permissions`):
 
    ```
-   python3 skills/dispatch/scripts/pm.py spawn-exec \
+   python3 "$PM" spawn-exec \
      --term "$ORCH" --slug "$SLUG" \
      --branch "goal/NNN" --base "origin/<base>" --backend claude
    ```
@@ -145,13 +170,13 @@ Per claimed goal `NNN` (resolved `<base>` = per-goal `base:` else `config.base`)
    you need all of them for the later calls to this pane.
 3. **Clear the folder-trust prompt.** A fresh `claude` in a new worktree opens
    on Claude Code's "Is this a project you trust?" gate; `spawn-exec` reports it
-   as `trust_accepted: false`. Clear it BEFORE any dispatch (a `/goal` sent into
+   as `trust_accepted: false`. Clear it BEFORE any dispatch (a brief sent into
    the trust widget is lost). `read` to confirm, then accept the pre-highlighted
    "Yes, I trust this folder" with `keys`:
 
    ```
-   python3 skills/dispatch/scripts/pm.py read --term "<exec_term>"          # see the prompt
-   python3 skills/dispatch/scripts/pm.py keys --term "<exec_term>" Enter    # option 1 pre-highlighted
+   python3 "$PM" read --term "<exec_term>"          # see the prompt
+   python3 "$PM" keys --term "<exec_term>" Enter    # option 1 pre-highlighted
    ```
 
    Re-read until the composer (`❯`) is ready. When `trust_accepted: true` (e.g.
@@ -161,51 +186,47 @@ Per claimed goal `NNN` (resolved `<base>` = per-goal `base:` else `config.base`)
    selector into the fresh pane FIRST:
 
    ```
-   python3 skills/dispatch/scripts/pm.py dispatch \
+   python3 "$PM" dispatch \
      --term "<exec_term>" --text "/model <config.model>"
    ```
 
-5. **Mint a unique marker** (see Conventions) → `<MARKER>`.
-6. **Dispatch the goal.** Send `/goal` as literal text (`--text` sends literally
-   with no auto-minted marker — you mint your own; `--file` would auto-mint and
-   send a "read & execute, print marker" pointer, which we are not using here):
-
-   ```
-   python3 skills/dispatch/scripts/pm.py dispatch \
-     --term "<exec_term>" --text "/goal <condition>"
-   ```
-
-   The `<condition>` tells the fresh agent to:
-   - **Read `docs/goals/NNN.md`** and satisfy its "Goal contract" section end to
-     end. (Bulk detail lives in that file, which is in the worktree.)
-   - It is on branch **`goal/NNN`** in an isolated worktree branched from
-     `origin/<base>`.
-   - **Mandatory skills** (invoke each via the Skill tool): `config.skills` +
-     the goal frontmatter's `skills:` + `writing-plans` if the change spans >2
-     files + `test-driven-development` for every code change +
-     `verification-before-completion` before claiming done.
+5. **Write the mission brief to a file.** Compose the implementer contract as
+   **plain prose** (there is NO `/goal` command to send — the fresh claude just
+   executes the brief) and write it to
+   `~/.local/state/pg-dispatch/<SLUG>/NNN-brief.md`. Do NOT put a `TASK_DONE_…`
+   line in the file — `pm.py` adds the marker itself; a bare marker in the body
+   false-fires the wait. The brief tells the agent to:
+   - **Read `docs/goals/NNN.md`** and satisfy its "Goal contract" end to end
+     (bulk detail lives there, in the worktree).
+   - It is on branch **`goal/NNN`** in an isolated worktree from `origin/<base>`.
+   - **Mandatory skills** (Skill tool): `config.skills` + the goal frontmatter's
+     `skills:` + `writing-plans` if >2 files + `test-driven-development` for every
+     code change + `verification-before-completion` before claiming done.
    - **Never edit `docs/goals/`** — the orchestrator owns queue state.
    - **Commit and push `goal/NNN`.**
-   - Integration depends on `config.merge`: under `pr`, open a PR targeting
-     `<base>` with body containing "Goal: NNN" (plain-language summary +
-     verification evidence); under `auto`, leave it for the orchestrator —
-     never self-merge in either mode.
-   - **FINALLY print `<MARKER>` on its own line** as the last action when the
-     goal is fully satisfied.
+   - Per `config.merge`: `pr` → open a PR targeting `<base>` whose body contains
+     "Goal: NNN" (plain-language summary + verification evidence); `auto` → leave
+     it for the orchestrator. Never self-merge.
+   - On a **respawn**, add a line naming what is already committed on `goal/NNN`.
+6. **Dispatch the brief.** `dispatch --file` mints a UNIQUE marker, sends a short
+   "Read <brief> and execute it fully; when done and verified print <marker> on
+   its own line" pointer, and verifies the pane went `working`:
 
-   **`/goal` cap is ≤4000 chars.** The condition = the goal's measurable
-   criteria + the brief above + the marker line; do NOT inline the full goal
-   file — it is in the worktree as `docs/goals/NNN.md` for the agent to read.
+   ```
+   python3 "$PM" dispatch --term "<exec_term>" \
+     --file ~/.local/state/pg-dispatch/<SLUG>/NNN-brief.md
+   ```
 
+   From the JSON, record `marker` and the anchored `wait_regex` VERBATIM — never
+   hand-build them. `dispatch` refuses a `working`/`blocked` pane (clear the trust
+   prompt in item 3 first); that refusal is expected monitor discipline, never
+   re-send to a busy pane.
 7. **Record the mission** to `~/.local/state/pg-dispatch/<SLUG>/missions.json`:
    `"NNN": {branch: "goal/NNN", worktree: "<worktree_path>", term: "<exec_term>",
-   pane: "<exec_pane>", session: "<sid>", marker: "<MARKER>", started: "<date>",
-   respawned: false}` — `term` for `pm.py --term` calls, `pane` for raw
-   `herdr wait output`; set `respawned: true` when you re-`--reuse` a zombie.
-
-Note: `dispatch` refuses a `working` pane (without `--force`) or a `blocked`
-pane — that is expected and enforces monitor discipline. Never re-send to a busy
-pane.
+   pane: "<exec_pane>", session: "<sid>", marker: "<marker>",
+   wait_regex: "<wait_regex>", started: "<date>", respawned: false}` —
+   `marker`/`wait_regex` are copied from the dispatch output; set
+   `respawned: true` when you re-`--reuse` a zombie.
 
 ## Step 6 — Phase 4: monitor (non-blocking)
 
@@ -215,19 +236,19 @@ fire. So per live mission, the **authoritative completion check happens fresh
 EVERY fire** by reading the pane, not by trusting a backgrounded wait:
 
 1. **Completion check (authoritative, every fire).** Read the pane and grep its
-   output for the mission's recorded `marker` **alone on a line**:
+   output with the mission's recorded `wait_regex` (the anchored marker pattern
+   pm.py returned at dispatch — marker alone on a line):
 
    ```
-   python3 skills/dispatch/scripts/pm.py read --term "<exec_term>" --session "<sid>" \
-     | grep -E "^[[:space:]]*<MARKER>[[:space:]]*$"
+   python3 "$PM" read --term "<exec_term>" --session "<sid>" \
+     | grep -E "<wait_regex>"
    ```
 
-   Match the marker ONLY when it stands alone on a line — NEVER as a substring.
-   The `/goal` text you dispatched contains the marker string, so a substring
-   grep matches the prompt echo and false-fires; only the agent's own final
-   standalone print counts. Anchored match present → Step 8 (Phase 5). This
-   re-derives completion from current reality each fire, so a marker printed
-   between fires is never lost.
+   Match ONLY the anchored pattern — NEVER a bare substring. The pointer pm.py
+   dispatched contains the marker string ("…print <marker>…"), so a substring
+   grep matches that echo and false-fires; only the agent's own final standalone
+   print counts. Match present → Step 8 (Phase 5). This re-derives completion
+   from current reality each fire, so a marker printed between fires is never lost.
 2. **Agent status** comes from the Step 3 `lanes` result already gathered — read
    `agent_status` for this mission's `goal/NNN` lane: `working` → leave it for
    the next fire; `blocked` → Step 7 (Phase 4b). (Marker is handled by step 1
@@ -237,18 +258,18 @@ EVERY fire** by reading the pane, not by trusting a backgrounded wait:
    than waiting for the next fire, you may background a wait:
 
    ```
-   herdr wait output "<exec_pane>" --match "^[[:space:]]*<MARKER>[[:space:]]*$" --regex --timeout 600000 &
+   herdr wait output "<exec_pane>" --match "<wait_regex>" --regex --timeout 600000 &
    ```
 
-   (positional `<exec_pane>`; anchor the `--regex` to the marker alone on a line,
-   same as the authoritative check, so the prompt echo doesn't wake it.) Its
+   (positional `<exec_pane>`; `<wait_regex>` is the recorded anchored pattern, so
+   the prompt echo doesn't wake it.) Its
    result is a convenience only — a raw wait can miss a marker printed between
    re-arms, and a background process's result is lost across fires; the step-1
    read+grep is what actually decides completion.
 4. **Set sidebar visibility:**
 
    ```
-   python3 skills/dispatch/scripts/pm.py status --term "<exec_term>" --text "goal NNN"
+   python3 "$PM" status --term "<exec_term>" --text "goal NNN"
    ```
 
    (`status --term <exec_term> --text`, ≤24 chars; the pane LABEL never changes —
@@ -260,7 +281,7 @@ Gated on `config.autonomy` ∈ `conservative | balanced | bold`, default
 `balanced`. First capture the question:
 
 ```
-python3 skills/dispatch/scripts/pm.py read --term "<exec_term>" --session "<sid>"
+python3 "$PM" read --term "<exec_term>" --session "<sid>"
 ```
 
 (identity-safe pane read — resolve `--term` + `--session` so you read YOUR pane,
@@ -274,7 +295,7 @@ never a stale id.)
   the widget with arrow keys + Enter:
 
   ```
-  python3 skills/dispatch/scripts/pm.py keys --term "<exec_term>" --session "<sid>" Down Enter
+  python3 "$PM" keys --term "<exec_term>" --session "<sid>" Down Enter
   ```
 
   (herdr key vocab: `Esc Up Down Left Right Tab Enter`; repeat `Down`/`Up` to land
@@ -286,7 +307,7 @@ never a stale id.)
 - **Tier 2 — escalate.** A genuine product/scope call that is not yours to
   decide:
   1. herdr toast:
-     `python3 skills/dispatch/scripts/pm.py notify --title "goal NNN blocked" --body "<question>"`
+     `python3 "$PM" notify --title "goal NNN blocked" --body "<question>"`
      (best-effort; a disabled/rate-limited toast is reported, not a failure).
   2. Send the PushNotification per `SKILL.md` Phase 4 (the stalled-factory
      notification — one per distinct blocker set).
@@ -312,7 +333,7 @@ never a stale id.)
      permission-stall protocol — never `blocked`.
 4. **Complete.** Flip `completed` via the claim protocol. Then clean up:
    - Find the lane workspace id:
-     `python3 skills/dispatch/scripts/pm.py lanes --term "$ORCH" --branch-prefix goal/`
+     `python3 "$PM" lanes --term "$ORCH" --branch-prefix goal/`
      → take the lane's workspace id for `goal/NNN` → `<lane_ws>`.
    - `herdr worktree remove --workspace "<lane_ws>"` — for a native worktree
      lane this removes BOTH the checkout AND its workspace (which closes the
@@ -329,7 +350,7 @@ Tier 3 win and Tier 2 is rebuilt:
 | Tier | Where | Holds | Authority |
 |---|---|---|---|
 | 1 | `index.yaml` | claim status | Truth, cross-machine |
-| 2 | `~/.local/state/pg-dispatch/<SLUG>/missions.json` | `goal → {branch, worktree, term, pane, session, marker, started, respawned}` | Runtime cache, machine-local |
+| 2 | `~/.local/state/pg-dispatch/<SLUG>/missions.json` | `goal → {branch, worktree, term, pane, session, marker, wait_regex, started, respawned}` | Runtime cache, machine-local |
 | 3 | herdr (`lanes` = agent/worktree list) + git (branches/commits/PRs) | what's actually alive | Reality, always reconcilable |
 
 **Recovery scenarios** (all reconstruct from ledger + git + live panes):
