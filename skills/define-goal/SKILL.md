@@ -125,6 +125,8 @@ config:
   wip: 2            # max goals in progress at once (parallelism)
   model: inherit    # spawned code agents: inherit | a model alias (sonnet, haiku, opus)
   skills: []        # repo-wide skills every implementer must invoke
+  execution: native # native = in-process agents | herdr = fresh claude per goal in a herdr worktree pane (needs the herdr CLI on the runner)
+  autonomy: balanced # herdr only: conservative | balanced | bold — how readily the orchestrator auto-answers a blocked implementer vs escalates to you
 goals:
   001-receipt-emails: {status: not_started, priority: high}
   002-rate-limit-api: {status: not_started, depends_on: [001-receipt-emails]}
@@ -134,9 +136,11 @@ On first queue creation, ask the user once (AskUserQuestion): which branch is th
 integration base (main? staging? other?), and the merge policy (`pr` — safest, a human
 merges every PR; `auto` — the factory rebases, re-verifies, and merges back itself).
 Defaults when unspecified: the repo's default branch, `merge: pr`, `wip: 2`,
-`model: inherit`, no repo skills. `model: sonnet` trades implementation depth for
+`model: inherit`, no repo skills, `execution: native`, `autonomy: balanced`.
+`model: sonnet` trades implementation depth for
 weekly-limit headroom — sensible on simple repos, not on gnarly ones. A per-goal `base:`
-field on an index entry overrides `config.base` (epic branches).
+field on an index entry overrides `config.base` (epic branches). `execution: herdr`
+requires the herdr CLI on the runner; absent it, dispatch degrades to `native`.
 
 Rules that keep the queue safe:
 
