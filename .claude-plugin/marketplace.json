@@ -13,6 +13,18 @@
       "author": {
         "name": "pragmaticgrowth"
       }
+    },
+    {
+      "name": "swiftui-ios",
+      "description": "Ground AI-written SwiftUI in real production usage from iOS & iPadOS apps, plus skills (domain audits + write/modernize/scaffold): lookup/consensus/deprecation/recipes + domain audits via the swiftui-ctx CLI, slash commands, a review agent, and a deprecation hook.",
+      "source": {
+        "source": "github",
+        "repo": "pragmaticgrowth/swiftui-ios"
+      },
+      "homepage": "https://github.com/pragmaticgrowth/swiftui-ios",
+      "author": {
+        "name": "pragmaticgrowth"
+      }
     }
   ]
 }
