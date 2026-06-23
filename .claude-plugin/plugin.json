@@ -1,6 +1,6 @@
 {
   "name": "pg-plugin",
-  "version": "2.8.0",
+  "version": "2.8.1",
   "description": "Pragmatic Growth workflow skills for Claude Code — define-goal (plain-language wants → measurable goal contracts, run now via /goal or queued in docs/goals), dispatch (factory orchestrator for the docs/goals queue), and loop-architect (design autonomous loop contracts).",
   "author": {
     "name": "pragmaticgrowth"

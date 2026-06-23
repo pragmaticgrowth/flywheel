@@ -72,11 +72,17 @@ what should cause the agent to stop and ask?
   they see working, what must not break, urgency, out of scope) — max 4 questions per
   round. Derive technical detail yourself by reading the codebase.
 
-## Recon — parallel investigation for bugs and unfamiliar features
+## Recon — investigate the existing situation BEFORE defining (default, not optional)
 
-When the want is a bug, or a feature touching code you can't pin from a quick read, do NOT
-investigate in your own context — fan out read-only subagents, all in ONE message so they
-run concurrently:
+Ground every goal in the real system, not the user's description. Before writing ANY goal
+that touches existing code, behavior, or data, FIRST fan out read-only subagents to learn
+how that area works today — all in ONE message so they run concurrently (in subagents, never
+your own context, so the work parallelizes and your context stays clean for synthesis). This
+is the default for bugs and for any feature or chore built on an existing system — i.e. most
+goals. "The description sounds clear" or "I could guess the area" is NOT a reason to skip;
+guessing is exactly what recon exists to replace. Skip recon ONLY when the want is genuinely
+greenfield (nothing existing to understand) or a one-liner you can already pin with certainty.
+Recon details:
 
 - **Model economy (mandatory)**: recon never inherits the session model — that burns the
   weekly limit on search work. Search-shaped angles → the `Explore` agent type (read-only,
@@ -89,16 +95,22 @@ run concurrently:
 - **Angles, 2–4 per fan-out** — for a bug: symptom trace (error strings/log lines → the
   code that throws and handles them), data/control flow (entry point → failure area),
   recent-change scan (`git log`/`blame` on suspect areas), config/wiring (flags, env,
-  versions). For a feature: where similar features live, surfaces to touch (routes, UI,
-  schema, jobs), constraints (migrations, auth, test layout).
+  versions). For a feature on an existing system: the existing data sources, queries, and
+  components the new work should REUSE (not reinvent), where similar features live, surfaces
+  to touch (routes, UI, schema, jobs), constraints (migrations, auth, test layout).
 - **Contract per subagent**: return a summary, never file dumps — candidate files as
   `path:line`, a hypothesis WITH evidence, confidence, and what would confirm it.
 - **Synthesize in your context**: agreeing findings → the goal file's Context section and
   acceptance criteria (for bugs, "failing test reproducing the root cause" is the first
   criterion). Conflicting hypotheses → record both in the goal file and let the
   implementer's failing test arbitrate — don't guess a winner.
-- Recon is recon: read-only, no fixes, no heavy repro — the implementer does that. Skip
-  the fan-out entirely when one quick read already pins the area.
+- Reach the system wherever it actually lives: a local checkout by default; if the relevant
+  code or data lives somewhere else the session can reach (a separate repo, a host you
+  connect to, a running service or database), tell each subagent exactly how to reach it so
+  recon investigates the REAL system, not an empty local tree — and have acceptance commands
+  target that same place. Never hardcode this into the skill; read it from the want and the
+  repo each time.
+- Recon is recon: read-only, no fixes, no heavy repro — the implementer does that.
 
 ## Pick the destination
 
