@@ -58,6 +58,16 @@ def test_safemerge_token_resolves_to_existing_wrapper():
     assert path.endswith(os.path.join("dispatch", "scripts", "pg_safe_merge.py")), path
     assert os.path.exists(path), f"wrapper path does not exist: {path}"
 
+def test_durable_merge_path_wildcards_version():
+    # a versioned plugin-cache path → version segment wildcarded so the allow-rule survives updates
+    assert dc._durable_merge_path(
+        "/x/.claude/plugins/cache/mp/pg-plugin/2.8.5/skills/dispatch/scripts/pg_safe_merge.py"
+    ) == "/x/.claude/plugins/cache/mp/pg-plugin/*/skills/dispatch/scripts/pg_safe_merge.py"
+    # dev checkout / no version dir → unchanged (literal)
+    assert dc._durable_merge_path(
+        "/home/u/pg-plugin/skills/dispatch/scripts/pg_safe_merge.py"
+    ) == "/home/u/pg-plugin/skills/dispatch/scripts/pg_safe_merge.py"
+
 import subprocess, sys, json
 def test_runner_emits_valid_json_and_exit_code():
     r = subprocess.run([sys.executable, os.path.join(_here, "doctor_checks.py"), "--merge", "pr"],

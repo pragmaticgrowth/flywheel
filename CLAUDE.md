@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Skills-only Claude Code plugin from Pragmatic Growth, v2.8.5. No MCP
+Skills-only Claude Code plugin from Pragmatic Growth, v2.8.6. No MCP
 servers, no commands, no agents, no hooks, no build step — four skills
 under `skills/` (two ship deterministic Python helpers in `scripts/`),
 forming a plain-language → autonomous-execution pipeline around a

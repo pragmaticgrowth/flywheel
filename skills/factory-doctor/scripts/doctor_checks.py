@@ -97,6 +97,15 @@ def _settings_sources(repo_root):
     return out
 
 
+def _durable_merge_path(p):
+    # A plugin-cache install lives at .../pg-plugin/<version>/skills/...; the version dir
+    # changes on every update, which would break a literal allow-rule (and re-block merges
+    # until re-granted). Wildcard ONLY the version segment so the rule survives updates —
+    # mid-path `*` matches across `/` in Bash permission rules. Dev checkouts / the
+    # marketplace clone have no version dir, so they stay literal.
+    return re.sub(r"(/pg-plugin/)[^/]+(/skills/)", r"\1*\2", p)
+
+
 def _safemerge_token():
     # Derive the wrapper from THIS script's own location — the plugin install that dispatch
     # also resolves via $CLAUDE_PLUGIN_ROOT. NEVER repo-relative: a target repo has no
@@ -104,7 +113,7 @@ def _safemerge_token():
     # path dispatch actually invokes, leaving the allow-rule useless.
     here = os.path.dirname(os.path.realpath(__file__))
     p = os.path.realpath(os.path.join(here, "..", "..", "dispatch", "scripts", "pg_safe_merge.py"))
-    return f"python3 {p}"
+    return f"python3 {_durable_merge_path(p)}"
 
 
 def run_checks(base, merge, execution):

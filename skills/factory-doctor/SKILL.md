@@ -30,8 +30,12 @@ For each check whose `fix` begins with `FIX:`:
   — `Bash(python3 <abs>/pg_safe_merge.py:*)` — to `permissions.allow` in
   **`.claude/settings.local.json`** (per-machine; never the committed `.claude/settings.json`).
   Trust that token VERBATIM: the probe derives the wrapper from the plugin install (the same
-  path dispatch invokes), so never substitute a repo-relative path of your own. Create the
-  file/keys if absent; dedup; never delete existing entries; re-read to confirm → FIXED.
+  path dispatch invokes), so never substitute a path of your own. The token has a `*` in place
+  of the plugin version (`pg-plugin/*/skills/...`) ON PURPOSE — a deliberate wildcard so this one
+  rule survives plugin updates (a version-pinned rule would re-block merges after every upgrade);
+  keep the `*`, never expand it to a pinned version. An older version-pinned rule lingering from a
+  previous run is harmless (you may delete it). Create the file/keys if absent; dedup; never
+  delete existing entries; re-read to confirm → FIXED.
   EXPECT this write to be DENIED in an unattended or auto-mode session — the harness blocks an
   agent from adding its own `Bash(...)` allow-rule as self-modification. That denial is NOT a
   failure and you must NOT route around it: surface the exact line under needs-you (status
