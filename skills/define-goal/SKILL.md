@@ -84,13 +84,15 @@ guessing is exactly what recon exists to replace. Skip recon ONLY when the want 
 greenfield (nothing existing to understand) or a one-liner you can already pin with certainty.
 Recon details:
 
-- **Model economy (mandatory)**: recon never inherits the session model — that burns the
-  weekly limit on search work. Search-shaped angles → the `Explore` agent type (read-only,
-  runs on a fast cheap model by design); no Explore in this environment → a general
-  subagent with `model: haiku`. At most one judgment agent per fan-out with
-  `model: sonnet` to weigh the evidence and rank root-cause hypotheses — search agents
-  report what the code shows (files, call paths, suspect commits); ranking what it means
-  happens in the sonnet agent or your own synthesis. The queue's `config.model` never
+- **Model (mandatory)**: recon never inherits the session model (which may be opus —
+  capping at sonnet is the economy). Run every recon search subagent as the
+  `general-purpose` type with `model: sonnet`, strictly READ-ONLY (report only — never
+  edit, fix, or run heavy repro). Do NOT use the built-in `Explore` type here: it is locked
+  to a fast cheap model and can't be raised, and recon's job is real understanding of the
+  existing system, not shallow grep — sonnet earns its keep. The synthesis/judgment step
+  (when you split one out to weigh evidence and rank hypotheses) is also `model: sonnet`;
+  search agents report what the code shows (files, call paths, suspect commits), ranking
+  what it means happens there or in your own synthesis. The queue's `config.model` never
   applies here — it governs code-writing agents only.
 - **Angles, 2–4 per fan-out** — for a bug: symptom trace (error strings/log lines → the
   code that throws and handles them), data/control flow (entry point → failure area),

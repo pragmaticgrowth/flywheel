@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Skills-only Claude Code plugin from Pragmatic Growth, v2.8.1. No MCP
+Skills-only Claude Code plugin from Pragmatic Growth, v2.8.2. No MCP
 servers, no commands, no agents, no hooks, no build step — four skills
 under `skills/` (two ship deterministic Python helpers in `scripts/`),
 forming a plain-language → autonomous-execution pipeline around a
@@ -111,9 +111,15 @@ file-based goal queue (`docs/goals/` in target repos):
   skip only for genuinely greenfield or one-liner wants. Reaches the system
   wherever it lives (local checkout, separate repo, a host you connect to, a
   service/DB), told to each subagent, never hardcoded. It never inherits the
-  session model: search angles on the Explore agent type (fallback
-  `model: haiku`), at most one judgment agent on `model: sonnet` — weekly-limit
-  economy, doc-backed.
+  session model; recon search subagents run as the `general-purpose` type on
+  `model: sonnet`, strictly read-only (v2.8.2 — the built-in Explore type is
+  locked to haiku and can't be raised, so general-purpose/sonnet is how recon
+  buys real understanding; capping at sonnet vs an opus session is the remaining
+  economy; the owner chose sonnet-for-all-recon over haiku-breadth). The synthesis
+  agent is also sonnet. `config.model` governs only code agents, never recon.
+  (Recon stays plain parallel subagents, NOT a Workflow: 2–4 agents is below the
+  workflow scale threshold and a workflow can be disabled on a user's machine —
+  define-goal batch mode is the only place that conditionally uses Workflow.)
 - Workflow tool only where the docs' thresholds say it wins: define-goal
   batch mode at ~5+ items (drafts in script variables, approval table
   gates file writes). Dispatch implementers are NEVER workflows — runs
