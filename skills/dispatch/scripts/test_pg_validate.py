@@ -162,6 +162,19 @@ def test_repro_nothing_red_on_base_red_on_head():
     r = pgv.repro_direction([0, 0], [1, 0], already_correct=False)
     assert r["pass"] is False
 
+def test_acceptance_green_all_pass():
+    r = pgv.acceptance_green([0, 0, 0])
+    assert r["pass"] is True
+
+def test_acceptance_green_one_red():
+    r = pgv.acceptance_green([0, 1, 0])
+    assert r["pass"] is False and r["kind"] == "fixable"
+
+def test_acceptance_green_empty_is_inconclusive():
+    # no acceptance commands discoverable → can't verify
+    r = pgv.acceptance_green([])
+    assert r["pass"] is False and r["kind"] == "inconclusive"
+
 if __name__ == "__main__":
     fns = [g for n, g in sorted(globals().items()) if n.startswith("test_")]
     for fn in fns:

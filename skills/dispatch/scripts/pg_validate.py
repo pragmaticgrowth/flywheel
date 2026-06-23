@@ -133,3 +133,15 @@ def repro_direction(base_exits, head_exits, already_correct):
     return {"name": "repro-direction", "pass": False, "kind": "contract",
             "evidence": "nothing red on base — the bug 'fixed' nothing (tautology/already-fixed); "
                         "document 'already correct' with a locking test if so"}
+
+
+def acceptance_green(head_exits):
+    if not head_exits:
+        return {"name": "acceptance-green", "pass": False, "kind": "inconclusive",
+                "evidence": "no acceptance command could be resolved for this goal"}
+    if all(x == 0 for x in head_exits):
+        return {"name": "acceptance-green", "pass": True, "kind": "fixable",
+                "evidence": f"all {len(head_exits)} acceptance command(s) green on a fresh head checkout"}
+    red = [i for i, x in enumerate(head_exits) if x != 0]
+    return {"name": "acceptance-green", "pass": False, "kind": "fixable",
+            "evidence": f"acceptance command(s) red on fresh head checkout: index {red}"}
