@@ -60,8 +60,9 @@ what should cause the agent to stop and ask?
 
 - **Hard rules**: read CLAUDE.md / AGENTS.md (root + relevant subdirs). Copy rules that
   constrain agents (protected branches, forbidden merges, deploy/migration rules, TDD
-  policy) verbatim into the Constraints section. Always add: "Never merge — a human merges.
-  Never push protected branches."
+  policy) verbatim into the Constraints section. Always add: "Implementers never merge. Under
+  `merge: pr` a human merges; under `merge: auto` only the orchestrator merges after gates
+  pass. Never push protected branches."
 - **Verification commands**: prefer what the repo states — CLAUDE.md commands, package.json
   scripts, Makefile targets, CI steps. Every acceptance criterion must name a real command
   from THIS repo.
@@ -139,9 +140,12 @@ goals:
   002-rate-limit-api: {status: not_started, depends_on: [001-receipt-emails]}
 ```
 
-On first queue creation, ask the user once (AskUserQuestion): which branch is the
-integration base (main? staging? other?), and the merge policy (`pr` — safest, a human
-merges every PR; `auto` — the factory rebases, re-verifies, and merges back itself).
+On first queue creation, suggest the user run `/factory-doctor` — it preflights gh auth,
+the merge allow-rule, branch protection, and CI, and scaffolds the queue, so a queue born
+into a known-good environment never hits setup errors mid-run. Then ask the user once
+(AskUserQuestion): which branch is the integration base (main? staging? other?), and the
+merge policy (`pr` — safest, a human merges every PR; `auto` — the factory rebases,
+re-verifies, and merges back itself).
 Defaults when unspecified: the repo's default branch, `merge: pr`, `wip: 2`,
 `model: inherit`, no repo skills, `execution: native`, `autonomy: balanced`.
 `model: sonnet` trades implementation depth for

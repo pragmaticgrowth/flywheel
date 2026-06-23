@@ -104,6 +104,11 @@ fixed: every entry has its goal file and vice versa; no circular `depends_on`; n
 `depends_on` pointing at a missing entry; warn when a goal and its dependency declare
 different `base` branches.
 
+On any environment failure you can't handle (gh unauthenticated, no merge allow-rule,
+protected base blocking the claim protocol), stop the iteration and surface "run
+`/factory-doctor`" under needs-you — it diagnoses and fixes setup so the loop stops failing
+the same way every fire instead of burning quota on a wall it can't clear.
+
 **Implementer-cost awareness.** When `config.model: inherit` resolves to an expensive model
 (you are running on opus) and the queue is mostly `type: chore` (mechanical, no-behavior-
 change work), note once in the report that implementers inherit your model and that
