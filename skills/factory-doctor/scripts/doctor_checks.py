@@ -66,3 +66,148 @@ def validate_queue(index_obj):
         if color[g] == WHITE:
             visit(g)
     return (len(problems) == 0, problems)
+
+
+import argparse, json, os, subprocess, sys
+try:
+    import yaml
+except ImportError:
+    yaml = None
+
+
+def _run(cmd):
+    try:
+        p = subprocess.run(cmd, capture_output=True, text=True)
+        return p.returncode, p.stdout, p.stderr
+    except FileNotFoundError:
+        return 127, "", "not found"
+
+
+def _settings_sources(repo_root):
+    home = os.path.expanduser("~")
+    paths = [("project", os.path.join(repo_root, ".claude", "settings.json")),
+             ("local", os.path.join(repo_root, ".claude", "settings.local.json")),
+             ("user", os.path.join(home, ".claude", "settings.json"))]
+    out = []
+    for name, p in paths:
+        try:
+            out.append((name, json.load(open(p))))
+        except (FileNotFoundError, ValueError):
+            out.append((name, {}))
+    return out
+
+
+def _safemerge_token(repo_root):
+    p = os.path.join(repo_root, "skills", "dispatch", "scripts", "pg_safe_merge.py")
+    return f"python3 {os.path.realpath(p)}"
+
+
+def run_checks(base, merge, execution):
+    C = []
+
+    def add(check, level, detail, fix=""):
+        C.append({"check": check, "level": level, "detail": detail, "fix": fix})
+
+    rc, out, _ = _run(["git", "rev-parse", "--show-toplevel"])
+    repo_root = out.strip() if rc == 0 else os.getcwd()
+
+    # software
+    rc, out, _ = _run(["gh", "--version"])
+    if rc != 0:
+        add("gh", "BLOCKER", "gh CLI not found", "install GitHub CLI (https://cli.github.com)")
+    elif not version_ge(out, "2.40"):
+        add("gh", "WARN", f"gh too old: {out.splitlines()[0]}", "upgrade gh >= 2.40")
+    else:
+        add("gh", "INFO", out.splitlines()[0])
+    rc, out, _ = _run(["git", "--version"])
+    add("git", "INFO" if rc == 0 and version_ge(out, "2.20") else "BLOCKER", out.strip() or "git missing")
+    add("python3", "INFO", sys.version.split()[0])
+    if yaml is None:
+        add("pyyaml", "BLOCKER", "pyyaml not importable", "pip install pyyaml")
+
+    # auth
+    rc, out, err = _run(["gh", "auth", "status"])
+    if rc != 0:
+        add("gh-auth", "BLOCKER", "not authenticated", "gh auth login -h github.com")
+    else:
+        scopes = parse_gh_scopes(out + err)
+        miss = [s for s in ["repo"] if s not in scopes]
+        add("gh-auth", "BLOCKER" if miss else "INFO",
+            f"scopes: {', '.join(scopes) or 'unknown'}",
+            (f"gh auth refresh -h github.com -s repo" if miss else ""))
+
+    # permissions (only relevant for merge: auto)
+    if merge == "auto":
+        token = _safemerge_token(repo_root)
+        allowed_in, denied_in = find_merge_permission(_settings_sources(repo_root), token)
+        if denied_in:
+            add("merge-permission", "BLOCKER", f"a deny rule in {denied_in} blocks the merge wrapper",
+                f"remove the Bash({token}:*) deny in .claude/settings*.json")
+        elif allowed_in:
+            add("merge-permission", "INFO", f"allow-rule present in {allowed_in}")
+        else:
+            add("merge-permission", "BLOCKER", "no allow-rule for the merge wrapper",
+                f"FIX: add Bash({token}:*) to .claude/settings.local.json")
+    else:
+        add("merge-permission", "INFO", "merge: pr — orchestrator never merges; no rule needed")
+
+    # branch protection
+    rc, out, _ = _run(["gh", "api", f"repos/{{owner}}/{{repo}}/branches/{base}/protection"])
+    if rc == 0:
+        try:
+            prot = json.loads(out or "{}")
+        except ValueError:
+            prot = {}
+        if prot.get("required_pull_request_reviews"):
+            add("branch-protection", "BLOCKER" if merge == "auto" else "WARN",
+                f"{base} requires PR reviews",
+                "merge: auto can't merge; set merge: pr or relax the rule")
+        add("base-push", "BLOCKER",
+            f"{base} is protected — the claim protocol can't push to it",
+            "set config.base to a state branch, or run a single dispatcher")
+    else:
+        add("base-push", "INFO", f"{base} not protected/unreadable (claim protocol can push)")
+
+    # CI
+    wf = os.path.join(repo_root, ".github", "workflows")
+    has_wf = os.path.isdir(wf) and any(f.endswith((".yml", ".yaml")) for f in os.listdir(wf))
+    if not has_wf and merge == "auto":
+        add("ci", "WARN", "no CI workflow found", "merge: auto has no automated gate; prefer merge: pr")
+    else:
+        add("ci", "INFO", "CI workflow present" if has_wf else "no CI (merge: pr ok)")
+
+    # queue
+    idx = os.path.join(repo_root, "docs", "goals", "index.yaml")
+    if not os.path.exists(idx):
+        add("queue", "WARN", "no docs/goals/index.yaml", "FIX: scaffold a default index.yaml")
+    elif yaml is not None:
+        try:
+            ok, probs = validate_queue(yaml.safe_load(open(idx)))
+            add("queue", "INFO" if ok else "WARN",
+                "queue valid" if ok else "; ".join(probs), "" if ok else "report drift")
+        except yaml.YAMLError as e:
+            add("queue", "BLOCKER", f"index.yaml parse error: {e}")
+
+    # herdr
+    if execution == "herdr":
+        rc, out, _ = _run(["herdr", "--version"])
+        add("herdr", "INFO" if rc == 0 else "WARN",
+            out.strip() if rc == 0 else "herdr not found — dispatch degrades to native")
+
+    levels = {c["level"] for c in C}
+    result = "BLOCKER" if "BLOCKER" in levels else "WARN" if "WARN" in levels else "READY"
+    return C, result
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(prog="doctor_checks.py")
+    ap.add_argument("--base", default="main"); ap.add_argument("--merge", default="pr")
+    ap.add_argument("--execution", default="native")
+    a = ap.parse_args(argv)
+    checks, result = run_checks(a.base, a.merge, a.execution)
+    print(json.dumps({"checks": checks, "result": result}, indent=2))
+    return {"READY": 0, "WARN": 1, "BLOCKER": 2}[result]
+
+
+if __name__ == "__main__":
+    sys.exit(main())

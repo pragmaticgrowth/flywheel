@@ -49,6 +49,16 @@ def test_validate_queue_status_required():
     ok, probs = dc.validate_queue(obj)
     assert not ok and any("status" in p for p in probs)
 
+import subprocess, sys, json
+def test_runner_emits_valid_json_and_exit_code():
+    r = subprocess.run([sys.executable, os.path.join(_here, "doctor_checks.py"), "--merge", "pr"],
+                       capture_output=True, text=True,
+                       cwd=os.path.dirname(os.path.dirname(os.path.dirname(_here))))
+    assert r.returncode in (0, 1, 2), r.stderr
+    payload = json.loads(r.stdout)
+    assert "checks" in payload and "result" in payload
+    assert all({"check", "level"} <= set(c) for c in payload["checks"])
+
 if __name__ == "__main__":
     fns = [g for n, g in sorted(globals().items()) if n.startswith("test_")]
     for fn in fns: fn(); print("ok ", fn.__name__)
