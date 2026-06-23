@@ -60,6 +60,32 @@ def test_blast_radius_lenient_when_no_touches():
     r = pgv.blast_radius(["some/other/file.go"], [])
     assert r["pass"] is True
 
+def test_forbidden_content_private_key():
+    diff = "+-----BEGIN RSA PRIVATE KEY-----\n+MIIE...\n"
+    r = pgv.forbidden_content(diff)
+    assert r["pass"] is False and "PRIVATE KEY" in r["evidence"]
+
+def test_forbidden_content_aws_key():
+    r = pgv.forbidden_content("+AWS_KEY = AKIAIOSFODNN7EXAMPLE\n")
+    assert r["pass"] is False
+
+def test_forbidden_content_slack_token():
+    r = pgv.forbidden_content("+tok = xoxb-1234567890-abcdef\n")
+    assert r["pass"] is False
+
+def test_forbidden_content_github_pat():
+    r = pgv.forbidden_content("+GH = ghp_0123456789abcdefghijklmnopqrstuvwxyz\n")
+    assert r["pass"] is False
+
+def test_forbidden_content_benign():
+    r = pgv.forbidden_content("+const x = computeThing(input)\n+    return x + 1\n")
+    assert r["pass"] is True
+
+def test_forbidden_content_skips_removed_lines():
+    # removed lines (-) aren't an introduced secret
+    r = pgv.forbidden_content("-OLD = AKIAIOSFODNN7EXAMPLE\n")
+    assert r["pass"] is True
+
 if __name__ == "__main__":
     fns = [g for n, g in sorted(globals().items()) if n.startswith("test_")]
     for fn in fns:

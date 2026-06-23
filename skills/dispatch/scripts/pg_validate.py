@@ -45,3 +45,27 @@ def blast_radius(changed_paths, touches):
                     "evidence": f"changed path outside declared surfaces: {p}"}
     return {"name": "blast-radius", "pass": True, "kind": "fixable",
             "evidence": f"{len(changed_paths)} path(s), all in scope"}
+
+
+import re
+
+# Only scan ADDED lines (start with '+' but not '+++').
+_SECRET_PATTERNS = (
+    re.compile(r"BEGIN [A-Z ]*PRIVATE KEY"),
+    re.compile(r"AKIA[0-9A-Z]{16}"),
+    re.compile(r"xox[baprs]-[0-9A-Za-z-]{10,}"),
+    re.compile(r"gh[pousr]_[0-9A-Za-z]{36,}"),
+    re.compile(r"sk-[0-9A-Za-z]{20,}"),  # OpenAI-style keys
+)
+
+
+def forbidden_content(diff_text):
+    for line in (diff_text or "").splitlines():
+        if not line.startswith("+") or line.startswith("+++"):
+            continue
+        for pat in _SECRET_PATTERNS:
+            if pat.search(line):
+                return {"name": "forbidden-content", "pass": False, "kind": "fixable",
+                        "evidence": f"secret-shaped string in added line: {pat.pattern}"}
+    return {"name": "forbidden-content", "pass": True, "kind": "fixable",
+            "evidence": "no secret-shaped strings in added lines"}
