@@ -23,7 +23,9 @@ host exists.
 Read the queue's `config:` block first; defaults when absent:
 `base` = the repo's default branch (the integration branch goals branch FROM and merge
 BACK to — main, staging, or any other), `merge: pr` (human merges; `auto` = the
-orchestrator merges back after gates), `wip: 2`, `model: inherit`, `skills: []`.
+orchestrator merges back after gates), `wip: 2`, `model: inherit`, `skills: []`,
+`validation: risk_based` (off | risk_based | required — whether a deterministic PR
+check runs before auto-merge; see the Validate step in Integration).
 `config.model` (when not `inherit`) is passed as the `model` parameter on EVERY
 code-writing agent you spawn — implementers, CI-fix, review-response, and sync agents
 alike; it is the repo owner's depth-vs-weekly-limit trade, not yours to override.
@@ -213,8 +215,27 @@ integrated:
    commands re-run in the worktree with output shown. A gate that passed before the sync
    doesn't count. Never sit waiting for CI inside an iteration — end the turn; the next
    fire re-checks.
+2b. **Validate (deterministic gate — only when `config.validation != off` and the goal is
+   in-scope: `risk_based` requires it for `type: bug|feature` and risk-flagged chores;
+   `required` for all; `off` skips to step 3). A chore is **risk-flagged** if its changed
+   paths touch auth/payments/migrations/deploy/prod config/deps, or span >12 files (low-risk
+   mechanical chores skip validation — they already prove no-behavior-change before/after).
+   Create a fresh detached worktree of the synced PR head (`git worktree add --detach <tmp>
+   <head-sha>`); resolve `$PGVALIDATE`
+   like `$SAFEMERGE`/`$PM` and run `python3 "$PGVALIDATE" --pr <n> --goal <id> --base <base>
+   --goal-file docs/goals/<id>.md --worktree-root <tmp>`. Read the JSON `verdict` field to
+   split FIXABLE vs CONTRACT (both FAILs exit 3, so the exit code alone is insufficient;
+   PASS=0, INCONCLUSIVE=4). `PASS` → record the validated `sha_head`/`sha_base` and use them
+   as Merge's `--expected-head/--expected-base`; `FAIL_FIXABLE` → spawn ONE worker-repair
+   agent in the branch worktree with the findings (cap one repair; an identical second FAIL
+   → `blocked`/needs-you); `FAIL_CONTRACT` → keep the goal `in_progress` (holds its slot),
+   surface a contract amendment under needs-you, never churn the worker; `INCONCLUSIVE` →
+   transient, retry next fire, never default-PASS. Prune the worktree when done (its own
+   step, never bundled with a queue commit). A deterministic FAIL overrides everything —
+   never route around it with a manual merge.
 3. **Merge**: `python3 "$SAFEMERGE" --pr <n> --goal <id> --base <base> --expected-head
-   <gate-verified head SHA> --expected-base <gate-verified base SHA>` when a PR exists. The
+   <the SHA Validate recorded; or, if validation was off/skipped, the gate-verified head SHA>
+   --expected-base <likewise>` when a PR exists. The
    wrapper re-verifies branch/body/base/checks/SHAs and that the PR touches no `docs/goals/`
    file, then merges with the repo's allowed method and `--delete-branch`. Exit 3 = it
    REFUSED (a verification failed — read the reasons, treat as a real blocker; do NOT route
