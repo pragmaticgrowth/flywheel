@@ -67,6 +67,13 @@ single dispatcher, keep queue commits local, and say so in the report.
 missed fires don't stack. Implementers run as background agents, so your turn ends quickly
 while they keep working. Each iteration must be idempotent:
 
+**Direct `/dispatch` (no loop) has no recovery fire.** A transient death mid-turn — yours
+(a 500/529 processing an implementer's completion) or an implementer's — is NOT recovered
+automatically the way a `/loop` fire would. The work isn't lost (claims and branch commits are
+already pushed), so just **re-run `/dispatch`**: the next iteration's Phase 1 shepherds whatever
+the implementers finished, and the stale-claim rule respawns anything that died. For unattended
+runs prefer `/loop 15m /dispatch` so these recover on their own.
+
 1. **The index is the claim ledger.** A claim is a pushed status flip made BEFORE spawning —
    never claim from inside a worktree, and never spawn a second implementer for an
    `in_progress` goal that has a live background agent (under `execution: herdr`, a

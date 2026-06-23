@@ -180,12 +180,25 @@ Rules that keep the queue safe:
 - Keep each goal file well under 64 KB so it could mirror 1:1 into a GitHub issue.
 - Confirm the draft (title + acceptance criteria) with the user before writing; batch mode
   uses its approval table instead.
-- Commit each queue addition: `chore(goals): add <id>` (one commit per batch is fine) on
-  the queue's base branch, and push. Push rejected → `git pull --rebase`; if another
-  session minted your `NNN` meanwhile, renumber YOUR new goal (file + entry) to the next
-  free number and push again — never renumber existing goals. If the repo forbids direct
-  commits to the base branch, use a short-lived branch + PR and tell the user the goal
-  enters the queue when it merges. Create `docs/goals/` and `index.yaml` on first use.
+- **Reserve the ID(s) BEFORE writing goal files** — the define-goal analog of dispatch's
+  "claim the slot via push before spawning." It prevents a concurrent session from forcing a
+  rename + cross-ref rewrite of files you already wrote (a real foot-gun under multi-machine
+  concurrency). Flow: re-read `index.yaml` and compute the next free `NNN`(s) = max existing
+  + 1; append ONLY the minimal entry/entries (`NNN-slug: {status: not_started, priority: …}`)
+  — for a multi-goal chain, reserve ALL its NNNs in ONE commit so the cross-refs are right the
+  first time; commit `chore(goals): reserve <id>` and push. Push rejected → `git pull --rebase`,
+  recompute `NNN` from the now-larger index, retry (max 3). At this stage NOTHING is on disk, so
+  a collision is just a new number — never a file rename. Once the push lands you OWN those
+  NNNs; NOW write the goal file(s) with the correct `id:`/branch/`Goal: <id>`/cross-refs stamped
+  in, commit `chore(goals): add <id>`, push. Never renumber existing goals.
+- **Concurrent edits to `index.yaml`:** it's shared state. Re-read it immediately before each
+  edit; if the Edit tool reports the file changed under you (another session committed
+  mid-edit), re-read and re-apply — don't force. Appending your highest-number entries at EOF
+  (after `pull --rebase`) is naturally race-free: no two sessions mint the same top number, and
+  a `grep -q '<your-id>'` guard before append makes it idempotent.
+- If the repo forbids direct commits to the base branch, use a short-lived branch + PR and tell
+  the user the goal enters the queue when it merges. Create `docs/goals/` and `index.yaml` on
+  first use.
 
 ## Goal file template
 
