@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Skills-only plugin for Claude Code and Droid (Factory CLI) from Pragmatic Growth, v2.9.1.
+Skills-only plugin for Claude Code and Droid (Factory CLI) from Pragmatic Growth, v2.9.2.
 No MCP servers, no commands, no agents, no hooks, no build step — four skills
 under `skills/` (two ship deterministic Python helpers in `scripts/`),
 forming a plain-language → autonomous-execution pipeline around a

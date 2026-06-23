@@ -326,7 +326,7 @@ the session model — mention it if config.model differs); merge back per `confi
 
 ## Phase 4 — report (always, exactly one line)
 
-`[dispatch] <done>/<total> done [<bar>] · ready: <count> · running: <count>/<wip> (<ids>) · blocked: <count> · shepherded: <PRs+outcome or none> · claimed: <id(s) or none> · model: <implementer model> · needs-you: <mergeable PRs / blocked goals / nothing>`
+`[dispatch] <done>/<total> done [<bar>] · ready: <count> · running: <count>/<wip> (<ids>) · blocked: <count> · shepherded: <PRs+outcome or none> · claimed: <id(s) or none> · model: <implementer model> · needs-you: <mergeable PRs / human-blocked goals / nothing>`
 
 Lead with **progress** (`<done>/<total>`), never `ready/total` — a bare `ready/total` reads
 as "nothing done" to a human. Every number carries its label. The four counts partition
@@ -339,8 +339,12 @@ The bar is 20 cells: `filled = round(20 × done ÷ total)` (0.5 rounds up), clam
 empty = 20 − filled. Filled cells = █, empty = ░; omit the whole bar when total = 0.
 Anchor example: 19/21 → round(18.10) = 18 filled → `[██████████████████░░]`.
 
-needs-you lists everything currently waiting on the human — mergeable PRs and ALL blocked
-goals (noting dependents stuck behind them), every iteration, not only new ones.
+needs-you lists everything currently waiting on the human: mergeable PRs and every goal with
+explicit `blocked` status — for each, note the dependents stuck behind it. A **dep-blocked**
+goal (not_started, waiting on another goal that is still running or not yet ready) is NOT
+human-blocked: it unblocks on its own as its dependency merges, so it never appears here on
+its own — only as a "dependent stuck behind" a goal that is human-blocked. Every iteration,
+not only new ones.
 
 **Stalled factory → one real notification.** A report line in an unattended scheduled run
 has no reader. The fire that first finds the factory fully stalled — needs-you non-empty,
