@@ -56,8 +56,14 @@ def test_base_moved_refused():
     ok, reasons = v(good_pr(), current_base_sha="moved999")
     assert not ok and any("base moved" in r for r in reasons)
 
+import subprocess, sys
+def test_self_test_mode_exits_zero():
+    r = subprocess.run([sys.executable, os.path.join(_here, "pg_safe_merge.py"), "--self-test"],
+                       capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "self-test" in r.stdout and "passed" in r.stdout, r.stdout + r.stderr
+
 if __name__ == "__main__":
-    import sys
     fns = [g for n, g in sorted(globals().items()) if n.startswith("test_")]
     for fn in fns:
         fn(); print(f"ok  {fn.__name__}")
