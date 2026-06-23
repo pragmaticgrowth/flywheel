@@ -74,8 +74,9 @@ Each fix is one atomic edit, named in the report.
 
 Push, open a PR, touch the remote, edit a CI workflow, change branch protection / required
 reviews, run `gh auth login`/`refresh` (browser-blocking — report the exact command instead),
-run a SYSTEM/sudo package install (`gh`, `git`, `brew`/`apt` — report those; the ONLY install
-you may run is the plugin's own python dep at `--user` scope, above), `git stash`, change
+run a SYSTEM/sudo/global install (`gh`, `git`, `brew`/`apt`, OR `npm i -g agent-browser`
++ its Chromium download — report those; the ONLY install you may run is the plugin's own
+python dep at `--user` scope, above), `git stash`, change
 `merge: pr` → `auto`, delete branches/worktrees, or write to user-scope
 `~/.claude/settings.json` (Claude Code) or `~/.factory/settings.json` (Droid). Anything not
 in the fix list above is REPORT-only.
@@ -87,7 +88,11 @@ probe reported that you did NOT auto-fix — copy its `detail` and `fix` fields 
 text IS the exact command or guidance for the human (the `gh auth refresh …` line, the "set
 config.base to a state branch, or run a single dispatcher" option for a protected base, a
 deny-rule conflict, etc.). A `merge-permission` BLOCKER that cites a deny has no `FIX:` prefix,
-so it lands here, not in `fixed:`. Then one status line — under `merge: pr` the probe emits
+so it lands here, not in `fixed:`. The probe also checks `browser-verify`: if the repo has
+frontend/UI work (a UI framework in package.json, or any goal referencing `agent-browser`)
+but `agent-browser` isn't installed, it WARNs with the install command — REPORT-only (a global
+npm install + Chromium is a system-level change, never auto-run). Then one status line — under
+`merge: pr` the probe emits
 `merge-permission` INFO with no fix, so report `permissions: n/a`:
 
 `[doctor] software: <ok|missing> · auth: <ok(scopes)|fix> · permissions: <ok|fixed|blocked(classifier)|deny-conflict|n/a> · push: <ok|⚠ base protected> · ci: <green|none> · queue: <valid|scaffolded|drift> · result: READY|WARN|BLOCKER`

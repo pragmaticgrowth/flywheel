@@ -79,8 +79,14 @@ what should cause the agent to stop and ask?
 - **Verification commands**: prefer what the repo states — CLAUDE.md commands, package.json
   scripts, Makefile targets, CI steps. Every acceptance criterion must name a real command
   from THIS repo.
-- **UI evidence**: a project browser/verify skill if one exists; else agent-browser or the
-  Chrome extension; else written manual steps.
+- **UI evidence**: for ANY goal touching the UI, the acceptance criteria must include a
+  **scripted browser check** — navigate to the route, interact, and ASSERT a concrete
+  visible result (an element renders, a text/value is present, a count is N), then capture a
+  screenshot. A screenshot alone is a CLAIM, not verification — it proves the page loaded,
+  not that it works. Default tool: `agent-browser` (CDP + accessibility-tree assertions; also
+  screenshots). Use a project browser/verify skill if one exists; else the Chrome extension
+  only if it can assert, not just screenshot; else written manual steps that name the exact
+  assertion. The implementer must start the project's dev server to drive it.
 - Interview with the interactive question tool (AskUserQuestion in Claude Code, AskUser
   in Droid) only for non-technical gaps (who is it for, what would they see working, what
   must not break, urgency, out of scope) — max 4 questions per round. Derive technical
@@ -241,7 +247,9 @@ skills: []      # goal-specific skills the implementer must invoke, e.g. [agent-
 - [ ] <observable behavior 1>
 - [ ] <repo's typecheck/lint command> exits 0
 - [ ] <repo's owning-package test command> passes
-- [ ] For UI work: verified in the browser, screenshot attached to the PR
+- [ ] For UI work: a SCRIPTED browser check (agent-browser) — start the dev server, navigate
+  to the route, and ASSERT a concrete visible result (element/text/count), with a screenshot
+  attached as evidence (a screenshot alone is not verification)
 
 ## Constraints (hard rules)
 <repo hard rules from CLAUDE.md/AGENTS.md, verbatim>
@@ -278,9 +286,13 @@ files — a dependency is far cheaper than a merge conflict between parallel imp
 Populate the frontmatter `skills:` field from the skills actually available in this
 session (the available-skills list), matched to the code area you located — domain skills
 only (browser/UI verification, platform skills like Cloudflare or Postgres, a project's
-own skills), at most ~4, never invented names. Method skills (TDD, plans, verification)
-are mandated by `dispatch`'s brief — don't repeat them. Repo-wide skills belong in
-`config.skills` instead; suggest moving one there when every goal would list it.
+own skills), at most ~4, never invented names. **Any goal touching the UI MUST list
+`agent-browser`** in its `skills:` (it's what makes the scripted browser check in the
+acceptance criteria runnable); if agent-browser isn't available, say so and fall back to
+written manual-assertion steps rather than silently dropping the UI verification. Method
+skills (TDD, plans, verification) are mandated by `dispatch`'s brief — don't repeat them.
+Repo-wide skills belong in `config.skills` instead; for a frontend repo, suggest moving
+`agent-browser` to `config.skills` when every (or most) goal would list it.
 
 Shape by `type:` — each type has a non-negotiable element, and it overrides the
 template's stock criteria where they conflict (a bug's failing test goes first, above the
@@ -292,7 +304,9 @@ behavior criteria; a chore's full-suite check replaces the owning-package one):
   root cause, passing after the fix."
 - **feature** — Outcome reads as what the user sees working; Context lists the surfaces
   to touch (routes, UI, schema, jobs) from recon; Out of scope is mandatory, never empty —
-  features sprawl.
+  features sprawl. If the feature has a UI surface, its acceptance criteria MUST include the
+  scripted browser check above (and `agent-browser` in `skills:`) — never a screenshot-only
+  criterion.
 - **chore** (refactor, upgrade, migration) — acceptance is "no behavior change": the full
   test suite green before AND after, plus the one mechanical check that proves the chore
   itself (dependency version, lint-rule count, migration applied).

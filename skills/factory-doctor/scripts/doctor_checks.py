@@ -68,11 +68,57 @@ def validate_queue(index_obj):
     return (len(problems) == 0, problems)
 
 
-import argparse, json, os, subprocess, sys
+import argparse, glob, json, os, subprocess, sys
 try:
     import yaml
 except ImportError:
     yaml = None
+
+
+# ---- frontend / browser-verification detection (UI goals need a real browser check) ----
+def _is_ui_dep(dep):
+    return (dep in {"react", "react-dom", "vue", "next", "nuxt", "vite", "preact",
+                    "solid-js", "lit", "@angular/core"}
+            or dep.startswith(("react-", "@angular/", "@vue/", "@sveltejs/", "@lit/")))
+
+
+def _pkg_has_ui(pkg):
+    deps = {}
+    deps.update((pkg or {}).get("dependencies") or {})
+    deps.update((pkg or {}).get("devDependencies") or {})
+    return any(_is_ui_dep(d) for d in deps)
+
+
+def detect_frontend(repo_root):
+    # root + immediate-child package.json (monorepo apps/frontend dirs)
+    candidates = [os.path.join(repo_root, "package.json")]
+    try:
+        for name in os.listdir(repo_root):
+            p = os.path.join(repo_root, name, "package.json")
+            if os.path.isfile(p):
+                candidates.append(p)
+    except OSError:
+        pass
+    for p in candidates:
+        try:
+            if _pkg_has_ui(json.load(open(p))):
+                return True
+        except (FileNotFoundError, ValueError):
+            continue
+    return False
+
+
+def goals_reference_browser(repo_root):
+    goals_dir = os.path.join(repo_root, "docs", "goals")
+    if not os.path.isdir(goals_dir):
+        return False
+    for f in glob.glob(os.path.join(goals_dir, "*.md")):
+        try:
+            if "agent-browser" in open(f).read():
+                return True
+        except OSError:
+            continue
+    return False
 
 
 def _run(cmd):
@@ -194,6 +240,22 @@ def run_checks(base, merge, execution):
         add("ci", "WARN", "no CI workflow found", "merge: auto has no automated gate; prefer merge: pr")
     else:
         add("ci", "INFO", "CI workflow present" if has_wf else "no CI (merge: pr ok)")
+
+    # browser verification (only when frontend/UI work is present)
+    if detect_frontend(repo_root) or goals_reference_browser(repo_root):
+        rc, out, _ = _run(["agent-browser", "--version"])
+        if rc == 0:
+            add("browser-verify", "INFO",
+                "frontend/UI work present; agent-browser available "
+                f"({out.splitlines()[0] if out.strip() else 'ok'})")
+        else:
+            add("browser-verify", "WARN",
+                "frontend/UI work detected but agent-browser is not installed — "
+                "UI goals can't run their scripted browser check",
+                "npm i -g agent-browser && agent-browser install  "
+                "(then add 'agent-browser' to config.skills in docs/goals/index.yaml)")
+    else:
+        add("browser-verify", "INFO", "no frontend/UI work detected; browser verification not required")
 
     # queue
     idx = os.path.join(repo_root, "docs", "goals", "index.yaml")

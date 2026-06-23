@@ -87,6 +87,49 @@ def test_settings_sources_checks_both_clis():
         assert "local" in sources and "local-droid" in sources
         assert sources["local"].get("permissions", {}).get("allow") == ["Bash(ls:*)"]
         assert sources["local-droid"].get("permissions", {}).get("allow") == ["Bash(git:*)"]
+def test_detect_frontend_react():
+    with tempfile.TemporaryDirectory() as repo:
+        with open(os.path.join(repo, "package.json"), "w") as f:
+            json.dump({"dependencies": {"react": "^18", "react-dom": "^18"}}, f)
+        assert dc.detect_frontend(repo) is True
+
+def test_detect_frontend_next():
+    with tempfile.TemporaryDirectory() as repo:
+        with open(os.path.join(repo, "package.json"), "w") as f:
+            json.dump({"dependencies": {"next": "14"}}, f)
+        assert dc.detect_frontend(repo) is True
+
+def test_detect_frontend_backend_only():
+    with tempfile.TemporaryDirectory() as repo:
+        with open(os.path.join(repo, "package.json"), "w") as f:
+            json.dump({"dependencies": {"express": "^4"}}, f)
+        assert dc.detect_frontend(repo) is False
+
+def test_detect_frontend_monorepo_child():
+    with tempfile.TemporaryDirectory() as repo:
+        os.makedirs(os.path.join(repo, "frontend"))
+        with open(os.path.join(repo, "frontend", "package.json"), "w") as f:
+            json.dump({"dependencies": {"vue": "^3"}}, f)
+        assert dc.detect_frontend(repo) is True
+
+def test_detect_frontend_none():
+    with tempfile.TemporaryDirectory() as repo:
+        assert dc.detect_frontend(repo) is False
+
+def test_goals_reference_browser_true():
+    with tempfile.TemporaryDirectory() as repo:
+        g = os.path.join(repo, "docs", "goals"); os.makedirs(g)
+        with open(os.path.join(g, "033-screen.md"), "w") as f:
+            f.write("---\nid: 033\nskills: [agent-browser]\n---\nbody")
+        assert dc.goals_reference_browser(repo) is True
+
+def test_goals_reference_browser_false():
+    with tempfile.TemporaryDirectory() as repo:
+        g = os.path.join(repo, "docs", "goals"); os.makedirs(g)
+        with open(os.path.join(g, "001-api.md"), "w") as f:
+            f.write("---\nid: 001\nskills: []\n---\nbody")
+        assert dc.goals_reference_browser(repo) is False
+
 def test_runner_emits_valid_json_and_exit_code():
     r = subprocess.run([sys.executable, os.path.join(_here, "doctor_checks.py"), "--merge", "pr"],
                        capture_output=True, text=True,

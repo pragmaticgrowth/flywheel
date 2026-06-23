@@ -295,8 +295,10 @@ Skills are mandatory — invoke each via the Skill tool:
    code is already correct, lock it in with a test and say so in the PR; never "fix" code
    you cannot first demonstrate is broken.
 4. `verification-before-completion` before claiming done: run every command in the
-   goal's acceptance criteria and show output. For UI work, verify in the browser
-   (project browser skill if present, else agent-browser) and capture a screenshot.
+   goal's acceptance criteria and show output. For UI work, run the goal's SCRIPTED browser
+   check (start the dev server, drive it with `agent-browser`, ASSERT a concrete visible
+   result — element/text/count — not just a page-load) and attach the screenshot as evidence;
+   a screenshot with no assertion is not verification.
 
 Finish: before committing, review your diff and stage only the files you meant to change —
 revert stray lockfile / dependency-manager / formatter churn — or any file you didn't
@@ -324,9 +326,19 @@ the session model — mention it if config.model differs); merge back per `confi
 
 ## Phase 4 — report (always, exactly one line)
 
-`[dispatch] queue: <ready>/<total> · shepherded: <PRs+outcome or none> · claimed: <id(s) or none> · running: <count>/<wip> · model: <implementer model> · needs-you: <mergeable PRs / blocked goals / nothing>`
+`[dispatch] <done>/<total> done [<bar>] · ready: <count> · running: <count>/<wip> (<ids>) · blocked: <count> · shepherded: <PRs+outcome or none> · claimed: <id(s) or none> · model: <implementer model> · needs-you: <mergeable PRs / blocked goals / nothing>`
 
-Count `ready`/`total` after this iteration's mutations (total = all index entries).
+Lead with **progress** (`<done>/<total>`), never `ready/total` — a bare `ready/total` reads
+as "nothing done" to a human. Every number carries its label. The four counts partition
+`total` and must sum to it (computed from the index after this iteration's mutations):
+- `done` = completed · `running` = in_progress implementers · `ready` = not_started with all
+  `depends_on` completed (claimable now) · `blocked` = the rest (`blocked` status or
+  not_started with an unmet dependency).
+
+The bar is 20 cells: `filled = round(20 × done ÷ total)` (0.5 rounds up), clamped to [0, 20];
+empty = 20 − filled. Filled cells = █, empty = ░; omit the whole bar when total = 0.
+Anchor example: 19/21 → round(18.10) = 18 filled → `[██████████████████░░]`.
+
 needs-you lists everything currently waiting on the human — mergeable PRs and ALL blocked
 goals (noting dependents stuck behind them), every iteration, not only new ones.
 
