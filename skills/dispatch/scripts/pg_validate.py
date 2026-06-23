@@ -145,3 +145,21 @@ def acceptance_green(head_exits):
     red = [i for i, x in enumerate(head_exits) if x != 0]
     return {"name": "acceptance-green", "pass": False, "kind": "fixable",
             "evidence": f"acceptance command(s) red on fresh head checkout: index {red}"}
+
+
+def one_goal_integrity(head_branch, body, pr_base, base, changed_paths, goal_id):
+    if head_branch != f"goal/{goal_id}":
+        return {"name": "one-goal-integrity", "pass": False, "kind": "fixable",
+                "evidence": f"head branch {head_branch!r} is not goal/{goal_id}"}
+    if f"Goal: {goal_id}" not in (body or ""):
+        return {"name": "one-goal-integrity", "pass": False, "kind": "fixable",
+                "evidence": f"PR body missing the 'Goal: {goal_id}' marker"}
+    if pr_base != base:
+        return {"name": "one-goal-integrity", "pass": False, "kind": "fixable",
+                "evidence": f"PR base {pr_base!r} != configured base {base!r}"}
+    for p in changed_paths:
+        if p.startswith("docs/goals/"):
+            return {"name": "one-goal-integrity", "pass": False, "kind": "fixable",
+                    "evidence": f"PR edits queue file {p!r}; implementers must never touch docs/goals/"}
+    return {"name": "one-goal-integrity", "pass": True, "kind": "fixable",
+            "evidence": "single-goal PR, correct base, no queue edits"}

@@ -175,6 +175,28 @@ def test_acceptance_green_empty_is_inconclusive():
     r = pgv.acceptance_green([])
     assert r["pass"] is False and r["kind"] == "inconclusive"
 
+def test_integrity_ok():
+    r = pgv.one_goal_integrity("goal/007-orders", "Goal: 007-orders\n", "main", "main",
+                               ["apps/orders/main.go"], "007-orders")
+    assert r["pass"] is True
+
+def test_integrity_wrong_branch():
+    r = pgv.one_goal_integrity("feature/x", "Goal: 007-orders", "main", "main", [], "007-orders")
+    assert r["pass"] is False and "goal/007-orders" in r["evidence"]
+
+def test_integrity_missing_body_marker():
+    r = pgv.one_goal_integrity("goal/007-orders", "no marker", "main", "main", [], "007-orders")
+    assert r["pass"] is False
+
+def test_integrity_wrong_base():
+    r = pgv.one_goal_integrity("goal/007-orders", "Goal: 007-orders", "dev", "main", [], "007-orders")
+    assert r["pass"] is False and "base" in r["evidence"]
+
+def test_integrity_edits_queue():
+    r = pgv.one_goal_integrity("goal/007-orders", "Goal: 007-orders", "main", "main",
+                               ["docs/goals/index.yaml"], "007-orders")
+    assert r["pass"] is False and "docs/goals" in r["evidence"]
+
 if __name__ == "__main__":
     fns = [g for n, g in sorted(globals().items()) if n.startswith("test_")]
     for fn in fns:
