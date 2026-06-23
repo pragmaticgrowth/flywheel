@@ -38,7 +38,18 @@ the runtime and use appropriate paths, commands, and scheduling primitives.
   fill bar, then labeled `ready`/`running`/`blocked` counts that sum to
   `total` (lead with done, never `ready/total`, which reads as "nothing
   done"); `needs-you` holds only human-blocked goals + mergeable PRs, since
-  dep-blocked goals self-unblock as their dependency merges.
+  dep-blocked goals self-unblock as their dependency merges. Under `merge: auto`,
+  a **deterministic `pg_validate.py` gate** (`config.validation: off|risk_based|required`,
+  default `risk_based` = required for bug/feature + risk-flagged chores) runs on a fresh
+  detached checkout before `pg_safe_merge`: one-goal integrity, bug repro-direction
+  (the acceptance suite must be red on base → green on head), fresh-checkout
+  acceptance-green, blast-radius, forbidden-content/secret scan — emitting a SHA-bound
+  `PASS|FAIL_FIXABLE|FAIL_CONTRACT|INCONCLUSIVE` (the orchestrator reads the JSON `verdict`
+  to split the two FAILs, both exit 3). PASS→merge with those SHAs; FAIL_FIXABLE→one worker
+  repair then blocked; FAIL_CONTRACT→hold slot + needs-you contract amendment;
+  INCONCLUSIVE→retry, never default-PASS. The orchestrator merges — the validator never does.
+  A deterministic FAIL overrides any future (Phase 2) LLM validator. Mutation testing + the
+  LLM semantic validator are Phase 2.
 - **loop-architect** — designs loop contracts (prompt + verification +
   stop conditions) for autonomous /goal, /loop, routine, or remote runs;
   names `docs/goals/index.yaml` the canonical factory ledger.
