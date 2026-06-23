@@ -49,6 +49,15 @@ def test_validate_queue_status_required():
     ok, probs = dc.validate_queue(obj)
     assert not ok and any("status" in p for p in probs)
 
+def test_safemerge_token_resolves_to_existing_wrapper():
+    # must derive from the plugin INSTALL (this script's siblings), not the target repo —
+    # and must point at a real pg_safe_merge.py so the allow-rule matches what dispatch invokes
+    tok = dc._safemerge_token()
+    assert tok.startswith("python3 "), tok
+    path = tok[len("python3 "):]
+    assert path.endswith(os.path.join("dispatch", "scripts", "pg_safe_merge.py")), path
+    assert os.path.exists(path), f"wrapper path does not exist: {path}"
+
 import subprocess, sys, json
 def test_runner_emits_valid_json_and_exit_code():
     r = subprocess.run([sys.executable, os.path.join(_here, "doctor_checks.py"), "--merge", "pr"],

@@ -26,13 +26,18 @@ green report.
 
 For each check whose `fix` begins with `FIX:`:
 
-- **`merge-permission` (no allow-rule, `merge: auto`):** add `Bash(python3 <realpath>/pg_safe_merge.py:*)`
-  (the exact token the probe printed, which is the real absolute path) to `permissions.allow`
-  in **`.claude/settings.local.json`** (per-machine — the path is machine-specific; never the
-  committed `.claude/settings.json`). Create the file/keys if absent; dedup; never delete
-  existing entries. Re-read to confirm the literal rule is present → mark FIXED. If a `deny`
-  blocks it (`merge-permission` level BLOCKER citing a deny), do NOT add an allow — report the
-  conflict.
+- **`merge-permission` (no allow-rule, `merge: auto`):** add the EXACT token the probe printed
+  — `Bash(python3 <abs>/pg_safe_merge.py:*)` — to `permissions.allow` in
+  **`.claude/settings.local.json`** (per-machine; never the committed `.claude/settings.json`).
+  Trust that token VERBATIM: the probe derives the wrapper from the plugin install (the same
+  path dispatch invokes), so never substitute a repo-relative path of your own. Create the
+  file/keys if absent; dedup; never delete existing entries; re-read to confirm → FIXED.
+  EXPECT this write to be DENIED in an unattended or auto-mode session — the harness blocks an
+  agent from adding its own `Bash(...)` allow-rule as self-modification. That denial is NOT a
+  failure and you must NOT route around it: surface the exact line under needs-you (status
+  `permissions: blocked(classifier)`) and offer to apply it on the user's explicit "go"; an
+  interactive session's permission prompt may let it through directly. If a `deny` blocks the
+  rule (`merge-permission` BLOCKER citing a deny), do NOT add an allow — report the conflict.
 - **`queue` (missing index.yaml):** scaffold `docs/goals/`, `docs/goals/done/`,
   `docs/goals/archive.yaml`, and an `index.yaml` with the default `config:` block (base = the
   resolved base, `merge: pr`, `wip: 2`, `model: inherit`, `skills: []`, `execution: native`,
@@ -57,7 +62,7 @@ deny-rule conflict, etc.). A `merge-permission` BLOCKER that cites a deny has no
 so it lands here, not in `fixed:`. Then one status line — under `merge: pr` the probe emits
 `merge-permission` INFO with no fix, so report `permissions: n/a`:
 
-`[doctor] software: <ok|missing> · auth: <ok(scopes)|fix> · permissions: <ok|fixed|deny-conflict|n/a> · push: <ok|⚠ base protected> · ci: <green|none> · queue: <valid|scaffolded|drift> · result: READY|WARN|BLOCKER`
+`[doctor] software: <ok|missing> · auth: <ok(scopes)|fix> · permissions: <ok|fixed|blocked(classifier)|deny-conflict|n/a> · push: <ok|⚠ base protected> · ci: <green|none> · queue: <valid|scaffolded|drift> · result: READY|WARN|BLOCKER`
 
 ## Relationship to the other skills
 

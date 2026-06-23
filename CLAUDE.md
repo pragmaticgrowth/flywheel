@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Skills-only Claude Code plugin from Pragmatic Growth, v2.8.2. No MCP
+Skills-only Claude Code plugin from Pragmatic Growth, v2.8.3. No MCP
 servers, no commands, no agents, no hooks, no build step — four skills
 under `skills/` (two ship deterministic Python helpers in `scripts/`),
 forming a plain-language → autonomous-execution pipeline around a
@@ -39,7 +39,15 @@ file-based goal queue (`docs/goals/` in target repos):
   `BLOCKER|WARN|FIXED|INFO`, exit 0/1/2). Pairs with
   `dispatch/scripts/pg_safe_merge.py` — a verified-merge wrapper (re-checks
   branch/body/base/CI/SHAs/no-queue-edits) that dispatch's Integration calls
-  instead of raw `gh pr merge`, so the allow-rule stays narrow.
+  instead of raw `gh pr merge`, so the allow-rule stays narrow. v2.8.3 (from a
+  real run on a target repo): the probe resolves the wrapper from the plugin
+  INSTALL (its own `__file__`), never repo-relative — a target repo has no
+  `skills/` dir, so the old repo-relative path was non-existent AND mismatched
+  what dispatch invokes. And the allow-rule auto-fix is harness-blocked in
+  auto/unattended mode (the classifier treats an agent adding its own `Bash(...)`
+  rule as self-modification): the skill expects this, surfaces the exact line
+  under needs-you (`permissions: blocked(classifier)`), and applies it only on
+  the user's explicit "go" — never routes around the denial.
 
 ## Queue design invariants (research-backed, decided 2026-06-12)
 

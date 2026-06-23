@@ -97,9 +97,14 @@ def _settings_sources(repo_root):
     return out
 
 
-def _safemerge_token(repo_root):
-    p = os.path.join(repo_root, "skills", "dispatch", "scripts", "pg_safe_merge.py")
-    return f"python3 {os.path.realpath(p)}"
+def _safemerge_token():
+    # Derive the wrapper from THIS script's own location — the plugin install that dispatch
+    # also resolves via $CLAUDE_PLUGIN_ROOT. NEVER repo-relative: a target repo has no
+    # skills/ dir, so repo_root/skills/... is a non-existent path that wouldn't match the
+    # path dispatch actually invokes, leaving the allow-rule useless.
+    here = os.path.dirname(os.path.realpath(__file__))
+    p = os.path.realpath(os.path.join(here, "..", "..", "dispatch", "scripts", "pg_safe_merge.py"))
+    return f"python3 {p}"
 
 
 def run_checks(base, merge, execution):
@@ -123,7 +128,8 @@ def run_checks(base, merge, execution):
     add("git", "INFO" if rc == 0 and version_ge(out, "2.20") else "BLOCKER", out.strip() or "git missing")
     add("python3", "INFO", sys.version.split()[0])
     if yaml is None:
-        add("pyyaml", "BLOCKER", "pyyaml not importable", "pip install pyyaml")
+        add("pyyaml", "BLOCKER", "pyyaml not importable (dispatch + this probe parse the queue with it)",
+            "python3 -m pip install --user pyyaml  (python 3.12+ may be externally-managed — use --user or a venv)")
 
     # auth
     rc, out, err = _run(["gh", "auth", "status"])
@@ -138,7 +144,7 @@ def run_checks(base, merge, execution):
 
     # permissions (only relevant for merge: auto)
     if merge == "auto":
-        token = _safemerge_token(repo_root)
+        token = _safemerge_token()
         allowed_in, denied_in = find_merge_permission(_settings_sources(repo_root), token)
         if denied_in:
             add("merge-permission", "BLOCKER", f"a deny rule in {denied_in} blocks the merge wrapper",
