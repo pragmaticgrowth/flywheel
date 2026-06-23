@@ -2,30 +2,37 @@
 
 ## Project Overview
 
-Skills-only Claude Code plugin from Pragmatic Growth, v2.8.7. No MCP
-servers, no commands, no agents, no hooks, no build step — four skills
+Skills-only plugin for Claude Code and Droid (Factory CLI) from Pragmatic Growth, v2.9.0.
+No MCP servers, no commands, no agents, no hooks, no build step — four skills
 under `skills/` (two ship deterministic Python helpers in `scripts/`),
 forming a plain-language → autonomous-execution pipeline around a
-file-based goal queue (`docs/goals/` in target repos):
+file-based goal queue (`docs/goals/` in target repos). The plugin works in
+both CLIs via Droid's Claude Code compatibility layer (Droid auto-translates
+the `.claude-plugin/` manifest format). Skills are CLI-aware — they detect
+the runtime and use appropriate paths, commands, and scheduling primitives.
 
 - **define-goal** — plain-language wants → measurable goal contracts.
-  Two destinations: a copy-pasteable `/goal` line to run now, or a queued
+  Two destinations: a copy-pasteable `/goal` line (Claude Code) or
+  `droid exec --auto high "…"` (Droid) to run now, or a queued
   goal file (`docs/goals/NNN-slug.md` + `index.yaml` entry). Includes
   repo grounding (CLAUDE.md/AGENTS.md rules copied verbatim, real
   verification commands) and a batch mode for documents of items.
   Produces goals only, never implements. Originally adapted from
   OpenAI's curated `define-goal` skill (its `create_goal`/`get_goal`
-  tools don't exist in Claude Code; `/goal` is user-run, transcript-
-  evaluated, 4,000-char condition cap).
+  tools don't exist in either CLI; `/goal` is user-run, transcript-
+  evaluated in Claude Code, self-verified by the agent in Droid,
+  4,000-char condition cap).
 - **dispatch** — factory orchestrator for the docs/goals queue:
   shepherds factory PRs, claims goals via the claim protocol, spawns one
   isolated worktree implementer per goal, integrates merge-backs under
   `merge: auto`. Solo mode ("work goal 005") turns an interactive
   session into a one-goal orchestrator. Built to run as
-  `/loop 15m /dispatch`; iterations are idempotent and parallel sessions
+  `/loop 15m /dispatch` (Claude Code) or `CronCreate` same_session
+  every 15m (Droid); iterations are idempotent and parallel sessions
   are safe. Opt-in `config.execution: herdr` mode runs each implementer as
-  a fresh `/goal` `claude` in its own `goal/NNN` herdr worktree pane
-  (parallel, observable, crash-recoverable); default `native` keeps the
+  a fresh `claude` in its own `goal/NNN` herdr worktree pane
+  (parallel, observable, crash-recoverable — `droid` backend is future
+  work; degrades to `native` in Droid today); default `native` keeps the
   in-process path and full portability.
 - **loop-architect** — designs loop contracts (prompt + verification +
   stop conditions) for autonomous /goal, /loop, routine, or remote runs;
@@ -34,8 +41,9 @@ file-based goal queue (`docs/goals/` in target repos):
   machine: checks software, gh auth + scopes, the harness merge allow-rule,
   branch protection, CI, and queue state; aggressively auto-fixes everything
   local (writes the narrow `pg_safe_merge` allow-rule to
-  `.claude/settings.local.json`, scaffolds the queue) and reports remote/CI
-  issues with exact fixes. Ships `scripts/doctor_checks.py` (read-only probe,
+  `.claude/settings.local.json` or `.factory/settings.local.json` depending
+  on CLI, scaffolds the queue) and reports remote/CI issues with exact fixes.
+  Ships `scripts/doctor_checks.py` (read-only probe,
   `BLOCKER|WARN|FIXED|INFO`, exit 0/1/2). Pairs with
   `dispatch/scripts/pg_safe_merge.py` — a verified-merge wrapper (re-checks
   branch/body/base/CI/SHAs/no-queue-edits) that dispatch's Integration calls
@@ -47,7 +55,8 @@ file-based goal queue (`docs/goals/` in target repos):
   auto/unattended mode (the classifier treats an agent adding its own `Bash(...)`
   rule as self-modification): the skill expects this, surfaces the exact line
   under needs-you (`permissions: blocked(classifier)`), and applies it only on
-  the user's explicit "go" — never routes around the denial.
+  the user's explicit "go" — never routes around the denial. v2.9.0: the probe
+  checks settings in both `.claude/` and `.factory/` (Droid) paths.
 
 ## Queue design invariants (research-backed, decided 2026-06-12)
 
@@ -166,7 +175,7 @@ bootstrap). Git history has both if ever needed.
 ## Structure
 
 ```
-.claude-plugin/plugin.json        # manifest — name: pg-plugin
+.claude-plugin/plugin.json        # manifest — name: pg-plugin (Droid auto-translates this format)
 .claude-plugin/marketplace.json   # marketplace — name: pragmatic-growth
 skills/<name>/SKILL.md            # four skills (define-goal, dispatch, loop-architect, factory-doctor)
 skills/<name>/scripts/*.py        # deterministic helpers: dispatch/pm.py + pg_safe_merge.py, factory-doctor/doctor_checks.py
@@ -178,17 +187,21 @@ AGENTS.md                         # symlink → CLAUDE.md (one source, no drift)
 - **Skills-only.** Don't add MCP servers, commands, agents, or hooks here
   without an explicit ask.
 - **Portability.** Skills must not contain user-specific absolute paths
-  (`/Users/...`, `~/.claude/...`). They run in arbitrary repos.
+  (`/Users/...`, `~/.claude/...`, `~/.factory/...`). They run in arbitrary repos.
 - **This repo is the single source of truth.** The plugin is installed
   user-scoped from the `pragmatic-growth` marketplace; the former
   user-level copies in `~/.claude/skills/` were deleted on 2026-06-10.
   Skill edits land here, bump the `plugin.json` version, push, then
-  refresh with `/plugin marketplace update pragmatic-growth`.
+  refresh with `/plugin marketplace update pragmatic-growth` (Claude Code)
+  or `droid plugin marketplace update pragmatic-growth` (Droid).
 - **Push every time.** Pushing to GitHub (`origin main`) after committing
   is pre-authorized — always push without asking. The installed plugin
   refreshes from GitHub, so an unpushed commit is an unshipped skill.
 - **Validation.** After changing plugin structure or manifests, run the
-  `plugin-dev:plugin-validator` agent before committing.
+  `plugin-dev:plugin-validator` agent before committing (Claude Code only;
+  Droid has no equivalent agent — validate manually: check skill frontmatter
+  has `name` + `description`, run `droid plugin marketplace add ./` locally
+  to test-install).
 - **Skill edits are tested.** New or changed skill mechanics get a
   subagent dry-run (scenario + "cite the section that decides each
   answer") before shipping; close every flagged ambiguity.

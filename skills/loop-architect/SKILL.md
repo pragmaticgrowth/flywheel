@@ -1,9 +1,14 @@
 ---
 name: loop-architect
-description: Use when the user wants to automate, schedule, or run work autonomously/remotely — setting up a /goal, /loop, routine, channel, or long unattended run, or asking "how do I keep Claude working on X". Designs the loop contract (prompt + verification + stop conditions) instead of just running the task.
+description: Use when the user wants to automate, schedule, or run work autonomously/remotely — setting up a /goal, /loop, routine, channel, or long unattended run, or asking "how do I keep the agent working on X". Designs the loop contract (prompt + verification + stop conditions) instead of just running the task.
 ---
 
 # Loop Architect
+
+**CLI detection**: this skill works in both Claude Code and Droid (Factory CLI). Detect
+your runtime: if Droid-specific tools (CronCreate, CreateAutomation) are available or
+`$DROID_PLUGIN_ROOT` is set, you are in Droid. Otherwise Claude Code. The primitive table
+in Step 2 maps each situation to both CLIs.
 
 Design loops and goals the way Boris Cherny does: "Turn workflows into skills, then loop them."
 Output of this skill = a concrete, copy-pasteable setup (goal contract, loop prompt, or routine
@@ -23,44 +28,52 @@ one-shot prompt instead and say which condition failed.
 
 ## Step 2 — Pick the primitive
 
-| Situation | Primitive |
-|---|---|
-| Work until a verifiable end state is true | `/goal` (Haiku evaluator checks after every turn) |
-| Poll/babysit on a cadence while a session is open | `/loop <interval> <skill-or-prompt>` |
-| Recurring default maintenance for this repo | bare `/loop` + a `.claude/loop.md` |
-| A backlog of shippable changes worked unattended | docs/goals queue — fill with `define-goal`, work with `/loop 15m /dispatch` |
-| Must run with the laptop closed | Routine (`/schedule`; cloud; schedule / API / GitHub triggers) |
-| Needs local files, machine on, no session open | Desktop scheduled task |
-| React to external events (CI, chat) instead of polling | Channels (`--channels`) or Routine API trigger |
-| Massively parallel / adversarial / unknown-size work | Dynamic workflow (pair with `/goal` for hard completion) |
-| Deterministic check on every turn, all sessions | Stop hook |
+| Situation | Claude Code | Droid |
+|---|---|---|
+| Work until a verifiable end state is true | `/goal` (Haiku evaluator checks after every turn) | `droid exec --auto high "<condition>"` (agent self-verifies) or interactive paste |
+| Poll/babysit on a cadence while a session is open | `/loop <interval> <skill-or-prompt>` | `CronCreate` with `same_session: true`, `recurring: true` |
+| Recurring default maintenance for this repo | bare `/loop` + a `.claude/loop.md` | `CronCreate` same_session with the loop body as the job prompt (no loop.md equivalent) |
+| A backlog of shippable changes worked unattended | docs/goals queue — fill with `define-goal`, work with `/loop 15m /dispatch` | docs/goals queue — fill with `define-goal`, work with `CronCreate` same_session every 15m running `/dispatch` |
+| Must run with the laptop closed | Routine (`/schedule`; cloud; schedule / API / GitHub triggers) | `CreateAutomation` (cloud; runs on a Droid Computer) or `CronCreate` with `new_session` |
+| Needs local files, machine on, no session open | Desktop scheduled task | `CronCreate` with `new_session` (starts a fresh local session) |
+| React to external events (CI, chat) instead of polling | Channels (`--channels`) or Routine API trigger | Slack integration + `CronCreate` new_session; or `CreateAutomation` with event triggers |
+| Massively parallel / adversarial / unknown-size work | Dynamic workflow (pair with `/goal` for hard completion) | Mission mode (`droid exec --mission`; pair with `droid exec --auto high` for hard completion) |
+| Deterministic check on every turn, all sessions | Stop hook | Hook in `.factory/hooks/hooks.json` |
 
-Combos are normal: workflow + `/goal` for hard completion; skill + `/loop` for cadence;
-routine + channel for laptop-closed with phone telemetry.
+Combos are normal: workflow + `/goal` for hard completion; skill + `/loop`/`CronCreate` for
+cadence; routine/automation + channel for laptop-closed with phone telemetry.
 
-Workflow thresholds (per Claude Code docs): >5 independent agents or a multi-stage
-find→verify→synthesize loop → workflow; 2–4 parallel lookups → plain subagents, cheaper
-and simpler; anything that must survive the session (cross-iteration implementers,
-multi-day queues) → background agents + a state file, never a workflow — runs are
-session-bound and don't resume across sessions. The Workflow tool needs Claude Code
-≥2.1.154 and can be disabled; design a plain-subagent fallback.
+Workflow thresholds (per platform docs): >5 independent agents or a multi-stage
+find→verify→synthesize loop → workflow (Claude Code) or mission mode (Droid); 2–4 parallel
+lookups → plain subagents, cheaper and simpler; anything that must survive the session
+(cross-iteration implementers, multi-day queues) → background agents + a state file, never a
+workflow — runs are session-bound and don't resume across sessions. The Workflow tool needs
+Claude Code ≥2.1.154 and can be disabled; Droid's mission mode (`droid exec --mission`) is
+the equivalent but also optional. Design a plain-subagent fallback for either CLI.
 
 ## Step 3 — Write the contract
 
 ### For /goal — six elements, one cap (condition max 4,000 chars)
 
-CRITICAL CONSTRAINT: the evaluator only reads the transcript. It cannot run commands or read
-files. Every clause must be demonstrable by output Claude prints (test results, exit codes,
-diffs, counts). Never write taste conditions ("clean", "better", "high quality").
+CRITICAL CONSTRAINT: the evaluator (Claude Code's `/goal` Haiku evaluator, or Droid's
+agent self-verification) only reads the transcript. It cannot run commands or read
+files. Every clause must be demonstrable by output the agent prints (test results, exit
+codes, diffs, counts). Never write taste conditions ("clean", "better", "high quality").
 
 ```
-/goal <end state> verified by <command + expected output Claude will print>
+/goal <end state> verified by <command + expected output the agent will print>
 while preserving <what must not regress/change>.
 Work only within <files/branches/tools boundaries>.
 Between iterations, record what changed, what the check showed, and the next best action.
 If blocked or no valid paths remain, stop and report attempted paths, evidence, the
 blocker, and what would unlock progress. Stop after <N> turns.
 ```
+
+In Droid (no `/goal` command), the equivalent is:
+`droid exec --auto high "<same condition>"` for headless, or paste the condition as a
+prompt in an interactive session. The agent self-verifies by running every acceptance
+command and showing output — bake the verification commands into the prompt explicitly
+since there is no separate evaluator model to check them automatically.
 
 - Include an explicit outcome taxonomy for queue-like work ("every item ends as
   fixed | acknowledged-stale | abandoned | blocked-external; 0 items left unclassified") —
@@ -74,11 +87,16 @@ blocker, and what would unlock progress. Stop after <N> turns.
 1. Confirm the task ran manually at least once reliably. If not, do that first.
 2. Put the procedure in a skill (scope, exact checks, allowed actions, FORBIDDEN actions,
    state-file location, one-line status format per iteration). The loop body is then just
-   `/loop 10m /skill-name`.
-3. Fixed interval for predictable cadence; omit the interval to let Claude self-pace
-   (1m–1h based on observed activity); bare `/loop` uses `.claude/loop.md` if present.
+   `/loop 10m /skill-name` (Claude Code) or `CronCreate` same_session every 10m running
+   `/skill-name` (Droid).
+3. Fixed interval for predictable cadence; omit the interval to let the agent self-pace
+   (1m–1h based on observed activity); bare `/loop` uses `.claude/loop.md` if present
+   (Claude Code only — Droid has no loop.md equivalent; embed the loop body directly in the
+   `CronCreate` job prompt).
 4. Remember mechanics: fires between turns only, 7-day expiry, jitter up to 30m on
-   recurring tasks, Esc cancels a pending iteration, restored on `--resume`.
+   recurring tasks, Esc cancels a pending iteration, restored on `--resume` (Claude Code).
+   Droid's `CronCreate` same_session has analogous semantics (fires between turns in the
+   same session); `CronCreate` new_session starts a fresh session each fire.
 
 ### For routines (cloud) — fully autonomous, no permission prompts exist
 
@@ -92,17 +110,21 @@ access to the minimum the routine needs.
 - **Gate**: name the exact command(s) that can fail the work, and require their output in
   the transcript / PR / summary.
 - **Maker/checker split**: for anything substantial, a separate verifier (subagent,
-  workflow verifier, or /goal's evaluator) judges the work — never the agent that wrote it.
+  workflow verifier, /goal's evaluator, or the agent's own self-verification in Droid)
+  judges the work — never the agent that wrote it.
 - **State file**: a markdown/board/ledger outside the conversation records done/next/blocked
   so the next run resumes instead of restarting. Name the file in the prompt. For factory
   work, the canonical ledger is the `docs/goals/index.yaml` queue (created by `define-goal`,
-  worked by `/loop 15m /dispatch`) — prefer it over inventing a new state file.
+  worked by `/loop 15m /dispatch` in Claude Code or `CronCreate` same_session every 15m in
+  Droid) — prefer it over inventing a new state file.
 - **herdr-mode factory loop** (when the queue sets `config.execution: herdr`): run
-  `/loop 15m /dispatch` from an orchestrator ideally inside a herdr pane (a plain terminal
-  also works — recovery then leans on `lanes`); it spawns each goal as a
-  fresh `/goal` `claude` in its own `goal/NNN` worktree pane, terminated by a unique
-  done-marker, and survives client detach via the herdr server. Capability-gated — degrades
-  to native in-process agents when herdr is absent. See `dispatch/references/herdr-mode.md`.
+  `/loop 15m /dispatch` (Claude Code) or `CronCreate` same_session every 15m (Droid) from
+  an orchestrator ideally inside a herdr pane (a plain terminal also works — recovery then
+  leans on `lanes`); it spawns each goal as a fresh `claude` in its own `goal/NNN` worktree
+  pane, terminated by a unique done-marker, and survives client detach via the herdr server.
+  Capability-gated — degrades to native in-process agents when herdr is absent. **Droid
+  note:** herdr currently supports the `claude` backend only; in Droid, `execution: herdr`
+  degrades to `native`. See `dispatch/references/herdr-mode.md`.
 - **Self-verification tooling** (Boris's #1, "2-3x the quality"): browser extension for web
   UI, simulator MCP for mobile, runnable server + tests for backend. Name the tool in the
   prompt and describe it.
@@ -124,12 +146,18 @@ Always include, in the prompt itself:
 
 ## Step 6 — Remote layer (offer when relevant)
 
-- Steer from phone: `claude --rc <name>` or `/remote-control`; server mode
-  `claude remote-control --spawn worktree` for multiple phone-spawned sessions
-- Telemetry: `/config` → "Push when Claude decides"; or "notify me when X finishes" in
-  the prompt; channels (Telegram/Discord/iMessage) for two-way chat into a live session
-- Laptop closed: routines, Claude Code on the web, teleport (`&` / `--teleport`) to move
-  sessions between local and cloud
+- Steer from phone: `claude --rc <name>` or `/remote-control` (Claude Code); server mode
+  `claude remote-control --spawn worktree` for multiple phone-spawned sessions. In Droid,
+  use Droid Computers (persistent cloud or BYOM Linux machines) for laptop-closed operation,
+  or the Factory web app to resume sessions from any browser.
+- Telemetry: `/config` → "Push when Claude decides" (Claude Code); or "notify me when X
+  finishes" in the prompt; channels (Telegram/Discord/iMessage) for two-way chat into a live
+  session. In Droid, use `/settings` for notification config; the Factory app provides push
+  notifications and session monitoring.
+- Laptop closed: routines + Claude Code on the web (Claude Code); `CreateAutomation` running
+  on a Droid Computer (Droid); teleport (`&` / `--teleport`) to move sessions between local
+  and cloud (Claude Code). In Droid, use Droid Computers or session forking
+  (`droid exec --fork <session-id>`) to resume work across machines.
 
 ## Output format
 

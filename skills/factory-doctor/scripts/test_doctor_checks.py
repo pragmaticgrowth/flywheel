@@ -63,12 +63,30 @@ def test_durable_merge_path_wildcards_version():
     assert dc._durable_merge_path(
         "/x/.claude/plugins/cache/mp/pg-plugin/2.8.5/skills/dispatch/scripts/pg_safe_merge.py"
     ) == "/x/.claude/plugins/cache/mp/pg-plugin/*/skills/dispatch/scripts/pg_safe_merge.py"
+    # Droid plugin-cache path → same wildcarding
+    assert dc._durable_merge_path(
+        "/x/.factory/plugins/cache/mp/pg-plugin/2.8.5/skills/dispatch/scripts/pg_safe_merge.py"
+    ) == "/x/.factory/plugins/cache/mp/pg-plugin/*/skills/dispatch/scripts/pg_safe_merge.py"
     # dev checkout / no version dir → unchanged (literal)
     assert dc._durable_merge_path(
         "/home/u/pg-plugin/skills/dispatch/scripts/pg_safe_merge.py"
     ) == "/home/u/pg-plugin/skills/dispatch/scripts/pg_safe_merge.py"
 
-import subprocess, sys, json
+import tempfile, subprocess, sys, json
+def test_settings_sources_checks_both_clis():
+    # Both .claude/ and .factory/ settings should be discovered
+    with tempfile.TemporaryDirectory() as repo:
+        claude_dir = os.path.join(repo, ".claude")
+        factory_dir = os.path.join(repo, ".factory")
+        os.makedirs(claude_dir); os.makedirs(factory_dir)
+        with open(os.path.join(claude_dir, "settings.local.json"), "w") as f:
+            json.dump({"permissions": {"allow": ["Bash(ls:*)"]}}, f)
+        with open(os.path.join(factory_dir, "settings.local.json"), "w") as f:
+            json.dump({"permissions": {"allow": ["Bash(git:*)"]}}, f)
+        sources = dict(dc._settings_sources(repo))
+        assert "local" in sources and "local-droid" in sources
+        assert sources["local"].get("permissions", {}).get("allow") == ["Bash(ls:*)"]
+        assert sources["local-droid"].get("permissions", {}).get("allow") == ["Bash(git:*)"]
 def test_runner_emits_valid_json_and_exit_code():
     r = subprocess.run([sys.executable, os.path.join(_here, "doctor_checks.py"), "--merge", "pr"],
                        capture_output=True, text=True,

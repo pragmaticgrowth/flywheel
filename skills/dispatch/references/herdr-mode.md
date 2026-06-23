@@ -1,5 +1,10 @@
 # Dispatch — herdr execution mode (the brain)
 
+> **Droid status:** herdr mode currently supports the `claude` backend only. A `droid`
+> backend is planned but not yet implemented. In Droid, `execution: herdr` degrades to
+> `native` (in-process agents). The path-resolution updates below ensure that IF a `droid`
+> backend is added in the future, the cache-path fallbacks already cover `~/.factory/plugins/`.
+
 This file is the queue-driven brain for `execution: herdr`. It governs ONLY the
 **spawn substrate**: how dispatch starts, drives, senses, and recovers
 implementers as persistent herdr panes instead of in-process background agents.
@@ -20,9 +25,11 @@ Conventions (set once at the top of every fire):
   preflight (Step 2) and use `python3 "$PM"` everywhere:
 
   ```
-  PM="${CLAUDE_PLUGIN_ROOT:-}/skills/dispatch/scripts/pm.py"
+  PM="${CLAUDE_PLUGIN_ROOT:-${DROID_PLUGIN_ROOT:-}}/skills/dispatch/scripts/pm.py"
   [ -f "$PM" ] || PM=$(ls -t ~/.claude/plugins/cache/*/pg-plugin/*/skills/dispatch/scripts/pm.py \
-                       ~/.claude/plugins/marketplaces/*/skills/dispatch/scripts/pm.py 2>/dev/null | head -1)
+                       ~/.claude/plugins/marketplaces/*/pg-plugin/*/skills/dispatch/scripts/pm.py \
+                       ~/.factory/plugins/cache/*/pg-plugin/*/skills/dispatch/scripts/pm.py \
+                       ~/.factory/plugins/marketplaces/*/pg-plugin/*/skills/dispatch/scripts/pm.py 2>/dev/null | head -1)
   ```
 
 - `ORCH` — the orchestrator's own `terminal_id` (a `term_…`). NOT `$HERDR_PANE_ID`

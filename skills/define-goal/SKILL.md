@@ -5,6 +5,11 @@ description: Use when the user states something they want — a goal, wish, feat
 
 # Define Goal
 
+**CLI detection**: this skill works in both Claude Code and Droid (Factory CLI). Detect
+your runtime: if Droid-specific tools (CronCreate, CreateAutomation) are available or
+`$DROID_PLUGIN_ROOT` is set, you are in Droid. Otherwise Claude Code. The goal contract
+format is the same in both; only the run command differs (see "Goal command facts" below).
+
 ## Overview
 
 Shape the user's intent into a goal contract an agent can pursue honestly: a measurable
@@ -19,13 +24,21 @@ Every goal ends at one of two destinations:
 Defining ends the skill. Never implement. Do not create planning artifacts, ledgers,
 decision logs, or resume files beyond the goal file itself.
 
-## Claude Code /goal facts
+## Goal command facts (CLI-specific)
 
-There is no `create_goal` or `get_goal` tool. The built-in `/goal` command is user-run only:
-after each turn, a separate evaluator model reads the conversation transcript and checks
-whether the condition holds (condition cap: 4,000 chars). The evaluator cannot run commands
-or read files — every clause must be provable by output that appears in the transcript
-(test results, exit codes, diffs, counts). Never write taste conditions ("clean", "better").
+**Claude Code** has a built-in `/goal` command (user-run only; no `create_goal` or
+`get_goal` tool). After each turn, a separate evaluator model reads the conversation
+transcript and checks whether the condition holds (condition cap: 4,000 chars). The
+evaluator cannot run commands or read files — every clause must be provable by output
+that appears in the transcript (test results, exit codes, diffs, counts). Never write
+taste conditions ("clean", "better").
+
+**Droid** has no built-in `/goal` command. For headless runs use
+`droid exec --auto high "<condition>"`. In an interactive session, paste the goal
+condition as a prompt — the agent self-verifies by running the acceptance commands at
+the end (no separate evaluator model). The same 4,000-char discipline and
+transcript-verifiable phrasing apply: every clause must be checkable by output the
+agent prints, not by taste or file inspection at evaluation time.
 
 ## Shape the contract (both destinations)
 
@@ -68,9 +81,10 @@ what should cause the agent to stop and ask?
   from THIS repo.
 - **UI evidence**: a project browser/verify skill if one exists; else agent-browser or the
   Chrome extension; else written manual steps.
-- Interview with AskUserQuestion only for non-technical gaps (who is it for, what would
-  they see working, what must not break, urgency, out of scope) — max 4 questions per
-  round. Derive technical detail yourself by reading the codebase.
+- Interview with the interactive question tool (AskUserQuestion in Claude Code, AskUser
+  in Droid) only for non-technical gaps (who is it for, what would they see working, what
+  must not break, urgency, out of scope) — max 4 questions per round. Derive technical
+  detail yourself by reading the codebase.
 
 ## Recon — investigate the existing situation BEFORE defining (default, not optional)
 
@@ -117,12 +131,17 @@ Recon details:
 ## Pick the destination
 
 - **Run now** when the user wants this pursued immediately in-session or headlessly.
-  Present the `/goal` line in a code block (built-in slash commands cannot be invoked by
-  Claude); for headless or scheduled runs show `claude -p "/goal …"`. If a goal is already
-  active this session and matches, continue under it instead of duplicating.
+  Present the goal line in a code block (built-in slash commands cannot be invoked by
+  the agent directly). In Claude Code, show the `/goal` line; for headless or scheduled
+  runs show `claude -p "/goal …"`. In Droid (no `/goal` command), show
+  `droid exec --auto high "<condition>"` for headless, or tell the user to paste the
+  condition as a prompt in an interactive session. If a goal is already active this
+  session and matches, continue under it instead of duplicating.
 - **Queue** when the user wants it parked for the factory, hands over multiple items, or
   says to add it to the goals/backlog. After writing, point at the next step: run
-  `/dispatch` once, or keep it running with `/loop 15m /dispatch`.
+  `/dispatch` once, or keep it running with `/loop 15m /dispatch` (Claude Code) or
+  `CronCreate` with `same_session: true`, `recurring: true`, `expression: "*/15 * * * *"`
+  (Droid).
 
 ## The docs/goals queue
 
@@ -147,7 +166,7 @@ config:
   wip: 2            # max goals in progress at once (parallelism)
   model: inherit    # spawned code agents: inherit | a model alias (sonnet, haiku, opus)
   skills: []        # repo-wide skills every implementer must invoke
-  execution: native # native = in-process agents | herdr = fresh claude per goal in a herdr worktree pane (needs the herdr CLI on the runner)
+  execution: native # native = in-process agents | herdr = fresh claude per goal in a herdr worktree pane (needs the herdr CLI on the runner; Droid backend is future work — degrades to native in Droid)
   autonomy: balanced # herdr only: conservative | balanced | bold — how readily the orchestrator auto-answers a blocked implementer vs escalates to you
 goals:
   001-receipt-emails: {status: not_started, priority: high}
@@ -157,7 +176,8 @@ goals:
 On first queue creation, suggest the user run `/factory-doctor` — it preflights gh auth,
 the merge allow-rule, branch protection, and CI, and scaffolds the queue, so a queue born
 into a known-good environment never hits setup errors mid-run. Then ask the user once
-(AskUserQuestion): which branch is the integration base (main? staging? other?), and the
+(the interactive question tool — AskUserQuestion in Claude Code, AskUser in Droid):
+which branch is the integration base (main? staging? other?), and the
 merge policy (`pr` — safest, a human merges every PR; `auto` — the factory rebases,
 re-verifies, and merges back itself).
 Defaults when unspecified: the repo's default branch, `merge: pr`, `wip: 2`,
@@ -244,6 +264,11 @@ every criterion verifiably passes, or when blocked (follow "If blocked") — nev
 past a blocker.
 ```
 
+In Droid (no `/goal` command), the equivalent is:
+`droid exec --auto high "<same condition>"` for headless, or paste the condition as a
+prompt in an interactive session. The implementer self-verifies by running every
+acceptance command and showing output.
+
 Titles are plain language ("Customers get a receipt email after payment"), not jargon.
 One goal = one independently shippable change; split an ambitious want only when the parts
 ship and verify independently, ordering with `depends_on`. Goals run in parallel up to
@@ -273,11 +298,12 @@ behavior criteria; a chore's full-suite check replaces the owning-package one):
   itself (dependency version, lint-rule count, migration applied).
 
 The Goal contract section is the implementer's completion condition — `dispatch` hands the
-whole file to its implementer, and the user can run it directly via `claude -p "/goal …"`.
+whole file to its implementer, and the user can run it directly via `claude -p "/goal …"`
+(Claude Code) or `droid exec --auto high "…"` (Droid).
 Keep the contract line under the 4,000-char cap (reference the file's sections instead of
 restating when long), and phrase UI evidence as transcript-visible output (the screenshot
 capture command's output and the PR URL), never as the attachment itself — the evaluator
-only reads text.
+(Claude Code) or the agent's self-verification (Droid) only reads text.
 
 ## Batch mode (documents → many goals)
 
@@ -291,21 +317,24 @@ When given a document (pasted text, file path, attachment):
 3. **Locate cheaply**: pin the likely area per item via Recon above — one fan-out can
    cover several items (give each subagent the full item list for its angle); the
    implementer does the heavy repro.
-4. One batched AskUserQuestion round for genuinely ambiguous items only, then an approval
+4. One batched interactive-question round (AskUserQuestion in Claude Code, AskUser in
+   Droid) for genuinely ambiguous items only, then an approval
    table before writing anything: `id | proposed title | priority | dup-of | notes`.
 5. On approval, write one goal file + index entry per confirmed item, commit once, reply
    with a one-line queue summary.
 
 Sizing the orchestration: with ~5+ confirmed items and the Workflow tool available
-(Claude Code ≥2.1.154; can be disabled — never assume it), run the per-item work as one
+(Claude Code ≥2.1.154; in Droid the equivalent is mission mode via `droid exec --mission`;
+both can be disabled — never assume either), run the per-item work as one
 workflow — `pipeline(items, locate, draft)` with finder agents on cheap models — instead
 of repeated fan-outs; drafts land in script variables, never as files — the step-4
 approval table still gates every file write. The user also approves the workflow's phase
 plan before it runs. Below that size, or without the tool, the plain Recon fan-out is
-cheaper and simpler — the Claude Code docs' own threshold.
+cheaper and simpler — the platform docs' own threshold.
 
 ## Related skills
 
 - Recurring or unattended run rather than a single goal → design the contract with
   **loop-architect**.
-- Working the queue → **dispatch** (one-off `/dispatch`, or `/loop 15m /dispatch`).
+- Working the queue → **dispatch** (one-off `/dispatch`, or `/loop 15m /dispatch` in
+  Claude Code, or `CronCreate` same_session in Droid).

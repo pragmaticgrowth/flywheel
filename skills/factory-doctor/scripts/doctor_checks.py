@@ -86,8 +86,11 @@ def _run(cmd):
 def _settings_sources(repo_root):
     home = os.path.expanduser("~")
     paths = [("project", os.path.join(repo_root, ".claude", "settings.json")),
+             ("project-droid", os.path.join(repo_root, ".factory", "settings.json")),
              ("local", os.path.join(repo_root, ".claude", "settings.local.json")),
-             ("user", os.path.join(home, ".claude", "settings.json"))]
+             ("local-droid", os.path.join(repo_root, ".factory", "settings.local.json")),
+             ("user", os.path.join(home, ".claude", "settings.json")),
+             ("user-droid", os.path.join(home, ".factory", "settings.json"))]
     out = []
     for name, p in paths:
         try:
@@ -108,7 +111,8 @@ def _durable_merge_path(p):
 
 def _safemerge_token():
     # Derive the wrapper from THIS script's own location — the plugin install that dispatch
-    # also resolves via $CLAUDE_PLUGIN_ROOT. NEVER repo-relative: a target repo has no
+    # also resolves via $CLAUDE_PLUGIN_ROOT (Claude Code) or $DROID_PLUGIN_ROOT (Droid; the
+    # former is set as an alias for the latter). NEVER repo-relative: a target repo has no
     # skills/ dir, so repo_root/skills/... is a non-existent path that wouldn't match the
     # path dispatch actually invokes, leaving the allow-rule useless.
     here = os.path.dirname(os.path.realpath(__file__))
@@ -157,12 +161,12 @@ def run_checks(base, merge, execution):
         allowed_in, denied_in = find_merge_permission(_settings_sources(repo_root), token)
         if denied_in:
             add("merge-permission", "BLOCKER", f"a deny rule in {denied_in} blocks the merge wrapper",
-                f"remove the Bash({token}:*) deny in .claude/settings*.json")
+                f"remove the Bash({token}:*) deny in .claude/settings*.json or .factory/settings*.json")
         elif allowed_in:
             add("merge-permission", "INFO", f"allow-rule present in {allowed_in}")
         else:
             add("merge-permission", "BLOCKER", "no allow-rule for the merge wrapper",
-                f"FIX: add Bash({token}:*) to .claude/settings.local.json")
+                f"FIX: add Bash({token}:*) to .claude/settings.local.json (Claude Code) or .factory/settings.local.json (Droid)")
     else:
         add("merge-permission", "INFO", "merge: pr — orchestrator never merges; no rule needed")
 

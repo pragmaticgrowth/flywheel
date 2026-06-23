@@ -1,9 +1,18 @@
 ---
 name: dispatch
-description: Factory dispatcher — use when the user says "/dispatch", "run the factory", wants the docs/goals queue worked, or wants to work one specific queued goal in this session ("work goal 005"). Shepherds factory PRs through review, claims queued goals, and spawns one isolated implementer agent per goal. Designed to run as `/loop 15m /dispatch`; iterations are idempotent, and parallel sessions are safe. Works in any repo with a docs/goals/ queue. Orchestrates only — never implements in its own context.
+description: Factory dispatcher — use when the user says "/dispatch", "run the factory", wants the docs/goals queue worked, or wants to work one specific queued goal in this session ("work goal 005"). Shepherds factory PRs through review, claims queued goals, and spawns one isolated implementer agent per goal. Designed to run as `/loop 15m /dispatch` (Claude Code) or `CronCreate` same_session every 15m (Droid); iterations are idempotent, and parallel sessions are safe. Works in any repo with a docs/goals/ queue. Orchestrates only — never implements in its own context.
 ---
 
 # Dispatch — the factory orchestrator
+
+**CLI detection**: this skill works in both Claude Code and Droid (Factory CLI). Detect
+your runtime: if Droid-specific tools (CronCreate, CreateAutomation) are available or
+`$DROID_PLUGIN_ROOT` is set, you are in Droid. Otherwise Claude Code. Both CLIs set
+`$CLAUDE_PLUGIN_ROOT` (Droid provides it as an alias for `$DROID_PLUGIN_ROOT`), so path
+resolution using that env var works in both. Where this document references `/loop`,
+the Droid equivalent is `CronCreate` with `same_session: true`. Where it references
+`.claude/settings.local.json`, the Droid equivalent is `.factory/settings.local.json`.
+Where it references `~/.claude/plugins/`, also check `~/.factory/plugins/`.
 
 You are depth 0: a thin orchestrator. Your context stays small; implementers (depth 1) and
 their nested helpers (depth 2+, system cap depth=5) hold the mess. Compose existing skills —
@@ -63,16 +72,18 @@ single dispatcher, keep queue commits local, and say so in the report.
 
 ## Re-entrancy — how iterations coexist with running work
 
-`/loop` fires between turns, so a new iteration never interrupts a dispatch turn in progress;
+The scheduler (`/loop` in Claude Code, `CronCreate` with `same_session: true` in Droid)
+fires between turns, so a new iteration never interrupts a dispatch turn in progress;
 missed fires don't stack. Implementers run as background agents, so your turn ends quickly
 while they keep working. Each iteration must be idempotent:
 
-**Direct `/dispatch` (no loop) has no recovery fire.** A transient death mid-turn — yours
+**Direct `/dispatch` (no loop/cron) has no recovery fire.** A transient death mid-turn — yours
 (a 500/529 processing an implementer's completion) or an implementer's — is NOT recovered
-automatically the way a `/loop` fire would. The work isn't lost (claims and branch commits are
+automatically the way a scheduled fire would. The work isn't lost (claims and branch commits are
 already pushed), so just **re-run `/dispatch`**: the next iteration's Phase 1 shepherds whatever
 the implementers finished, and the stale-claim rule respawns anything that died. For unattended
-runs prefer `/loop 15m /dispatch` so these recover on their own.
+runs prefer `/loop 15m /dispatch` (Claude Code) or `CronCreate` same_session every 15m (Droid)
+so these recover on their own.
 
 1. **The index is the claim ledger.** A claim is a pushed status flip made BEFORE spawning —
    never claim from inside a worktree, and never spawn a second implementer for an
@@ -131,7 +142,9 @@ semantics, Integration, the permission-stall protocol, and Phase 4 reporting in 
 file are unchanged and still authoritative. One behavioral addition: herdr mode adds a
 `config.autonomy`-gated tier that can auto-answer a blocked implementer before falling
 back to the no-progress/`blocked` rule (reference, Phase 4b). If `execution: herdr` but
-herdr is unreachable, degrade to `native` and note it in the report.
+herdr is unreachable, degrade to `native` and note it in the report. **Droid note:**
+herdr mode currently supports the `claude` backend only; a `droid` backend is planned but
+not yet implemented. In Droid, `execution: herdr` degrades to `native` today.
 
 ## Phase 1 — shepherd in_progress goals
 
@@ -174,10 +187,12 @@ Apply the stale-claim rule from above to entries with no PR and no live agent.
 anything on sync or gates): the merge step runs the verified-merge wrapper
 `python3 "$SAFEMERGE"` — resolve `$SAFEMERGE` once like `$PM`
 (`$CLAUDE_PLUGIN_ROOT/skills/dispatch/scripts/pg_safe_merge.py`, else newest
-`~/.claude/plugins/{cache,marketplaces}/*/pg-plugin/*/skills/dispatch/scripts/pg_safe_merge.py`),
+`~/.claude/plugins/{cache,marketplaces}/*/pg-plugin/*/skills/dispatch/scripts/pg_safe_merge.py`
+or `~/.factory/plugins/{cache,marketplaces}/*/pg-plugin/*/skills/dispatch/scripts/pg_safe_merge.py`),
 so the allow-rule it needs is `Bash(python3 <abs path>/pg_safe_merge.py:*)` — narrow to
 that one script, NOT the broad `Bash(gh pr merge:*)`. Check `permissions.allow` for it in
-the repo's `.claude/settings.json` / `.claude/settings.local.json` or user-scope settings.
+the repo's `.claude/settings.json` / `.claude/settings.local.json` (Claude Code) or
+`.factory/settings.json` / `.factory/settings.local.json` (Droid), or user-scope settings.
 No rule found and the session is unattended (this iteration was fired by a schedule, not
 typed by a human — no one can approve a prompt) → go straight to the permission-stall
 protocol below instead of burning gates on a merge that will be denied. `/factory-doctor`
@@ -223,7 +238,8 @@ letting the factory pile up more PRs against the same wall. Instead:
 2. needs-you carries the exact fix, verbatim: run `/factory-doctor` (it writes the rule),
    or merge the PR manually (`gh pr merge <n> --squash --delete-branch`), or add
    `"Bash(python3 <abs path>/pg_safe_merge.py:*)"` to `permissions.allow` in
-   `.claude/settings.local.json` — one-time, unblocks every future auto-merge.
+   `.claude/settings.local.json` (Claude Code) or `.factory/settings.local.json` (Droid)
+   — one-time, unblocks every future auto-merge.
 3. Send the stalled-factory notification (Phase 4), once.
 4. Later fires probe cheaply instead of re-running Integration: PR merged by a human →
    Phase 1 case 1; allow rule now present → resume Integration, re-running gates only
@@ -314,12 +330,14 @@ Count `ready`/`total` after this iteration's mutations (total = all index entrie
 needs-you lists everything currently waiting on the human — mergeable PRs and ALL blocked
 goals (noting dependents stuck behind them), every iteration, not only new ones.
 
-**Stalled factory → one real notification.** A report line in an unattended /loop has no
-reader. The fire that first finds the factory fully stalled — needs-you non-empty, zero
-live implementers, and nothing this iteration could do about it (a fresh permission
+**Stalled factory → one real notification.** A report line in an unattended scheduled run
+has no reader. The fire that first finds the factory fully stalled — needs-you non-empty,
+zero live implementers, and nothing this iteration could do about it (a fresh permission
 denial counts immediately, on the fire it happens, even while implementers are still
 running — it gates everything they will produce) — sends the needs-you line via the
-PushNotification tool (ToolSearch loads it if deferred). One notification per distinct
+PushNotification tool (ToolSearch loads it if deferred) in Claude Code. In Droid there is
+no PushNotification tool; surface the stalled state in the report line only (a Droid
+same-session cron has no external reader either). One notification per distinct
 blocker set; identical no-op fires after it send no further notifications, though the
 report line still goes out every fire — new blocker content notifies again.
 

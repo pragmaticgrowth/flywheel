@@ -1,17 +1,20 @@
 # pg-plugin
 
-Pragmatic Growth workflow skills for Claude Code, distributed via the
-`pragmatic-growth` marketplace.
+Pragmatic Growth workflow skills for Claude Code and Droid (Factory CLI),
+distributed via the `pragmatic-growth` marketplace.
 
-A skills-only plugin — no MCP servers, no commands, no hooks. Three skills
+A skills-only plugin — no MCP servers, no commands, no hooks. Four skills
 that together form a plain-language → autonomous-execution pipeline backed
-by a file-based goal queue:
+by a file-based goal queue. Works in both CLIs: Droid auto-translates the
+`.claude-plugin/` manifest format, and skills detect the runtime to use
+the correct paths, commands, and scheduling primitives.
 
 | Skill | What it does |
 |---|---|
-| **define-goal** | Shapes plain-language wants ("I want…", `/define-goal`) — or whole documents of them — into measurable goal contracts. Hands back a copy-pasteable `/goal` line to run now, or queues a goal file in the repo's `docs/goals/` directory. Never implements. |
-| **dispatch** | Factory orchestrator. Shepherds factory PRs through review, claims queued goals from `docs/goals/index.yaml`, and spawns one isolated implementer agent per goal. Designed to run as `/loop 15m /dispatch`. |
-| **loop-architect** | Designs the loop contract (prompt + verification + stop conditions) for autonomous, scheduled, or long unattended runs instead of just firing off the task. |
+| **define-goal** | Shapes plain-language wants ("I want…", `/define-goal`) — or whole documents of them — into measurable goal contracts. Hands back a copy-pasteable `/goal` line (Claude Code) or `droid exec --auto high "…"` (Droid) to run now, or queues a goal file in the repo's `docs/goals/` directory. Never implements. |
+| **dispatch** | Factory orchestrator. Shepherds factory PRs through review, claims queued goals from `docs/goals/index.yaml`, and spawns one isolated implementer agent per goal. Designed to run as `/loop 15m /dispatch` (Claude Code) or `CronCreate` same-session every 15m (Droid). |
+| **loop-architect** | Designs the loop contract (prompt + verification + stop conditions) for autonomous, scheduled, or long unattended runs instead of just firing off the task. Maps primitives across both CLIs (`/goal` vs `droid exec`, `/loop` vs `CronCreate`, etc.). |
+| **factory-doctor** | One-pass preflight for a repo + machine: checks software, gh auth, merge permissions, branch protection, CI, and the docs/goals queue. Auto-fixes local issues in both `.claude/` and `.factory/` settings. |
 
 The intended flow: capture wants with **define-goal** (queued into
 `docs/goals/`) → work the queue with **dispatch** → keep it running
@@ -50,30 +53,41 @@ isolated worktrees branched from `origin/<base>` and never touch
 
 ## Install
 
+**Claude Code:**
+
 ```bash
-# Add the marketplace, then install the plugin
 /plugin marketplace add pragmaticgrowth/pg-plugin
 /plugin install pg-plugin@pragmatic-growth
 ```
 
-Once installed, the skills surface namespaced as `pg-plugin:define-goal`,
-`pg-plugin:dispatch`, and `pg-plugin:loop-architect`. They activate
-automatically when the conversation matches their description, or invoke
-them directly: `/define-goal`, `/dispatch`.
+**Droid (Factory CLI):**
+
+```bash
+droid plugin marketplace add https://github.com/pragmaticgrowth/pg-plugin
+droid plugin install pg-plugin@pragmatic-growth
+```
+
+Once installed, the skills activate automatically when the conversation
+matches their description, or invoke them directly: `/define-goal`,
+`/dispatch`, `/factory-doctor`. In Claude Code they surface namespaced as
+`pg-plugin:define-goal`, etc.
 
 ## Layout
 
 ```
 pg-plugin/
 ├── .claude-plugin/
-│   ├── plugin.json        # plugin manifest
+│   ├── plugin.json        # plugin manifest (Droid auto-translates this format)
 │   └── marketplace.json   # pragmatic-growth marketplace
 └── skills/
     ├── define-goal/SKILL.md
     ├── dispatch/
     │   ├── SKILL.md
     │   ├── references/herdr-mode.md   # config.execution: herdr contract
-    │   └── scripts/                   # vendored herdr ops kit (pm.py, MIT)
+    │   └── scripts/                   # vendored herdr ops kit (pm.py, MIT) + pg_safe_merge.py
+    ├── factory-doctor/
+    │   ├── SKILL.md
+    │   └── scripts/doctor_checks.py   # read-only readiness probe
     └── loop-architect/SKILL.md
 ```
 

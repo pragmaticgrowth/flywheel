@@ -5,6 +5,12 @@ description: Use when setting up or troubleshooting the pg-plugin factory in a r
 
 # Factory Doctor
 
+**CLI detection**: this skill works in both Claude Code and Droid (Factory CLI). Detect
+your runtime: if Droid-specific tools (CronCreate, CreateAutomation) are available or
+`$DROID_PLUGIN_ROOT` is set, you are in Droid. Otherwise Claude Code. The probe checks
+settings in both `.claude/` and `.factory/` paths; the fix instructions reference the
+appropriate path for your CLI.
+
 Make a repo + machine factory-ready in one idempotent pass. You READ everything via the
 shipped probe, AGGRESSIVELY auto-fix everything local and reversible, and REPORT (with the
 exact command) everything you physically can't do safely. Running this twice yields the same
@@ -14,8 +20,11 @@ green report.
 
 1. **Resolve paths.** `$DC` = `doctor_checks.py`, `$SAFEMERGE` = `pg_safe_merge.py`, via the
    same fallback chain dispatch uses for `$PM`: `$CLAUDE_PLUGIN_ROOT/skills/<dir>/scripts/<f>`
-   (factory-doctor for `$DC`, dispatch for `$SAFEMERGE`), else newest
-   `~/.claude/plugins/{cache,marketplaces}/*/pg-plugin/*/skills/<dir>/scripts/<f>`.
+   (factory-doctor for `$DC`, dispatch for `$SAFEMERGE`; `$CLAUDE_PLUGIN_ROOT` is set by both
+   Claude Code and Droid — Droid provides it as an alias for `$DROID_PLUGIN_ROOT`), else
+   newest `~/.claude/plugins/{cache,marketplaces}/*/pg-plugin/*/skills/<dir>/scripts/<f>`
+   (Claude Code) or `~/.factory/plugins/{cache,marketplaces}/*/pg-plugin/*/skills/<dir>/scripts/<f>`
+   (Droid).
 2. **Read the queue config** (`docs/goals/index.yaml` `config:` if present) for `base`,
    `merge`, `execution` — defaults `base` = repo default branch, `merge: pr`,
    `execution: native`.
@@ -28,7 +37,8 @@ For each check whose `fix` begins with `FIX:`:
 
 - **`merge-permission` (no allow-rule, `merge: auto`):** add the EXACT token the probe printed
   — `Bash(python3 <abs>/pg_safe_merge.py:*)` — to `permissions.allow` in
-  **`.claude/settings.local.json`** (per-machine; never the committed `.claude/settings.json`).
+  **`.claude/settings.local.json`** (Claude Code) or **`.factory/settings.local.json`** (Droid)
+  — per-machine; never the committed `.claude/settings.json` or `.factory/settings.json`.
   Trust that token VERBATIM: the probe derives the wrapper from the plugin install (the same
   path dispatch invokes), so never substitute a path of your own. The token has a `*` in place
   of the plugin version (`pg-plugin/*/skills/...`) ON PURPOSE — a deliberate wildcard so this one
@@ -67,7 +77,8 @@ reviews, run `gh auth login`/`refresh` (browser-blocking — report the exact co
 run a SYSTEM/sudo package install (`gh`, `git`, `brew`/`apt` — report those; the ONLY install
 you may run is the plugin's own python dep at `--user` scope, above), `git stash`, change
 `merge: pr` → `auto`, delete branches/worktrees, or write to user-scope
-`~/.claude/settings.json`. Anything not in the fix list above is REPORT-only.
+`~/.claude/settings.json` (Claude Code) or `~/.factory/settings.json` (Droid). Anything not
+in the fix list above is REPORT-only.
 
 ## Report (always, last line is the status)
 

@@ -128,6 +128,10 @@ def find_codex_companion():
         "~/.claude/plugins/cache/*/codex/*/scripts/codex-companion.mjs"))
     cands += glob.glob(os.path.expanduser(
         "~/.claude/plugins/marketplaces/*/plugins/codex/scripts/codex-companion.mjs"))
+    cands += glob.glob(os.path.expanduser(
+        "~/.factory/plugins/cache/*/codex/*/scripts/codex-companion.mjs"))
+    cands += glob.glob(os.path.expanduser(
+        "~/.factory/plugins/marketplaces/*/plugins/codex/scripts/codex-companion.mjs"))
     cands = [c for c in cands if os.path.isfile(c)]
     return max(cands, key=os.path.getmtime) if cands else None
 
@@ -138,7 +142,10 @@ def codex_plugin_enabled():
     try:
         s = json.load(open(os.path.expanduser("~/.claude/settings.json")))
     except (OSError, json.JSONDecodeError):
-        return None
+        try:
+            s = json.load(open(os.path.expanduser("~/.factory/settings.json")))
+        except (OSError, json.JSONDecodeError):
+            return None
     ep = s.get("enabledPlugins")
     # dict form maps plugin->bool; a DISABLED plugin stays as a key with value
     # false, so honor the value (codex review caught this false-positive).
@@ -618,8 +625,7 @@ def cmd_tail(a):
     sid = (row.get("agent_session") or {}).get("value")
     cwd = row.get("cwd") or ""
     if row.get("agent") != "claude" or not cwd:
-        return emit({"ok": False, "hint": "transcript tail is claude-only — "
-                                          "use `herdr pane read` or sessionr"})
+        return emit({"ok": False, "hint": "transcript tail is claude-only (Droid stores transcripts differently — use `herdr pane read` or sessionr)"})
     proj = os.path.expanduser("~/.claude/projects/" + re.sub(r"[/.]", "-", cwd))
     path = os.path.join(proj, f"{sid}.jsonl") if sid else ""
     fallback = False
@@ -756,7 +762,7 @@ def cmd_review(a):
         if focus and verb == "adversarial-review":
             cargs += [focus]                       # focus text after flags
         root = os.path.dirname(os.path.dirname(comp))   # …/codex/<ver>
-        env = {**os.environ, "CLAUDE_PLUGIN_ROOT": root}
+        env = {**os.environ, "CLAUDE_PLUGIN_ROOT": root, "DROID_PLUGIN_ROOT": root}
 
         def comp_json(*va):
             r = subprocess.run(["node", comp, *va], cwd=repo, env=env,
@@ -905,7 +911,7 @@ def cmd_lanes(a):
             continue  # the source checkout itself
         branch = w.get("branch") or ""
         if not branch.startswith(a.branch_prefix):
-            foreign += 1  # other tools' worktrees (e.g. .claude/worktrees/agent-*) — not yours
+            foreign += 1  # other tools' worktrees (e.g. .claude/worktrees/agent-*, .factory/worktrees/agent-*) — not yours
             continue
         path = w.get("path")
         ag = by_cwd.get(os.path.realpath(path)) if path else None
