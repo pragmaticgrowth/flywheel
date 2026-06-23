@@ -129,7 +129,7 @@ def run_checks(base, merge, execution):
     add("python3", "INFO", sys.version.split()[0])
     if yaml is None:
         add("pyyaml", "BLOCKER", "pyyaml not importable (dispatch + this probe parse the queue with it)",
-            "FIX: python3 -m pip install --user pyyaml  (python 3.12+ may be externally-managed — fall back to a venv)")
+            "FIX: python3 -m pip install --user pyyaml  (if PEP-668 externally-managed, add --break-system-packages — still user-scope)")
 
     # auth
     rc, out, err = _run(["gh", "auth", "status"])

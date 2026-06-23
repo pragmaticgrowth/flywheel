@@ -42,14 +42,17 @@ For each check whose `fix` begins with `FIX:`:
   `docs/goals/archive.yaml`, and an `index.yaml` with the default `config:` block (base = the
   resolved base, `merge: pr`, `wip: 2`, `model: inherit`, `skills: []`, `execution: native`,
   `autonomy: balanced`) and an empty `goals: {}` → mark FIXED.
-- **`pyyaml` (or any required python dep — BLOCKER with a `FIX:` install):** run the exact
-  install the probe printed — `python3 -m pip install --user <pkg>` — then re-import (or just
-  re-run the probe) to confirm → FIXED. This is the plugin's own pinned, tiny, trusted
-  dependency at `--user` scope (not a system/sudo install), and the whole factory needs it, so
-  it is in scope to auto-fix. If the env is externally-managed and `--user` is refused, use the
-  repo's venv if it has one, else report the manual command. If the harness denies the install
-  in an unattended session, treat it like the allow-rule: surface it under needs-you and apply
-  on the user's explicit "go".
+- **`pyyaml` (or any required python dep — BLOCKER with a `FIX:` install):** install it for the
+  SAME `python3` dispatch invokes (the one on PATH), then re-import / re-run the probe to confirm
+  → FIXED. Try in order, stopping at the first that succeeds: (1) `python3 -m pip install --user
+  <pkg>`; (2) if the env is externally-managed (PEP 668 refuses `--user` — common with Homebrew
+  python on macOS), `python3 -m pip install --user --break-system-packages <pkg>` — still
+  user-scope, and this is the plugin's own pinned, tiny, pure-python dep, so forcing it at user
+  scope is safe and IS in scope to auto-fix. Only if BOTH fail, report the manual command under
+  needs-you (note any sibling `python3` that already has the dep, e.g. `/usr/bin/python3`, but
+  remember dispatch uses the PATH one). A repo venv does NOT help unless dispatch runs under it,
+  so don't rely on it. If the harness denies the install in an unattended session, surface it
+  under needs-you and apply on the user's explicit "go".
 
 Each fix is one atomic edit, named in the report.
 
