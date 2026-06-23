@@ -159,13 +159,17 @@ Apply the stale-claim rule from above to entries with no PR and no live agent.
 ## Integration (merge: auto) — orchestrator only, one goal at a time
 
 **Merge-rights preflight** (once per session, before the first integration spends
-anything on sync or gates): the merge step needs the harness to permit `gh pr merge` —
-check for an allow rule matching it (e.g. `Bash(gh pr merge:*)`) in `permissions.allow`
-of the repo's `.claude/settings.json` / `.claude/settings.local.json` or user-scope
-settings. No rule found and the session is unattended (this iteration was fired by a
-schedule, not typed by a human — no one can approve a prompt) → go straight to the
-permission-stall protocol below instead of burning gates on a merge that will be denied.
-Interactive sessions proceed; the permission prompt arbitrates.
+anything on sync or gates): the merge step runs the verified-merge wrapper
+`python3 "$SAFEMERGE"` — resolve `$SAFEMERGE` once like `$PM`
+(`$CLAUDE_PLUGIN_ROOT/skills/dispatch/scripts/pg_safe_merge.py`, else newest
+`~/.claude/plugins/{cache,marketplaces}/*/pg-plugin/*/skills/dispatch/scripts/pg_safe_merge.py`),
+so the allow-rule it needs is `Bash(python3 <abs path>/pg_safe_merge.py:*)` — narrow to
+that one script, NOT the broad `Bash(gh pr merge:*)`. Check `permissions.allow` for it in
+the repo's `.claude/settings.json` / `.claude/settings.local.json` or user-scope settings.
+No rule found and the session is unattended (this iteration was fired by a schedule, not
+typed by a human — no one can approve a prompt) → go straight to the permission-stall
+protocol below instead of burning gates on a merge that will be denied. `/factory-doctor`
+writes this rule for you. Interactive sessions proceed; the permission prompt arbitrates.
 
 Never merge two goals in one breath — re-sync between merges. For the one goal being
 integrated:
@@ -182,26 +186,32 @@ integrated:
    commands re-run in the worktree with output shown. A gate that passed before the sync
    doesn't count. Never sit waiting for CI inside an iteration — end the turn; the next
    fire re-checks.
-3. **Merge**: `gh pr merge --squash --delete-branch` when a PR exists; with no remote
-   host, `git merge --no-ff goal/<id>` on the `<base>` checkout and push. Push rejected →
-   base moved again → back to step 1 (max 3 attempts this iteration, then leave it for
-   the next). A permission denial of the merge command itself is NOT a push race —
-   permission-stall protocol below.
+3. **Merge**: `python3 "$SAFEMERGE" --pr <n> --goal <id> --base <base> --expected-head
+   <gate-verified head SHA> --expected-base <gate-verified base SHA>` when a PR exists. The
+   wrapper re-verifies branch/body/base/checks/SHAs and that the PR touches no `docs/goals/`
+   file, then merges with the repo's allowed method and `--delete-branch`. Exit 3 = it
+   REFUSED (a verification failed — read the reasons, treat as a real blocker; do NOT route
+   around it with raw `gh pr merge`); exit 4 = environment/gh failure (transient — retry
+   next fire); exit 0 = merged. With no remote host, `git merge --no-ff goal/<id>` on the
+   `<base>` checkout and push. Push rejected → base moved again → back to step 1 (max 3
+   attempts this iteration, then leave it for the next). A permission denial of the wrapper
+   command itself is NOT a push race — permission-stall protocol below.
 4. Flip `completed` via the claim protocol; prune the worktree.
 
 ### Permission stall — the harness denies the orchestrator's merge
 
-A denied `gh pr merge` is an environment blocker, not a work failure: don't route around
-it with raw `git merge`, don't retry it blindly each fire, and don't flip the goal
+A denied merge wrapper is an environment blocker, not a work failure: don't route around
+it with raw `gh pr merge`/`git merge`, don't retry it blindly each fire, and don't flip the goal
 `blocked` — the work is finished and verified, and `blocked` would free its wip slot,
 letting the factory pile up more PRs against the same wall. Instead:
 
 1. Keep the goal `in_progress` (with `pr:` recorded) — it holds its slot on purpose.
    State the gate-verified head and base SHAs in your report; that record is what a
    later fire (or fresh session) compares against. No record → treat as moved.
-2. needs-you carries the exact fix, verbatim: merge the PR manually (`gh pr merge <n>
-   --squash --delete-branch`), or add `"Bash(gh pr merge:*)"` to `permissions.allow` in
-   `.claude/settings.json` — one-time, unblocks every future auto-merge.
+2. needs-you carries the exact fix, verbatim: run `/factory-doctor` (it writes the rule),
+   or merge the PR manually (`gh pr merge <n> --squash --delete-branch`), or add
+   `"Bash(python3 <abs path>/pg_safe_merge.py:*)"` to `permissions.allow` in
+   `.claude/settings.local.json` — one-time, unblocks every future auto-merge.
 3. Send the stalled-factory notification (Phase 4), once.
 4. Later fires probe cheaply instead of re-running Integration: PR merged by a human →
    Phase 1 case 1; allow rule now present → resume Integration, re-running gates only
