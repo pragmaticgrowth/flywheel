@@ -17,3 +17,31 @@ def aggregate(results):
     if any(k == "inconclusive" for k in kinds):
         return "INCONCLUSIVE"
     return "PASS"
+
+
+import fnmatch
+
+# fnmatch '*' spans '/', so '.claude/*' matches nested paths too.
+FORBIDDEN_PATHS = (".claude/*", ".github/workflows/*", "*/deploy*.sh", "deploy*.sh")
+LOCKFILES = ("package-lock.json", "yarn.lock", "pnpm-lock.yaml", "go.sum",
+             "Gemfile.lock", "poetry.lock", "Cargo.lock", "composer.lock")
+
+
+def _any_match(path, globs):
+    return any(fnmatch.fnmatch(path, g) for g in globs)
+
+
+def blast_radius(changed_paths, touches):
+    for p in changed_paths:
+        name = p.rsplit("/", 1)[-1]
+        if _any_match(p, FORBIDDEN_PATHS) and not _any_match(p, touches):
+            return {"name": "blast-radius", "pass": False, "kind": "fixable",
+                    "evidence": f"forbidden path changed: {p}"}
+        if name in LOCKFILES and not _any_match(p, touches):
+            return {"name": "blast-radius", "pass": False, "kind": "fixable",
+                    "evidence": f"lockfile/dep churn not in declared surfaces: {p}"}
+        if touches and not _any_match(p, touches):
+            return {"name": "blast-radius", "pass": False, "kind": "fixable",
+                    "evidence": f"changed path outside declared surfaces: {p}"}
+    return {"name": "blast-radius", "pass": True, "kind": "fixable",
+            "evidence": f"{len(changed_paths)} path(s), all in scope"}
