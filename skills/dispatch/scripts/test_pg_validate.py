@@ -86,6 +86,40 @@ def test_forbidden_content_skips_removed_lines():
     r = pgv.forbidden_content("-OLD = AKIAIOSFODNN7EXAMPLE\n")
     assert r["pass"] is True
 
+def test_risk_flagged_auth_path():
+    assert pgv.chore_risk_flagged(["internal/auth/login.go"]) is True
+
+def test_risk_flagged_migration():
+    assert pgv.chore_risk_flagged(["db/migrations/0028_up.sql"]) is True
+
+def test_risk_flagged_deps():
+    assert pgv.chore_risk_flagged(["go.mod"]) is True
+
+def test_risk_flagged_benign_chore():
+    assert pgv.chore_risk_flagged(["internal/util/strings.go"]) is False
+
+def test_risk_flagged_many_files():
+    paths = [f"pkg/{i}/x.go" for i in range(13)]
+    assert pgv.chore_risk_flagged(paths) is True
+
+def test_in_scope_bug_always():
+    assert pgv.in_scope("bug", ["x.go"], "risk_based") is True
+
+def test_in_scope_feature_always():
+    assert pgv.in_scope("feature", ["x.go"], "risk_based") is True
+
+def test_in_scope_chore_lowrisk_skipped():
+    assert pgv.in_scope("chore", ["internal/util/strings.go"], "risk_based") is False
+
+def test_in_scope_chore_riskflagged_required():
+    assert pgv.in_scope("chore", ["internal/auth/x.go"], "risk_based") is True
+
+def test_in_scope_off_skips_all():
+    assert pgv.in_scope("bug", ["x.go"], "off") is False
+
+def test_in_scope_required_all_types():
+    assert pgv.in_scope("chore", ["x.go"], "required") is True
+
 if __name__ == "__main__":
     fns = [g for n, g in sorted(globals().items()) if n.startswith("test_")]
     for fn in fns:

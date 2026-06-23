@@ -69,3 +69,36 @@ def forbidden_content(diff_text):
                         "evidence": f"secret-shaped string in added line: {pat.pattern}"}
     return {"name": "forbidden-content", "pass": True, "kind": "fixable",
             "evidence": "no secret-shaped strings in added lines"}
+
+
+_RISK_PATH_KEYWORDS = ("auth", "billing", "payment", "migration", "deploy",
+                       "prod", "secret", "credential", "password")
+_RISK_FILENAMES = ("go.mod", "go.sum", "package.json", "package-lock.json",
+                   "requirements.txt", "Cargo.toml", "Gemfile")
+_FILE_THRESHOLD = 12
+
+
+def chore_risk_flagged(changed_paths):
+    if len(changed_paths) > _FILE_THRESHOLD:
+        return True
+    for p in changed_paths:
+        low = p.lower()
+        name = p.rsplit("/", 1)[-1]
+        if any(k in low for k in _RISK_PATH_KEYWORDS):
+            return True
+        if name in _RISK_FILENAMES:
+            return True
+    return False
+
+
+def in_scope(goal_type, changed_paths, mode):
+    if mode == "off":
+        return False
+    if mode == "required":
+        return True
+    # risk_based (default)
+    if goal_type in ("bug", "feature"):
+        return True
+    if goal_type == "chore":
+        return chore_risk_flagged(changed_paths)
+    return True  # unknown type → validate to be safe
