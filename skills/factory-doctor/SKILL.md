@@ -42,15 +42,25 @@ For each check whose `fix` begins with `FIX:`:
   `docs/goals/archive.yaml`, and an `index.yaml` with the default `config:` block (base = the
   resolved base, `merge: pr`, `wip: 2`, `model: inherit`, `skills: []`, `execution: native`,
   `autonomy: balanced`) and an empty `goals: {}` → mark FIXED.
+- **`pyyaml` (or any required python dep — BLOCKER with a `FIX:` install):** run the exact
+  install the probe printed — `python3 -m pip install --user <pkg>` — then re-import (or just
+  re-run the probe) to confirm → FIXED. This is the plugin's own pinned, tiny, trusted
+  dependency at `--user` scope (not a system/sudo install), and the whole factory needs it, so
+  it is in scope to auto-fix. If the env is externally-managed and `--user` is refused, use the
+  repo's venv if it has one, else report the manual command. If the harness denies the install
+  in an unattended session, treat it like the allow-rule: surface it under needs-you and apply
+  on the user's explicit "go".
 
 Each fix is one atomic edit, named in the report.
 
 ## Never (even though you're aggressive)
 
-Push, open a PR, touch the remote, edit a CI workflow, run `gh auth login`/`refresh`
-(browser-blocking — report the exact command instead), `git stash`, change `merge: pr` →
-`auto`, delete branches/worktrees, or write to user-scope `~/.claude/settings.json`. Anything
-not in the fix list above is REPORT-only.
+Push, open a PR, touch the remote, edit a CI workflow, change branch protection / required
+reviews, run `gh auth login`/`refresh` (browser-blocking — report the exact command instead),
+run a SYSTEM/sudo package install (`gh`, `git`, `brew`/`apt` — report those; the ONLY install
+you may run is the plugin's own python dep at `--user` scope, above), `git stash`, change
+`merge: pr` → `auto`, delete branches/worktrees, or write to user-scope
+`~/.claude/settings.json`. Anything not in the fix list above is REPORT-only.
 
 ## Report (always, last line is the status)
 
