@@ -33,7 +33,12 @@ the runtime and use appropriate paths, commands, and scheduling primitives.
   a fresh `claude` in its own `goal/NNN` herdr worktree pane
   (parallel, observable, crash-recoverable — `droid` backend is future
   work; degrades to `native` in Droid today); default `native` keeps the
-  in-process path and full portability.
+  in-process path and full portability. Phase 4 emits one report line per
+  iteration leading with progress — `<done>/<total> done` plus a 20-cell
+  fill bar, then labeled `ready`/`running`/`blocked` counts that sum to
+  `total` (lead with done, never `ready/total`, which reads as "nothing
+  done"); `needs-you` holds only human-blocked goals + mergeable PRs, since
+  dep-blocked goals self-unblock as their dependency merges.
 - **loop-architect** — designs loop contracts (prompt + verification +
   stop conditions) for autonomous /goal, /loop, routine, or remote runs;
   names `docs/goals/index.yaml` the canonical factory ledger.
