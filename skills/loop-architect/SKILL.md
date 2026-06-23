@@ -112,6 +112,9 @@ access to the minimum the routine needs.
 Always include, in the prompt itself:
 - Max iterations / turn cap ("stop after 25 turns", "max 3 retries on the same finding")
 - No-progress detection ("if the same error appears twice without progress, stop and report")
+- Convergence stop for review/verification loops: stop when the gate verdict clears even if
+  cosmetic nits remain — treat reviewer comments as findings to verify, not orders to obey,
+  and cap review rounds. Chasing a perfectly clean review spawns fresh nits forever.
 - Token budget for workflows ("+200k budget") — workflows balloon 5–10× without one
 - The repo's hard rules verbatim (e.g. forbidden merges, protected branches, prod flags) —
   hooks are a backstop, not the encoding
