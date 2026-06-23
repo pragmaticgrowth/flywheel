@@ -35,7 +35,14 @@ or read files — every clause must be provable by output that appears in the tr
 2. Make it quantitative when the domain supports real numbers: pass/fail validators (exact
    tests, checks, commands), quality thresholds (latency, error rate, coverage), artifact
    constraints (paths, allowed commands, blast radius), evidence counts (reproduced
-   failures, reruns, migrated records).
+   failures, reruns, migrated records). Two traps when setting a number: (a) if the
+   baseline metric is a known proxy or upper bound — a grep count inflated by barrels or
+   public APIs, a file-ratio standing in for coverage — set the target on the REAL
+   validator (the actual coverage %, the linter with its documented allowlist), never the
+   proxy, or the implementer can "hit" it by gaming the count instead of doing the work;
+   (b) a criterion that drives a class of code to zero ("cross-feature deep imports → 0")
+   must name its legitimate exceptions (server-safe subpaths, generated files), or it
+   forces implementers into a measurably worse design to satisfy the contract.
 3. Repair weak goals: rewrite vague goals into measurable objectives when context makes it
    safe; ask one concise question when the missing detail changes the outcome or validation;
    reject pure activity goals ("make progress", "keep investigating") until sharpened.
@@ -138,7 +145,9 @@ merges every PR; `auto` — the factory rebases, re-verifies, and merges back it
 Defaults when unspecified: the repo's default branch, `merge: pr`, `wip: 2`,
 `model: inherit`, no repo skills, `execution: native`, `autonomy: balanced`.
 `model: sonnet` trades implementation depth for
-weekly-limit headroom — sensible on simple repos, not on gnarly ones. A per-goal `base:`
+weekly-limit headroom — sensible on simple repos and especially on a queue that is mostly
+`type: chore` (mechanical, no-behavior-change work, where `inherit` would otherwise burn an
+expensive session model on rote edits), not on gnarly feature/bug work. A per-goal `base:`
 field on an index entry overrides `config.base` (epic branches). `execution: herdr`
 requires the herdr CLI on the runner; absent it, dispatch degrades to `native`.
 
