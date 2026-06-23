@@ -235,6 +235,8 @@ title: Customers get a receipt email after payment
 created: 2026-06-12
 type: feature   # bug | feature | chore — shapes the contract, see below
 skills: []      # goal-specific skills the implementer must invoke, e.g. [agent-browser]
+# touches: [apps/orders/*]   # optional: declared surfaces → pg_validate blast-radius allowlist
+# acceptance: [make test]    # optional: exact gate commands pg_validate runs (else it auto-detects)
 ---
 
 ## Outcome (plain language)
@@ -293,6 +295,12 @@ written manual-assertion steps rather than silently dropping the UI verification
 skills (TDD, plans, verification) are mandated by `dispatch`'s brief — don't repeat them.
 Repo-wide skills belong in `config.skills` instead; for a frontend repo, suggest moving
 `agent-browser` to `config.skills` when every (or most) goal would list it.
+
+Optionally populate two more frontmatter fields that `dispatch`'s validator uses:
+`touches:` (path globs of the surfaces this goal changes — gives `pg_validate`'s
+blast-radius check a real allowlist; omit and it degrades to lenient forbidden-path +
+lockfile checks) and `acceptance:` (the exact gate commands `pg_validate` runs on a fresh
+checkout; omit and it auto-detects from the repo's Makefile / `go.mod` / `package.json`).
 
 Shape by `type:` — each type has a non-negotiable element, and it overrides the
 template's stock criteria where they conflict (a bug's failing test goes first, above the
