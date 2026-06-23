@@ -120,6 +120,28 @@ def test_in_scope_off_skips_all():
 def test_in_scope_required_all_types():
     assert pgv.in_scope("chore", ["x.go"], "required") is True
 
+def test_detect_makefile():
+    fm = {"Makefile": "build:\n\tgo build ./...\n"}
+    assert pgv.detect_gate_command(fm) == "make test"
+
+def test_detect_go_mod():
+    assert pgv.detect_gate_command({"go.mod": "module x\n"}) == "go test ./..."
+
+def test_detect_package_json_test():
+    fm = {"package.json": '{"scripts":{"test":"vitest"}}'}
+    assert pgv.detect_gate_command(fm) == "npm test"
+
+def test_detect_pytest():
+    fm = {"pytest.ini": "[pytest]\n"}
+    assert pgv.detect_gate_command(fm) == "pytest -q"
+
+def test_detect_none():
+    assert pgv.detect_gate_command({"README.md": "hi"}) is None
+
+def test_detect_makefile_beats_others():
+    fm = {"Makefile": "x:\n", "go.mod": "module x"}
+    assert pgv.detect_gate_command(fm) == "make test"
+
 if __name__ == "__main__":
     fns = [g for n, g in sorted(globals().items()) if n.startswith("test_")]
     for fn in fns:

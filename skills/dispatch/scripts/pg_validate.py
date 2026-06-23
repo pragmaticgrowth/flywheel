@@ -102,3 +102,16 @@ def in_scope(goal_type, changed_paths, mode):
     if goal_type == "chore":
         return chore_risk_flagged(changed_paths)
     return True  # unknown type → validate to be safe
+
+
+def detect_gate_command(file_map):
+    # Preference order: Makefile > go.mod > package.json(with test script) > pytest.
+    if "Makefile" in file_map:
+        return "make test"
+    if "go.mod" in file_map:
+        return "go test ./..."
+    if "package.json" in file_map and '"test"' in (file_map.get("package.json") or ""):
+        return "npm test"
+    if "pytest.ini" in file_map or "pyproject.toml" in file_map:
+        return "pytest -q"
+    return None
