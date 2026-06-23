@@ -2,11 +2,11 @@
 
 ## Project Overview
 
-Skills-only Claude Code plugin from Pragmatic Growth, v2.7.0. No MCP
-servers, no commands, no agents, no hooks, no build step — three skills
-under `skills/`, each a single `SKILL.md`, forming a plain-language →
-autonomous-execution pipeline around a file-based goal queue
-(`docs/goals/` in target repos):
+Skills-only Claude Code plugin from Pragmatic Growth, v2.8.0. No MCP
+servers, no commands, no agents, no hooks, no build step — four skills
+under `skills/` (two ship deterministic Python helpers in `scripts/`),
+forming a plain-language → autonomous-execution pipeline around a
+file-based goal queue (`docs/goals/` in target repos):
 
 - **define-goal** — plain-language wants → measurable goal contracts.
   Two destinations: a copy-pasteable `/goal` line to run now, or a queued
@@ -30,6 +30,16 @@ autonomous-execution pipeline around a file-based goal queue
 - **loop-architect** — designs loop contracts (prompt + verification +
   stop conditions) for autonomous /goal, /loop, routine, or remote runs;
   names `docs/goals/index.yaml` the canonical factory ledger.
+- **factory-doctor** (v2.8.0) — one-pass preflight/doctor for a repo +
+  machine: checks software, gh auth + scopes, the harness merge allow-rule,
+  branch protection, CI, and queue state; aggressively auto-fixes everything
+  local (writes the narrow `pg_safe_merge` allow-rule to
+  `.claude/settings.local.json`, scaffolds the queue) and reports remote/CI
+  issues with exact fixes. Ships `scripts/doctor_checks.py` (read-only probe,
+  `BLOCKER|WARN|FIXED|INFO`, exit 0/1/2). Pairs with
+  `dispatch/scripts/pg_safe_merge.py` — a verified-merge wrapper (re-checks
+  branch/body/base/CI/SHAs/no-queue-edits) that dispatch's Integration calls
+  instead of raw `gh pr merge`, so the allow-rule stays narrow.
 
 ## Queue design invariants (research-backed, decided 2026-06-12)
 
@@ -138,7 +148,8 @@ bootstrap). Git history has both if ever needed.
 ```
 .claude-plugin/plugin.json        # manifest — name: pg-plugin
 .claude-plugin/marketplace.json   # marketplace — name: pragmatic-growth
-skills/<name>/SKILL.md            # the three skills
+skills/<name>/SKILL.md            # four skills (define-goal, dispatch, loop-architect, factory-doctor)
+skills/<name>/scripts/*.py        # deterministic helpers: dispatch/pm.py + pg_safe_merge.py, factory-doctor/doctor_checks.py
 AGENTS.md                         # symlink → CLAUDE.md (one source, no drift)
 ```
 
