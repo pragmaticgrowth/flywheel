@@ -32,8 +32,12 @@ are read here too — see the execution-substrate note in Phase 0.
   (deploy rules, forbidden merges, migration rules). Repeat-check before any git/deploy action.
 - **Every queue write goes through the claim protocol below**, from the `<base>` checkout.
   Implementers never touch `docs/goals/` — reject PRs that do.
-- WIP cap: at most `config.wip` goals `in_progress` at once. Fill free slots one
-  claim-protocol round at a time.
+- WIP cap: at most `config.wip` goals `in_progress` at once, AND **every iteration ends
+  with `min(config.wip, ready)` implementers live** — after you claim and spawn one goal,
+  re-check the slot count and claim again, repeating until the cap is full or no ready goal
+  remains. "One claim-protocol round at a time" is about commit atomicity (one entry, one
+  commit), NOT a one-claim-per-iteration cap; a fire triggered by a single implementer's
+  exit must refill every empty slot, not just the one that opened.
 - No-progress rule: same PR fails the same way twice with no progress → stop retrying,
   set the goal `blocked` with a `reason`, move on.
 
@@ -45,7 +49,10 @@ Parallel sessions may work the same queue; `origin/<base>` push acceptance is th
 2. Edit exactly one entry, updating fields in place (keep `branch:`/`pr:` for history;
    dates YYYY-MM-DD). Claiming writes
    `{status: in_progress, claimed: <date>, branch: goal/<id>}`. One commit per transition:
-   `chore(goals): claim|complete|block|archive <id>`.
+   `chore(goals): claim|complete|block|archive <id>`. The queue commit and its push are
+   their OWN command — never bundle them with branch pruning, worktree cleanup, or any
+   other optional or destructive op. A denial or failure of bundled hygiene must never take
+   down a queue write.
 3. Push. Rejected → `git pull --rebase` and look again: if another session took your goal,
    discard your claim commit (`git rebase --skip` it, or hard-reset to the remote) so your
    tree matches `origin/<base>`, then re-pick from ready; if your entry survived, push
@@ -68,8 +75,18 @@ while they keep working. Each iteration must be idempotent:
    Live = a background agent spawned this session that hasn't finished; from a fresh
    session you can't see prior agents — treat no new commits on `goal/<id>` since
    `claimed` as dead. If the implementer's final report named a blocker, set `blocked`
-   with that reason. Otherwise respawn once with a note of what already exists on its
-   branch; if it dies again, set `blocked`. Under `execution: herdr`, "live" instead
+   with that reason. Otherwise respawn — but distinguish a transient infrastructure death
+   (connection closed mid-response, parse error, 529 overloaded: NOT a work failure) from a
+   logic blocker. A transient death is not a "fail" toward the no-progress rule; don't let
+   it burn the respawn budget — retry it, up to ~3 transient respawns per goal per session,
+   after which a goal that still can't make any commit progress IS blocked (named
+   `blocked: repeated transient death`) so it can't livelock. Otherwise only a real blocker
+   in the final report, or repeated failure to make ANY commit progress, sets `blocked`
+   (a goal must never sit blocked for hours over one flaky connection). When you
+   respawn a goal whose branch has fallen far behind `<base>` (many merges landed since
+   `claimed`), branch fresh from `origin/<base>` and pass the stale branch's plan as
+   optional context — don't burn a long rebase resuming a now-worthless checkpoint. Under
+   `execution: herdr`, "live" instead
    means a `lanes`-visible pane on `goal/<id>` (cross-session visible via the herdr
    server), and respawn-once is tracked by the mission's `respawned` flag — see
    `references/herdr-mode.md`.
@@ -79,10 +96,19 @@ while they keep working. Each iteration must be idempotent:
 
 Switch the main checkout to `<base>` and `git pull --ff-only` (dirty or diverged checkout →
 stop and report rather than stash silently). If `docs/goals/index.yaml` is missing, report
-"no goals queue — create goals with /define-goal" and end the iteration. Cheap doctor pass,
-flagged in the report rather than silently fixed: every entry has its goal file and vice
-versa; no circular `depends_on`; no `depends_on` pointing at a missing entry; warn when a
-goal and its dependency declare different `base` branches.
+"no goals queue — create goals with /define-goal" and end the iteration. Read the queue with
+a real YAML parser (`python3 -c 'import yaml,sys; …'`), never line-greps or ad-hoc `jq` —
+grep probes on the queue invent phantom statuses and miscounts that cost an extra
+verification round every fire. Cheap doctor pass, flagged in the report rather than silently
+fixed: every entry has its goal file and vice versa; no circular `depends_on`; no
+`depends_on` pointing at a missing entry; warn when a goal and its dependency declare
+different `base` branches.
+
+**Implementer-cost awareness.** When `config.model: inherit` resolves to an expensive model
+(you are running on opus) and the queue is mostly `type: chore` (mechanical, no-behavior-
+change work), note once in the report that implementers inherit your model and that
+`config.model: sonnet` would cut cost sharply with little risk on chores — the owner decides,
+you don't override.
 
 **Execution substrate (`config.execution`, default `native`).** `native` = this
 document's in-process background-agent path (Phases 1–3, Integration). `herdr` = spawn
@@ -101,13 +127,28 @@ For each `in_progress` entry, find its PR (the `pr:` field, else an open PR from
 `branch: goal/<id>`):
 
 1. **PR merged** → set `{status: completed, completed: <date>}` via the claim protocol;
-   delete the merged `goal/<id>` branch and prune its worktree.
+   delete the merged `goal/<id>` branch and prune its worktree. Merged or completed by
+   someone else (a watching human, or a parallel session) is the SAME case, never an error
+   to reconcile defensively — adopt the result and move on. Under `merge: auto` on a slow
+   loop this is common: a PR you open this fire is usually still mid-CI when the fire ends,
+   so it gets merged a later fire (or by the human first). To do your share, sweep
+   merge-ready PRs at the TOP of every fire — Phase 1 runs before Phase 2 precisely so
+   finished work merges before you claim more.
 2. **CI red** → spawn one agent in that PR's branch worktree to diagnose and push a minimal
    fix. It must use the `systematic-debugging` skill, then `verification-before-completion`
    before pushing.
 3. **Unaddressed review comments** (bot or human) → spawn one agent in that worktree to
    address every comment using the `receiving-code-review` skill — verify feedback
-   technically, don't blindly apply.
+   technically, don't blindly apply; a comment that doesn't hold up gets a reasoned reply,
+   not a change. Converged = every blocking comment resolved and only cosmetic nits remain;
+   stop there (cap ~3 review rounds per PR, then surface leftover nits under needs-you)
+   rather than chasing fresh nits each cycle. A converged PR counts as "comments addressed"
+   for case 4 — cosmetic nits parked under needs-you don't hold it open. If review keeps
+   flagging the same pattern that the goal's OWN acceptance criteria mandated, the contract
+   is the problem, not the PR — keep the goal `in_progress` and surface it under needs-you as
+   a contract amendment for the human (never `blocked`, which would free the slot; never edit
+   the contract yourself) instead of merging the same contract-mandated defect across PR
+   after PR.
 4. **Green + comments addressed** → under `merge: pr`, comment a one-paragraph
    plain-language status on the PR and surface it under needs-you; do not merge. Under
    `merge: auto`, run Integration below.
@@ -172,10 +213,14 @@ letting the factory pile up more PRs against the same wall. Instead:
 ## Phase 2 — claim the next goal(s)
 
 Ready = `status: not_started` AND every `depends_on` entry is `completed` — a `blocked`
-dependency makes dependents not-ready; report the stuck chain. While `in_progress` count
-< `config.wip`: pick `priority: high` first, then top-most in the file; claim via the
-protocol BEFORE spawning, one goal per round. A per-goal `base:` field in the index entry
-overrides `config.base` for that goal (epic integration branches).
+dependency makes dependents not-ready; report the stuck chain. Loop, filling every free
+slot in this one iteration: **while `in_progress` count < `config.wip` AND a ready goal
+remains** — pick `priority: high` first, then top-most in the file; claim via the protocol
+BEFORE spawning; spawn (Phase 3); then loop back and fill the next slot. Each claim is one
+atomic protocol round (one entry per commit), but you do as many rounds as there are free
+slots — spawning a background agent returns immediately, so filling all of them costs one
+turn, not one turn per goal. A per-goal `base:` field in the index entry overrides
+`config.base` for that goal (epic integration branches).
 
 ## Phase 3 — spawn the implementer (depth 1, background, worktree isolation)
 
@@ -193,22 +238,34 @@ spawn helpers at your own model.
 
 Workspace: you are in an isolated worktree. Before anything else: `git fetch origin`,
 then make sure you are on branch goal/<id> created from origin/<base>
-(`git switch -c goal/<id> origin/<base>` if not already). Run project setup (install
-deps) and the repo's test baseline; a dirty baseline is reported, never built on.
+(`git switch -c goal/<id> origin/<base>` if not already). Run every command from THIS
+worktree — never `cd` into the main checkout path: doing so silently measures and edits
+the base branch, not your work, and a baseline that suddenly looks "unfinished" is the #1
+sign you ran in the wrong tree. Use paths relative to your worktree, or `git -C <this
+worktree>`. Run project setup (install deps) and the repo's test baseline; a dirty
+baseline is reported, never built on. Failures that are already red on origin/<base>
+(unrelated suites, missing-secret/env environments) are pre-existing, not your regression:
+note them and move on — do not fix them, and they do not block your goal.
 
 Skills are mandatory — invoke each via the Skill tool:
 1. BEFORE touching the work they cover: <config.skills + the goal frontmatter's skills:>.
 2. `writing-plans` first if the change spans >2 files.
 3. `test-driven-development` for every code change (failing test first). Let other
-   domain skills trigger as relevant — check the available-skills list.
+   domain skills trigger as relevant — check the available-skills list. When the goal
+   cites a bug, finding, or root-cause hypothesis, reproduce it against the real code
+   FIRST — upstream findings are hypotheses, not facts, and some will be wrong. If the
+   code is already correct, lock it in with a test and say so in the PR; never "fix" code
+   you cannot first demonstrate is broken.
 4. `verification-before-completion` before claiming done: run every command in the
    goal's acceptance criteria and show output. For UI work, verify in the browser
    (project browser skill if present, else agent-browser) and capture a screenshot.
 
-Finish: push goal/<id> and open a PR targeting <base> — `gh pr create --base <base>` —
-with body containing "Goal: <id>", a plain-language summary a non-engineer can read, and
-the verification evidence. Do NOT merge anything — the orchestrator integrates per the
-queue config.
+Finish: before committing, review your diff and stage only the files you meant to change —
+revert stray lockfile / dependency-manager / formatter churn — or any file you didn't
+intend to touch — that the toolchain introduced (never `git add -A` blind). Then push goal/<id> and open a PR targeting <base> —
+`gh pr create --base <base>` — with body containing "Goal: <id>", a plain-language summary
+a non-engineer can read, and the verification evidence. Do NOT merge anything — the
+orchestrator integrates per the queue config.
 
 Constraints: the goal file's "Constraints" section verbatim, plus: never merge, never
 push protected branches or <base> itself, stay inside your worktree, and NEVER edit
@@ -229,7 +286,7 @@ the session model — mention it if config.model differs); merge back per `confi
 
 ## Phase 4 — report (always, exactly one line)
 
-`[dispatch] queue: <ready>/<total> · shepherded: <PRs+outcome or none> · claimed: <id(s) or none> · running: <count>/<wip> · needs-you: <mergeable PRs / blocked goals / nothing>`
+`[dispatch] queue: <ready>/<total> · shepherded: <PRs+outcome or none> · claimed: <id(s) or none> · running: <count>/<wip> · model: <implementer model> · needs-you: <mergeable PRs / blocked goals / nothing>`
 
 Count `ready`/`total` after this iteration's mutations (total = all index entries).
 needs-you lists everything currently waiting on the human — mergeable PRs and ALL blocked
@@ -248,5 +305,8 @@ report line still goes out every fire — new blocker content notifies again.
 
 When `completed` entries crowd the index (~20+), move their files to `docs/goals/done/`
 and their entries to `docs/goals/archive.yaml` in one `chore(goals): archive` commit.
-Run `git worktree prune` and delete merged `goal/*` branches while you're there. Agents
-read the whole index every iteration — keep it small.
+Run `git worktree prune`. Before deleting any `goal/*` branch, confirm its PR is actually
+MERGED (`gh pr view <branch> --json state`) — never delete a branch whose PR is still open;
+that closes the PR and destroys unmerged work. Prune as its own step, never fused to a queue
+commit (see the claim protocol); lingering merged branches are harmless, so when in doubt
+leave them. Agents read the whole index every iteration — keep it small.
