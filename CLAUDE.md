@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Skills-only Claude Code plugin from Pragmatic Growth, v2.5.0. No MCP
+Skills-only Claude Code plugin from Pragmatic Growth, v2.7.0. No MCP
 servers, no commands, no agents, no hooks, no build step — three skills
 under `skills/`, each a single `SKILL.md`, forming a plain-language →
 autonomous-execution pipeline around a file-based goal queue
@@ -104,6 +104,27 @@ autonomous-execution pipeline around a file-based goal queue
   are session-bound; branch commits + the stale-claim rule are the
   recovery path. The tool needs CLI ≥2.1.154 and can be disabled, so
   skills never assume it.
+
+- Real-run hardening (v2.7.0, validated against a 24-goal `merge: auto`
+  native run on a production repo, 2026-06-23): dispatch fills `min(wip,
+  ready)` implementers EVERY iteration — claiming is a loop, not one goal
+  per fire (the run silently sat at 1/2 capacity otherwise); a transient
+  infra death (connection closed, parse error, 529) is not a blocker and
+  doesn't burn the respawn budget, but transient respawns are capped
+  (~3/goal/session) so a flaky spawn can't livelock; respawning a goal
+  whose branch fell far behind `<base>` branches fresh, not a stale-
+  checkpoint rebase; the queue commit is always its OWN command (never
+  bundled with branch pruning — a bundled destructive op got the whole
+  claim denied), and branch pruning verifies `gh pr view … state ==
+  MERGED` first. Implementer-brief traps closed: never `cd` to the main
+  checkout (silently measures the base branch); reproduce a cited bug
+  before "fixing" it (upstream findings are hypotheses, ~⅓ are false
+  positives even post-verification); stage only intended files; pre-
+  existing `<base>`-red suites don't block a goal. Review loops converge
+  (cap ~3 rounds, cosmetic nits → needs-you); a defect the goal's OWN
+  criteria mandate becomes a needs-you contract amendment, not a serial
+  merge. herdr mode remains UNVALIDATED in production — every real run to
+  date is `native`.
 
 History note: this repo was previously `mcp-do`, a stdio MCP server
 wrapping droid/opencode CLIs (removed in v1.0.0 at ac2bd7c). The
