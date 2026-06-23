@@ -197,6 +197,13 @@ def test_integrity_edits_queue():
                                ["docs/goals/index.yaml"], "007-orders")
     assert r["pass"] is False and "docs/goals" in r["evidence"]
 
+import subprocess, sys
+def test_self_test_exits_zero_and_announces():
+    r = subprocess.run([sys.executable, os.path.join(_here, "pg_validate.py"), "--self-test"],
+                       capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "self-test" in r.stdout and "passed" in r.stdout, r.stdout + r.stderr
+
 if __name__ == "__main__":
     fns = [g for n, g in sorted(globals().items()) if n.startswith("test_")]
     for fn in fns:
