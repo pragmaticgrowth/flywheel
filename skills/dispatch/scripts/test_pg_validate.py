@@ -142,6 +142,26 @@ def test_detect_makefile_beats_others():
     fm = {"Makefile": "x:\n", "go.mod": "module x"}
     assert pgv.detect_gate_command(fm) == "make test"
 
+def test_repro_red_on_base_green_on_head():
+    r = pgv.repro_direction([1, 0], [0, 0], already_correct=False)
+    assert r["pass"] is True
+
+def test_repro_all_green_on_base_no_doc():
+    r = pgv.repro_direction([0, 0], [0, 0], already_correct=False)
+    assert r["pass"] is False and r["kind"] == "contract"
+
+def test_repro_all_green_on_base_with_doc():
+    r = pgv.repro_direction([0, 0], [0, 0], already_correct=True)
+    assert r["pass"] is True and "already correct" in r["evidence"]
+
+def test_repro_red_on_head():
+    r = pgv.repro_direction([1], [1], already_correct=False)
+    assert r["pass"] is False and r["kind"] == "fixable"
+
+def test_repro_nothing_red_on_base_red_on_head():
+    r = pgv.repro_direction([0, 0], [1, 0], already_correct=False)
+    assert r["pass"] is False
+
 if __name__ == "__main__":
     fns = [g for n, g in sorted(globals().items()) if n.startswith("test_")]
     for fn in fns:

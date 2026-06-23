@@ -115,3 +115,21 @@ def detect_gate_command(file_map):
     if "pytest.ini" in file_map or "pyproject.toml" in file_map:
         return "pytest -q"
     return None
+
+
+def repro_direction(base_exits, head_exits, already_correct):
+    head_all_green = all(x == 0 for x in head_exits)
+    base_any_red = any(x != 0 for x in base_exits)
+    if not head_all_green:
+        return {"name": "repro-direction", "pass": False, "kind": "fixable",
+                "evidence": "an acceptance command is still red on the PR head"}
+    if base_any_red:
+        return {"name": "repro-direction", "pass": True, "kind": "fixable",
+                "evidence": ">=1 command red on base, all green on head — real fix"}
+    # nothing was red on base: the change fixed nothing observable
+    if already_correct:
+        return {"name": "repro-direction", "pass": True, "kind": "fixable",
+                "evidence": "nothing red on base; goal documents code was already correct (locking test)"}
+    return {"name": "repro-direction", "pass": False, "kind": "contract",
+            "evidence": "nothing red on base — the bug 'fixed' nothing (tautology/already-fixed); "
+                        "document 'already correct' with a locking test if so"}
