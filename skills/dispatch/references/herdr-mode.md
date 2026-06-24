@@ -215,6 +215,12 @@ Per claimed goal `NNN` (resolved `<base>` = per-goal `base:` else `config.base`)
      "Goal: NNN" (plain-language summary + verification evidence); `auto` → leave
      it for the orchestrator. Never self-merge.
    - On a **respawn**, add a line naming what is already committed on `goal/NNN`.
+   - **If blocked or unreachable:** stop and report the blocker; if after ~3 honest
+     attempts the acceptance criteria can be neither satisfied nor shown measurable (a
+     flaky / non-deterministic / contradictory check), print
+     `GOAL_UNREACHABLE: <criterion, why unmeasurable, last measurement>` and stop instead
+     of churning — the orchestrator routes that to a needs-you contract amendment (Step 7),
+     not a respawn.
 6. **Dispatch the brief.** `dispatch --file` mints a UNIQUE marker, sends a short
    "Read <brief> and execute it fully; when done and verified print <marker> on
    its own line" pointer, and verifies the pane went `working`:
@@ -327,6 +333,9 @@ never a stale id.)
    `goal/NNN`, then run the goal's acceptance commands there and SHOW the
    output. A marker with no commits, or a failing verify, is not done →
    respawn-once (Step 5 `--reuse`) or `blocked` per the Step 3 zombie rule.
+   A pane scrollback / report declaring `GOAL_UNREACHABLE` is a contract defect, not a
+   work failure: set `blocked` with reason `contract defect: <criterion> unreachable` and
+   surface a needs-you contract amendment (per `SKILL.md`) — never respawn it.
 2. **Push.** The implementer pushes `goal/NNN`; the orchestrator confirms with
    `git ls-remote origin goal/NNN` (non-empty). Committed-but-unpushed → the
    orchestrator pushes from the worktree.
@@ -371,6 +380,13 @@ Tier 3 win and Tier 2 is rebuilt:
 - **State cache lost (new machine)** → `missions.json` is only a cache;
   reconstruct from `index.yaml` + git + any live panes. The claim ledger and
   branch commits are durable.
+- **Silent orchestrator death** → the `heartbeat` file in the cache dir
+  (`~/.local/state/pg-dispatch/<SLUG>/heartbeat`, written every fire — `SKILL.md` Phase 4)
+  stops updating. An external watcher or the next manual `/dispatch` flags "no heartbeat in
+  >2 schedule intervals" as a dead loop, so a silently-dead orchestrator (500 /
+  context-exhaustion mid-turn) is detectable rather than invisible. The file is a sibling of
+  `missions.json` in the same machine-local cache dir; like the cache it is rebuildable and
+  never the source of truth.
 - **All-stop (human)** → `touch ~/.local/state/pg-dispatch/PAUSE` makes the
   mutating `pm.py` ops (`dispatch`, `keys`, `spawn-exec`) refuse with reason
   `"paused"`; the read-only ops (`capabilities`, `lanes`, `read`, `status`)

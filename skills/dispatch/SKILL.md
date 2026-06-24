@@ -30,6 +30,12 @@ on, `llm_validation: off` (off | on — opt-in adversarial LLM check on top of t
 deterministic gate; costs tokens), `validator_model: sonnet` (never `inherit`),
 `validation_attempts: 2` (LLM FAIL→repair rounds before blocked) govern the LLM layer
 (step 2c).
+`budget` (default none) caps cumulative spend across a scheduled run:
+`max_spawns_per_session` (total agents spawned this session — implementers + CI-fix +
+review-response + sync + repair + validator) and optional `max_iterations`. When a cap is
+hit the orchestrator stops claiming/spawning and lets in-flight work drain — the external
+"burnstop" a per-goal respawn cap can't provide (see Hard rules and Phase 2). Absent the
+field, there is no session cap (today's behavior).
 `config.model` (when not `inherit`) is passed as the `model` parameter on EVERY
 code-writing agent you spawn — implementers, CI-fix, review-response, and sync agents
 alike; it is the repo owner's depth-vs-weekly-limit trade, not yours to override.
@@ -56,6 +62,13 @@ are read here too — see the execution-substrate note in Phase 0.
   exit must refill every empty slot, not just the one that opened.
 - No-progress rule: same PR fails the same way twice with no progress → stop retrying,
   set the goal `blocked` with a `reason`, move on.
+- **Session budget (external brake).** If `config.budget.max_spawns_per_session` (or
+  `max_iterations`) is set, count every agent you spawn this session. Once a cap is reached,
+  STOP claiming and spawning new work — keep shepherding and merging what is already live so
+  in-flight work drains cleanly — surface `budget exhausted (<n>/<cap> spawns)` under
+  needs-you, and send ONE notification per Phase 4 (Claude Code PushNotification; Droid has
+  no PushNotification, so the report line carries it). The cap comes from config you cannot
+  edit; that is what makes it a real brake and not a soft self-limit.
 
 ## Claim protocol — every status write, multi-session safe
 
@@ -101,7 +114,12 @@ so these recover on their own.
    Live = a background agent spawned this session that hasn't finished; from a fresh
    session you can't see prior agents — treat no new commits on `goal/<id>` since
    `claimed` as dead. If the implementer's final report named a blocker, set `blocked`
-   with that reason. Otherwise respawn — but distinguish a transient infrastructure death
+   with that reason. A report that declares `GOAL_UNREACHABLE` (the acceptance criteria
+   can be neither satisfied nor shown measurable after honest attempts) is a contract defect,
+   not a work failure: set `blocked` with reason `contract defect: <criterion> unreachable`
+   and surface it under needs-you as a contract amendment (the human re-specifies via
+   `define-goal`) — do NOT respawn it, a re-run hits the same unmeasurable check.
+   Otherwise respawn — but distinguish a transient infrastructure death
    (connection closed mid-response, parse error, 529 overloaded: NOT a work failure) from a
    logic blocker. A transient death is not a "fail" toward the no-progress rule; don't let
    it burn the respawn budget — retry it, up to ~3 transient respawns per goal per session,
@@ -122,7 +140,15 @@ so these recover on their own.
 
 Switch the main checkout to `<state_branch>` and `git pull --ff-only origin <state_branch>`
 (dirty or diverged checkout → stop and report rather than stash silently). If `docs/goals/index.yaml` is missing, report
-"no goals queue — create goals with /define-goal" and end the iteration. The queue (`docs/goals/`) lives on `<state_branch>`; read index.yaml from there. Read the queue with
+"no goals queue — create goals with /define-goal" and end the iteration.
+**Drained-queue terminal stop.** A scheduled loop must stop when there is nothing left to
+do — a cron that keeps firing over a fully-drained queue is a routine on a timer, not a loop.
+When `done == total` (or `ready + running == 0` with needs-you empty) AND the heartbeat cache
+shows it stayed drained since the prior fire, emit `factory drained — <done>/<total> done,
+loop stopped` and tear down the schedule: in Droid `CronDelete` your own same-session cron;
+in Claude Code there is no self-teardown for `/loop` — tell the user to stop it, and do
+nothing further on subsequent no-op fires. A later `/define-goal` + `/dispatch` restarts it.
+(One fire confirms; don't tear down on the first drained fire in case work is mid-merge.) The queue (`docs/goals/`) lives on `<state_branch>`; read index.yaml from there. Read the queue with
 a real YAML parser (`python3 -c 'import yaml,sys; …'`), never line-greps or ad-hoc `jq` —
 grep probes on the queue invent phantom statuses and miscounts that cost an extra
 verification round every fire. Cheap doctor pass, flagged in the report rather than silently
@@ -373,7 +399,8 @@ regardless of whether the base is protected.
 Ready = `status: not_started` AND every `depends_on` entry is `completed` — a `blocked`
 dependency makes dependents not-ready; report the stuck chain. Loop, filling every free
 slot in this one iteration: **while `in_progress` count < `config.wip` AND a ready goal
-remains** — pick `priority: high` first, then top-most in the file; claim via the protocol
+remains AND the session budget (if `config.budget` is set) is not exhausted** — pick
+`priority: high` first, then top-most in the file; claim via the protocol
 BEFORE spawning; spawn (Phase 3); then loop back and fill the next slot. Each claim is one
 atomic protocol round (one entry per commit), but you do as many rounds as there are free
 slots — spawning a background agent returns immediately, so filling all of them costs one
@@ -440,7 +467,12 @@ Constraints: the goal file's "Constraints" section verbatim, plus: never merge, 
 push protected branches or <base> itself, stay inside your worktree, and NEVER edit
 docs/goals/ — the orchestrator owns queue state. If blocked: stop and end your turn with
 a report of attempted paths, evidence, the blocker, and what would unlock you — the
-dispatcher will mark the goal blocked.
+dispatcher will mark the goal blocked. If after ~3 honest attempts the acceptance criteria
+cannot be made green AND you cannot show the target is even measurable/reachable (a flaky,
+non-deterministic, or contradictory check), end your turn declaring
+`GOAL_UNREACHABLE: <which criterion, why unmeasurable, last measurement>` instead of churning
+your whole window — never retry the identical failing approach; the dispatcher routes that to
+a needs-you contract amendment.
 ```
 
 ## Solo mode — work one named goal in this session
@@ -455,7 +487,7 @@ the session model — mention it if config.model differs); merge back per `confi
 
 ## Phase 4 — report (always, exactly one line)
 
-`[dispatch] <done>/<total> done [<bar>] · ready: <count> · running: <count>/<wip> (<ids>) · blocked: <count> · shepherded: <PRs+outcome or none> · claimed: <id(s) or none> · model: <implementer model> · needs-you: <mergeable PRs / human-blocked goals / nothing>`
+`[dispatch] <done>/<total> done [<bar>] · ready: <count> · running: <count>/<wip> (<ids>) · blocked: <count> · shepherded: <PRs+outcome or none> · claimed: <id(s) or none> · model: <implementer model> · session: <spawns>sp/<merges>mg (accept <pct>%) · needs-you: <mergeable PRs / human-blocked goals / nothing>`
 
 Lead with **progress** (`<done>/<total>`), never `ready/total` — a bare `ready/total` reads
 as "nothing done" to a human. Every number carries its label. The four counts partition
@@ -463,6 +495,14 @@ as "nothing done" to a human. Every number carries its label. The four counts pa
 - `done` = completed · `running` = in_progress implementers · `ready` = not_started with all
   `depends_on` completed (claimable now) · `blocked` = the rest (`blocked` status or
   not_started with an unmet dependency).
+
+The `session:` segment is the loop's health metric — **cost per accepted change**, the number
+almost nobody tracks: `<spawns>` = agents spawned this session, `<merges>` = PRs merged this
+session, `accept` = merges ÷ spawns. A sustained accept-rate **below ~50%** means the loop is
+spending more than it ships (a "slop" loop that still looks busy) — flag it as a
+needs-you-adjacent warning (`accept 22% — tighten gates or pause`) so the human can tighten
+the validation gate, raise `config.model`, or stop the loop. Spawns/merges are session totals
+the orchestrator already knows (it spawned and merged them); no token accounting needed.
 
 The bar is 20 cells: `filled = round(20 × done ÷ total)` (0.5 rounds up), clamped to [0, 20];
 empty = 20 − filled. Filled cells = █, empty = ░; omit the whole bar when total = 0.
@@ -485,6 +525,17 @@ no PushNotification tool; surface the stalled state in the report line only (a D
 same-session cron has no external reader either). One notification per distinct
 blocker set; identical no-op fires after it send no further notifications, though the
 report line still goes out every fire — new blocker content notifies again.
+
+**Heartbeat (liveness) — every fire.** Write a one-line heartbeat —
+`<UTC timestamp> · <done>/<total> · running <n> · drained <yes|no>` — to the runtime cache
+at `~/.local/state/pg-dispatch/<SLUG>/heartbeat` (`<SLUG>` = the repo dir name; herdr mode
+already owns this dir, native mode creates it: `mkdir -p` then overwrite the file). A
+silently-dead orchestrator (a 500 / context-exhaustion mid-turn, the "silent death" of an
+unattended loop) emits nothing, so the next manual `/dispatch` — or an external watcher —
+compares the heartbeat's age to the schedule interval and treats "silent for >2 intervals"
+as a dead-loop signal, turning silent death into a detectable anomaly. The drained flag also
+feeds the drained-queue terminal stop (Phase 0). `factory-doctor`'s queue-liveness probe
+reports the same staleness from the queue side (stale `in_progress` claims).
 
 ## Hygiene
 
