@@ -230,8 +230,9 @@ integrated:
    agent in the branch worktree with the findings (cap one repair; an identical second FAIL
    → `blocked`/needs-you); `FAIL_CONTRACT` → keep the goal `in_progress` (holds its slot),
    surface a contract amendment under needs-you, never churn the worker; `INCONCLUSIVE` →
-   transient, retry next fire, never default-PASS. Prune the worktree when done (its own
-   step, never bundled with a queue commit). A deterministic FAIL overrides everything —
+   transient, retry next fire, never default-PASS. **Leave this worktree in place —
+   step 2c (LLM validator, if enabled) reuses it, and it is pruned once after step 3
+   Merge.** A deterministic FAIL overrides everything —
    never route around it with a manual merge.
 3. **Merge**: `python3 "$SAFEMERGE" --pr <n> --goal <id> --base <base> --expected-head
    <the SHA Validate recorded; or, if validation was off/skipped, the gate-verified head SHA>
