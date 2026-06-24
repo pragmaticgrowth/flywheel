@@ -48,8 +48,15 @@ the runtime and use appropriate paths, commands, and scheduling primitives.
   to split the two FAILs, both exit 3). PASS→merge with those SHAs; FAIL_FIXABLE→one worker
   repair then blocked; FAIL_CONTRACT→hold slot + needs-you contract amendment;
   INCONCLUSIVE→retry, never default-PASS. The orchestrator merges — the validator never does.
-  A deterministic FAIL overrides any future (Phase 2) LLM validator. Mutation testing + the
-  LLM semantic validator are Phase 2.
+  A deterministic FAIL overrides any future LLM validator. **Phase 2 (opt-in):** when
+  `config.llm_validation: on` (default off; costs tokens), step 2c spawns ONE read-only
+  adversarial Agent (`config.validator_model`, default sonnet, never inherit) reusing the 2b
+  worktree — fed ONLY the contract + raw diff + checkout, never the worker's narrative — that
+  must earn a PASS with replayable evidence (criterion→diff map, outcome-vs-commands, one
+  validator-authored adversarial probe, no-op reasoning); runs only after the deterministic
+  gate PASSES (deterministic FAIL always wins), verdict feeds the same convergence (round cap
+  `config.validation_attempts`, default 2), orchestrator merges. Mutation testing + a
+  fleet-FAIL-rate health metric + the high-risk→human tail remain future work.
 - **loop-architect** — designs loop contracts (prompt + verification +
   stop conditions) for autonomous /goal, /loop, routine, or remote runs;
   names `docs/goals/index.yaml` the canonical factory ledger.
