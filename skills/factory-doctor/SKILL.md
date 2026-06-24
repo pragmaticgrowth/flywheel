@@ -28,8 +28,9 @@ green report.
 2. **Read the queue config** (`docs/goals/index.yaml` `config:` if present) for `base`,
    `merge`, `execution` — defaults `base` = repo default branch, `merge: pr`,
    `execution: native`.
-3. **Run the read-only probe:** `python3 "$DC" --base <base> --merge <merge> --execution <execution>`.
-   It emits JSON `{checks:[{check,level,detail,fix}], result}` and exits 0/1/2. Never edit it.
+3. **Run the read-only probe:** `python3 "$DC" --base <base> --merge <merge> --execution <execution> --state-branch <state_branch>`
+   (read `state_branch` from `config.state_branch`, default `= base`). It emits JSON
+   `{checks:[{check,level,detail,fix}], result}` and exits 0/1/2. Never edit it.
 
 ## Apply local fixes (aggressive — these and ONLY these)
 
@@ -67,6 +68,11 @@ For each check whose `fix` begins with `FIX:`:
   remember dispatch uses the PATH one). A repo venv does NOT help unless dispatch runs under it,
   so don't rely on it. If the harness denies the install in an unattended session, surface it
   under needs-you and apply on the user's explicit "go".
+- **`state-branch` (missing, `state_branch != base`):** create the branch off `<base>` and push
+  it — `git branch <state_branch> origin/<base> && git push origin <state_branch>` — then re-run
+  the probe to confirm → FIXED. (Safe: it's an empty branch off base, queue-metadata only, never
+  code.) If the probe reports the state branch is **protected** (BLOCKER), do NOT create or
+  unprotect — report it (a protection change is remote governance, never auto-done).
 
 Each fix is one atomic edit, named in the report.
 
@@ -95,7 +101,7 @@ npm install + Chromium is a system-level change, never auto-run). Then one statu
 `merge: pr` the probe emits
 `merge-permission` INFO with no fix, so report `permissions: n/a`:
 
-`[doctor] software: <ok|missing> · auth: <ok(scopes)|fix> · permissions: <ok|fixed|blocked(classifier)|deny-conflict|n/a> · push: <ok|⚠ base protected> · ci: <green|none> · queue: <valid|scaffolded|drift> · result: READY|WARN|BLOCKER`
+`[doctor] software: <ok|missing> · auth: <ok(scopes)|fix> · permissions: <ok|fixed|blocked(classifier)|deny-conflict|n/a> · push: <ok|⚠ base protected> · state-branch: <pushable|missing|⚠ protected|n/a> · ci: <green|none> · queue: <valid|scaffolded|drift> · result: READY|WARN|BLOCKER`
 
 ## Relationship to the other skills
 
