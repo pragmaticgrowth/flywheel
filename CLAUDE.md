@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Skills-only plugin for Claude Code and Droid (Factory CLI) from Pragmatic Growth, v2.9.6.
+Skills-only plugin for Claude Code and Droid (Factory CLI) from Pragmatic Growth, v2.9.7.
 No MCP servers, no commands, no agents, no hooks, no build step — four skills
 under `skills/` (two ship deterministic Python helpers in `scripts/`),
 forming a plain-language → autonomous-execution pipeline around a
@@ -118,6 +118,18 @@ the runtime and use appropriate paths, commands, and scheduling primitives.
   sync-with-current-base then re-verify before every merge; substantive
   conflicts → `blocked`, never guessed through. Implementers never
   merge and never edit `docs/goals/`.
+- Promotion (base → a downstream branch, typically `main`/production) is a
+  separate human-gated step, NOT part of the iteration loop and NOT Integration
+  (`pg_safe_merge.py` targets `<base>` and rejects non-`goal/` heads). v2.9.7
+  (from a real 2026-06-24 run where promoting `<base>` into `main`
+  auto-deleted it): never open the promotion PR with the persistent base as the
+  PR head — a repo with GitHub's `delete_branch_on_merge: true` (correct for
+  `goal/*` hygiene) deletes the merged PR's head, so the base vanishes as a side
+  effect of the prod merge. Promote through a throwaway `promote-<date>-to-<target>`
+  head branch (auto-delete kills the throwaway, base untouched), audit the merge's
+  side effects (migrations, head fate) not just the diff, and verify the base
+  still exists after. Protecting the base on GitHub is the robust repo-side guard
+  (protected branches are never auto-deleted; pairs with `config.state_branch`).
 - `merge: auto` needs merge rights: preflight once per session for a
   `gh pr merge` allow rule before the first integration. A harness
   denial of the orchestrator's own merge is an environment blocker,

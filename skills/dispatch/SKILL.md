@@ -333,6 +333,41 @@ letting the factory pile up more PRs against the same wall. Instead:
    unmoved). Neither → nothing further this fire beyond the Phase 4 report line; no
    repeat notification.
 
+## Promotion — base → a downstream branch (main / production), human-gated
+
+Promoting the integration base onto a downstream branch (typically `main` = production) is
+**out-of-band and human-gated**: never part of the iteration loop, only on the user's explicit
+go for a specific promotion. It is NOT Integration — `pg_safe_merge.py` does not apply (it
+targets `<base>` and rejects any head that is not `goal/<id>`).
+
+**Never open the promotion PR with the persistent base as the PR head.** A repo with GitHub's
+"Automatically delete head branches" on (`delete_branch_on_merge: true` — common, and correct
+for `goal/*` hygiene) deletes a merged PR's *head* branch. So the WRONG form — `gh pr create
+--base main --head <base>` then merge — deletes `<base>` itself, the branch every `goal/*`
+forks from and the queue lives on, as a side effect of the production merge. (Real incident,
+2026-06-24: `<base>` was auto-deleted on promotion and only recovered because a local
+ref still held the tip.) `--head <base>` is never correct for a promotion.
+
+Promote through a **throwaway head branch** instead:
+1. `git fetch origin` — promote a known remote SHA, never a stale local tip.
+2. `git branch promote-<date>-to-<target> origin/<base>` (or the exact verified base SHA), then
+   `git push origin promote-<date>-to-<target>`.
+3. `gh pr create --base <target> --head promote-<date>-to-<target> --title "…" --body-file …`.
+4. Before merging, state BOTH the footprint (`git log/diff <target>..origin/<base>`) AND the
+   merge's *side effects* — migrations auto-run on deploy? what happens to the head branch? —
+   not just the diff. Audit what the merge mechanics do, not only what ships.
+5. Merge. Auto-delete removes the throwaway; `<base>` is untouched. The PR head branch must
+   never *be* `<base>` (GitHub auto-deletes by branch name, not SHA — a throwaway pointed at the
+   same commit is still safe); never pass `--delete-branch` to a PR whose head branch is `<base>`.
+6. Verify after: `<base>` still exists (`gh api repos/{owner}/{repo}/branches/<base>`) and the
+   throwaway is gone. Never assume the merge left your branches as you expected.
+
+A persistent base can never be the deleted head if it is **protected** on GitHub (protected
+branches are never auto-deleted) — the robust repo-side guard the owner can set. Because the
+queue lives on the base, protecting it means moving the queue to a separate unprotected
+`config.state_branch` (the protected-base pattern). The throwaway-head rule above holds
+regardless of whether the base is protected.
+
 ## Phase 2 — claim the next goal(s)
 
 Ready = `status: not_started` AND every `depends_on` entry is `completed` — a `blocked`
