@@ -228,8 +228,15 @@ integrated:
    mechanical chores skip validation — they already prove no-behavior-change before/after).
    Create a fresh detached worktree of the synced PR head (`git worktree add --detach <tmp>
    <head-sha>`); resolve `$PGVALIDATE`
-   like `$SAFEMERGE`/`$PM` and run `python3 "$PGVALIDATE" --pr <n> --goal <id> --base <base>
-   --goal-file docs/goals/<id>.md --worktree-root <tmp>`. Read the JSON `verdict` field to
+   like `$SAFEMERGE`/`$PM`. Then get the goal contract to validate against: when
+   `state_branch != base`, it is NOT in this `<head-sha>` worktree (branched from `<base>`) —
+   extract it from the state branch to a temp path inside the worktree first
+   (`git show origin/<state_branch>:docs/goals/<id>.md > "$VWT/goal.md"`, where `$VWT` is the
+   `<tmp>` worktree root) and run
+   `python3 "$PGVALIDATE" --pr <n> --goal <id> --base <base> --goal-file "$VWT/goal.md" --worktree-root <tmp>`.
+   When `state_branch == base` (default), the file is already in the worktree at
+   `docs/goals/<id>.md` — pass that path directly (`--goal-file docs/goals/<id>.md`), no
+   extraction. Read the JSON `verdict` field to
    split FIXABLE vs CONTRACT (both FAILs exit 3, so the exit code alone is insufficient;
    PASS=0, INCONCLUSIVE=4). `PASS` → record the validated `sha_head`/`sha_base` and use them
    as Merge's `--expected-head/--expected-base`; `FAIL_FIXABLE` → spawn ONE worker-repair
@@ -351,6 +358,15 @@ Implement the goal in docs/goals/<id>.md exactly per its "Goal contract" section
 that file first. You own this work end to end — nested subagents are for context isolation
 (explore / write tests / verify in fresh windows), never for passing the whole task down;
 spawn helpers at your own model.
+
+Contract delivery (built by the orchestrator when filling this brief): the goal
+contract lives at `docs/goals/<id>.md` on `<state_branch>`. When `state_branch != base`,
+it is NOT in your `goal/<id>` worktree (branched from `<base>`) — so the orchestrator
+embeds the full contract in this brief under a `## Your goal contract (from <state_branch>)`
+heading, read with `git show origin/<state_branch>:docs/goals/<id>.md` and pasted below.
+Treat that embedded contract as the source of truth (it is the same bytes as the queue
+file). When `state_branch == base` (default), the file IS in your worktree and the
+"read docs/goals/<id>.md first" instruction above stands unchanged — no embedded copy.
 
 Workspace: you are in an isolated worktree. Before anything else: `git fetch origin`,
 then make sure you are on branch goal/<id> created from origin/<base>
