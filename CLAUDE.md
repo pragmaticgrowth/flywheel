@@ -239,6 +239,10 @@ bootstrap). Git history has both if ever needed.
 .claude-plugin/marketplace.json   # marketplace — name: pragmatic-growth
 skills/<name>/SKILL.md            # four skills (define-goal, dispatch, loop-architect, factory-doctor)
 skills/<name>/scripts/*.py        # deterministic helpers: dispatch/pm.py + pg_safe_merge.py, factory-doctor/doctor_checks.py
+CHANGELOG.md                      # canonical, git-tracked version history (mirrors the site changelog)
+public/index.html                 # the public site (plugin.pragmaticgrowth.com) — self-contained, themed
+public/Logo*Black.svg             # Pragmatic Growth brand marks (icon + wordmark)
+wrangler.jsonc                    # Cloudflare Workers static-assets deploy config for the site
 AGENTS.md                         # symlink → CLAUDE.md (one source, no drift)
 ```
 
@@ -265,3 +269,37 @@ AGENTS.md                         # symlink → CLAUDE.md (one source, no drift)
 - **Skill edits are tested.** New or changed skill mechanics get a
   subagent dry-run (scenario + "cite the section that decides each
   answer") before shipping; close every flagged ambiguity.
+
+## Public site & changelog (plugin.pragmaticgrowth.com)
+
+The plugin has a public landing/docs site at **https://plugin.pragmaticgrowth.com**,
+served from Cloudflare (Workers static assets, Pragmatic Growth account). It is
+part of this repo — `public/index.html` (self-contained, light/dark, no external
+deps) plus the brand SVGs in `public/`, with `wrangler.jsonc` at the root.
+
+- **Keep the site current with the skills.** Whenever you change what a skill
+  does, how it's invoked, the install commands, or the queue/config model,
+  update `public/index.html` to match in the SAME change. The site documents the
+  four skills, the docs/goals pipeline, install, and the changelog — drift here
+  is a shipped-but-wrong doc, same severity as a stale SKILL.md.
+- **Versioned changelog, two mirrors.** `CHANGELOG.md` (repo root) is the
+  canonical, git-tracked history; the `#changelog` section of `public/index.html`
+  renders the same entries (newest first, filterable by version line, each linked
+  to its commit). On every `plugin.json` version bump, add an entry to BOTH:
+  a `## [X.Y.Z] — <date>` block + a commit link in `CHANGELOG.md`, and a
+  matching `<details class="rel" data-family="X.Y">` card in the site's timeline
+  (move the `latest` class + `Latest` tag to the new top entry; bump the
+  `.ver-pill` and `<title>`). Older versions stay visible — never delete history.
+- **Track versions in GitHub with tags.** Each release is an annotated git tag
+  `vX.Y.Z` on its bump commit (`git tag -a vX.Y.Z <sha> -m "…"`), pushed with
+  `git push --tags`. The changelog commit links and tags are how version history
+  lives in GitHub. (Optional: `gh release create vX.Y.Z --notes-from-tag`.)
+- **Redeploy after changes.** From the repo root, with `CLOUDFLARE_API_TOKEN`
+  set: `wrangler deploy`. The custom domain `plugin.pragmaticgrowth.com` is bound
+  in `wrangler.jsonc` (the `pragmaticgrowth.com` zone is in the same account), so
+  a deploy redeploys to the same URL. Push the repo too — the site source is
+  tracked here, single source of truth.
+- The site is **content only** — bumping the plugin's own `plugin.json` version is
+  NOT required just to ship a site/changelog edit (the installed plugin doesn't
+  depend on the site). Bump `plugin.json` only for actual skill changes, and when
+  you do, that's the trigger to add the changelog entry + tag above.
