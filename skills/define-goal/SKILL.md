@@ -296,11 +296,17 @@ skills (TDD, plans, verification) are mandated by `dispatch`'s brief — don't r
 Repo-wide skills belong in `config.skills` instead; for a frontend repo, suggest moving
 `agent-browser` to `config.skills` when every (or most) goal would list it.
 
-Optionally populate two more frontmatter fields that `dispatch`'s validator uses:
-`touches:` (path globs of the surfaces this goal changes — gives `pg_validate`'s
-blast-radius check a real allowlist; omit and it degrades to lenient forbidden-path +
-lockfile checks) and `acceptance:` (the exact gate commands `pg_validate` runs on a fresh
-checkout; omit and it auto-detects from the repo's Makefile / `go.mod` / `package.json`).
+Populate two more frontmatter fields that `dispatch`'s validator uses (both optional, but
+fill them when recon located the surfaces — they make validation far stronger):
+`touches:` (path globs of the surfaces this goal changes — convert the surfaces recon
+located in Context — e.g. routes/UI/schema/jobs — into concrete globs like
+`["apps/orders/**", "frontend/src/orders/**"]`; gives `pg_validate`'s blast-radius a real
+allowlist so it flags out-of-scope churn instead of running lenient) and `acceptance:` (the
+exact gate commands `pg_validate` runs on a fresh checkout — the same verification commands
+named in the acceptance criteria, e.g. `["make test", "npm run lint"]`; omit and it
+auto-detects from the repo's Makefile / `go.mod` / `package.json`). Omitting either is safe
+(the validator degrades gracefully), but `touches:` in particular turns blast-radius from a
+coarse forbidden-path check into a real scope guard.
 
 Shape by `type:` — each type has a non-negotiable element, and it overrides the
 template's stock criteria where they conflict (a bug's failing test goes first, above the

@@ -1,6 +1,6 @@
 {
   "name": "pg-plugin",
-  "version": "2.9.4",
+  "version": "2.9.5",
   "description": "Pragmatic Growth workflow skills for Claude Code and Droid (Factory CLI) — define-goal (plain-language wants → measurable goal contracts, run now via /goal or droid exec, or queued in docs/goals), dispatch (factory orchestrator for the docs/goals queue), loop-architect (design autonomous loop contracts), and factory-doctor (one-pass preflight/doctor).",
   "author": {
     "name": "pragmaticgrowth"
