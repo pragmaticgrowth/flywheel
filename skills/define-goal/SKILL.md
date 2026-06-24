@@ -168,6 +168,7 @@ within priority:
 # status: not_started | in_progress | completed | blocked
 config:
   base: main        # integration branch — goals branch FROM it and merge BACK to it
+  state_branch: main # branch holding the docs/goals/ queue (default = base); set to a separate UNPROTECTED branch when base is protected
   merge: pr         # pr = a human merges | auto = the factory merges after gates pass
   wip: 2            # max goals in progress at once (parallelism)
   model: inherit    # spawned code agents: inherit | a model alias (sonnet, haiku, opus)
@@ -179,13 +180,19 @@ goals:
   002-rate-limit-api: {status: not_started, depends_on: [001-receipt-emails]}
 ```
 
+The queue lives on `config.state_branch` (default `= base`); when `<base>` is protected,
+set it to a separate unprotected branch so define-goal can write goal files + index entries
+without pushing to the protected code branch.
+
 On first queue creation, suggest the user run `/factory-doctor` — it preflights gh auth,
 the merge allow-rule, branch protection, and CI, and scaffolds the queue, so a queue born
 into a known-good environment never hits setup errors mid-run. Then ask the user once
 (the interactive question tool — AskUserQuestion in Claude Code, AskUser in Droid):
 which branch is the integration base (main? staging? other?), and the
 merge policy (`pr` — safest, a human merges every PR; `auto` — the factory rebases,
-re-verifies, and merges back itself).
+re-verifies, and merges back itself). If `state_branch` is set and does not yet exist on
+origin, create it off `<base>` first: `git branch <state_branch> origin/<base> && git push
+origin <state_branch>` (or run `/factory-doctor`).
 Defaults when unspecified: the repo's default branch, `merge: pr`, `wip: 2`,
 `model: inherit`, no repo skills, `execution: native`, `autonomy: balanced`.
 `model: sonnet` trades implementation depth for
@@ -212,19 +219,20 @@ Rules that keep the queue safe:
   concurrency). Flow: re-read `index.yaml` and compute the next free `NNN`(s) = max existing
   + 1; append ONLY the minimal entry/entries (`NNN-slug: {status: not_started, priority: …}`)
   — for a multi-goal chain, reserve ALL its NNNs in ONE commit so the cross-refs are right the
-  first time; commit `chore(goals): reserve <id>` and push. Push rejected → `git pull --rebase`,
+  first time; commit `chore(goals): reserve <id>` on `<state_branch>` and push to `<state_branch>`.
+  Push rejected → `git pull --rebase origin <state_branch>`,
   recompute `NNN` from the now-larger index, retry (max 3). At this stage NOTHING is on disk, so
   a collision is just a new number — never a file rename. Once the push lands you OWN those
   NNNs; NOW write the goal file(s) with the correct `id:`/branch/`Goal: <id>`/cross-refs stamped
-  in, commit `chore(goals): add <id>`, push. Never renumber existing goals.
+  in, commit `chore(goals): add <id>` on `<state_branch>`, push to `<state_branch>`. Never renumber existing goals.
 - **Concurrent edits to `index.yaml`:** it's shared state. Re-read it immediately before each
   edit; if the Edit tool reports the file changed under you (another session committed
   mid-edit), re-read and re-apply — don't force. Appending your highest-number entries at EOF
   (after `pull --rebase`) is naturally race-free: no two sessions mint the same top number, and
   a `grep -q '<your-id>'` guard before append makes it idempotent.
-- If the repo forbids direct commits to the base branch, use a short-lived branch + PR and tell
-  the user the goal enters the queue when it merges. Create `docs/goals/` and `index.yaml` on
-  first use.
+- If `<base>` is protected, set `config.state_branch` to a separate unprotected branch
+  (define-goal writes there directly — no PR needed for queue metadata). Create `docs/goals/`
+  and `index.yaml` on first use.
 
 ## Goal file template
 
