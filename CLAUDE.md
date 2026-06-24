@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Skills-only plugin for Claude Code and Droid (Factory CLI) from Pragmatic Growth, v2.9.5.
+Skills-only plugin for Claude Code and Droid (Factory CLI) from Pragmatic Growth, v2.9.6.
 No MCP servers, no commands, no agents, no hooks, no build step — four skills
 under `skills/` (two ship deterministic Python helpers in `scripts/`),
 forming a plain-language → autonomous-execution pipeline around a
@@ -90,20 +90,28 @@ the runtime and use appropriate paths, commands, and scheduling primitives.
   only when the work is merged.
 - `index.yaml` `config:` block: `base` (integration branch goals branch
   from and merge back to — main, staging, or other; per-goal `base:`
-  override allowed), `merge: pr|auto`, `wip` parallelism cap, `model`
+  override allowed), `state_branch` (branch holding the `docs/goals/` queue;
+  default `= base`), `merge: pr|auto`, `wip` parallelism cap, `model`
   (inherit|sonnet|haiku — applied to every code agent dispatch spawns;
   the repo owner's depth-vs-limit trade), repo-wide `skills`,
   `execution` (native|herdr — spawn substrate), `autonomy`
   (conservative|balanced|bold — herdr block-handling threshold).
-  Defaults: repo default branch, `pr`, 2, inherit, none, native, balanced.
+  Defaults: repo default branch (and `state_branch` = that base), `pr`, 2,
+  inherit, none, native, balanced.
+- `config.state_branch` (default `= base`) holds the `docs/goals/` queue;
+  when `<base>` is protected, set it to a separate unprotected branch so the
+  claim protocol + define-goal can push without touching the protected code
+  branch. `<base>` receives only implementer code PRs. Default
+  `state_branch = base` = today's behavior (no migration for unprotected repos).
 - Goal frontmatter `type: bug|feature|chore` shapes the contract: bugs
   always lead with a failing-test-reproduces-root-cause criterion (all
   recon hypotheses recorded); features must fill Out of scope; chores
   prove "no behavior change" (suite green before and after) plus one
   mechanical check.
 - Claim protocol: every status write is pull → flip one entry → commit
-  (`chore(goals): claim|complete|block|archive <id>`) → push on the base
-  branch; push acceptance arbitrates parallel sessions. Same arbitration
+  (`chore(goals): claim|complete|block|archive <id>`) → push on the state
+  branch (the queue's branch — `config.state_branch`, default `= base`);
+  push acceptance arbitrates parallel sessions. Same arbitration
   covers NNN minting (collision → renumber the NEW goal only; never
   renumber existing goals).
 - `merge: auto` integration is orchestrator-only, one goal at a time,
