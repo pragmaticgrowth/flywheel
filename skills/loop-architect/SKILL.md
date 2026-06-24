@@ -26,6 +26,13 @@ one-shot prompt instead and say which condition failed.
 4. **Tools** — the agent can run what it changes and see what breaks (logs, dev server,
    browser extension, simulator, MCPs)
 
+**Closed first, open later.** Default to the most bounded primitive and scope that still
+solves the task — a *closed* loop (defined steps, a gate after each, tight blast radius);
+widen to a broader open-ended goal only after the gate has demonstrably rejected bad output
+in practice. Every loop that fails dies one of four deaths — runaway cost, silent death
+(stands still, pretends alive), aimless drift, or shipping faster than you can review — and
+all four are cheaper to prevent in a bounded loop than to detect in an open one.
+
 ## Step 2 — Pick the primitive
 
 | Situation | Claude Code | Droid |
@@ -66,7 +73,11 @@ while preserving <what must not regress/change>.
 Work only within <files/branches/tools boundaries>.
 Between iterations, record what changed, what the check showed, and the next best action.
 If blocked or no valid paths remain, stop and report attempted paths, evidence, the
-blocker, and what would unlock progress. Stop after <N> turns.
+blocker, and what would unlock progress.
+If the same check fails the same way twice in a row, or after ~3 honest attempts the end
+state can neither be reached nor shown measurable (a flaky, non-deterministic, or
+contradictory check), declare GOAL_UNREACHABLE: <which clause, why unmeasurable, last
+measurement> and stop — never retry the identical failing approach. Stop after <N> turns.
 ```
 
 In Droid (no `/goal` command), the equivalent is:
@@ -75,6 +86,11 @@ prompt in an interactive session. The agent self-verifies by running every accep
 command and showing output — bake the verification commands into the prompt explicitly
 since there is no separate evaluator model to check them automatically.
 
+- Reachability pre-check: before drafting the condition, confirm the end state is one the
+  agent can drive to TRUE and MEASURE — a binary or a threshold it can print — not an
+  asymptote ("every page < 50ms") or an unmeasurable absolute. An unreachable target spins
+  forever; fix the target before writing the goal. Pair it with the GOAL_UNREACHABLE escape
+  hatch above so the loop terminates even when a check turns out flaky in practice.
 - Include an explicit outcome taxonomy for queue-like work ("every item ends as
   fixed | acknowledged-stale | abandoned | blocked-external; 0 items left unclassified") —
   a missing "blocked" bucket makes the goal bounce forever on reality.
@@ -128,10 +144,26 @@ access to the minimum the routine needs.
 - **Self-verification tooling** (Boris's #1, "2-3x the quality"): browser extension for web
   UI, simulator MCP for mobile, runnable server + tests for backend. Name the tool in the
   prompt and describe it.
+- **Liveness**: each iteration writes a heartbeat (cycle number + timestamp + one-line
+  status) to the state file/ledger and announces the cycle number, so the ABSENCE of an
+  update is detectable — a loop that silently dies (e.g. after a context-window blowout)
+  otherwise looks alive. For unattended/cloud runs, recommend an external silence-detector
+  ("no heartbeat in N intervals → alert").
+- **Health metric**: the number that matters is cost (tokens/$) per ACCEPTED change — a
+  merged PR or a passing artifact — not raw tokens or loops run. A sustained acceptance rate
+  below ~50% means the loop is making slop: tighten the gate or stop it. For factory work the
+  merge ledger (`index.yaml` completed count) is the acceptance denominator.
 
 ## Step 5 — Hard stops and safety rails
 
-Always include, in the prompt itself:
+In-prompt caps are the SOFT layer — the agent can edit its own context, so a drifting loop
+can weaken or delete its own brakes. Where the runtime allows it, the load-bearing brake (the
+hard token/dollar/iteration ceiling AND the pass/fail gate) must be enforced by something the
+agent CANNOT edit: a Stop hook, an external cron/budget process ("burnstop"), the CI gate,
+/goal's separate evaluator, or dispatch's `config.budget`. "Install the brakes before the
+horsepower" — and never let the loop grade itself against a criterion it can rewrite.
+
+Always include, in the prompt itself (the soft layer, restated for the agent):
 - Max iterations / turn cap ("stop after 25 turns", "max 3 retries on the same finding")
 - No-progress detection ("if the same error appears twice without progress, stop and report")
 - Convergence stop for review/verification loops: stop when the gate verdict clears even if
