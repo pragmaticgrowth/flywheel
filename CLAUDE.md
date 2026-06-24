@@ -277,11 +277,13 @@ served from Cloudflare (Workers static assets, Pragmatic Growth account). It is
 part of this repo — `public/index.html` (self-contained, light/dark, no external
 deps) plus the brand SVGs in `public/`, with `wrangler.jsonc` at the root.
 
-- **Keep the site current with the skills.** Whenever you change what a skill
+- **Keep the docs current with the skills.** Whenever you change what a skill
   does, how it's invoked, the install commands, or the queue/config model,
-  update `public/index.html` to match in the SAME change. The site documents the
-  four skills, the docs/goals pipeline, install, and the changelog — drift here
-  is a shipped-but-wrong doc, same severity as a stale SKILL.md.
+  update BOTH `public/index.html` AND `README.md` to match in the SAME change.
+  The site and README both document the four skills, the docs/goals pipeline,
+  the config model, install, and the changelog — drift in either is a
+  shipped-but-wrong doc, same severity as a stale SKILL.md. (`AGENTS.md` is a
+  symlink to this file; no separate edit.)
 - **Versioned changelog, two mirrors.** `CHANGELOG.md` (repo root) is the
   canonical, git-tracked history; the `#changelog` section of `public/index.html`
   renders the same entries (newest first, filterable by version line, each linked
@@ -289,7 +291,8 @@ deps) plus the brand SVGs in `public/`, with `wrangler.jsonc` at the root.
   a `## [X.Y.Z] — <date>` block + a commit link in `CHANGELOG.md`, and a
   matching `<details class="rel" data-family="X.Y">` card in the site's timeline
   (move the `latest` class + `Latest` tag to the new top entry; bump the
-  `.ver-pill` and `<title>`). Older versions stay visible — never delete history.
+  `.ver-pill` and `<title>`). Also bump the README's version badge
+  (`version-X.Y.Z`). Older versions stay visible — never delete history.
 - **Track versions in GitHub with tags.** Each release is an annotated git tag
   `vX.Y.Z` on its bump commit (`git tag -a vX.Y.Z <sha> -m "…"`), pushed with
   `git push --tags`. The changelog commit links and tags are how version history
