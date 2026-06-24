@@ -166,7 +166,22 @@ def _safemerge_token():
     return f"python3 {_durable_merge_path(p)}"
 
 
-def run_checks(base, merge, execution):
+def state_branch_check(state_branch, base, exists, protected):
+    if state_branch == base:
+        return None  # default path: queue lives on base, covered by the base-push check
+    if not exists:
+        return {"name": "state-branch", "level": "WARN",
+                "detail": f"state branch {state_branch!r} is missing (does not exist on origin)",
+                "fix": f"FIX: git branch {state_branch} origin/{base} && git push origin {state_branch}  (or run /factory-doctor)"}
+    if protected:
+        return {"name": "state-branch", "level": "BLOCKER",
+                "detail": f"state branch {state_branch!r} is protected — claims can't push to it",
+                "fix": f"unprotect {state_branch} on GitHub, or set config.state_branch to a different unprotected branch"}
+    return {"name": "state-branch", "level": "INFO",
+            "detail": f"state branch {state_branch!r} exists and is pushable (not protected)"}
+
+
+def run_checks(base, merge, execution, state_branch=""):
     C = []
 
     def add(check, level, detail, fix=""):
@@ -233,6 +248,18 @@ def run_checks(base, merge, execution):
     else:
         add("base-push", "INFO", f"{base} not protected/unreadable (claim protocol can push)")
 
+    # state branch (only when config sets a branch != base)
+    if state_branch and state_branch != base:
+        rc1, lsout, _ = _run(["git", "ls-remote", "--heads", "origin", state_branch])
+        exists = bool([l for l in (lsout or "").splitlines() if state_branch in l])
+        rc2, _, _ = _run(["gh", "api", f"repos/{{owner}}/{{repo}}/branches/{state_branch}/protection"])
+        chk = state_branch_check(state_branch, base, exists, rc2 == 0)  # rc 0 => HTTP 200 => protected
+        if chk:
+            # helper returns {"name": ...} (its stable shape); normalize to the row schema
+            # ("check") the rest of run_checks emits so consumers/the runner test see one shape
+            C.append({"check": chk["name"], "level": chk["level"],
+                      "detail": chk["detail"], "fix": chk.get("fix", "")})
+
     # CI
     wf = os.path.join(repo_root, ".github", "workflows")
     has_wf = os.path.isdir(wf) and any(f.endswith((".yml", ".yaml")) for f in os.listdir(wf))
@@ -284,8 +311,9 @@ def main(argv=None):
     ap = argparse.ArgumentParser(prog="doctor_checks.py")
     ap.add_argument("--base", default="main"); ap.add_argument("--merge", default="pr")
     ap.add_argument("--execution", default="native")
+    ap.add_argument("--state-branch", default="")
     a = ap.parse_args(argv)
-    checks, result = run_checks(a.base, a.merge, a.execution)
+    checks, result = run_checks(a.base, a.merge, a.execution, a.state_branch)
     print(json.dumps({"checks": checks, "result": result}, indent=2))
     return {"READY": 0, "WARN": 1, "BLOCKER": 2}[result]
 

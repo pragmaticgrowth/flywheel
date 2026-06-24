@@ -130,6 +130,22 @@ def test_goals_reference_browser_false():
             f.write("---\nid: 001\nskills: []\n---\nbody")
         assert dc.goals_reference_browser(repo) is False
 
+def test_state_branch_skip_when_equals_base():
+    assert dc.state_branch_check("main", "main", True, False) is None
+
+def test_state_branch_missing():
+    r = dc.state_branch_check("goals-state", "main", False, False)
+    assert r["name"] == "state-branch" and r["level"] == "WARN"
+    assert "missing" in r["detail"] and r["fix"].startswith("FIX:")
+
+def test_state_branch_protected():
+    r = dc.state_branch_check("goals-state", "main", True, True)
+    assert r["level"] == "BLOCKER" and "protected" in r["detail"]
+
+def test_state_branch_pushable():
+    r = dc.state_branch_check("goals-state", "main", True, False)
+    assert r["level"] == "INFO" and "pushable" in r["detail"]
+
 def test_runner_emits_valid_json_and_exit_code():
     r = subprocess.run([sys.executable, os.path.join(_here, "doctor_checks.py"), "--merge", "pr"],
                        capture_output=True, text=True,
