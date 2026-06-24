@@ -118,19 +118,30 @@ goals or merges PRs.
 
 ## How it all fits together
 
-```
-  you (plain language)
-        │
-        ▼
-  ┌──────────────┐   queues    ┌────────────────────┐   claims &    ┌──────────────┐
-  │ define-goal  │ ──────────▶ │ docs/goals/ (queue) │ ──spawns────▶ │   dispatch   │
-  │  (contracts) │             │  index.yaml + files │               │ (orchestrator)│
-  └──────────────┘             └────────────────────┘               └──────┬───────┘
-                                                                            │ one isolated
-                                                          loop-architect     │ implementer
-                                                          designs the loop   │ per goal → PR
-                                                          that keeps          ▼
-                                                          dispatch running   merge (pr | auto)
+```mermaid
+flowchart TD
+    you(["You — plain language"]) --> dg["define-goal<br/>writes measurable contracts"]
+    dg -->|queues| q[("docs/goals/ queue<br/>index.yaml + goal files")]
+    q -->|claims ready goals| dsp{{"dispatch · orchestrator"}}
+    dsp -->|"spawns one isolated<br/>implementer per goal"| impl["goal/NNN worktree<br/>build · test"]
+    impl -->|"opens PR → base"| gate{"deterministic<br/>merge gate"}
+    gate -->|PASS| merge[["merge to base<br/>(pr / auto)"]]
+    gate -->|FAIL| blocked["blocked → needs-you"]
+    merge -.->|next ready goal| q
+    fd["factory-doctor<br/>preflight + fixes setup"] -.->|readies| dsp
+    la["loop-architect<br/>designs the loop"] -.->|keeps it running| dsp
+    classDef brand fill:#059669,stroke:#047857,color:#ffffff;
+    classDef store fill:#d1fae5,stroke:#10b981,color:#064e3b;
+    classDef neutral fill:#ffffff,stroke:#cbd5e1,color:#0f172a;
+    classDef human fill:#0f172a,stroke:#0f172a,color:#ffffff;
+    classDef support fill:#f1f5f9,stroke:#cbd5e1,color:#334155;
+    classDef warn fill:#fee2e2,stroke:#e11d48,color:#9f1239;
+    class dg,dsp,merge brand
+    class q store
+    class impl,gate neutral
+    class you human
+    class fd,la support
+    class blocked warn
 ```
 
 The intended flow: **capture** wants with define-goal → **work** the queue with
