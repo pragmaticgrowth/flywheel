@@ -270,7 +270,7 @@ AGENTS.md                         # symlink → CLAUDE.md (one source, no drift)
   subagent dry-run (scenario + "cite the section that decides each
   answer") before shipping; close every flagged ambiguity.
 
-## Public site & changelog (plugin.pragmaticgrowth.com)
+## Public site, changelog & releases (plugin.pragmaticgrowth.com)
 
 The plugin has a public landing/docs site at **https://plugin.pragmaticgrowth.com**,
 served from Cloudflare (Workers static assets, Pragmatic Growth account). It is
@@ -293,10 +293,18 @@ deps) plus the brand SVGs in `public/`, with `wrangler.jsonc` at the root.
   (move the `latest` class + `Latest` tag to the new top entry; bump the
   `.ver-pill` and `<title>`). Also bump the README's version badge
   (`version-X.Y.Z`). Older versions stay visible — never delete history.
-- **Track versions in GitHub with tags.** Each release is an annotated git tag
-  `vX.Y.Z` on its bump commit (`git tag -a vX.Y.Z <sha> -m "…"`), pushed with
-  `git push --tags`. The changelog commit links and tags are how version history
-  lives in GitHub. (Optional: `gh release create vX.Y.Z --notes-from-tag`.)
+- **Tag AND release every version in GitHub (this repo manages its own
+  Releases page).** Each version bump gets BOTH an annotated git tag `vX.Y.Z`
+  on its bump commit (`git tag -a vX.Y.Z <sha> -m "…"`, `git push --tags`) AND a
+  GitHub Release created from that tag. Generate the release notes from the
+  version's `CHANGELOG.md` section — the block between `## [X.Y.Z]` and the next
+  `## ` — not the bare tag message:
+  `gh release create vX.Y.Z --title "vX.Y.Z — <headline>" --notes-file <section> --verify-tag --latest`.
+  Pass `--latest` only on the newest version; historical backfills use
+  `--latest=false`. Releases are how a reader browses version history on GitHub,
+  so one release per version, notes mirroring the changelog, newest = Latest.
+  The full backfill (v1.0.0 → current) already exists; on each new bump just add
+  the one new release.
 - **Redeploy after changes.** From the repo root, with `CLOUDFLARE_API_TOKEN`
   set: `wrangler deploy`. The custom domain `plugin.pragmaticgrowth.com` is bound
   in `wrangler.jsonc` (the `pragmaticgrowth.com` zone is in the same account), so
