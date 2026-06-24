@@ -61,16 +61,16 @@ def test_safemerge_token_resolves_to_existing_wrapper():
 def test_durable_merge_path_wildcards_version():
     # a versioned plugin-cache path → version segment wildcarded so the allow-rule survives updates
     assert dc._durable_merge_path(
-        "/x/.claude/plugins/cache/mp/pg-plugin/2.8.5/skills/dispatch/scripts/pg_safe_merge.py"
-    ) == "/x/.claude/plugins/cache/mp/pg-plugin/*/skills/dispatch/scripts/pg_safe_merge.py"
+        "/x/.claude/plugins/cache/mp/flywheel/2.8.5/skills/dispatch/scripts/pg_safe_merge.py"
+    ) == "/x/.claude/plugins/cache/mp/flywheel/*/skills/dispatch/scripts/pg_safe_merge.py"
     # Droid plugin-cache path → same wildcarding
     assert dc._durable_merge_path(
-        "/x/.factory/plugins/cache/mp/pg-plugin/2.8.5/skills/dispatch/scripts/pg_safe_merge.py"
-    ) == "/x/.factory/plugins/cache/mp/pg-plugin/*/skills/dispatch/scripts/pg_safe_merge.py"
+        "/x/.factory/plugins/cache/mp/flywheel/2.8.5/skills/dispatch/scripts/pg_safe_merge.py"
+    ) == "/x/.factory/plugins/cache/mp/flywheel/*/skills/dispatch/scripts/pg_safe_merge.py"
     # dev checkout / no version dir → unchanged (literal)
     assert dc._durable_merge_path(
-        "/home/u/pg-plugin/skills/dispatch/scripts/pg_safe_merge.py"
-    ) == "/home/u/pg-plugin/skills/dispatch/scripts/pg_safe_merge.py"
+        "/home/u/flywheel/skills/dispatch/scripts/pg_safe_merge.py"
+    ) == "/home/u/flywheel/skills/dispatch/scripts/pg_safe_merge.py"
 
 import tempfile, subprocess, sys, json
 def test_settings_sources_checks_both_clis():

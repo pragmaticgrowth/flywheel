@@ -1,5 +1,5 @@
 {
-  // Public site for pg-plugin → https://plugin.pragmaticgrowth.com
+  // Public site for flywheel → https://plugin.pragmaticgrowth.com
   // Static-assets-only Worker (no server code): serves public/ as-is.
   // Deploy from the repo root with CLOUDFLARE_API_TOKEN set: `wrangler deploy`.
   "name": "pg-plugin-site",

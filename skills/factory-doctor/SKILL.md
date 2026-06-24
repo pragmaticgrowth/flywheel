@@ -1,6 +1,6 @@
 ---
 name: factory-doctor
-description: Use when setting up or troubleshooting the pg-plugin factory in a repo — before the first /dispatch, after a "gh pr merge permission denied" / unauthenticated-gh / missing-queue error, or any time /dispatch or /define-goal behaves like the environment isn't ready. Preflights software, gh auth, harness merge permissions, branch protection, CI, and the docs/goals queue, auto-fixing everything local. Diagnoses and fixes setup; never implements goals or merges PRs.
+description: Use when setting up or troubleshooting the flywheel factory in a repo — before the first /dispatch, after a "gh pr merge permission denied" / unauthenticated-gh / missing-queue error, or any time /dispatch or /define-goal behaves like the environment isn't ready. Preflights software, gh auth, harness merge permissions, branch protection, CI, and the docs/goals queue, auto-fixing everything local. Diagnoses and fixes setup; never implements goals or merges PRs.
 ---
 
 # Factory Doctor
@@ -22,8 +22,8 @@ green report.
    same fallback chain dispatch uses for `$PM`: `$CLAUDE_PLUGIN_ROOT/skills/<dir>/scripts/<f>`
    (factory-doctor for `$DC`, dispatch for `$SAFEMERGE`; `$CLAUDE_PLUGIN_ROOT` is set by both
    Claude Code and Droid — Droid provides it as an alias for `$DROID_PLUGIN_ROOT`), else
-   newest `~/.claude/plugins/{cache,marketplaces}/*/pg-plugin/*/skills/<dir>/scripts/<f>`
-   (Claude Code) or `~/.factory/plugins/{cache,marketplaces}/*/pg-plugin/*/skills/<dir>/scripts/<f>`
+   newest `~/.claude/plugins/{cache,marketplaces}/*/flywheel/*/skills/<dir>/scripts/<f>`
+   (Claude Code) or `~/.factory/plugins/{cache,marketplaces}/*/flywheel/*/skills/<dir>/scripts/<f>`
    (Droid).
 2. **Read the queue config** (`docs/goals/index.yaml` `config:` if present) for `base`,
    `merge`, `execution`, `validation` — defaults `base` = repo default branch, `merge: pr`,
@@ -43,7 +43,7 @@ For each check whose `fix` begins with `FIX:`:
   — per-machine; never the committed `.claude/settings.json` or `.factory/settings.json`.
   Trust that token VERBATIM: the probe derives the wrapper from the plugin install (the same
   path dispatch invokes), so never substitute a path of your own. The token has a `*` in place
-  of the plugin version (`pg-plugin/*/skills/...`) ON PURPOSE — a deliberate wildcard so this one
+  of the plugin version (`flywheel/*/skills/...`) ON PURPOSE — a deliberate wildcard so this one
   rule survives plugin updates (a version-pinned rule would re-block merges after every upgrade);
   keep the `*`, never expand it to a pinned version. An older version-pinned rule lingering from a
   previous run is harmless (you may delete it). Create the file/keys if absent; dedup; never

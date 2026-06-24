@@ -1,4 +1,4 @@
-"""Verify a goal PR, then merge it. Shipped inside pg-plugin (MIT).
+"""Verify a goal PR, then merge it. Shipped inside flywheel (MIT).
 Dispatch calls this instead of raw `gh pr merge` so the harness allow-rule
 can be narrow (Bash(python3 <abs>/pg_safe_merge.py:*)) instead of broad."""
 

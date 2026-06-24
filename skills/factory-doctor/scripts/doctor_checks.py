@@ -1,4 +1,4 @@
-"""Read-only readiness probes for the pg-plugin factory. Emits JSON; never
+"""Read-only readiness probes for the flywheel factory. Emits JSON; never
 mutates. The factory-doctor skill interprets the output and applies fixes."""
 import re
 
@@ -147,12 +147,12 @@ def _settings_sources(repo_root):
 
 
 def _durable_merge_path(p):
-    # A plugin-cache install lives at .../pg-plugin/<version>/skills/...; the version dir
+    # A plugin-cache install lives at .../flywheel/<version>/skills/...; the version dir
     # changes on every update, which would break a literal allow-rule (and re-block merges
     # until re-granted). Wildcard ONLY the version segment so the rule survives updates —
     # mid-path `*` matches across `/` in Bash permission rules. Dev checkouts / the
     # marketplace clone have no version dir, so they stay literal.
-    return re.sub(r"(/pg-plugin/)[^/]+(/skills/)", r"\1*\2", p)
+    return re.sub(r"(/flywheel/)[^/]+(/skills/)", r"\1*\2", p)
 
 
 def _safemerge_token():
@@ -196,7 +196,7 @@ def validation_gate_check(merge, validation, pgvalidate_present):
     if not pgvalidate_present:
         return {"check": "validation-gate", "level": "WARN",
                 "detail": "pg_validate.py not resolvable from the plugin install — the deterministic gate can't run",
-                "fix": "refresh the pg-plugin marketplace so pg_validate.py is present"}
+                "fix": "refresh the flywheel marketplace so pg_validate.py is present"}
     mode = validation or "risk_based"
     if mode == "off":
         return {"check": "validation-gate", "level": "WARN",

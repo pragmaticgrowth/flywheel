@@ -1,4 +1,4 @@
-"""Deterministic PR validation gate for pg-plugin (Phase 1, no LLM).
+"""Deterministic PR validation gate for flywheel (Phase 1, no LLM).
 Dispatch Integration runs this on a fresh checkout BEFORE pg_safe_merge.
 Emits a SHA-bound {PASS|FAIL_FIXABLE|FAIL_CONTRACT|INCONCLUSIVE} verdict.
 Never edits, pushes, or merges — read-only + runs the goal's own commands."""

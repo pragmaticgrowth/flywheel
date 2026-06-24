@@ -1,8 +1,8 @@
-# pg-plugin
+# flywheel
 
 ## Project Overview
 
-Skills-only plugin for Claude Code and Droid (Factory CLI) from Pragmatic Growth, v2.10.0.
+Skills-only plugin for Claude Code and Droid (Factory CLI) from Pragmatic Growth, v3.0.0.
 No MCP servers, no commands, no agents, no hooks, no build step — four skills
 under `skills/` (two ship deterministic Python helpers in `scripts/`),
 forming a plain-language → autonomous-execution pipeline around a
@@ -235,7 +235,7 @@ bootstrap). Git history has both if ever needed.
 ## Structure
 
 ```
-.claude-plugin/plugin.json        # manifest — name: pg-plugin (Droid auto-translates this format)
+.claude-plugin/plugin.json        # manifest — name: flywheel (Droid auto-translates this format)
 .claude-plugin/marketplace.json   # marketplace — name: pragmatic-growth
 skills/<name>/SKILL.md            # four skills (define-goal, dispatch, loop-architect, factory-doctor)
 skills/<name>/scripts/*.py        # deterministic helpers: dispatch/pm.py + pg_safe_merge.py, factory-doctor/doctor_checks.py

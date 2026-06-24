@@ -1,6 +1,6 @@
 {
-  "name": "pg-plugin",
-  "short_name": "pg-plugin",
+  "name": "flywheel",
+  "short_name": "flywheel",
   "description": "A skills-only Claude Code & Droid plugin from Pragmatic Growth — plain-language wants, autonomously executed.",
   "icons": [
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },

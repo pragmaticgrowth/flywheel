@@ -1,18 +1,37 @@
 # Changelog
 
-All notable changes to **pg-plugin** are recorded here. Versions match the
+All notable changes to **flywheel** are recorded here. Versions match the
 `version` field in `.claude-plugin/plugin.json`; each is tagged in git
 (`vX.Y.Z`) and linked to its release commit on GitHub.
 
 This file is the canonical, git-tracked source of truth for the version
-history. The public site at <https://plugin.pragmaticgrowth.com> renders the
-same data — when you ship a skill change, update **both** this file and the
-`CHANGELOG` array in `public/index.html`, then redeploy (see `CLAUDE.md` →
-"Public site & changelog").
+history. (The public site at <https://plugin.pragmaticgrowth.com> no longer
+carries a changelog section — this file is the single source.)
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
-<!-- COMMIT-BASE: https://github.com/pragmaticgrowth/pg-plugin/commit/ -->
+<!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
+
+## [3.0.0] — 2026-06-24
+
+**Renamed `pg-plugin` → `flywheel`.** A rebrand, not a behavior change — the
+factory, the four skills, the `docs/goals` queue design, and the merge gate
+are all unchanged. The name now says what it is: a self-sustaining loop that
+turns plain-language wants into verified PRs.
+
+- **Plugin name, skill namespace, and install target all change.** Skills are
+  now `flywheel:<skill>` (was `pg-plugin:<skill>`), and the plugin installs as
+  `flywheel@pragmatic-growth`.
+- **The GitHub repo moved to `pragmaticgrowth/flywheel`** (the old
+  `pragmaticgrowth/pg-plugin` path redirects, so existing links keep working).
+- **Migration:** uninstall the old plugin, refresh the marketplace, and install
+  under the new name — Claude Code: `/plugin uninstall pg-plugin` →
+  `/plugin marketplace update pragmatic-growth` →
+  `/plugin install flywheel@pragmatic-growth` (Droid: the `droid plugin …`
+  equivalents). The `docs/goals/` queue in your repos is untouched.
+- **Unchanged:** the `pragmatic-growth` marketplace name, and the `pg_*.py`
+  helper scripts (`pg_safe_merge.py`, `pg_validate.py`) — there `pg` is the
+  publisher, Pragmatic Growth, so existing merge allow-rules keep working.
 
 ## [2.10.0] — 2026-06-24
 
@@ -199,8 +218,9 @@ still present) `wish` skill.
 
 ## [1.0.0] — 2026-06-10
 
-**Skills-only plugin.** Transformed `mcp-do` into `pg-plugin`: removed the
-stdio MCP server entirely; the plugin is now skills-only.
+**Skills-only plugin.** Transformed `mcp-do` into a skills-only plugin
+(named `pg-plugin` at the time; renamed `flywheel` in 3.0.0): removed the
+stdio MCP server entirely.
 
 ## 0.x — 2026-04-13 → 2026-04-23 (mcp-do era)
 
@@ -208,32 +228,32 @@ Pre-history. A stdio MCP server wrapping the `droid` / `opencode` CLIs —
 started as the `do` plugin, renamed to `mcp-do`, with the `pragmatic-growth`
 marketplace created along the way. Removed in 1.0.0; preserved in git history.
 
-[2.10.0]: https://github.com/pragmaticgrowth/pg-plugin/commit/cf40777
-[2.9.7]: https://github.com/pragmaticgrowth/pg-plugin/commit/439710a
-[2.9.6]: https://github.com/pragmaticgrowth/pg-plugin/commit/62c7a8b
-[2.9.5]: https://github.com/pragmaticgrowth/pg-plugin/commit/3e9192f
-[2.9.4]: https://github.com/pragmaticgrowth/pg-plugin/commit/a4da581
-[2.9.3]: https://github.com/pragmaticgrowth/pg-plugin/commit/0f62fa9
-[2.9.2]: https://github.com/pragmaticgrowth/pg-plugin/commit/d6a671f
-[2.9.1]: https://github.com/pragmaticgrowth/pg-plugin/commit/c440228
-[2.9.0]: https://github.com/pragmaticgrowth/pg-plugin/commit/e2f43a6
-[2.8.7]: https://github.com/pragmaticgrowth/pg-plugin/commit/ea10cb6
-[2.8.6]: https://github.com/pragmaticgrowth/pg-plugin/commit/4ba889a
-[2.8.5]: https://github.com/pragmaticgrowth/pg-plugin/commit/869fc5f
-[2.8.4]: https://github.com/pragmaticgrowth/pg-plugin/commit/7adcfbc
-[2.8.3]: https://github.com/pragmaticgrowth/pg-plugin/commit/478def1
-[2.8.2]: https://github.com/pragmaticgrowth/pg-plugin/commit/4e57eb5
-[2.8.1]: https://github.com/pragmaticgrowth/pg-plugin/commit/11b7102
-[2.8.0]: https://github.com/pragmaticgrowth/pg-plugin/commit/8ffbf47
-[2.7.0]: https://github.com/pragmaticgrowth/pg-plugin/commit/1cc90e5
-[2.6.1]: https://github.com/pragmaticgrowth/pg-plugin/commit/5e50aa8
-[2.6.0]: https://github.com/pragmaticgrowth/pg-plugin/commit/a601b6c
-[2.5.0]: https://github.com/pragmaticgrowth/pg-plugin/commit/a3191ef
-[2.4.0]: https://github.com/pragmaticgrowth/pg-plugin/commit/0a2489e
-[2.3.0]: https://github.com/pragmaticgrowth/pg-plugin/commit/679e001
-[2.2.0]: https://github.com/pragmaticgrowth/pg-plugin/commit/b78704e
-[2.1.0]: https://github.com/pragmaticgrowth/pg-plugin/commit/8137f63
-[2.0.0]: https://github.com/pragmaticgrowth/pg-plugin/commit/7021528
-[1.1.0]: https://github.com/pragmaticgrowth/pg-plugin/commit/e550a86
-[1.0.1]: https://github.com/pragmaticgrowth/pg-plugin/commit/09460bb
-[1.0.0]: https://github.com/pragmaticgrowth/pg-plugin/commit/ac2bd7c
+[2.10.0]: https://github.com/pragmaticgrowth/flywheel/commit/cf40777
+[2.9.7]: https://github.com/pragmaticgrowth/flywheel/commit/439710a
+[2.9.6]: https://github.com/pragmaticgrowth/flywheel/commit/62c7a8b
+[2.9.5]: https://github.com/pragmaticgrowth/flywheel/commit/3e9192f
+[2.9.4]: https://github.com/pragmaticgrowth/flywheel/commit/a4da581
+[2.9.3]: https://github.com/pragmaticgrowth/flywheel/commit/0f62fa9
+[2.9.2]: https://github.com/pragmaticgrowth/flywheel/commit/d6a671f
+[2.9.1]: https://github.com/pragmaticgrowth/flywheel/commit/c440228
+[2.9.0]: https://github.com/pragmaticgrowth/flywheel/commit/e2f43a6
+[2.8.7]: https://github.com/pragmaticgrowth/flywheel/commit/ea10cb6
+[2.8.6]: https://github.com/pragmaticgrowth/flywheel/commit/4ba889a
+[2.8.5]: https://github.com/pragmaticgrowth/flywheel/commit/869fc5f
+[2.8.4]: https://github.com/pragmaticgrowth/flywheel/commit/7adcfbc
+[2.8.3]: https://github.com/pragmaticgrowth/flywheel/commit/478def1
+[2.8.2]: https://github.com/pragmaticgrowth/flywheel/commit/4e57eb5
+[2.8.1]: https://github.com/pragmaticgrowth/flywheel/commit/11b7102
+[2.8.0]: https://github.com/pragmaticgrowth/flywheel/commit/8ffbf47
+[2.7.0]: https://github.com/pragmaticgrowth/flywheel/commit/1cc90e5
+[2.6.1]: https://github.com/pragmaticgrowth/flywheel/commit/5e50aa8
+[2.6.0]: https://github.com/pragmaticgrowth/flywheel/commit/a601b6c
+[2.5.0]: https://github.com/pragmaticgrowth/flywheel/commit/a3191ef
+[2.4.0]: https://github.com/pragmaticgrowth/flywheel/commit/0a2489e
+[2.3.0]: https://github.com/pragmaticgrowth/flywheel/commit/679e001
+[2.2.0]: https://github.com/pragmaticgrowth/flywheel/commit/b78704e
+[2.1.0]: https://github.com/pragmaticgrowth/flywheel/commit/8137f63
+[2.0.0]: https://github.com/pragmaticgrowth/flywheel/commit/7021528
+[1.1.0]: https://github.com/pragmaticgrowth/flywheel/commit/e550a86
+[1.0.1]: https://github.com/pragmaticgrowth/flywheel/commit/09460bb
+[1.0.0]: https://github.com/pragmaticgrowth/flywheel/commit/ac2bd7c

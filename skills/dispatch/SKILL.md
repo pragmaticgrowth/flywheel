@@ -221,8 +221,8 @@ Apply the stale-claim rule from above to entries with no PR and no live agent.
 anything on sync or gates): the merge step runs the verified-merge wrapper
 `python3 "$SAFEMERGE"` — resolve `$SAFEMERGE` once like `$PM`
 (`$CLAUDE_PLUGIN_ROOT/skills/dispatch/scripts/pg_safe_merge.py`, else newest
-`~/.claude/plugins/{cache,marketplaces}/*/pg-plugin/*/skills/dispatch/scripts/pg_safe_merge.py`
-or `~/.factory/plugins/{cache,marketplaces}/*/pg-plugin/*/skills/dispatch/scripts/pg_safe_merge.py`),
+`~/.claude/plugins/{cache,marketplaces}/*/flywheel/*/skills/dispatch/scripts/pg_safe_merge.py`
+or `~/.factory/plugins/{cache,marketplaces}/*/flywheel/*/skills/dispatch/scripts/pg_safe_merge.py`),
 so the allow-rule it needs is `Bash(python3 <abs path>/pg_safe_merge.py:*)` — narrow to
 that one script, NOT the broad `Bash(gh pr merge:*)`. Check `permissions.allow` for it in
 the repo's `.claude/settings.json` / `.claude/settings.local.json` (Claude Code) or

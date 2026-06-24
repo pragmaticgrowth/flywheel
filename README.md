@@ -1,4 +1,4 @@
-# pg-plugin
+# flywheel
 
 **Turn plain-language wants into autonomous execution.**
 A skills-only plugin for [Claude Code](https://claude.com/claude-code) and
@@ -15,7 +15,7 @@ A skills-only plugin for [Claude Code](https://claude.com/claude-code) and
 
 ## What is this?
 
-pg-plugin gives you a small, focused toolkit for **describing what you want in
+flywheel gives you a small, focused toolkit for **describing what you want in
 plain English and having agents actually build it** — with the guardrails that
 keep an unattended agent loop from going off the rails.
 
@@ -33,7 +33,7 @@ and Droid load automatically and invoke when the conversation calls for them.
 ### Why a queue in the repo instead of GitHub issues?
 
 Because issues have body-size limits, need per-repo label bootstrapping, and
-drift away from the code. pg-plugin keeps goals as plain Markdown files
+drift away from the code. flywheel keeps goals as plain Markdown files
 **versioned alongside your code** in `docs/goals/`. PRs stay the review and
 merge surface; the queue is just the to-do list, and it travels with the repo.
 
@@ -48,7 +48,7 @@ merge surface; the queue is just the to-do list, and it travels with the repo.
 | **loop-architect** | Designs the *loop contract* (prompt + verification + stop conditions) for autonomous, scheduled, or remote runs. | *“keep working on X”* · setting up a `/loop`, routine, or cron |
 | **factory-doctor** | One-pass preflight/doctor for the repo + machine. Auto-fixes everything local; reports the rest with exact fixes. | `/factory-doctor` |
 
-In Claude Code these are namespaced — `pg-plugin:define-goal`, etc. They also
+In Claude Code these are namespaced — `flywheel:define-goal`, etc. They also
 activate **automatically** when your message matches what they’re for, so most
 of the time you don’t type the name at all.
 
@@ -247,15 +247,15 @@ config:
 **Claude Code:**
 
 ```bash
-/plugin marketplace add pragmaticgrowth/pg-plugin
-/plugin install pg-plugin@pragmatic-growth
+/plugin marketplace add pragmaticgrowth/flywheel
+/plugin install flywheel@pragmatic-growth
 ```
 
 **Droid (Factory CLI):**
 
 ```bash
-droid plugin marketplace add https://github.com/pragmaticgrowth/pg-plugin
-droid plugin install pg-plugin@pragmatic-growth
+droid plugin marketplace add https://github.com/pragmaticgrowth/flywheel
+droid plugin install flywheel@pragmatic-growth
 ```
 
 Pull updates later with `/plugin marketplace update pragmatic-growth` (Claude
@@ -345,7 +345,7 @@ regenerated and redeployed on each release (see `CLAUDE.md` →
 ## Project layout
 
 ```
-pg-plugin/
+flywheel/
 ├── .claude-plugin/
 │   ├── plugin.json        # plugin manifest (Droid auto-translates this format)
 │   └── marketplace.json   # the pragmatic-growth marketplace

@@ -26,10 +26,10 @@ Conventions (set once at the top of every fire):
 
   ```
   PM="${CLAUDE_PLUGIN_ROOT:-${DROID_PLUGIN_ROOT:-}}/skills/dispatch/scripts/pm.py"
-  [ -f "$PM" ] || PM=$(ls -t ~/.claude/plugins/cache/*/pg-plugin/*/skills/dispatch/scripts/pm.py \
-                       ~/.claude/plugins/marketplaces/*/pg-plugin/*/skills/dispatch/scripts/pm.py \
-                       ~/.factory/plugins/cache/*/pg-plugin/*/skills/dispatch/scripts/pm.py \
-                       ~/.factory/plugins/marketplaces/*/pg-plugin/*/skills/dispatch/scripts/pm.py 2>/dev/null | head -1)
+  [ -f "$PM" ] || PM=$(ls -t ~/.claude/plugins/cache/*/flywheel/*/skills/dispatch/scripts/pm.py \
+                       ~/.claude/plugins/marketplaces/*/flywheel/*/skills/dispatch/scripts/pm.py \
+                       ~/.factory/plugins/cache/*/flywheel/*/skills/dispatch/scripts/pm.py \
+                       ~/.factory/plugins/marketplaces/*/flywheel/*/skills/dispatch/scripts/pm.py 2>/dev/null | head -1)
   ```
 
 - `ORCH` — the orchestrator's own `terminal_id` (a `term_…`). NOT `$HERDR_PANE_ID`
