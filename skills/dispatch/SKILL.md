@@ -35,6 +35,7 @@ code-writing agent you spawn — implementers, CI-fix, review-response, and sync
 alike; it is the repo owner's depth-vs-weekly-limit trade, not yours to override.
 `execution` (default `native`) and `autonomy` (default `balanced`, herdr-mode only)
 are read here too — see the execution-substrate note in Phase 0.
+`state_branch` defaults to `base` — the branch holding the `docs/goals/` queue (index.yaml + goal files). When `<base>` is protected, set `state_branch` to a separate **unprotected** branch (e.g. `goals-state`); all queue writes go there and `<base>` receives only implementer code PRs. See the claim protocol.
 
 ## Hard rules (every iteration, before any action)
 
@@ -45,7 +46,7 @@ are read here too — see the execution-substrate note in Phase 0.
   either mode. Never push protected branches.
 - Read the repo's CLAUDE.md / AGENTS.md hard rules once per session and treat them as law
   (deploy rules, forbidden merges, migration rules). Repeat-check before any git/deploy action.
-- **Every queue write goes through the claim protocol below**, from the `<base>` checkout.
+- **Every queue write goes through the claim protocol below**, from the `<state_branch>` checkout.
   Implementers never touch `docs/goals/` — reject PRs that do.
 - WIP cap: at most `config.wip` goals `in_progress` at once, AND **every iteration ends
   with `min(config.wip, ready)` implementers live** — after you claim and spawn one goal,
@@ -58,9 +59,9 @@ are read here too — see the execution-substrate note in Phase 0.
 
 ## Claim protocol — every status write, multi-session safe
 
-Parallel sessions may work the same queue; `origin/<base>` push acceptance is the arbiter.
+Parallel sessions may work the same queue; **`origin/<state_branch>` push acceptance is the arbiter** (the queue lives on `state_branch`, which defaults to `base`).
 
-1. On the `<base>` checkout: `git fetch origin && git pull --ff-only origin <base>`.
+1. On the `<state_branch>` checkout: `git fetch origin && git pull --ff-only origin <state_branch>`.
 2. Edit exactly one entry, updating fields in place (keep `branch:`/`pr:` for history;
    dates YYYY-MM-DD). Claiming writes
    `{status: in_progress, claimed: <date>, branch: goal/<id>}`. One commit per transition:
@@ -68,13 +69,14 @@ Parallel sessions may work the same queue; `origin/<base>` push acceptance is th
    their OWN command — never bundle them with branch pruning, worktree cleanup, or any
    other optional or destructive op. A denial or failure of bundled hygiene must never take
    down a queue write.
-3. Push. Rejected → `git pull --rebase` and look again: if another session took your goal,
+3. Push to `<state_branch>`. Rejected → `git pull --rebase` and look again: if another session took your goal,
    discard your claim commit (`git rebase --skip` it, or hard-reset to the remote) so your
-   tree matches `origin/<base>`, then re-pick from ready; if your entry survived, push
+   tree matches `origin/<state_branch>`, then re-pick from ready; if your entry survived, push
    again. Max 3 attempts per transition (a re-pick starts a new one), then stop and report.
 
-If the repo forbids pushing `<base>` directly, parallel sessions are NOT safe — run a
-single dispatcher, keep queue commits local, and say so in the report.
+If `<base>` is protected, set `config.state_branch` to a separate unprotected branch (run `/factory-doctor` to create it) — claims push there, so parallel sessions stay safe. Only if the **state branch itself** can't be pushed do parallel sessions become unsafe (single dispatcher, local-only queue commits); say so in the report.
+
+**Checkout strategy:** when `state_branch == base` (default), the main checkout sits on `<base>` as today. When `state_branch != base`, the main checkout sits on `<state_branch>` (queue writes + index reads), and `<base>` is read via `origin/<base>` (fetched) for the implementer base SHA and Integration. The orchestrator never flips the main checkout back and forth — Integration operates on the implementer's `goal/<id>` worktree + `origin/<base>` refs.
 
 ## Re-entrancy — how iterations coexist with running work
 
@@ -118,9 +120,9 @@ so these recover on their own.
 
 ## Phase 0 — sync and read the queue
 
-Switch the main checkout to `<base>` and `git pull --ff-only` (dirty or diverged checkout →
-stop and report rather than stash silently). If `docs/goals/index.yaml` is missing, report
-"no goals queue — create goals with /define-goal" and end the iteration. Read the queue with
+Switch the main checkout to `<state_branch>` and `git pull --ff-only origin <state_branch>`
+(dirty or diverged checkout → stop and report rather than stash silently). If `docs/goals/index.yaml` is missing, report
+"no goals queue — create goals with /define-goal" and end the iteration. The queue (`docs/goals/`) lives on `<state_branch>`; read index.yaml from there. Read the queue with
 a real YAML parser (`python3 -c 'import yaml,sys; …'`), never line-greps or ad-hoc `jq` —
 grep probes on the queue invent phantom statuses and miscounts that cost an extra
 verification round every fire. Cheap doctor pass, flagged in the report rather than silently
@@ -398,7 +400,7 @@ instead of spawning: claim it via the protocol; get an isolated workspace with t
 `origin/<base>`; implement under the same skill mandates as the brief above, honoring
 `config.model` for any helpers you spawn (your own in-session work necessarily runs on
 the session model — mention it if config.model differs); merge back per `config.merge`
-(PR, or the Integration steps); flip status via the protocol from the `<base>` checkout. Parallel solo sessions are safe — the claim protocol arbitrates.
+(PR, or the Integration steps); flip status via the protocol from the `<state_branch>` checkout. Parallel solo sessions are safe — the claim protocol arbitrates.
 
 ## Phase 4 — report (always, exactly one line)
 
