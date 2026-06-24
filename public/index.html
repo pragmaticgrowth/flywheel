@@ -162,28 +162,26 @@
   .step .arrow{position:absolute;right:-19px;top:50%;transform:translateY(-50%);color:var(--border-strong);z-index:2}
   @media(max-width:880px){.step .arrow{display:none}}
 
-  /* ---------- skills ---------- */
-  .skills{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-  @media(max-width:820px){.skills{grid-template-columns:1fr}}
-  .skill{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:26px;box-shadow:var(--shadow);
-    transition:.2s;position:relative;overflow:hidden}
-  .skill::before{content:"";position:absolute;inset:0 0 auto;height:3px;background:var(--grad);opacity:0;transition:.2s}
-  .skill:hover{transform:translateY(-4px);border-color:var(--border-strong)}
-  .skill:hover::before{opacity:1}
-  .skill-top{display:flex;align-items:center;gap:13px;margin-bottom:13px}
-  .skill-ic{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;flex:none;
+  /* ---------- skills (4 stacked line cards) ---------- */
+  .skills{display:flex;flex-direction:column;gap:12px}
+  .skill{display:flex;align-items:center;gap:18px;background:var(--surface);border:1px solid var(--border);
+    border-radius:var(--r);padding:20px 22px;box-shadow:var(--shadow);transition:.18s}
+  .skill:hover{border-color:var(--border-strong);transform:translateY(-2px)}
+  .skill-ic{width:46px;height:46px;border-radius:12px;display:grid;place-items:center;flex:none;
     background:color-mix(in srgb,var(--a1) 12%,transparent);color:var(--a1)}
   html[data-theme="dark"] .skill-ic{background:color-mix(in srgb,var(--a3) 12%,transparent);color:var(--a3)}
-  .skill-ic svg{width:22px;height:22px}
-  .skill h3{margin:0;font-size:1.18rem;letter-spacing:-.015em}
-  .skill .inv{font:600 .76rem var(--mono);color:var(--muted)}
-  .skill > p{color:var(--muted);font-size:.94rem;margin:.2rem 0 16px}
-  .skill ul{margin:0 0 18px;padding:0;list-style:none;display:grid;gap:9px}
-  .skill li{position:relative;padding-left:24px;font-size:.9rem;color:var(--ink)}
-  .skill li::before{content:"";position:absolute;left:2px;top:8px;width:9px;height:9px;border-radius:3px;background:var(--grad)}
-  .skill li b{font-weight:650}
-  .invoke{display:flex;flex-wrap:wrap;gap:7px;margin-top:auto}
-  .chip{font:600 .76rem var(--mono);padding:6px 10px;border-radius:8px;background:var(--surface-2);border:1px solid var(--border);color:var(--ink)}
+  .skill-ic svg{width:23px;height:23px}
+  .skill-main{flex:1;min-width:0}
+  .skill-main h3{margin:0 0 3px;font-size:1.1rem;letter-spacing:-.015em}
+  .skill-main p{margin:0;color:var(--muted);font-size:.92rem;line-height:1.5}
+  .skill .cmd{flex:none;white-space:nowrap;font:600 .8rem var(--mono);color:var(--a1);
+    background:color-mix(in srgb,var(--a1) 10%,transparent);border:1px solid color-mix(in srgb,var(--a1) 22%,transparent);
+    padding:7px 12px;border-radius:9px}
+  html[data-theme="dark"] .skill .cmd{color:var(--a3);border-color:color-mix(in srgb,var(--a3) 28%,transparent);background:color-mix(in srgb,var(--a3) 10%,transparent)}
+  @media(max-width:640px){
+    .skill{flex-wrap:wrap;gap:14px}
+    .skill .cmd{margin-left:64px}
+  }
 
   /* ---------- code blocks ---------- */
   .code{position:relative;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;margin-top:16px}
@@ -216,52 +214,15 @@
   .tab.active{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
   .tab-pane{display:none}.tab-pane.active{display:block}
 
-  /* ---------- changelog ---------- */
-  .filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:26px}
-  .filter{padding:7px 14px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--muted);
-    font:600 .82rem var(--sans);cursor:pointer;transition:.15s}
-  .filter:hover{color:var(--ink);border-color:var(--border-strong)}
-  .filter.active{background:var(--grad);color:#fff;border-color:transparent}
-  .timeline{position:relative;padding-left:30px}
-  .timeline::before{content:"";position:absolute;left:7px;top:8px;bottom:8px;width:2px;background:var(--border)}
-  .rel{position:relative;margin-bottom:14px}
-  .rel::before{content:"";position:absolute;left:-30px;top:9px;width:16px;height:16px;border-radius:50%;background:var(--surface);
-    border:3px solid var(--a1);box-shadow:0 0 0 4px var(--bg)}
-  html[data-theme="dark"] .rel::before{border-color:var(--a3)}
-  .rel.latest::before{background:var(--grad);border-color:transparent}
-  .rel-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:0;box-shadow:var(--shadow);overflow:hidden}
-  .rel-sum{display:flex;align-items:center;gap:13px;padding:16px 19px;cursor:pointer;list-style:none}
-  .rel-sum::-webkit-details-marker{display:none}
-  .rel-v{font:700 .92rem var(--mono);color:var(--ink)}
-  .tag{font:600 .68rem var(--sans);padding:3px 8px;border-radius:999px;letter-spacing:.02em}
-  .tag.now{background:var(--grad);color:#fff}
-  .tag.date{background:var(--surface-2);color:var(--muted);font-family:var(--mono);font-weight:600}
-  .rel-title{font-weight:600;font-size:.96rem;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .rel-sha{font:600 .74rem var(--mono);color:var(--faint)}
-  .rel-sha:hover{color:var(--a1)}
-  .chev{width:16px;height:16px;color:var(--faint);transition:.2s;flex:none}
-  details[open] .chev{transform:rotate(180deg)}
-  .rel-body{padding:2px 19px 18px 19px;border-top:1px solid var(--border)}
-  .rel-body ul{margin:14px 0 0;padding-left:18px;display:grid;gap:7px}
-  .rel-body li{color:var(--muted);font-size:.9rem}
-  .rel-body li b,.rel-body li code{color:var(--ink)}
-  .rel-body code{font:600 .82rem var(--mono);color:var(--a1)}
-  html[data-theme="dark"] .rel-body code{color:var(--a3)}
-  @media(max-width:620px){.rel-title{white-space:normal}.rel-sha{display:none}.rel-sum{flex-wrap:wrap}}
-
-  /* ---------- footer ---------- */
-  footer{border-top:1px solid var(--border);padding:48px 0 40px;margin-top:30px}
-  .foot{display:flex;justify-content:space-between;gap:28px;flex-wrap:wrap;align-items:flex-start}
-  .foot .col h4{font-size:.78rem;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);margin:0 0 12px}
-  .foot .col a{display:block;color:var(--muted);font-size:.92rem;padding:4px 0;transition:.15s}
-  .foot .col a:hover{color:var(--ink)}
-  .foot-brand{max-width:300px}
-  .foot-brand p{color:var(--muted);font-size:.9rem;margin:14px 0 0}
-  .foot-bottom{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-top:38px;padding-top:22px;border-top:1px solid var(--border);
-    color:var(--faint);font-size:.84rem}
-  .foot-bottom a{color:var(--muted);font-weight:600}
-  .auto-note{display:inline-flex;align-items:center;gap:7px;font-size:.82rem;color:var(--muted);background:var(--surface);
-    border:1px solid var(--border);padding:6px 11px;border-radius:999px}
+  /* ---------- footer (very simple) ---------- */
+  footer{border-top:1px solid var(--border);padding:28px 0;margin-top:44px}
+  .foot{display:flex;align-items:center;gap:16px 22px;flex-wrap:wrap}
+  .foot .brand{display:flex;align-items:center;gap:10px;font-weight:650}
+  .foot .brand .nm{font-size:1rem;letter-spacing:-.01em}
+  .foot-links{display:flex;align-items:center;gap:22px;margin-left:auto;flex-wrap:wrap}
+  .foot-links a{color:var(--muted);font-size:.9rem;transition:.15s}
+  .foot-links a:hover{color:var(--ink)}
+  .foot-copy{color:var(--faint);font-size:.84rem}
 </style>
 </head>
 <body>
@@ -280,7 +241,6 @@
       <a href="#skills">Skills</a>
       <a href="#queue">The queue</a>
       <a href="#install">Install</a>
-      <a href="#changelog">Changelog</a>
     </nav>
     <div class="nav-actions">
       <span class="ver-pill" title="Current released version">v2.10.0</span>
@@ -372,60 +332,40 @@
     </div>
     <div class="skills">
 
-      <article class="skill reveal" style="display:flex;flex-direction:column">
-        <div class="skill-top">
-          <div class="skill-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg></div>
-          <div><h3>define-goal</h3><div class="inv">/define-goal · “I want…”</div></div>
+      <article class="skill reveal">
+        <div class="skill-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg></div>
+        <div class="skill-main">
+          <h3>define-goal</h3>
+          <p>Turns a plain-language want — or a whole document of them — into a measurable goal contract, grounded by recon. Produces goals only; never implements.</p>
         </div>
-        <p>Shapes a plain-language want — or a whole document of them — into a measurable goal contract. Produces goals only; never implements.</p>
-        <ul>
-          <li><b>Recon by default</b> — parallel read-only agents investigate before writing a single criterion.</li>
-          <li><b>Two destinations</b> — a run-now <code>/goal</code> / <code>droid exec</code> line, or a queued goal file.</li>
-          <li><b>Repo-grounded</b> — copies your rules verbatim, fills real verification commands, batch-converts lists.</li>
-        </ul>
-        <div class="invoke"><span class="chip">/define-goal</span><span class="chip">batch mode</span><span class="chip">docs/goals/NNN.md</span></div>
+        <span class="cmd">/define-goal</span>
       </article>
 
-      <article class="skill reveal" style="display:flex;flex-direction:column">
-        <div class="skill-top">
-          <div class="skill-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2.4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg></div>
-          <div><h3>dispatch</h3><div class="inv">/dispatch · “work goal 005”</div></div>
+      <article class="skill reveal">
+        <div class="skill-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2.4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg></div>
+        <div class="skill-main">
+          <h3>dispatch</h3>
+          <p>The factory orchestrator. Claims queued goals, spawns one isolated implementer per goal, and integrates verified merges through a deterministic gate. Orchestrates only.</p>
         </div>
-        <p>The factory orchestrator. Claims queued goals, spawns one isolated implementer per goal, and integrates verified merges. Orchestrates only — never writes code in its own context.</p>
-        <ul>
-          <li><b>Built for the loop</b> — <code>/loop 15m /dispatch</code> or a 15-min cron; iterations are idempotent and parallel-safe.</li>
-          <li><b>Deterministic merge gate</b> — repro-direction, fresh-checkout green, blast-radius, secret scan before any auto-merge.</li>
-          <li><b>External brakes</b> — <code>config.budget</code> burnstop, an unreachable-goal escape hatch, progress-first reporting.</li>
-        </ul>
-        <div class="invoke"><span class="chip">/dispatch</span><span class="chip">/loop 15m</span><span class="chip">merge: pr|auto</span></div>
+        <span class="cmd">/dispatch</span>
       </article>
 
-      <article class="skill reveal" style="display:flex;flex-direction:column">
-        <div class="skill-top">
-          <div class="skill-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v4h-4"/></svg></div>
-          <div><h3>loop-architect</h3><div class="inv">automate · schedule · run unattended</div></div>
+      <article class="skill reveal">
+        <div class="skill-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v4h-4"/></svg></div>
+        <div class="skill-main">
+          <h3>loop-architect</h3>
+          <p>Designs the loop contract — prompt + verification + stop conditions — so an unattended run actually converges and stops, instead of just “keep working on X”.</p>
         </div>
-        <p>Designs the <b>loop contract</b> — prompt + verification + stop conditions — instead of just firing off a task. The difference between “keep working on X” and a loop that actually converges and stops.</p>
-        <ul>
-          <li><b>Maps primitives across CLIs</b> — <code>/goal</code> vs <code>droid exec</code>, <code>/loop</code> vs <code>CronCreate</code>.</li>
-          <li><b>Names the ledger</b> — <code>docs/goals/index.yaml</code> as the canonical factory state.</li>
-          <li><b>Stop conditions first</b> — so a long unattended run can’t burn indefinitely.</li>
-        </ul>
-        <div class="invoke"><span class="chip">/goal</span><span class="chip">/loop</span><span class="chip">routine · remote</span></div>
+        <span class="cmd">loop-architect</span>
       </article>
 
-      <article class="skill reveal" style="display:flex;flex-direction:column">
-        <div class="skill-top">
-          <div class="skill-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></div>
-          <div><h3>factory-doctor</h3><div class="inv">/factory-doctor</div></div>
+      <article class="skill reveal">
+        <div class="skill-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></div>
+        <div class="skill-main">
+          <h3>factory-doctor</h3>
+          <p>One-pass preflight for a repo + machine: software, gh auth, merge allow-rule, branch protection, CI, queue state. Auto-fixes everything local; never merges.</p>
         </div>
-        <p>One-pass preflight for a repo + machine. Run it before the first <code>/dispatch</code>, or whenever the environment misbehaves. Diagnoses and fixes setup; never implements or merges.</p>
-        <ul>
-          <li><b>Checks everything</b> — software, <code>gh</code> auth + scopes, merge allow-rule, branch protection, CI, queue state.</li>
-          <li><b>Auto-fixes local</b> — writes a narrow <code>pg_safe_merge</code> allow-rule, scaffolds the queue, in both <code>.claude/</code> and <code>.factory/</code>.</li>
-          <li><b>Honest about remote</b> — reports CI / protection issues with the exact fix instead of guessing past them.</li>
-        </ul>
-        <div class="invoke"><span class="chip">/factory-doctor</span><span class="chip">doctor_checks.py</span><span class="chip">pg_safe_merge</span></div>
+        <span class="cmd">/factory-doctor</span>
       </article>
 
     </div>
@@ -533,160 +473,21 @@ droid plugin install pg-plugin@pragmatic-growth</pre>
   </div>
 </section>
 
-<!-- ===================== CHANGELOG ===================== -->
-<section id="changelog">
-  <div class="wrap">
-    <div class="sec-head reveal">
-      <span class="eyebrow">Version history</span>
-      <h2>Changelog</h2>
-      <p>Every release is tagged in git and linked to its commit. Filter by line, click a version to expand. Canonical source: <a href="https://github.com/pragmaticgrowth/pg-plugin/blob/main/CHANGELOG.md" style="color:var(--link);font-weight:600">CHANGELOG.md</a>.</p>
-    </div>
-
-    <div class="filters reveal" id="filters">
-      <button class="filter active" data-f="all">All</button>
-      <button class="filter" data-f="2.10">2.10</button>
-      <button class="filter" data-f="2.9">2.9</button>
-      <button class="filter" data-f="2.8">2.8</button>
-      <button class="filter" data-f="2.7">2.7</button>
-      <button class="filter" data-f="2.x">2.0–2.6</button>
-      <button class="filter" data-f="1.x">1.x</button>
-      <button class="filter" data-f="0.x">0.x</button>
-    </div>
-
-    <div class="timeline" id="timeline">
-
-      <details class="rel latest reveal" data-family="2.10" open>
-        <summary class="rel-sum"><span class="rel-v">v2.10.0</span><span class="tag now">Latest</span><span class="tag date">2026-06-24</span><span class="rel-title">Loop-engineering hardening</span><a class="rel-sha" href="https://github.com/pragmaticgrowth/pg-plugin/commit/cf40777" target="_blank" rel="noopener">cf40777</a><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></summary>
-        <div class="rel-body"><ul>
-          <li><code>config.budget</code> external “burnstop” — <code>max_spawns_per_session</code> / <code>max_iterations</code> ceilings the orchestrator can’t edit; on exhaustion it drains in-flight work, surfaces <b>budget exhausted</b>, fires one notification.</li>
-          <li><code>GOAL_UNREACHABLE</code> escape hatch — an implementer can declare a goal unreachable → needs-you contract amendment, never an endless respawn.</li>
-          <li>Cost-per-accepted-change metric (merges ÷ spawns), per-fire heartbeat for silent-death detection, drained-queue terminal stop.</li>
-          <li>Subjective criteria route to an independent grader; proof-of-output + irreversible-action gates.</li>
-          <li>factory-doctor gains <code>validation-gate</code>, <code>queue-liveness</code>, <code>goal-contracts</code> probes.</li>
-        </ul></div>
-      </details>
-
-      <details class="rel reveal" data-family="2.9">
-        <summary class="rel-sum"><span class="rel-v">v2.9.7</span><span class="tag date">2026-06-24</span><span class="rel-title">Safe base→main promotion</span><a class="rel-sha" href="https://github.com/pragmaticgrowth/pg-plugin/commit/439710a" target="_blank" rel="noopener">439710a</a><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></summary>
-        <div class="rel-body"><ul><li>Promote through a throwaway <code>promote-&lt;date&gt;-to-&lt;target&gt;</code> head branch so <code>delete_branch_on_merge</code> can’t delete the persistent base. Audit merge side effects; protect the base as the robust guard.</li></ul></div>
-      </details>
-
-      <details class="rel reveal" data-family="2.9">
-        <summary class="rel-sum"><span class="rel-v">v2.9.6</span><span class="tag date">2026-06-24</span><span class="rel-title">Protected-main support</span><a class="rel-sha" href="https://github.com/pragmaticgrowth/pg-plugin/commit/62c7a8b" target="_blank" rel="noopener">62c7a8b</a><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></summary>
-        <div class="rel-body"><ul><li><code>config.state_branch</code> (default <code>= base</code>) holds the queue on a separate unprotected branch, so the factory never pushes to a protected base. Backward-compatible.</li></ul></div>
-      </details>
-
-      <details class="rel reveal" data-family="2.9">
-        <summary class="rel-sum"><span class="rel-v">v2.9.5</span><span class="tag date">2026-06-24</span><span class="rel-title">Recon-populated contracts</span><a class="rel-sha" href="https://github.com/pragmaticgrowth/pg-plugin/commit/3e9192f" target="_blank" rel="noopener">3e9192f</a><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></summary>
-        <div class="rel-body"><ul><li>define-goal auto-fills a goal’s <code>touches:</code> and <code>acceptance:</code> from recon findings.</li></ul></div>
-      </details>
-
-      <details class="rel reveal" data-family="2.9">
-        <summary class="rel-sum"><span class="rel-v">v2.9.4</span><span class="tag date">2026-06-24</span><span class="rel-title">LLM semantic validator (opt-in)</span><a class="rel-sha" href="https://github.com/pragmaticgrowth/pg-plugin/commit/a4da581" target="_blank" rel="noopener">a4da581</a><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></summary>
-        <div class="rel-body"><ul><li><code>config.llm_validation: on</code> adds one read-only adversarial validator — fed only contract + raw diff + checkout — after the deterministic gate passes. Deterministic FAIL always wins.</li></ul></div>
-      </details>
-
-      <details class="rel reveal" data-family="2.9">
-        <summary class="rel-sum"><span class="rel-v">v2.9.3</span><span class="tag date">2026-06-24</span><span class="rel-title">Deterministic merge gate</span><a class="rel-sha" href="https://github.com/pragmaticgrowth/pg-plugin/commit/0f62fa9" target="_blank" rel="noopener">0f62fa9</a><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></summary>
-        <div class="rel-body"><ul><li><code>pg_validate.py</code> runs on a fresh checkout before every auto-merge: one-goal integrity, bug repro-direction, acceptance-green, blast-radius, secret scan → a SHA-bound <code>PASS / FAIL_FIXABLE / FAIL_CONTRACT / INCONCLUSIVE</code> verdict.</li></ul></div>
-      </details>
-
-      <details class="rel reveal" data-family="2.9">
-        <summary class="rel-sum"><span class="rel-v">v2.9.2</span><span class="tag date">2026-06-23</span><span class="rel-title">Progress-first report</span><a class="rel-sha" href="https://github.com/pragmaticgrowth/pg-plugin/commit/d6a671f" target="_blank" rel="noopener">d6a671f</a><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></summary>
-        <div class="rel-body"><ul><li>Dispatch leads each iteration with <code>&lt;done&gt;/&lt;total&gt; done</code> + a 20-cell fill bar, then ready / running / blocked.</li></ul></div>
-      </details>
-
-      <details class="rel reveal" data-family="2.9">
-        <summary class="rel-sum"><span class="rel-v">v2.9.1</span><span class="tag date">2026-06-23</span><span class="rel-title">Scripted browser verification</span><a class="rel-sha" href="https://github.com/pragmaticgrowth/pg-plugin/commit/c440228" target="_blank" rel="noopener">c440228</a><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></summary>
-        <div class="rel-body"><ul><li>define-goal and factory-doctor gain a scripted browser-verification path for UI work.</li></ul></div>
-      </details>
-
-      <details class="rel reveal" data-family="2.9">
-        <summary class="rel-sum"><span class="rel-v">v2.9.0</span><span class="tag date">2026-06-23</span><span class="rel-title">Dual-runtime: Claude Code + Droid</span><a class="rel-sha" href="https://github.com/pragmaticgrowth/pg-plugin/commit/e2f43a6" target="_blank" rel="noopener">e2f43a6</a><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></summary>
-        <div class="rel-body"><ul><li>Every skill detects the runtime and uses the right paths, commands, and scheduling (<code>/goal</code> vs <code>droid exec</code>, <code>/loop</code> vs <code>CronCreate</code>). factory-doctor checks both <code>.claude/</code> and <code>.factory/</code>.</li></ul></div>
-      </details>
-
-      <details class="rel reveal" data-family="2.8">
-        <summary class="rel-sum"><span class="rel-v">v2.8.7</span><span class="tag date">2026-06-23</span><span class="rel-title">Multi-machine concurrency hardening</span><a class="rel-sha" href="https://github.com/pragmaticgrowth/pg-plugin/commit/ea10cb6" target="_blank" rel="noopener">ea10cb6</a><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></summary>
-        <div class="rel-body"><ul><li>Hardened define-goal and dispatch for multiple machines working the shared queue at once.</li></ul></div>
-      </details>
-
-      <details class="rel reveal" data-family="2.8">
-        <summary class="rel-sum"><span class="rel-v">v2.8.0 – 2.8.6</span><span class="tag date">2026-06-23</span><span class="rel-title">factory-doctor + pg_safe_merge, and its hardening</span><a class="rel-sha" href="https://github.com/pragmaticgrowth/pg-plugin/commit/8ffbf47" target="_blank" rel="noopener">8ffbf47</a><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></summary>
-        <div class="rel-body"><ul>
-          <li><b>2.8.0</b> — new <b>factory-doctor</b> skill + <code>pg_safe_merge.py</code>, a verified-merge wrapper that keeps the merge allow-rule narrow.</li>
-          <li><b>2.8.1 / 2.8.2</b> — recon investigate-first becomes the default; recon search runs read-only on <code>general-purpose + sonnet</code>.</li>
-          <li><b>2.8.3</b> — resolve the wrapper from the plugin install; handle the classifier-blocked allow-rule auto-fix (apply only on explicit go).</li>
-          <li><b>2.8.4 / 2.8.5</b> — auto-install <code>pyyaml</code>; survive PEP-668 externally-managed Python.</li>
-          <li><b>2.8.6</b> — version-durable merge allow-rule.</li>
-        </ul></div>
-      </details>
-
-      <details class="rel reveal" data-family="2.7">
-        <summary class="rel-sum"><span class="rel-v">v2.7.0</span><span class="tag date">2026-06-23</span><span class="rel-title">Real-run hardening (first 24-goal run)</span><a class="rel-sha" href="https://github.com/pragmaticgrowth/pg-plugin/commit/1cc90e5" target="_blank" rel="noopener">1cc90e5</a><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></summary>
-        <div class="rel-body"><ul><li>Validated against the first real 24-goal <code>merge: auto</code> run: fill <code>min(wip, ready)</code> every iteration, transient deaths don’t burn the (capped) respawn budget, the queue commit is its own command, implementer-brief traps closed, review loops converge.</li></ul></div>
-      </details>
-
-      <details class="rel reveal" data-family="2.x">
-        <summary class="rel-sum"><span class="rel-v">v2.6.0 – 2.6.1</span><span class="tag date">2026-06-15</span><span class="rel-title">herdr execution mode (opt-in)</span><a class="rel-sha" href="https://github.com/pragmaticgrowth/pg-plugin/commit/a601b6c" target="_blank" rel="noopener">a601b6c</a><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></summary>
-        <div class="rel-body"><ul><li><code>config.execution: herdr</code> runs each implementer as a fresh <code>claude</code> in an isolated <code>goal/&lt;id&gt;</code> worktree pane — parallel, observable, crash-recoverable. Default <code>native</code> stays in-process and fully portable.</li></ul></div>
-      </details>
-
-      <details class="rel reveal" data-family="2.x">
-        <summary class="rel-sum"><span class="rel-v">v2.0.0 – 2.5.0</span><span class="tag date">2026-06-12</span><span class="rel-title">Three-skill lineup &amp; the docs/goals pipeline</span><a class="rel-sha" href="https://github.com/pragmaticgrowth/pg-plugin/commit/7021528" target="_blank" rel="noopener">7021528</a><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></summary>
-        <div class="rel-body"><ul>
-          <li><b>2.0.0</b> — retired the <code>wish</code> skill; the <code>docs/goals/</code> file queue replaces GitHub issues as the work queue.</li>
-          <li><b>2.1.0</b> — parallel-factory documentation.</li>
-          <li><b>2.4.0</b> — <code>config.model</code> for spawned agents; goal <code>type: bug | feature | chore</code> shapes the contract.</li>
-          <li><b>2.5.0</b> — permission-stall invariant: a denied merge holds the slot and surfaces the exact allow-rule fix.</li>
-        </ul></div>
-      </details>
-
-      <details class="rel reveal" data-family="1.x">
-        <summary class="rel-sum"><span class="rel-v">v1.0.0 – 1.1.0</span><span class="tag date">2026-06-10</span><span class="rel-title">Became a skills-only plugin</span><a class="rel-sha" href="https://github.com/pragmaticgrowth/pg-plugin/commit/ac2bd7c" target="_blank" rel="noopener">ac2bd7c</a><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></summary>
-        <div class="rel-body"><ul>
-          <li><b>1.0.0</b> — transformed <code>mcp-do</code> into <code>pg-plugin</code>: removed the stdio MCP server entirely; skills-only.</li>
-          <li><b>1.1.0</b> — added the <b>define-goal</b> skill (ported from <code>openai/skills</code>, then adapted).</li>
-        </ul></div>
-      </details>
-
-      <details class="rel reveal" data-family="0.x">
-        <summary class="rel-sum"><span class="rel-v">v0.x</span><span class="tag date">2026-04</span><span class="rel-title">mcp-do era (pre-history)</span><a class="rel-sha" href="https://github.com/pragmaticgrowth/pg-plugin/commit/083c7a8" target="_blank" rel="noopener">083c7a8</a><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></summary>
-        <div class="rel-body"><ul><li>A stdio MCP server wrapping the <code>droid</code> / <code>opencode</code> CLIs — started as <code>do</code>, renamed to <code>mcp-do</code>, with the <code>pragmatic-growth</code> marketplace created along the way. Removed in 1.0.0; preserved in git history.</li></ul></div>
-      </details>
-
-    </div>
-  </div>
-</section>
-
 <!-- ===================== FOOTER ===================== -->
 <footer>
-  <div class="wrap">
-    <div class="foot">
-      <div class="foot-brand">
-        <img class="wordmark" src="/LogoLongBlack.svg" alt="Pragmatic Growth" height="24">
-        <p>pg-plugin — a skills-only Claude Code &amp; Droid plugin for turning plain-language wants into autonomous execution.</p>
-      </div>
-      <div class="col">
-        <h4>Plugin</h4>
-        <a href="#pipeline">Pipeline</a>
-        <a href="#skills">Skills</a>
-        <a href="#queue">The queue</a>
-        <a href="#install">Install</a>
-        <a href="#changelog">Changelog</a>
-      </div>
-      <div class="col">
-        <h4>Source</h4>
-        <a href="https://github.com/pragmaticgrowth/pg-plugin" target="_blank" rel="noopener">GitHub repo</a>
-        <a href="https://github.com/pragmaticgrowth/pg-plugin/blob/main/CHANGELOG.md" target="_blank" rel="noopener">CHANGELOG.md</a>
-        <a href="https://github.com/pragmaticgrowth/pg-plugin/blob/main/README.md" target="_blank" rel="noopener">README</a>
-        <a href="https://github.com/pragmaticgrowth" target="_blank" rel="noopener">Pragmatic Growth</a>
-      </div>
-    </div>
-    <div class="foot-bottom">
-      <span>© Pragmatic Growth · <a href="https://github.com/pragmaticgrowth/pg-plugin/blob/main/LICENSE" target="_blank" rel="noopener">MIT licensed</a></span>
-      <span class="auto-note"><span class="dot"></span> Auto-maintained — regenerated on every skill release</span>
-    </div>
+  <div class="wrap foot">
+    <a class="brand" href="#top" aria-label="pg-plugin home">
+      <svg class="brandmark" viewBox="0 0 44 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path class="bm-glyph" fill-rule="evenodd" clip-rule="evenodd" d="M0 12C0 5.373 5.285 0 11.805 0h20.39C38.715 0 44 5.373 44 12s-5.285 12-11.805 12h-20.39C5.285 24 0 18.627 0 12m20.39 0a8.83 8.83 0 0 0-1.447-4.849 8.6 8.6 0 0 0-3.853-3.214 8.46 8.46 0 0 0-4.96-.497 8.54 8.54 0 0 0-4.396 2.39 8.77 8.77 0 0 0-2.35 4.468 8.86 8.86 0 0 0 .489 5.043 8.7 8.7 0 0 0 3.162 3.916 8.5 8.5 0 0 0 4.77 1.471V12zm18.944 4.849A8.83 8.83 0 0 0 40.78 12h-8.586V3.273a8.5 8.5 0 0 0-4.77 1.47 8.7 8.7 0 0 0-3.162 3.917 8.86 8.86 0 0 0-.488 5.043 8.77 8.77 0 0 0 2.35 4.468 8.54 8.54 0 0 0 4.395 2.389 8.46 8.46 0 0 0 4.96-.497 8.6 8.6 0 0 0 3.854-3.214z"/>
+      </svg>
+      <span class="nm"><b>pg</b>-plugin</span>
+    </a>
+    <nav class="foot-links">
+      <a href="https://github.com/pragmaticgrowth/pg-plugin" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/pragmaticgrowth/pg-plugin/blob/main/README.md" target="_blank" rel="noopener">README</a>
+      <a href="https://pragmaticgrowth.com" target="_blank" rel="noopener">Pragmatic Growth</a>
+      <span class="foot-copy">© Pragmatic Growth · MIT</span>
+    </nav>
   </div>
 </footer>
 
@@ -726,18 +527,6 @@ droid plugin install pg-plugin@pragmatic-growth</pre>
       document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});
       document.querySelectorAll('.tab-pane').forEach(function(x){x.classList.remove('active')});
       t.classList.add('active');document.getElementById(t.getAttribute('data-tab')).classList.add('active');
-    });
-  });
-  // changelog filters
-  var rels=Array.prototype.slice.call(document.querySelectorAll('#timeline .rel'));
-  document.querySelectorAll('.filter').forEach(function(f){
-    f.addEventListener('click',function(){
-      document.querySelectorAll('.filter').forEach(function(x){x.classList.remove('active')});
-      f.classList.add('active');
-      var key=f.getAttribute('data-f');
-      rels.forEach(function(r){
-        r.style.display=(key==='all'||r.getAttribute('data-family')===key)?'':'none';
-      });
     });
   });
   // scroll reveal
