@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Skills-only plugin for Claude Code and Droid (Factory CLI) from Pragmatic Growth, v2.9.7.
+Skills-only plugin for Claude Code and Droid (Factory CLI) from Pragmatic Growth, v2.10.0.
 No MCP servers, no commands, no agents, no hooks, no build step — four skills
 under `skills/` (two ship deterministic Python helpers in `scripts/`),
 forming a plain-language → autonomous-execution pipeline around a
@@ -95,9 +95,26 @@ the runtime and use appropriate paths, commands, and scheduling primitives.
   (inherit|sonnet|haiku — applied to every code agent dispatch spawns;
   the repo owner's depth-vs-limit trade), repo-wide `skills`,
   `execution` (native|herdr — spawn substrate), `autonomy`
-  (conservative|balanced|bold — herdr block-handling threshold).
+  (conservative|balanced|bold — herdr block-handling threshold),
+  `budget` (optional; `max_spawns_per_session` + optional `max_iterations` —
+  the external "burnstop" ceiling on cumulative spend across a scheduled
+  run; absent = no session cap = today's behavior).
   Defaults: repo default branch (and `state_branch` = that base), `pr`, 2,
-  inherit, none, native, balanced.
+  inherit, none, native, balanced, no budget.
+- `config.budget` is the loop's external brake (v2.10.0, loop-engineering
+  hardening): per-goal soft caps (~3 respawns, ~3 review rounds,
+  `validation_attempts`) can't stop a multi-day `/loop` from burning on a
+  flaky queue, so when `budget.max_spawns_per_session` (or `max_iterations`)
+  is hit the orchestrator stops claiming/spawning, lets in-flight work drain,
+  surfaces `budget exhausted` under needs-you, and fires ONE PushNotification.
+  The cap lives in config the orchestrator can't edit — that is what makes it
+  a real brake, not a soft self-limit. Cost-per-accepted-change
+  (merges÷spawns, flag <~50%), a per-fire heartbeat (runtime cache, never
+  goal frontmatter — silent-death detection), a drained-queue terminal stop,
+  and the agent-initiated `GOAL_UNREACHABLE` escape hatch (→ needs-you
+  contract amendment, never respawn) ship in the same batch across
+  dispatch/define-goal/loop-architect; factory-doctor adds read-only
+  `validation-gate`/`queue-liveness`/`goal-contracts` probes.
 - `config.state_branch` (default `= base`) holds the `docs/goals/` queue;
   when `<base>` is protected, set it to a separate unprotected branch so the
   claim protocol + define-goal can push without touching the protected code
