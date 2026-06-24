@@ -25,7 +25,11 @@ Read the queue's `config:` block first; defaults when absent:
 BACK to — main, staging, or any other), `merge: pr` (human merges; `auto` = the
 orchestrator merges back after gates), `wip: 2`, `model: inherit`, `skills: []`,
 `validation: risk_based` (off | risk_based | required — whether a deterministic PR
-check runs before auto-merge; see the Validate step in Integration).
+check runs before auto-merge; see the Validate step in Integration). When `validation` is
+on, `llm_validation: off` (off | on — opt-in adversarial LLM check on top of the
+deterministic gate; costs tokens), `validator_model: sonnet` (never `inherit`),
+`validation_attempts: 2` (LLM FAIL→repair rounds before blocked) govern the LLM layer
+(step 2c).
 `config.model` (when not `inherit`) is passed as the `model` parameter on EVERY
 code-writing agent you spawn — implementers, CI-fix, review-response, and sync agents
 alike; it is the repo owner's depth-vs-weekly-limit trade, not yours to override.
@@ -234,6 +238,56 @@ integrated:
    step 2c (LLM validator, if enabled) reuses it, and it is pruned once after step 3
    Merge.** A deterministic FAIL overrides everything —
    never route around it with a manual merge.
+2c. **Validate (LLM, semantic — only when `config.llm_validation: on` AND step 2b's
+   deterministic gate PASSED).** Skipped if `llm_validation: off` (default), or if step 2b
+   didn't PASS (a deterministic FAIL always wins — never run the LLM layer over a PR the
+   deterministic gate already rejected). Spawn ONE background Agent (`isolation: worktree`
+   REUSING the step-2b worktree, `run_in_background: true`, `model: <config.validator_model>`)
+   with the LLM-VALIDATOR BRIEF below (filled in). It is strictly read-only. Read its final
+   message for `VERDICT: <PASS|FAIL_FIXABLE|FAIL_CONTRACT|INCONCLUSIVE> — <reason> | evidence: …`
+   and act: PASS with all required evidence present → proceed to Merge (SHAs already validated
+   in 2b); PASS MISSING required evidence (no commands run / no criterion→diff map / no
+   adversarial probe) → malformed, respawn the validator ONCE insisting on the evidence, still
+   malformed → INCONCLUSIVE/needs-you; FAIL_FIXABLE → spawn ONE worker-repair agent with the
+   findings (cap = `config.validation_attempts`, default 2; identical second FAIL →
+   `blocked`/needs-you); FAIL_CONTRACT → keep the goal `in_progress` (holds its slot), surface
+   a contract amendment under needs-you, never churn the worker; INCONCLUSIVE → retry once
+   next fire, never default-PASS. A NON-actionable FAIL (no concrete file:line/criterion/
+   command) is invalid → treat as PASS-with-warning (proceed to Merge, but report the
+   unactionable finding under needs-you), never bounce the worker on vibes.
+
+   **LLM-VALIDATOR BRIEF** (fill in `<id>`, `<base>`, `<head-sha>`, `<base-sha>`):
+
+   ```
+   You are an INDEPENDENT validator for goal <id> (read-only — never edit, push, or merge).
+   You are adversarial: your default verdict is FAIL; PASS must be EARNED with evidence you
+   produce and the orchestrator can re-run. You are given ONLY the contract and the change —
+   not the author's reasoning.
+
+   Inputs: the goal contract at docs/goals/<id>.md (read it first); branch goal/<id> at head
+   SHA <head-sha> off <base> (<base-sha>); the raw diff (git diff origin/<base>..<head-sha>).
+   Do NOT read any PR body, plan, or commit messages — judge the change on its own merits.
+
+   Produce your verdict by doing ALL of:
+   1. criterion→diff map: for every acceptance criterion in the contract, cite the file:line
+      hunk that satisfies it (FAIL if a criterion has no corresponding change). For every
+      changed hunk, name the criterion/constraint it serves (flag any change with no
+      criterion = scope creep).
+   2. outcome check: does the change satisfy the contract's Outcome sentence (not just make
+      the named commands exit 0)? State the one user/API-visible behavior you'd point to.
+   3. adversarial probe: write ONE check the author did NOT write, derived from the contract,
+      run it on this checkout, and paste the command + output.
+   4. no-op reasoning: if you null-reverted the core change, which existing tests would fail?
+      Name them. If none would, that is a red flag — say so.
+
+   Your FINAL line must be EXACTLY:
+   VERDICT: <PASS|FAIL_FIXABLE|FAIL_CONTRACT|INCONCLUSIVE> — <one-sentence reason> | evidence:
+   <commands run + exit codes; criterion→diff map summary; adversarial-probe result;
+   residual-risk note>
+
+   Rules: never merge, never edit docs/goals/, never push, stay read-only. A PASS without the
+   evidence above is not a PASS.
+   ```
 3. **Merge**: `python3 "$SAFEMERGE" --pr <n> --goal <id> --base <base> --expected-head
    <the SHA Validate recorded; or, if validation was off/skipped, the gate-verified head SHA>
    --expected-base <likewise>` when a PR exists. The
