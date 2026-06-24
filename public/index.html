@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -12,29 +12,42 @@
 <meta property="og:url" content="https://plugin.pragmaticgrowth.com">
 <meta property="og:image" content="https://plugin.pragmaticgrowth.com/LogoIconBlack.svg">
 <meta name="twitter:card" content="summary">
-<meta name="theme-color" content="#020617">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#020617" media="(prefers-color-scheme: dark)">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fragment+Mono:ital@0;1&family=Inter:wght@400;500;600;700;800;900&display=swap">
+<script>
+  /* set theme before paint — brand default is light; honor a stored pref or OS dark mode */
+  (function(){try{var t=localStorage.getItem('pg-theme');if(!t)t=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();
+</script>
 <style>
   :root{
-    --paper:#ffffff; --bg:#f6f7fb; --surface:#ffffff; --surface-2:#f1f3f9;
-    --ink:#0b1222; --muted:#5b6678; --faint:#8b95a7;
-    --border:#e6e9f1; --border-strong:#d6dbe7;
-    --logo-bg:#020617; --logo-fg:#ffffff;
-    --a1:#6366f1; --a2:#8b5cf6; --a3:#22d3ee;
-    --grad:linear-gradient(120deg,var(--a1),var(--a2));
-    --ok:#0ea66e; --warn:#d97706; --blk:#e11d48;
+    /* neutrals — Pragmatic Growth's Tailwind Slate scale */
+    --paper:#ffffff; --bg:#f8fafc; --surface:#ffffff; --surface-2:#f1f5f9;
+    --ink:#0f172a; --muted:#64748b; --faint:#94a3b8;
+    --border:#e2e8f0; --border-strong:#cbd5e1;
+    --logo-ink:#020617;
+    /* brand accent — the Pragmatic Growth "growth" emerald + link blue */
+    --a1:#059669; --a2:#047857; --a3:#10b981;
+    --brand:#064e3b; --mint:#c3e6db; --link:#0099ff;
+    --grad:linear-gradient(120deg,#064e3b,#047857);
+    --grad-text:linear-gradient(120deg,#047857,#10b981);
+    --ok:#059669; --warn:#d97706; --blk:#e11d48;
     --shadow:0 1px 2px rgba(2,6,23,.04),0 12px 32px -12px rgba(2,6,23,.12);
     --shadow-lg:0 24px 70px -24px rgba(2,6,23,.28);
     --r:16px; --r-sm:11px;
-    --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
-    --sans:"Inter var",Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --mono:"Fragment Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --sans:"Inter","Inter var",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
     --maxw:1120px;
   }
   html[data-theme="dark"]{
-    --paper:#020617; --bg:#020617; --surface:#0a1122; --surface-2:#0e1730;
-    --ink:#e7ecf5; --muted:#9aa6bd; --faint:#6b7892;
-    --border:#15203a; --border-strong:#1d2b4a;
-    --logo-bg:#ffffff; --logo-fg:#020617;
-    --a3:#38e0f0;
+    --paper:#020617; --bg:#020617; --surface:#0b1220; --surface-2:#111c33;
+    --ink:#e2e8f0; --muted:#94a3b8; --faint:#64748b;
+    --border:#1e293b; --border-strong:#334155;
+    --logo-ink:#ffffff;
+    --a1:#34d399; --a3:#6ee7b7;
+    --grad-text:linear-gradient(120deg,#34d399,#10b981);
     --shadow:0 1px 2px rgba(0,0,0,.4),0 18px 44px -18px rgba(0,0,0,.6);
     --shadow-lg:0 30px 90px -30px rgba(0,0,0,.75);
   }
@@ -48,13 +61,13 @@
   }
   a{color:inherit;text-decoration:none}
   .wrap{max-width:var(--maxw);margin-inline:auto;padding-inline:22px}
-  .grad-text{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .grad-text{background:var(--grad-text);-webkit-background-clip:text;background-clip:text;color:transparent}
   .eyebrow{font-size:.74rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--a1)}
   html[data-theme="dark"] .eyebrow{color:var(--a3)}
 
-  /* ---------- brand mark ---------- */
-  .brandmark{width:30px;height:auto;display:block;border-radius:8px;box-shadow:0 2px 8px rgba(2,6,23,.18)}
-  .bm-bg{fill:var(--logo-bg)} .bm-fg{fill:var(--logo-fg)}
+  /* ---------- brand mark (bare glyph, the Pragmatic Growth way) ---------- */
+  .brandmark{width:34px;height:auto;display:block}
+  .bm-glyph{fill:var(--logo-ink)}
   .wordmark{height:24px;width:auto;display:block}
   html[data-theme="dark"] .wordmark{filter:brightness(0) invert(1)}
 
@@ -90,9 +103,9 @@
   .aurora{position:absolute;inset:-30% -10% auto;height:680px;z-index:0;pointer-events:none;filter:blur(70px);opacity:.55}
   .aurora i{position:absolute;border-radius:50%;display:block;mix-blend-mode:screen}
   html[data-theme="light"] .aurora{opacity:.4;mix-blend-mode:normal}
-  .aurora .b1{width:460px;height:460px;left:6%;top:0;background:radial-gradient(circle,var(--a1),transparent 62%);animation:float1 16s ease-in-out infinite}
-  .aurora .b2{width:520px;height:520px;right:4%;top:-60px;background:radial-gradient(circle,var(--a2),transparent 62%);animation:float2 19s ease-in-out infinite}
-  .aurora .b3{width:380px;height:380px;left:40%;top:120px;background:radial-gradient(circle,var(--a3),transparent 64%);animation:float1 22s ease-in-out infinite reverse}
+  .aurora .b1{width:460px;height:460px;left:6%;top:0;background:radial-gradient(circle,#10b981,transparent 62%);animation:float1 16s ease-in-out infinite}
+  .aurora .b2{width:520px;height:520px;right:4%;top:-60px;background:radial-gradient(circle,#0099ff,transparent 62%);animation:float2 19s ease-in-out infinite}
+  .aurora .b3{width:380px;height:380px;left:40%;top:120px;background:radial-gradient(circle,#34d399,transparent 64%);animation:float1 22s ease-in-out infinite reverse}
   @keyframes float1{0%,100%{transform:translateY(0)}50%{transform:translateY(34px)}}
   @keyframes float2{0%,100%{transform:translateY(0)}50%{transform:translateY(-30px)}}
   @media(prefers-reduced-motion:reduce){.aurora i{animation:none}}
@@ -257,9 +270,8 @@
 <header class="nav">
   <div class="wrap nav-in">
     <a class="brand" href="#top" aria-label="pg-plugin home">
-      <svg class="brandmark" viewBox="0 0 246 132" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <rect width="246" height="132" rx="66" class="bm-bg"/>
-        <path fill-rule="evenodd" clip-rule="evenodd" d="M0 66C0 29.5492 29.5492 0 66 0H180C216.451 0 246 29.5492 246 66C246 102.451 216.451 132 180 132H66C29.5492 132 0 102.451 0 66ZM114 66C114 56.5065 111.185 47.2262 105.911 39.3326C100.636 31.4391 93.1396 25.2868 84.3688 21.6538C75.5979 18.0208 65.9467 17.0702 56.6356 18.9223C47.3246 20.7744 38.7718 25.346 32.0588 32.0589C25.3459 38.7718 20.7744 47.3246 18.9223 56.6357C17.0702 65.9468 18.0208 75.5979 21.6538 84.3688C25.2868 93.1397 31.439 100.636 39.3326 105.911C47.2262 111.185 56.5065 114 66 114V66H114ZM219.911 92.6673C225.185 84.7738 228 75.4935 228 66H180V18C170.507 18 161.226 20.8152 153.333 26.0895C145.439 31.3638 139.287 38.8603 135.654 47.6312C132.021 56.402 131.07 66.0532 132.922 75.3643C134.774 84.6754 139.346 93.2282 146.059 99.9411C152.772 106.654 161.325 111.226 170.636 113.078C179.947 114.93 189.598 113.979 198.369 110.346C207.14 106.713 214.636 100.561 219.911 92.6673Z" class="bm-fg"/>
+      <svg class="brandmark" viewBox="0 0 44 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path class="bm-glyph" fill-rule="evenodd" clip-rule="evenodd" d="M0 12C0 5.373 5.285 0 11.805 0h20.39C38.715 0 44 5.373 44 12s-5.285 12-11.805 12h-20.39C5.285 24 0 18.627 0 12m20.39 0a8.83 8.83 0 0 0-1.447-4.849 8.6 8.6 0 0 0-3.853-3.214 8.46 8.46 0 0 0-4.96-.497 8.54 8.54 0 0 0-4.396 2.39 8.77 8.77 0 0 0-2.35 4.468 8.86 8.86 0 0 0 .489 5.043 8.7 8.7 0 0 0 3.162 3.916 8.5 8.5 0 0 0 4.77 1.471V12zm18.944 4.849A8.83 8.83 0 0 0 40.78 12h-8.586V3.273a8.5 8.5 0 0 0-4.77 1.47 8.7 8.7 0 0 0-3.162 3.917 8.86 8.86 0 0 0-.488 5.043 8.77 8.77 0 0 0 2.35 4.468 8.54 8.54 0 0 0 4.395 2.389 8.46 8.46 0 0 0 4.96-.497 8.6 8.6 0 0 0 3.854-3.214z"/>
       </svg>
       <span class="nm"><b>pg</b>-plugin</span>
     </a>
@@ -527,7 +539,7 @@ droid plugin install pg-plugin@pragmatic-growth</pre>
     <div class="sec-head reveal">
       <span class="eyebrow">Version history</span>
       <h2>Changelog</h2>
-      <p>Every release is tagged in git and linked to its commit. Filter by line, click a version to expand. Canonical source: <a href="https://github.com/pragmaticgrowth/pg-plugin/blob/main/CHANGELOG.md" style="color:var(--a1);font-weight:600">CHANGELOG.md</a>.</p>
+      <p>Every release is tagged in git and linked to its commit. Filter by line, click a version to expand. Canonical source: <a href="https://github.com/pragmaticgrowth/pg-plugin/blob/main/CHANGELOG.md" style="color:var(--link);font-weight:600">CHANGELOG.md</a>.</p>
     </div>
 
     <div class="filters reveal" id="filters">
