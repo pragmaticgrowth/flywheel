@@ -58,12 +58,24 @@ agent prints, not by taste or file inspection at evaluation time.
    forces implementers into a measurably worse design to satisfy the contract.
 3. Repair weak goals: rewrite vague goals into measurable objectives when context makes it
    safe; ask one concise question when the missing detail changes the outcome or validation;
-   reject pure activity goals ("make progress", "keep investigating") until sharpened.
+   reject pure activity goals ("make progress", "keep investigating") until sharpened. A
+   criterion that can't be made objectively measurable still needs a declared give-up
+   condition (GOAL_UNREACHABLE after N attempts — see "If blocked") so the contract
+   terminates even if the target is never hit; confirm the target is one the implementer can
+   drive to true AND print, not an asymptote or an unmeasurable absolute.
 4. Heuristics: bugs → success is defined as reproduction first (a failing test the
    implementer writes — recon never reproduces), fix second; tests → exact command
    + pass condition; performance → metric, threshold, method, run count; research → the
    decision it must enable + evidence standard; operations → healthy state, window,
    rollback trigger.
+
+Subjective dimensions: when a goal's success genuinely includes something that can't be
+reduced to a transcript-verifiable command (UX feel, prose quality, visual design), do not
+silently drop it — keep it as a criterion marked **needs independent review** so `dispatch`
+routes it to its opt-in LLM validator when `config.llm_validation: on`, else (the default
+`off`) to a human under needs-you — never the implementer's own self-grade. Self-checking is
+fine for objective oracles (tests, build, schema validates); a maker grading its own
+subjective work passes itself every time.
 
 Quality bar before handing off — the contract must answer: what concrete thing will be
 true? what evidence proves it? what threshold defines success? what scope bounds matter?
@@ -126,6 +138,14 @@ Recon details:
   acceptance criteria (for bugs, "failing test reproducing the root cause" is the first
   criterion). Conflicting hypotheses → record both in the goal file and let the
   implementer's failing test arbitrate — don't guess a winner.
+- **Irreversible / externally-visible actions**: if recon finds the goal's surface includes
+  an action that can't be undone or that reaches the outside world (a prod migration, sending
+  real emails/notifications, deleting records, spending on a paid API), record it and add a
+  "stop and confirm before <action>" line to the goal file's Constraints and Goal contract —
+  embed the gate in the contract, don't rely on environment gating alone. For stateful
+  external writes, add an idempotency note (a retried "create" double-acts — guard it with an
+  existence/idempotency check). Scope a goal by what it can destroy, not only by what it
+  should do.
 - Reach the system wherever it actually lives: a local checkout by default; if the relevant
   code or data lives somewhere else the session can reach (a separate repo, a host you
   connect to, a running service or database), tell each subagent exactly how to reach it so
@@ -243,6 +263,7 @@ title: Customers get a receipt email after payment
 created: 2026-06-12
 type: feature   # bug | feature | chore — shapes the contract, see below
 skills: []      # goal-specific skills the implementer must invoke, e.g. [agent-browser]
+# size: M                    # optional: S|M|L rough effort — lets dispatch/herdr size a run
 # touches: [apps/orders/*]   # optional: declared surfaces → pg_validate blast-radius allowlist
 # acceptance: [make test]    # optional: exact gate commands pg_validate runs (else it auto-detects)
 ---
@@ -260,26 +281,42 @@ skills: []      # goal-specific skills the implementer must invoke, e.g. [agent-
 - [ ] For UI work: a SCRIPTED browser check (agent-browser) — start the dev server, navigate
   to the route, and ASSERT a concrete visible result (element/text/count), with a screenshot
   attached as evidence (a screenshot alone is not verification)
+- [ ] <subjective criterion, if any> — **needs independent review** (routed to the LLM
+  validator or a human, never the implementer's self-grade)
+
+Each criterion is proven by the command's actual final-run output appearing in the
+transcript / PR body — an assertion that "it passed" is a claim, not proof. This generalizes
+the screenshot rule to every check, and is the only guard under Droid self-verification.
 
 ## Constraints (hard rules)
 <repo hard rules from CLAUDE.md/AGENTS.md, verbatim>
 - Never merge mid-work — merge-back follows the queue's merge policy (a human under
   `pr`, the orchestrator under `auto`). Never push protected branches.
 - Never edit docs/goals/ — the orchestrator owns queue state.
+- <if recon found an irreversible/externally-visible action: "Stop and confirm before
+  <action>", and make stateful external writes idempotent>
+
 
 ## Out of scope
 <bullets>
 
 ## If blocked
 Stop and report attempted paths, evidence, the blocker, and what would unlock you.
+If the same acceptance command fails the same way twice in a row, or after ~3 honest
+attempts a criterion can be neither satisfied nor shown measurable (a flaky,
+non-deterministic, or contradictory check), declare GOAL_UNREACHABLE with evidence (which
+criterion, why unmeasurable, last measurement) and stop — never retry the identical failing
+approach. The orchestrator treats GOAL_UNREACHABLE as a contract defect (a needs-you
+amendment), not a work failure.
 
 ## Goal contract
 /goal <acceptance criteria restated as one transcript-verifiable condition: exact commands
 + expected outputs, the constraints above, and "open a PR from branch goal/<id> targeting
 the queue's base branch, whose body includes 'Goal: <id>', a plain-language summary for a
 non-technical reviewer, and verification evidence (test output, screenshots)."> Stop when
-every criterion verifiably passes, or when blocked (follow "If blocked") — never grind
-past a blocker.
+every criterion verifiably passes, or when blocked or a criterion proves unreachable (follow
+"If blocked", declaring GOAL_UNREACHABLE if a check can be neither satisfied nor measured) —
+never grind past a blocker.
 ```
 
 In Droid (no `/goal` command), the equivalent is:
@@ -292,6 +329,9 @@ One goal = one independently shippable change; split an ambitious want only when
 ship and verify independently, ordering with `depends_on`. Goals run in parallel up to
 `config.wip`, so also chain with `depends_on` any two goals that will touch the same
 files — a dependency is far cheaper than a merge conflict between parallel implementers.
+Tight scoping is the cheapest brake: the optional `size:` hint (S|M|L) lets `dispatch`/herdr
+autonomy and any budget cap size a run — a goal whose acceptance is one mechanical check
+should read as `S`.
 
 Populate the frontmatter `skills:` field from the skills actually available in this
 session (the available-skills list), matched to the code area you located — domain skills
