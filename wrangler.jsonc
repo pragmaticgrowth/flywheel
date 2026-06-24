@@ -1,0 +1,16 @@
+{
+  // Public site for pg-plugin → https://plugin.pragmaticgrowth.com
+  // Static-assets-only Worker (no server code): serves public/ as-is.
+  // Deploy from the repo root with CLOUDFLARE_API_TOKEN set: `wrangler deploy`.
+  "name": "pg-plugin-site",
+  "compatibility_date": "2026-06-01",
+  "assets": {
+    "directory": "./public"
+  },
+  "routes": [
+    { "pattern": "plugin.pragmaticgrowth.com", "custom_domain": true }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}
