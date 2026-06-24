@@ -157,7 +157,7 @@ branch/body/base/CI/SHAs so the merge allow-rule stays narrow.
 ## [2.7.0] — 2026-06-23
 
 **Real-run hardening** — validated against the first real 24-goal `merge: auto`
-native run on a production repo. Dispatch fills `min(wip, ready)` implementers
+native run. Dispatch fills `min(wip, ready)` implementers
 every iteration; transient infra deaths don't burn the respawn budget (which is
 itself capped); the queue commit is always its own command; implementer-brief
 traps closed (never `cd` to the main checkout, reproduce a bug before fixing,

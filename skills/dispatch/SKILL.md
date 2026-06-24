@@ -370,8 +370,8 @@ targets `<base>` and rejects any head that is not `goal/<id>`).
 "Automatically delete head branches" on (`delete_branch_on_merge: true` — common, and correct
 for `goal/*` hygiene) deletes a merged PR's *head* branch. So the WRONG form — `gh pr create
 --base main --head <base>` then merge — deletes `<base>` itself, the branch every `goal/*`
-forks from and the queue lives on, as a side effect of the production merge. (Real incident,
-2026-06-24: `<base>` was auto-deleted on promotion and only recovered because a local
+forks from and the queue lives on, as a side effect of the production merge. (This bit once: a
+long-lived base branch was auto-deleted on promotion and recovered only because a local
 ref still held the tip.) `--head <base>` is never correct for a promotion.
 
 Promote through a **throwaway head branch** instead:

@@ -12,3 +12,8 @@
 
 # plugin-cache artifacts (Claude Code writes these during version bumps)
 .orphaned_at
+
+# local-only: internal planning/design docs + per-user editor config.
+# Kept on disk for the maintainer; never published to the public repo.
+docs/superpowers/
+.claude/settings.json

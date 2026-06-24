@@ -70,8 +70,8 @@ the runtime and use appropriate paths, commands, and scheduling primitives.
   `BLOCKER|WARN|FIXED|INFO`, exit 0/1/2). Pairs with
   `dispatch/scripts/pg_safe_merge.py` — a verified-merge wrapper (re-checks
   branch/body/base/CI/SHAs/no-queue-edits) that dispatch's Integration calls
-  instead of raw `gh pr merge`, so the allow-rule stays narrow. v2.8.3 (from a
-  real run on a target repo): the probe resolves the wrapper from the plugin
+  instead of raw `gh pr merge`, so the allow-rule stays narrow. v2.8.3 (real-use
+  hardening): the probe resolves the wrapper from the plugin
   INSTALL (its own `__file__`), never repo-relative — a target repo has no
   `skills/` dir, so the old repo-relative path was non-existent AND mismatched
   what dispatch invokes. And the allow-rule auto-fix is harness-blocked in
@@ -138,8 +138,8 @@ the runtime and use appropriate paths, commands, and scheduling primitives.
 - Promotion (base → a downstream branch, typically `main`/production) is a
   separate human-gated step, NOT part of the iteration loop and NOT Integration
   (`pg_safe_merge.py` targets `<base>` and rejects non-`goal/` heads). v2.9.7
-  (from a real 2026-06-24 run where promoting `<base>` into `main`
-  auto-deleted it): never open the promotion PR with the persistent base as the
+  (after promoting a long-lived base branch into `main` auto-deleted that base):
+  never open the promotion PR with the persistent base as the
   PR head — a repo with GitHub's `delete_branch_on_merge: true` (correct for
   `goal/*` hygiene) deletes the merged PR's head, so the base vanishes as a side
   effect of the prod merge. Promote through a throwaway `promote-<date>-to-<target>`
@@ -150,7 +150,8 @@ the runtime and use appropriate paths, commands, and scheduling primitives.
 - `merge: auto` needs merge rights: preflight once per session for a
   `gh pr merge` allow rule before the first integration. A harness
   denial of the orchestrator's own merge is an environment blocker,
-  not a work failure (decided 2026-06-12 after a long unattended stall): the goal stays `in_progress` holding its wip slot — never
+  not a work failure (decided 2026-06-12 after a long unattended
+  stall): the goal stays `in_progress` holding its wip slot — never
   `blocked`, which would free the slot and pile more unmergeable PRs —
   needs-you carries the exact allow-rule fix verbatim, the stalling
   fire sends ONE PushNotification per distinct blocker set (a report
@@ -205,7 +206,7 @@ the runtime and use appropriate paths, commands, and scheduling primitives.
   skills never assume it.
 
 - Real-run hardening (v2.7.0, validated against a 24-goal `merge: auto`
-  native run on a production repo, 2026-06-23): dispatch fills `min(wip,
+  native run, 2026-06-23): dispatch fills `min(wip,
   ready)` implementers EVERY iteration — claiming is a loop, not one goal
   per fire (the run silently sat at 1/2 capacity otherwise); a transient
   infra death (connection closed, parse error, 529) is not a blocker and
