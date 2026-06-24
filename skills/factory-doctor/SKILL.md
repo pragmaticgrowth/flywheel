@@ -26,10 +26,11 @@ green report.
    (Claude Code) or `~/.factory/plugins/{cache,marketplaces}/*/pg-plugin/*/skills/<dir>/scripts/<f>`
    (Droid).
 2. **Read the queue config** (`docs/goals/index.yaml` `config:` if present) for `base`,
-   `merge`, `execution` — defaults `base` = repo default branch, `merge: pr`,
-   `execution: native`.
-3. **Run the read-only probe:** `python3 "$DC" --base <base> --merge <merge> --execution <execution> --state-branch <state_branch>`
-   (read `state_branch` from `config.state_branch`, default `= base`). It emits JSON
+   `merge`, `execution`, `validation` — defaults `base` = repo default branch, `merge: pr`,
+   `execution: native`, `validation: risk_based`.
+3. **Run the read-only probe:** `python3 "$DC" --base <base> --merge <merge> --execution <execution> --state-branch <state_branch> --validation <validation>`
+   (read `state_branch` from `config.state_branch`, default `= base`; `validation` from
+   `config.validation`, default `risk_based`). It emits JSON
    `{checks:[{check,level,detail,fix}], result}` and exits 0/1/2. Never edit it.
 
 ## Apply local fixes (aggressive — these and ONLY these)
@@ -97,11 +98,18 @@ deny-rule conflict, etc.). A `merge-permission` BLOCKER that cites a deny has no
 so it lands here, not in `fixed:`. The probe also checks `browser-verify`: if the repo has
 frontend/UI work (a UI framework in package.json, or any goal referencing `agent-browser`)
 but `agent-browser` isn't installed, it WARNs with the install command — REPORT-only (a global
-npm install + Chromium is a system-level change, never auto-run). Then one status line — under
-`merge: pr` the probe emits
-`merge-permission` INFO with no fix, so report `permissions: n/a`:
+npm install + Chromium is a system-level change, never auto-run). The probe also emits three
+REPORT-only loop-health checks (all read-only — never auto-fixed): `validation-gate` (under
+`merge: auto`, WARN if `config.validation: off` or `pg_validate.py` is unresolvable — an
+auto-merge with no deterministic gate is "a loop without a check"; copy its `fix` to set
+`config.validation: risk_based`), `queue-liveness` (WARN naming any `in_progress` goal with no
+`goal/<id>` branch and no PR on origin — a stale claim / silent-death candidate dispatch will
+respawn or that needs unblocking), and `goal-contracts` (WARN naming any active goal whose file
+lacks a checkable done-condition — tighten via `/define-goal` before dispatch picks it up). Then
+one status line — under `merge: pr` the probe emits `merge-permission` INFO with no fix, so
+report `permissions: n/a` (and `gate: n/a`):
 
-`[doctor] software: <ok|missing> · auth: <ok(scopes)|fix> · permissions: <ok|fixed|blocked(classifier)|deny-conflict|n/a> · push: <ok|⚠ base protected> · state-branch: <pushable|missing|⚠ protected|n/a> · ci: <green|none> · queue: <valid|scaffolded|drift> · result: READY|WARN|BLOCKER`
+`[doctor] software: <ok|missing> · auth: <ok(scopes)|fix> · permissions: <ok|fixed|blocked(classifier)|deny-conflict|n/a> · push: <ok|⚠ base protected> · state-branch: <pushable|missing|⚠ protected|n/a> · ci: <green|none> · gate: <wired|⚠ off|⚠ missing|n/a> · queue: <valid|scaffolded|drift> · health: <live|⚠ stale claims|⚠ underspecified goals> · result: READY|WARN|BLOCKER`
 
 ## Relationship to the other skills
 

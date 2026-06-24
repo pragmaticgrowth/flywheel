@@ -181,7 +181,70 @@ def state_branch_check(state_branch, base, exists, protected):
             "detail": f"state branch {state_branch!r} exists and is pushable (not protected)"}
 
 
-def run_checks(base, merge, execution, state_branch=""):
+def _pgvalidate_path():
+    # The deterministic gate dispatch runs under merge: auto — derived from THIS script's
+    # install (same fallback chain as $SAFEMERGE), never repo-relative.
+    here = os.path.dirname(os.path.realpath(__file__))
+    return os.path.realpath(os.path.join(here, "..", "..", "dispatch", "scripts", "pg_validate.py"))
+
+
+def validation_gate_check(merge, validation, pgvalidate_present):
+    # Under merge: auto, confirm the deterministic gate is actually wired: pg_validate.py
+    # resolvable AND config.validation not off. Read-only; never changes the mode.
+    if merge != "auto":
+        return None
+    if not pgvalidate_present:
+        return {"check": "validation-gate", "level": "WARN",
+                "detail": "pg_validate.py not resolvable from the plugin install — the deterministic gate can't run",
+                "fix": "refresh the pg-plugin marketplace so pg_validate.py is present"}
+    mode = validation or "risk_based"
+    if mode == "off":
+        return {"check": "validation-gate", "level": "WARN",
+                "detail": "config.validation: off under merge: auto — no deterministic gate runs before merge",
+                "fix": "set config.validation: risk_based (or required) in docs/goals/index.yaml"}
+    return {"check": "validation-gate", "level": "INFO",
+            "detail": f"deterministic gate wired (validation: {mode})"}
+
+
+def stale_claim_problems(goals, branch_exists):
+    # in_progress goals with no goal/<id> branch on origin and no recorded PR are stale
+    # claims / silent-death candidates the next dispatch fire must respawn or unblock.
+    out = []
+    for gid, entry in (goals or {}).items():
+        entry = entry or {}
+        if entry.get("status") != "in_progress":
+            continue
+        if entry.get("pr"):
+            continue
+        if not branch_exists.get(gid):
+            out.append(f"{gid}: in_progress but no goal/{gid} branch on origin and no pr — stale claim / silent-death candidate")
+    return out
+
+
+def _has_checkable_done(md_text):
+    # True if a goal file carries a machine-checkable done-condition: a non-empty Acceptance
+    # criteria section (>=1 checkbox) or a Goal contract section / a /goal line.
+    text = md_text or ""
+    has_accept = False
+    m = re.search(r"(?im)^##\s*Acceptance criteria\s*$", text)
+    if m:
+        tail = text[m.end():]
+        nxt = re.search(r"(?m)^##\s", tail)
+        section = tail[:nxt.start()] if nxt else tail
+        has_accept = bool(re.search(r"(?m)^\s*-\s*\[[ xX]\]\s*\S", section))
+    has_contract = bool(re.search(r"(?im)^##\s*Goal contract\s*$", text)) or "/goal " in text
+    return has_accept or has_contract
+
+
+def goal_contract_problems(goals):
+    # goals: list of {id, status, checkable}. Flags active goals (not_started/in_progress)
+    # whose file lacks a checkable done-condition — "a loop without a goal is a slop cannon".
+    return [f"{g['id']}: goal file has no checkable done-condition (acceptance criteria or goal contract)"
+            for g in (goals or [])
+            if g.get("status") in ("not_started", "in_progress") and not g.get("checkable")]
+
+
+def run_checks(base, merge, execution, state_branch="", validation=""):
     C = []
 
     def add(check, level, detail, fix=""):
@@ -284,15 +347,48 @@ def run_checks(base, merge, execution, state_branch=""):
     else:
         add("browser-verify", "INFO", "no frontend/UI work detected; browser verification not required")
 
+    # validation gate (merge: auto only) — confirm the deterministic gate is actually wired
+    vg = validation_gate_check(merge, validation, os.path.exists(_pgvalidate_path()))
+    if vg:
+        add(vg["check"], vg["level"], vg["detail"], vg.get("fix", ""))
+
     # queue
     idx = os.path.join(repo_root, "docs", "goals", "index.yaml")
+    goals_dir = os.path.join(repo_root, "docs", "goals")
     if not os.path.exists(idx):
         add("queue", "WARN", "no docs/goals/index.yaml", "FIX: scaffold a default index.yaml")
     elif yaml is not None:
         try:
-            ok, probs = validate_queue(yaml.safe_load(open(idx)))
+            index_obj = yaml.safe_load(open(idx)) or {}
+            ok, probs = validate_queue(index_obj)
             add("queue", "INFO" if ok else "WARN",
                 "queue valid" if ok else "; ".join(probs), "" if ok else "report drift")
+            goals = index_obj.get("goals") or {}
+            # queue liveness: in_progress claims with no live branch/PR = silent-death candidate
+            branch_exists = {}
+            for gid, e in goals.items():
+                if (e or {}).get("status") == "in_progress":
+                    _, ls, _ = _run(["git", "ls-remote", "--heads", "origin", f"goal/{gid}"])
+                    branch_exists[gid] = bool((ls or "").strip())
+            stale = stale_claim_problems(goals, branch_exists)
+            add("queue-liveness", "WARN" if stale else "INFO",
+                "; ".join(stale) if stale else "no stale in_progress claims",
+                "dispatch will respawn or it needs unblocking" if stale else "")
+            # goal contracts: active goals must carry a checkable done-condition
+            gc = []
+            for gid, e in goals.items():
+                e = e or {}
+                if e.get("status") not in ("not_started", "in_progress"):
+                    continue
+                try:
+                    text = open(os.path.join(goals_dir, f"{gid}.md")).read()
+                except OSError:
+                    continue  # a missing goal file is a different concern
+                gc.append({"id": gid, "status": e.get("status"), "checkable": _has_checkable_done(text)})
+            cprobs = goal_contract_problems(gc)
+            add("goal-contracts", "WARN" if cprobs else "INFO",
+                "; ".join(cprobs) if cprobs else "active goals carry a checkable done-condition",
+                "tighten via /define-goal before dispatch picks it up" if cprobs else "")
         except yaml.YAMLError as e:
             add("queue", "BLOCKER", f"index.yaml parse error: {e}")
 
@@ -312,8 +408,9 @@ def main(argv=None):
     ap.add_argument("--base", default="main"); ap.add_argument("--merge", default="pr")
     ap.add_argument("--execution", default="native")
     ap.add_argument("--state-branch", default="")
+    ap.add_argument("--validation", default="")
     a = ap.parse_args(argv)
-    checks, result = run_checks(a.base, a.merge, a.execution, a.state_branch)
+    checks, result = run_checks(a.base, a.merge, a.execution, a.state_branch, a.validation)
     print(json.dumps({"checks": checks, "result": result}, indent=2))
     return {"READY": 0, "WARN": 1, "BLOCKER": 2}[result]
 

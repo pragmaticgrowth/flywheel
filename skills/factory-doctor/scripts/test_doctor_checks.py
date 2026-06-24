@@ -146,6 +146,58 @@ def test_state_branch_pushable():
     r = dc.state_branch_check("goals-state", "main", True, False)
     assert r["level"] == "INFO" and "pushable" in r["detail"]
 
+def test_validation_gate_skipped_under_pr():
+    assert dc.validation_gate_check("pr", "risk_based", True) is None
+
+def test_validation_gate_off_under_auto_warns():
+    r = dc.validation_gate_check("auto", "off", True)
+    assert r["check"] == "validation-gate" and r["level"] == "WARN" and "off" in r["detail"]
+
+def test_validation_gate_missing_script_warns():
+    r = dc.validation_gate_check("auto", "risk_based", False)
+    assert r["level"] == "WARN" and "pg_validate" in r["detail"]
+
+def test_validation_gate_wired_info():
+    r = dc.validation_gate_check("auto", "required", True)
+    assert r["level"] == "INFO" and "required" in r["detail"]
+
+def test_validation_gate_default_mode_treated_as_risk_based():
+    r = dc.validation_gate_check("auto", "", True)
+    assert r["level"] == "INFO" and "risk_based" in r["detail"]
+
+def test_has_checkable_done_acceptance():
+    assert dc._has_checkable_done("## Acceptance criteria\n- [ ] make test passes\n") is True
+
+def test_has_checkable_done_goal_contract():
+    assert dc._has_checkable_done("## Goal contract\n/goal do X verified by Y\n") is True
+
+def test_has_checkable_done_empty_acceptance_section():
+    assert dc._has_checkable_done("## Acceptance criteria\n\n## Out of scope\n- nope\n") is False
+
+def test_has_checkable_done_prose_only():
+    assert dc._has_checkable_done("## Outcome\nsome prose only, no checks") is False
+
+def test_goal_contract_problems_flags_active_underspecified_only():
+    goals = [{"id": "001-a", "status": "not_started", "checkable": False},
+             {"id": "002-b", "status": "in_progress", "checkable": True},
+             {"id": "003-c", "status": "completed", "checkable": False}]
+    probs = dc.goal_contract_problems(goals)
+    assert any("001-a" in p for p in probs)
+    assert not any("002-b" in p for p in probs)   # checkable
+    assert not any("003-c" in p for p in probs)   # completed, not active
+
+def test_stale_claim_flags_in_progress_no_branch_no_pr():
+    goals = {"001-a": {"status": "in_progress"},
+             "002-b": {"status": "in_progress", "pr": 12},
+             "003-c": {"status": "not_started"}}
+    probs = dc.stale_claim_problems(goals, {"001-a": False, "002-b": False, "003-c": False})
+    assert any("001-a" in p for p in probs)
+    assert not any("002-b" in p for p in probs)   # has a PR → shepherd-able
+    assert not any("003-c" in p for p in probs)   # not in_progress
+
+def test_stale_claim_clean_when_branch_present():
+    assert dc.stale_claim_problems({"001-a": {"status": "in_progress"}}, {"001-a": True}) == []
+
 def test_runner_emits_valid_json_and_exit_code():
     r = subprocess.run([sys.executable, os.path.join(_here, "doctor_checks.py"), "--merge", "pr"],
                        capture_output=True, text=True,
