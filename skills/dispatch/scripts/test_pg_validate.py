@@ -162,6 +162,31 @@ def test_repro_nothing_red_on_base_red_on_head():
     r = pgv.repro_direction([0, 0], [1, 0], already_correct=False)
     assert r["pass"] is False
 
+def test_repro_overlaid_tests_red_on_base_passes():
+    # TDD test added by the PR, overlaid onto base -> red there, green on head: real fix.
+    r = pgv.repro_direction([1, 0], [0, 0], already_correct=False,
+                            overlaid_tests=["a.test.ts"])
+    assert r["pass"] is True and "overlaid" in r["evidence"]
+
+def test_repro_overlaid_tests_still_green_is_contract():
+    # The PR's tests were overlaid onto base product code and still passed -> tautology.
+    r = pgv.repro_direction([0, 0], [0, 0], already_correct=False,
+                            overlaid_tests=["a.test.ts"])
+    assert r["pass"] is False and r["kind"] == "contract" and "does not reproduce" in r["evidence"]
+
+def test_repro_no_test_file_contract_message():
+    r = pgv.repro_direction([0, 0], [0, 0], already_correct=False, overlaid_tests=[])
+    assert r["pass"] is False and "no recognizable test file" in r["evidence"]
+
+def test_is_test_path_patterns():
+    assert pgv.is_test_path("apps/marketing/lib/blog/format-date.test.ts")
+    assert pgv.is_test_path("src/__tests__/foo.ts")
+    assert pgv.is_test_path("pkg/thing_test.go")
+    assert pgv.is_test_path("tests/test_api.py")
+    assert pgv.is_test_path("api/test_views.py")
+    assert not pgv.is_test_path("apps/marketing/lib/blog/format-date.ts")
+    assert not pgv.is_test_path("src/components/BlogPostHero.tsx")
+
 def test_acceptance_green_all_pass():
     r = pgv.acceptance_green([0, 0, 0])
     assert r["pass"] is True

@@ -12,6 +12,38 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [3.0.1] — 2026-06-25
+
+**Validator fix: TDD bug fixes no longer FAIL_CONTRACT just because the proving
+test arrives with the fix.** A real `merge: auto` run kept rejecting genuinely-good
+bug fixes: the deterministic gate's repro-direction check ran the goal's
+`acceptance:` commands on a clean base checkout and demanded one go red, but in
+standard TDD the failing test is *added by the fix PR* — so it never exists on
+base, nothing can be red there, and every good fix was ruled "fixed nothing"
+(FAIL_CONTRACT). The contract couldn't be amended around it either: even adding
+the test command to `acceptance:` didn't help, because the test file still isn't
+on base.
+
+- **`pg_validate.py` now overlays the PR's changed test files onto the base
+  checkout** (`git checkout <head> -- <test-files>`) before running `acceptance:`
+  for `type: bug`. A genuine regression test then fails on base product code (bug
+  present) and passes on head (bug fixed) — the canonical red→green proof. The
+  overlay is monotonic: it only adds tests, never removes the bug, so it can never
+  turn a previously-passing validation into a failure.
+- Test-file detection (`is_test_path`) spans JS/TS (`.test.`/`.spec.`/`__tests__`),
+  Python (`test_*.py`), Go (`_test.go`), Ruby, Java, and `tests/`/`spec/` dirs.
+- FAIL_CONTRACT evidence is now specific: "tests overlaid but still green on base"
+  (the test doesn't reproduce the bug) vs "no recognizable test file in the diff"
+  (the fix ships no regression test) — instead of a single ambiguous "fixed
+  nothing".
+- **`define-goal`** now requires `type: bug` goals to name a real test-running
+  command in `acceptance:` (not just typecheck/lint/build) — the gate needs a
+  command that actually executes the regression test, or there is nothing to go
+  red. This was the second half of the same real-run failure (a hydration bug
+  whose `acceptance:` was only typecheck/lint/build).
+- `dispatch`'s Validate step (2b) documents the overlay and the remaining genuine
+  contract gap.
+
 ## [3.0.0] — 2026-06-24
 
 **Renamed `pg-plugin` → `flywheel`.** A rebrand, not a behavior change — the

@@ -356,6 +356,15 @@ auto-detects from the repo's Makefile / `go.mod` / `package.json`). Omitting eit
 (the validator degrades gracefully), but `touches:` in particular turns blast-radius from a
 coarse forbidden-path check into a real scope guard.
 
+**For `type: bug`, `acceptance:` MUST include a command that actually executes the
+regression test** — not just `typecheck`/`lint`/`build`. `pg_validate`'s repro-direction
+proof overlays the PR's new test file onto base product code and runs these commands,
+expecting one to go red on base and green on head. If none of them run the proving test
+(e.g. acceptance is only typecheck/lint/build while the bug is a runtime mismatch), nothing
+can go red on base and a genuinely-good fix is rejected as FAIL_CONTRACT. Name the precise
+test command that runs the failing test — scoped to the owning package is fine (e.g.
+`pnpm --filter @pkg/marketing test`, `pytest tests/test_dates.py`, `go test ./fmt/...`).
+
 Shape by `type:` — each type has a non-negotiable element, and it overrides the
 template's stock criteria where they conflict (a bug's failing test goes first, above the
 behavior criteria; a chore's full-suite check replaces the owning-package one):
@@ -363,7 +372,9 @@ behavior criteria; a chore's full-suite check replaces the owning-package one):
 - **bug** — Context carries the repro evidence and ALL of recon's root-cause hypotheses
   with their `path:line` evidence (including the losing ones — the implementer's failing
   test arbitrates). First acceptance criterion, always: "a failing test reproducing the
-  root cause, passing after the fix."
+  root cause, passing after the fix." The command that runs that test MUST appear in
+  `acceptance:` (see above) — the validator overlays the new test onto base to prove it
+  fails there, so a test no acceptance command executes can't be proven and blocks merge.
 - **feature** — Outcome reads as what the user sees working; Context lists the surfaces
   to touch (routes, UI, schema, jobs) from recon; Out of scope is mandatory, never empty —
   features sprawl. If the feature has a UI surface, its acceptance criteria MUST include the

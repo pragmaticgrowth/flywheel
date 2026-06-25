@@ -264,7 +264,14 @@ integrated:
    `docs/goals/<id>.md` — pass that path directly (`--goal-file docs/goals/<id>.md`), no
    extraction. Read the JSON `verdict` field to
    split FIXABLE vs CONTRACT (both FAILs exit 3, so the exit code alone is insufficient;
-   PASS=0, INCONCLUSIVE=4). `PASS` → record the validated `sha_head`/`sha_base` and use them
+   PASS=0, INCONCLUSIVE=4). For `type: bug`, the gate's repro-direction check **overlays the
+   PR's changed test files onto the base checkout** before running `acceptance:`, so a TDD
+   test that the fix PR introduces still proves red-on-base (bug present) → green-on-head
+   (bug fixed); this is what makes a normal "test arrives with the fix" PR provable instead
+   of a guaranteed FAIL_CONTRACT. A bug whose `acceptance:` runs no command that executes the
+   regression test (e.g. only typecheck/lint/build) still FAIL_CONTRACTs — that is a genuine
+   contract gap, fixed by amending `acceptance:` via `/define-goal`, not by merging around it.
+   `PASS` → record the validated `sha_head`/`sha_base` and use them
    as Merge's `--expected-head/--expected-base`; `FAIL_FIXABLE` → spawn ONE worker-repair
    agent in the branch worktree with the findings (cap one repair; an identical second FAIL
    → `blocked`/needs-you); `FAIL_CONTRACT` → keep the goal `in_progress` (holds its slot),

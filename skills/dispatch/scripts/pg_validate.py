@@ -117,22 +117,40 @@ def detect_gate_command(file_map):
     return None
 
 
-def repro_direction(base_exits, head_exits, already_correct):
+def repro_direction(base_exits, head_exits, already_correct, overlaid_tests=None):
+    # overlaid_tests: the PR head's changed test files that were copied onto the base
+    # checkout before running acceptance. In standard TDD the proving test is ADDED by the
+    # fix PR, so it does not exist on base — running the bare base suite can never go red
+    # and every good TDD fix would FAIL_CONTRACT. Overlaying the head's tests onto base
+    # product code is the canonical red-on-base proof: a real regression test fails there
+    # (bug still present) and passes on head (bug fixed). None = no overlay performed.
+    overlaid = list(overlaid_tests or [])
     head_all_green = all(x == 0 for x in head_exits)
     base_any_red = any(x != 0 for x in base_exits)
     if not head_all_green:
         return {"name": "repro-direction", "pass": False, "kind": "fixable",
                 "evidence": "an acceptance command is still red on the PR head"}
     if base_any_red:
+        how = (f"with the PR's {len(overlaid)} test file(s) overlaid onto base, "
+               if overlaid else "")
         return {"name": "repro-direction", "pass": True, "kind": "fixable",
-                "evidence": ">=1 command red on base, all green on head — real fix"}
+                "evidence": f">=1 command red on base {how}all green on head — "
+                            "the test reproduces the bug, the fix resolves it (real fix)"}
     # nothing was red on base: the change fixed nothing observable
     if already_correct:
         return {"name": "repro-direction", "pass": True, "kind": "fixable",
                 "evidence": "nothing red on base; goal documents code was already correct (locking test)"}
+    if overlaid:
+        return {"name": "repro-direction", "pass": False, "kind": "contract",
+                "evidence": f"the PR's test file(s) {overlaid} were overlaid onto base product "
+                            "code and still passed — the test does not reproduce the bug "
+                            "(tautology/already-fixed). Write a test that fails on base, or "
+                            "document 'already correct' with a locking test."}
     return {"name": "repro-direction", "pass": False, "kind": "contract",
-            "evidence": "nothing red on base — the bug 'fixed' nothing (tautology/already-fixed); "
-                        "document 'already correct' with a locking test if so"}
+            "evidence": "nothing red on base and the PR adds no recognizable test file, so the "
+                        "fix can't be proven to reproduce->resolve a real bug. Add a failing "
+                        "regression test (whose command is in acceptance:), or document "
+                        "'already correct' with a locking test."}
 
 
 def acceptance_green(head_exits):
@@ -192,6 +210,26 @@ def _git(args, **kw):
 def _changed_paths(base):
     rc, out, _ = _git(["diff", "--name-only", f"origin/{base}..HEAD"])
     return [p for p in out.splitlines() if p.strip()] if rc == 0 else []
+
+
+def is_test_path(p):
+    """Heuristic test-file detector spanning JS/TS, Python, Go, Ruby, Rust, etc."""
+    base = p.rsplit("/", 1)[-1]
+    low = p.lower()
+    if any(seg in low for seg in
+           ("/__tests__/", "/test/", "/tests/", "/spec/", "/specs/", "/e2e/")):
+        return True
+    if any(t in base for t in (".test.", ".spec.", "_test.", "-test.", ".tests.")):
+        return True
+    if base.startswith("test_") and base.endswith(".py"):
+        return True
+    if base.endswith("_test.go") or base.endswith("_spec.rb") or base.endswith("Test.java"):
+        return True
+    return False
+
+
+def _changed_test_files(base):
+    return [p for p in _changed_paths(base) if is_test_path(p)]
 
 
 def _diff_text(base):
@@ -265,12 +303,20 @@ def run_validation(pr, goal_id, base, goal_file, repo_root):
     checks.append(forbidden_content(_diff_text(base)))
 
     if gtype == "bug":
+        # Overlay the PR head's changed test files onto the base checkout so a TDD test
+        # ADDED by this PR can still reproduce the bug on base product code (red-on-base).
+        # Without this, every standard TDD fix (test introduced by the fix) is structurally
+        # un-provable and FAIL_CONTRACTs. Overlay is monotonic: it only adds tests, never
+        # removes the bug, so it can only move base toward red (the PASS direction).
+        test_files = _changed_test_files(base)
         with tempfile.TemporaryDirectory() as basewt:
             _git(["worktree", "add", "--detach", basewt, f"origin/{base}"])
+            if test_files:
+                _git(["-C", basewt, "checkout", sha_head, "--", *test_files])
             base_exits = _run_cmds(cmds, basewt) if cmds else []
             _git(["worktree", "remove", basewt, "--force"])
         head_exits = _run_cmds(cmds, repo_root) if cmds else []
-        checks.append(repro_direction(base_exits, head_exits, already_correct))
+        checks.append(repro_direction(base_exits, head_exits, already_correct, test_files))
     else:
         head_exits = _run_cmds(cmds, repo_root) if cmds else []
         checks.append(acceptance_green(head_exits))
