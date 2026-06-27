@@ -12,6 +12,54 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [4.0.0] — 2026-06-27
+
+**BREAKING — the factory goes sequential and local.** `dispatch` no longer opens
+pull requests, creates worktrees, or runs implementers in parallel. It drains the
+`docs/goals/` queue one goal at a time, in a single session, committing directly to
+the branch you start it on, and keeps each goal only if a **local build+test gate**
+passes. This replaces the entire v3 PR → CI → auto-merge model, which livelocked on
+real autonomous runs: dozens of PR-shepherding cycles per PR, self-hosted CI runners
+going offline and blocking every merge, and piles of stale `goal/*` and
+`worktree-agent-*` branches left as garbage. Sequential + local-gated removes that
+whole class of failure.
+
+- **`dispatch` is a sequential single-session drain.** Per goal: claim → one
+  *foreground* implementer commits its work on the current branch → the orchestrator
+  runs the local gate authoritatively → **PASS** squashes the work into one
+  `feat(goal NNN)` commit kept on the branch; **FAIL** rolls back to the goal's
+  `gate_base` and marks it `blocked`. No PRs, no worktrees, no `goal/<id>` branches,
+  no `wip`/parallel agents, no herdr. Two anchors per goal — `anchor` (pre-claim HEAD)
+  and `gate_base` (post-claim HEAD, what the gate diffs against, so the claim's queue
+  commit isn't in the validated diff).
+- **The local gate replaces CI as the merge gate.** `pg_validate.py` was rewritten
+  from a GitHub-PR gate (`--pr`) into a local branch-diff gate (`--head/--base`, no
+  `gh`): blast-radius, forbidden-content/secret scan, one-goal integrity, and the bug
+  repro-direction proof (red-on-base → green-on-head) all run on the local
+  `gate_base..HEAD` diff plus the repo's ordered `config.verify` commands. Unresolved
+  refs or no runnable gate → `INCONCLUSIVE`, never a silent PASS. CI, if the repo has
+  it, is a **non-blocking** post-push observation surfaced under `needs-you`.
+- **Config slimmed** to `base`, `model`, `skills`, `verify` (the ordered local
+  build+test gate, e.g. `["npm ci", "npm run build", "npm test"]`), and `budget`.
+  Removed: `merge`, `wip`, `validation`/`llm_validation`/`validator_model`/
+  `validation_attempts`, `execution`, `autonomy`, `state_branch`.
+- **Removed machinery:** `pg_safe_merge.py` (the PR merge wrapper), `pm.py` +
+  `references/herdr-mode.md` + the herdr-pm vendoring, and `resolve_ids.py` (the herdr
+  pane resolver). ~82 KB of code deleted.
+- **`factory-doctor`** dropped the PR/CI-world checks (`merge-permission`,
+  `branch-protection`, `base-push`, `state-branch`, `validation-gate`) and added
+  `verify` (local gate configured & runnable), `working-tree` (clean), and
+  `working-branch`. `gh`/`gh-auth`/`ci` are now INFO-only; the only CLI flag is
+  `--base`.
+- **`define-goal`** goal contracts no longer instruct opening a PR; dropped the
+  parallel-`wip` guidance; goals carry `acceptance:`/`verify` for the local gate;
+  a criterion that can't be expressed as a command becomes a human-verification item
+  surfaced under `needs-you` (the opt-in LLM validator is gone).
+- **`loop-architect`** documents `dispatch` as a sequential single-session drain;
+  `/loop` is only for picking up later-added goals, not a 15-minute parallel cadence.
+- Docs (CLAUDE.md invariants, README, the public site) rewritten to the sequential,
+  local-gated, direct-to-branch model.
+
 ## [3.0.1] — 2026-06-25
 
 **Validator fix: TDD bug fixes no longer FAIL_CONTRACT just because the proving
