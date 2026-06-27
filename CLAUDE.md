@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Skills-only plugin for Claude Code and Droid (Factory CLI) from Pragmatic Growth, v3.0.0.
+Skills-only plugin for Claude Code and Droid (Factory CLI) from Pragmatic Growth, v4.0.0.
 No MCP servers, no commands, no agents, no hooks, no build step — four skills
 under `skills/` (two ship deterministic Python helpers in `scripts/`),
 forming a plain-language → autonomous-execution pipeline around a
@@ -22,216 +22,120 @@ the runtime and use appropriate paths, commands, and scheduling primitives.
   tools don't exist in either CLI; `/goal` is user-run, transcript-
   evaluated in Claude Code, self-verified by the agent in Droid,
   4,000-char condition cap).
-- **dispatch** — factory orchestrator for the docs/goals queue:
-  shepherds factory PRs, claims goals via the claim protocol, spawns one
-  isolated worktree implementer per goal, integrates merge-backs under
-  `merge: auto`. Solo mode ("work goal 005") turns an interactive
-  session into a one-goal orchestrator. Built to run as
-  `/loop 15m /dispatch` (Claude Code) or `CronCreate` same_session
-  every 15m (Droid); iterations are idempotent and parallel sessions
-  are safe. Opt-in `config.execution: herdr` mode runs each implementer as
-  a fresh `claude` in its own `goal/NNN` herdr worktree pane
-  (parallel, observable, crash-recoverable — `droid` backend is future
-  work; degrades to `native` in Droid today); default `native` keeps the
-  in-process path and full portability. Phase 4 emits one report line per
-  iteration leading with progress — `<done>/<total> done` plus a 20-cell
-  fill bar, then labeled `ready`/`running`/`blocked` counts that sum to
-  `total` (lead with done, never `ready/total`, which reads as "nothing
-  done"); `needs-you` holds only human-blocked goals + mergeable PRs, since
-  dep-blocked goals self-unblock as their dependency merges. Under `merge: auto`,
-  a **deterministic `pg_validate.py` gate** (`config.validation: off|risk_based|required`,
-  default `risk_based` = required for bug/feature + risk-flagged chores) runs on a fresh
-  detached checkout before `pg_safe_merge`: one-goal integrity, bug repro-direction
-  (the acceptance suite must be red on base → green on head), fresh-checkout
-  acceptance-green, blast-radius, forbidden-content/secret scan — emitting a SHA-bound
-  `PASS|FAIL_FIXABLE|FAIL_CONTRACT|INCONCLUSIVE` (the orchestrator reads the JSON `verdict`
-  to split the two FAILs, both exit 3). PASS→merge with those SHAs; FAIL_FIXABLE→one worker
-  repair then blocked; FAIL_CONTRACT→hold slot + needs-you contract amendment;
-  INCONCLUSIVE→retry, never default-PASS. The orchestrator merges — the validator never does.
-  A deterministic FAIL overrides any future LLM validator. **Phase 2 (opt-in):** when
-  `config.llm_validation: on` (default off; costs tokens), step 2c spawns ONE read-only
-  adversarial Agent (`config.validator_model`, default sonnet, never inherit) reusing the 2b
-  worktree — fed ONLY the contract + raw diff + checkout, never the worker's narrative — that
-  must earn a PASS with replayable evidence (criterion→diff map, outcome-vs-commands, one
-  validator-authored adversarial probe, no-op reasoning); runs only after the deterministic
-  gate PASSES (deterministic FAIL always wins), verdict feeds the same convergence (round cap
-  `config.validation_attempts`, default 2), orchestrator merges. Mutation testing + a
-  fleet-FAIL-rate health metric + the high-risk→human tail remain future work.
+- **dispatch** — factory orchestrator for the docs/goals queue: drains the
+  queue SEQUENTIALLY in one session, working goals one at a time on the
+  branch that's currently checked out — no PRs, no worktrees, no `goal/<id>`
+  branches, no parallel execution. Per goal it records the pre-claim clean
+  HEAD as `anchor`, commits the claim, records the post-claim HEAD as
+  `gate_base`, spawns ONE foreground implementer that commits its work
+  directly on the branch, then runs the LOCAL gate authoritatively: the
+  deterministic `pg_validate.py` over the `gate_base..HEAD` diff plus the
+  repo's `config.verify` build+test commands. PASS → squash the goal's
+  commits to one `feat(goal NNN)` commit and mark it `completed`; FAIL →
+  `git reset --hard gate_base` and mark it `blocked` (with reason). CI, if
+  the repo has it, is a NON-BLOCKING post-push observation surfaced under
+  needs-you — never a merge gate. Solo mode ("work goal 005") turns an
+  interactive session into a one-goal drain. Built to run as
+  `/loop 15m /dispatch` (Claude Code) or `CronCreate` same_session every
+  15m (Droid); iterations are idempotent. Each iteration emits one report
+  line leading with progress — `<done>/<total> done` plus a 20-cell fill
+  bar, then labeled `ready`/`running`/`blocked` counts that sum to `total`
+  (lead with done, never `ready/total`, which reads as "nothing done");
+  `needs-you` holds human-blocked goals plus any non-blocking CI failures.
 - **loop-architect** — designs loop contracts (prompt + verification +
   stop conditions) for autonomous /goal, /loop, routine, or remote runs;
   names `docs/goals/index.yaml` the canonical factory ledger.
-- **factory-doctor** (v2.8.0) — one-pass preflight/doctor for a repo +
-  machine: checks software, gh auth + scopes, the harness merge allow-rule,
-  branch protection, CI, and queue state; aggressively auto-fixes everything
-  local (writes the narrow `pg_safe_merge` allow-rule to
-  `.claude/settings.local.json` or `.factory/settings.local.json` depending
-  on CLI, scaffolds the queue) and reports remote/CI issues with exact fixes.
-  Ships `scripts/doctor_checks.py` (read-only probe,
-  `BLOCKER|WARN|FIXED|INFO`, exit 0/1/2). Pairs with
-  `dispatch/scripts/pg_safe_merge.py` — a verified-merge wrapper (re-checks
-  branch/body/base/CI/SHAs/no-queue-edits) that dispatch's Integration calls
-  instead of raw `gh pr merge`, so the allow-rule stays narrow. v2.8.3 (real-use
-  hardening): the probe resolves the wrapper from the plugin
-  INSTALL (its own `__file__`), never repo-relative — a target repo has no
-  `skills/` dir, so the old repo-relative path was non-existent AND mismatched
-  what dispatch invokes. And the allow-rule auto-fix is harness-blocked in
-  auto/unattended mode (the classifier treats an agent adding its own `Bash(...)`
-  rule as self-modification): the skill expects this, surfaces the exact line
-  under needs-you (`permissions: blocked(classifier)`), and applies it only on
-  the user's explicit "go" — never routes around the denial. v2.9.0: the probe
-  checks settings in both `.claude/` and `.factory/` (Droid) paths.
+- **factory-doctor** — one-pass preflight/doctor for a repo + machine:
+  checks software, gh auth + scopes, the git working tree, CI, and queue
+  state; aggressively auto-fixes everything local (scaffolds the queue) and
+  reports remote/CI issues with exact fixes. Ships `scripts/doctor_checks.py`
+  (read-only probe, `BLOCKER|WARN|FIXED|INFO`, exit 0/1/2). The v4 sequential
+  model commits directly on the local branch, so there is no merge allow-rule
+  to provision — the gate is local. The probe checks settings in both
+  `.claude/` and `.factory/` (Droid) paths.
 
-## Queue design invariants (research-backed, decided 2026-06-12)
+## Queue design invariants (research-backed; v4.0.0 sequential model, 2026-06-27)
 
+- **v4.0.0 sequential model.** dispatch drains the queue ONE goal at a time
+  in a single session, committing work DIRECTLY on the branch that's checked
+  out — no PRs, no worktrees, no `goal/<id>` branches, no parallelism. Each
+  goal is bracketed by two anchors: `anchor` (the pre-claim clean HEAD) and
+  `gate_base` (HEAD right after the claim commit). The implementer commits on
+  the branch; then the orchestrator runs the LOCAL gate over the
+  `gate_base..HEAD` diff — `pg_validate.py` plus the repo's `config.verify`
+  commands — and that local gate is the ONLY merge gate. PASS → squash the
+  goal's commits into one `feat(goal NNN)` commit + `completed`; FAIL →
+  `git reset --hard gate_base` + `blocked`. CI, where the repo has it, is a
+  NON-BLOCKING post-push observation surfaced under needs-you, never a gate.
 - Status lives ONLY in `index.yaml`, never in goal-file frontmatter —
   dual-write drifts. Goal files are immutable contracts.
 - Statuses: `not_started | in_progress | completed | blocked` — blocked
   (with reason) is required to avoid re-dispatch livelock. `completed`
-  only when the work is merged.
-- `index.yaml` `config:` block: `base` (integration branch goals branch
-  from and merge back to — main, staging, or other; per-goal `base:`
-  override allowed), `state_branch` (branch holding the `docs/goals/` queue;
-  default `= base`), `merge: pr|auto`, `wip` parallelism cap, `model`
-  (inherit|sonnet|haiku — applied to every code agent dispatch spawns;
-  the repo owner's depth-vs-limit trade), repo-wide `skills`,
-  `execution` (native|herdr — spawn substrate), `autonomy`
-  (conservative|balanced|bold — herdr block-handling threshold),
-  `budget` (optional; `max_spawns_per_session` + optional `max_iterations` —
-  the external "burnstop" ceiling on cumulative spend across a scheduled
-  run; absent = no session cap = today's behavior).
-  Defaults: repo default branch (and `state_branch` = that base), `pr`, 2,
-  inherit, none, native, balanced, no budget.
-- `config.budget` is the loop's external brake (v2.10.0, loop-engineering
-  hardening): per-goal soft caps (~3 respawns, ~3 review rounds,
-  `validation_attempts`) can't stop a multi-day `/loop` from burning on a
-  flaky queue, so when `budget.max_spawns_per_session` (or `max_iterations`)
-  is hit the orchestrator stops claiming/spawning, lets in-flight work drain,
-  surfaces `budget exhausted` under needs-you, and fires ONE PushNotification.
-  The cap lives in config the orchestrator can't edit — that is what makes it
-  a real brake, not a soft self-limit. Cost-per-accepted-change
-  (merges÷spawns, flag <~50%), a per-fire heartbeat (runtime cache, never
-  goal frontmatter — silent-death detection), a drained-queue terminal stop,
-  and the agent-initiated `GOAL_UNREACHABLE` escape hatch (→ needs-you
-  contract amendment, never respawn) ship in the same batch across
-  dispatch/define-goal/loop-architect; factory-doctor adds read-only
-  `validation-gate`/`queue-liveness`/`goal-contracts` probes.
-- `config.state_branch` (default `= base`) holds the `docs/goals/` queue;
-  when `<base>` is protected, set it to a separate unprotected branch so the
-  claim protocol + define-goal can push without touching the protected code
-  branch. `<base>` receives only implementer code PRs. Default
-  `state_branch = base` = today's behavior (no migration for unprotected repos).
+  only when the gate has PASSED and the goal's commit is on the branch.
+- `index.yaml` `config:` block: `base` (the branch goals are worked on;
+  per-goal `base:` override allowed), `model` (inherit|sonnet|haiku —
+  applied to every code agent dispatch spawns; the repo owner's
+  depth-vs-limit trade), repo-wide `skills`, `verify` (the ordered local
+  build+test commands the gate runs after each implementer), and `budget`
+  (optional; `max_spawns_per_session` + optional `max_iterations` — a simple
+  cap on cumulative spend across a scheduled run; absent = no session cap).
+  Defaults: repo default branch, inherit, no extra skills, repo-detected
+  verify commands, no budget.
 - Goal frontmatter `type: bug|feature|chore` shapes the contract: bugs
   always lead with a failing-test-reproduces-root-cause criterion (all
   recon hypotheses recorded); features must fill Out of scope; chores
   prove "no behavior change" (suite green before and after) plus one
   mechanical check.
-- Claim protocol: every status write is pull → flip one entry → commit
-  (`chore(goals): claim|complete|block|archive <id>`) → push on the state
-  branch (the queue's branch — `config.state_branch`, default `= base`);
-  push acceptance arbitrates parallel sessions. Same arbitration
-  covers NNN minting (collision → renumber the NEW goal only; never
-  renumber existing goals).
-- `merge: auto` integration is orchestrator-only, one goal at a time,
-  sync-with-current-base then re-verify before every merge; substantive
-  conflicts → `blocked`, never guessed through. Implementers never
-  merge and never edit `docs/goals/`.
-- Promotion (base → a downstream branch, typically `main`/production) is a
-  separate human-gated step, NOT part of the iteration loop and NOT Integration
-  (`pg_safe_merge.py` targets `<base>` and rejects non-`goal/` heads). v2.9.7
-  (after promoting a long-lived base branch into `main` auto-deleted that base):
-  never open the promotion PR with the persistent base as the
-  PR head — a repo with GitHub's `delete_branch_on_merge: true` (correct for
-  `goal/*` hygiene) deletes the merged PR's head, so the base vanishes as a side
-  effect of the prod merge. Promote through a throwaway `promote-<date>-to-<target>`
-  head branch (auto-delete kills the throwaway, base untouched), audit the merge's
-  side effects (migrations, head fate) not just the diff, and verify the base
-  still exists after. Protecting the base on GitHub is the robust repo-side guard
-  (protected branches are never auto-deleted; pairs with `config.state_branch`).
-- `merge: auto` needs merge rights: preflight once per session for a
-  `gh pr merge` allow rule before the first integration. A harness
-  denial of the orchestrator's own merge is an environment blocker,
-  not a work failure (decided 2026-06-12 after a long unattended
-  stall): the goal stays `in_progress` holding its wip slot — never
-  `blocked`, which would free the slot and pile more unmergeable PRs —
-  needs-you carries the exact allow-rule fix verbatim, the stalling
-  fire sends ONE PushNotification per distinct blocker set (a report
-  line in an unattended /loop has no reader), and later fires probe
-  cheaply (PR merged? rule added?) instead of re-running sync/gates on
-  a provably unmoved head.
-- `execution: herdr` runs each implementer as a fresh `claude` in an
-  isolated `goal/<id>` herdr worktree pane (vendored herdr-pm ops kit at
-  `skills/dispatch/scripts/pm.py`, MIT, attributed in `VENDORED.md` — one
-  STATE_ROOT re-root edit, else verbatim), driven by
-  `skills/dispatch/references/herdr-mode.md` (the kit SHIPS INSIDE the plugin —
-  no runtime dependency on the upstream repo; the herdr-pm name is MIT
-  attribution only). The orchestrator resolves `pm.py`'s plugin path (into `$PM`)
-  and its own `terminal_id` (into `$ORCH`, not `$HERDR_PANE_ID`) at preflight,
-  then sends each implementer a plain-prose mission brief via `pm.py dispatch
-  --file` (there is no `/goal` slash command to send); pm.py mints + anchors a
-  unique `TASK_DONE_<hex4>` marker, re-checked from pane scrollback every fire
-  (no reliance on a backgrounded wait); blocked implementers are handled tiered
-  (auto-answer ≤ escalate)
-  per `config.autonomy`. State is three-tier: `index.yaml` (claim truth) +
-  `~/.local/state/pg-dispatch/` (runtime cache, with a `PAUSE` all-stop) +
-  herdr/git (reality), reconciled by `pm.py lanes`. Default
-  `execution: native` preserves the in-process path and full portability;
-  herdr unreachable → degrade to native.
+- Claim protocol is LOCAL: every status write is flip ONE entry → commit
+  (`chore(goals): claim|complete|block|archive <id>`). One entry per commit,
+  status-only-in-index; no push, no push-arbitration — the single session
+  owns the branch. NNN minting is local too (a collision renumbers the NEW
+  goal only; never renumber existing goals).
 - Skills mandates come in three layers: method skills (writing-plans,
   TDD, verification-before-completion) hardcoded in dispatch's brief;
   repo skills in `config.skills`; goal-specific skills in goal
   frontmatter `skills:` (populated by define-goal from actually
   available skills).
-- Implementer worktrees always branch `goal/<id>` from `origin/<base>`,
-  never from inherited HEAD; PRs target `<base>` and carry "Goal: <id>".
 - Recon (define-goal) runs BY DEFAULT before any goal touching an existing
-  system (v2.8.1): investigate-first via parallel read-only subagents is not
+  system: investigate-first via parallel read-only subagents is not
   optional — "the description sounds clear" is the failure mode it replaces;
   skip only for genuinely greenfield or one-liner wants. Reaches the system
   wherever it lives (local checkout, separate repo, a host you connect to, a
   service/DB), told to each subagent, never hardcoded. It never inherits the
   session model; recon search subagents run as the `general-purpose` type on
-  `model: sonnet`, strictly read-only (v2.8.2 — the built-in Explore type is
-  locked to haiku and can't be raised, so general-purpose/sonnet is how recon
-  buys real understanding; capping at sonnet vs an opus session is the remaining
-  economy; the owner chose sonnet-for-all-recon over haiku-breadth). The synthesis
-  agent is also sonnet. `config.model` governs only code agents, never recon.
-  (Recon stays plain parallel subagents, NOT a Workflow: 2–4 agents is below the
-  workflow scale threshold and a workflow can be disabled on a user's machine —
-  define-goal batch mode is the only place that conditionally uses Workflow.)
+  `model: sonnet`, strictly read-only (the built-in Explore type is locked to
+  haiku and can't be raised, so general-purpose/sonnet is how recon buys real
+  understanding; capping at sonnet vs an opus session is the remaining
+  economy; the owner chose sonnet-for-all-recon over haiku-breadth). The
+  synthesis agent is also sonnet. `config.model` governs only code agents,
+  never recon. (Recon stays plain parallel subagents, NOT a Workflow: 2–4
+  agents is below the workflow scale threshold and a workflow can be disabled
+  on a user's machine — define-goal batch mode is the only place that
+  conditionally uses Workflow.)
 - Workflow tool only where the docs' thresholds say it wins: define-goal
   batch mode at ~5+ items (drafts in script variables, approval table
   gates file writes). Dispatch implementers are NEVER workflows — runs
-  are session-bound; branch commits + the stale-claim rule are the
+  are session-bound; the branch commits + the two-anchor rollback are the
   recovery path. The tool needs CLI ≥2.1.154 and can be disabled, so
   skills never assume it.
-
-- Real-run hardening (v2.7.0, validated against a 24-goal `merge: auto`
-  native run, 2026-06-23): dispatch fills `min(wip,
-  ready)` implementers EVERY iteration — claiming is a loop, not one goal
-  per fire (the run silently sat at 1/2 capacity otherwise); a transient
-  infra death (connection closed, parse error, 529) is not a blocker and
-  doesn't burn the respawn budget, but transient respawns are capped
-  (~3/goal/session) so a flaky spawn can't livelock; respawning a goal
-  whose branch fell far behind `<base>` branches fresh, not a stale-
-  checkpoint rebase; the queue commit is always its OWN command (never
-  bundled with branch pruning — a bundled destructive op got the whole
-  claim denied), and branch pruning verifies `gh pr view … state ==
-  MERGED` first. Implementer-brief traps closed: never `cd` to the main
-  checkout (silently measures the base branch); reproduce a cited bug
-  before "fixing" it (upstream findings are hypotheses, ~⅓ are false
-  positives even post-verification); stage only intended files; pre-
-  existing `<base>`-red suites don't block a goal. Review loops converge
-  (cap ~3 rounds, cosmetic nits → needs-you); a defect the goal's OWN
-  criteria mandate becomes a needs-you contract amendment, not a serial
-  merge. herdr mode remains UNVALIDATED in production — every real run to
-  date is `native`.
 
 History note: this repo was previously `mcp-do`, a stdio MCP server
 wrapping droid/opencode CLIs (removed in v1.0.0 at ac2bd7c). The
 **wish** skill (wants → GitHub issues) was retired in v2.0.0 on
 2026-06-12 — the docs/goals file queue replaced GitHub issues as the
 work queue (issue bodies cap at 65,536 chars; labels needed per-repo
-bootstrap). Git history has both if ever needed.
+bootstrap). The v3.x model — one isolated `goal/<id>` worktree PR per
+goal, parallel `wip` implementers, an optional herdr spawn substrate,
+and `merge: auto` integration gated by a deterministic + optional-LLM
+validator before a `pg_safe_merge` wrapper — was replaced in v4.0.0
+(2026-06-27) by the sequential, local-gated, direct-to-branch model
+above. Two real autonomous `/loop /dispatch` runs motivated the change:
+on a website repo and on a tax-filing app, the per-goal PR/CI/worktree
+churn produced pile-ups of unmergeable PRs and orchestrator livelock —
+the loop burned tokens shepherding PRs that never merged. The v4 model
+deletes that machinery (worktrees, PRs, the merge wrapper, herdr, the
+multi-stage merge gate) in favor of working the branch in place behind
+a local gate. Git history has every prior model if ever needed.
 
 ## Structure
 
@@ -239,7 +143,7 @@ bootstrap). Git history has both if ever needed.
 .claude-plugin/plugin.json        # manifest — name: flywheel (Droid auto-translates this format)
 .claude-plugin/marketplace.json   # marketplace — name: pragmatic-growth
 skills/<name>/SKILL.md            # four skills (define-goal, dispatch, loop-architect, factory-doctor)
-skills/<name>/scripts/*.py        # deterministic helpers: dispatch/pm.py + pg_safe_merge.py, factory-doctor/doctor_checks.py
+skills/<name>/scripts/*.py        # dispatch/pg_validate.py (local gate), factory-doctor/doctor_checks.py
 CHANGELOG.md                      # canonical, git-tracked version history (mirrors the site changelog)
 public/index.html                 # the public site (plugin.pragmaticgrowth.com) — self-contained, themed
 public/Logo*Black.svg             # Pragmatic Growth brand marks (icon + wordmark)
