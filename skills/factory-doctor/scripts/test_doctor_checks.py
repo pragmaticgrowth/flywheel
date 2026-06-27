@@ -10,30 +10,6 @@ def test_version_ge():
     assert not dc.version_ge("2.39.0", "2.40.0")
     assert dc.version_ge("gh version 2.62.0 (2024)", "2.40")  # tolerates prose
 
-TOKEN = "python3 /x/pg_safe_merge.py"
-def perm(allow=None, deny=None):
-    p = {}
-    if allow is not None: p["allow"] = allow
-    if deny is not None: p["deny"] = deny
-    return {"permissions": p}
-
-def test_permission_found_in_allow():
-    s = [("local", perm(allow=[f"Bash({TOKEN}:*)"]))]
-    assert dc.find_merge_permission(s, TOKEN) == ("local", None)
-
-def test_permission_absent():
-    s = [("project", perm(allow=["Bash(ls:*)"]))]
-    assert dc.find_merge_permission(s, TOKEN) == (None, None)
-
-def test_deny_beats_allow():
-    s = [("project", perm(allow=[f"Bash({TOKEN}:*)"])), ("user", perm(deny=[f"Bash({TOKEN}:*)"]))]
-    allowed, denied = dc.find_merge_permission(s, TOKEN)
-    assert denied == "user"
-
-def test_parse_gh_scopes():
-    txt = "  - Token scopes: 'repo', 'workflow', 'read:org'\n"
-    assert dc.parse_gh_scopes(txt) == ["repo", "workflow", "read:org"]
-
 def test_validate_queue_ok():
     obj = {"goals": {"001-a": {"status": "not_started"},
                      "002-b": {"status": "not_started", "depends_on": ["001-a"]}}}
@@ -49,44 +25,7 @@ def test_validate_queue_status_required():
     ok, probs = dc.validate_queue(obj)
     assert not ok and any("status" in p for p in probs)
 
-def test_safemerge_token_resolves_to_existing_wrapper():
-    # must derive from the plugin INSTALL (this script's siblings), not the target repo —
-    # and must point at a real pg_safe_merge.py so the allow-rule matches what dispatch invokes
-    tok = dc._safemerge_token()
-    assert tok.startswith("python3 "), tok
-    path = tok[len("python3 "):]
-    assert path.endswith(os.path.join("dispatch", "scripts", "pg_safe_merge.py")), path
-    assert os.path.exists(path), f"wrapper path does not exist: {path}"
-
-def test_durable_merge_path_wildcards_version():
-    # a versioned plugin-cache path → version segment wildcarded so the allow-rule survives updates
-    assert dc._durable_merge_path(
-        "/x/.claude/plugins/cache/mp/flywheel/2.8.5/skills/dispatch/scripts/pg_safe_merge.py"
-    ) == "/x/.claude/plugins/cache/mp/flywheel/*/skills/dispatch/scripts/pg_safe_merge.py"
-    # Droid plugin-cache path → same wildcarding
-    assert dc._durable_merge_path(
-        "/x/.factory/plugins/cache/mp/flywheel/2.8.5/skills/dispatch/scripts/pg_safe_merge.py"
-    ) == "/x/.factory/plugins/cache/mp/flywheel/*/skills/dispatch/scripts/pg_safe_merge.py"
-    # dev checkout / no version dir → unchanged (literal)
-    assert dc._durable_merge_path(
-        "/home/u/flywheel/skills/dispatch/scripts/pg_safe_merge.py"
-    ) == "/home/u/flywheel/skills/dispatch/scripts/pg_safe_merge.py"
-
 import tempfile, subprocess, sys, json
-def test_settings_sources_checks_both_clis():
-    # Both .claude/ and .factory/ settings should be discovered
-    with tempfile.TemporaryDirectory() as repo:
-        claude_dir = os.path.join(repo, ".claude")
-        factory_dir = os.path.join(repo, ".factory")
-        os.makedirs(claude_dir); os.makedirs(factory_dir)
-        with open(os.path.join(claude_dir, "settings.local.json"), "w") as f:
-            json.dump({"permissions": {"allow": ["Bash(ls:*)"]}}, f)
-        with open(os.path.join(factory_dir, "settings.local.json"), "w") as f:
-            json.dump({"permissions": {"allow": ["Bash(git:*)"]}}, f)
-        sources = dict(dc._settings_sources(repo))
-        assert "local" in sources and "local-droid" in sources
-        assert sources["local"].get("permissions", {}).get("allow") == ["Bash(ls:*)"]
-        assert sources["local-droid"].get("permissions", {}).get("allow") == ["Bash(git:*)"]
 def test_detect_frontend_react():
     with tempfile.TemporaryDirectory() as repo:
         with open(os.path.join(repo, "package.json"), "w") as f:
@@ -130,41 +69,6 @@ def test_goals_reference_browser_false():
             f.write("---\nid: 001\nskills: []\n---\nbody")
         assert dc.goals_reference_browser(repo) is False
 
-def test_state_branch_skip_when_equals_base():
-    assert dc.state_branch_check("main", "main", True, False) is None
-
-def test_state_branch_missing():
-    r = dc.state_branch_check("goals-state", "main", False, False)
-    assert r["name"] == "state-branch" and r["level"] == "WARN"
-    assert "missing" in r["detail"] and r["fix"].startswith("FIX:")
-
-def test_state_branch_protected():
-    r = dc.state_branch_check("goals-state", "main", True, True)
-    assert r["level"] == "BLOCKER" and "protected" in r["detail"]
-
-def test_state_branch_pushable():
-    r = dc.state_branch_check("goals-state", "main", True, False)
-    assert r["level"] == "INFO" and "pushable" in r["detail"]
-
-def test_validation_gate_skipped_under_pr():
-    assert dc.validation_gate_check("pr", "risk_based", True) is None
-
-def test_validation_gate_off_under_auto_warns():
-    r = dc.validation_gate_check("auto", "off", True)
-    assert r["check"] == "validation-gate" and r["level"] == "WARN" and "off" in r["detail"]
-
-def test_validation_gate_missing_script_warns():
-    r = dc.validation_gate_check("auto", "risk_based", False)
-    assert r["level"] == "WARN" and "pg_validate" in r["detail"]
-
-def test_validation_gate_wired_info():
-    r = dc.validation_gate_check("auto", "required", True)
-    assert r["level"] == "INFO" and "required" in r["detail"]
-
-def test_validation_gate_default_mode_treated_as_risk_based():
-    r = dc.validation_gate_check("auto", "", True)
-    assert r["level"] == "INFO" and "risk_based" in r["detail"]
-
 def test_has_checkable_done_acceptance():
     assert dc._has_checkable_done("## Acceptance criteria\n- [ ] make test passes\n") is True
 
@@ -199,13 +103,34 @@ def test_stale_claim_clean_when_branch_present():
     assert dc.stale_claim_problems({"001-a": {"status": "in_progress"}}, {"001-a": True}) == []
 
 def test_runner_emits_valid_json_and_exit_code():
-    r = subprocess.run([sys.executable, os.path.join(_here, "doctor_checks.py"), "--merge", "pr"],
+    r = subprocess.run([sys.executable, os.path.join(_here, "doctor_checks.py"), "--base", "main"],
                        capture_output=True, text=True,
                        cwd=os.path.dirname(os.path.dirname(os.path.dirname(_here))))
     assert r.returncode in (0, 1, 2), r.stderr
     payload = json.loads(r.stdout)
     assert "checks" in payload and "result" in payload
     assert all({"check", "level"} <= set(c) for c in payload["checks"])
+
+# ---- new local-gate check helpers (TDD) ----
+
+def test_verify_warns_when_absent():
+    assert dc.verify_check([], active_goals=2)["level"] == "WARN"
+
+def test_verify_info_when_present():
+    r = dc.verify_check(["npm run build", "npm test"], active_goals=2)
+    assert r["level"] == "INFO"
+
+def test_working_tree_warn_when_dirty():
+    assert dc.working_tree_check(" M file.py\n")["level"] == "WARN"
+
+def test_working_tree_info_when_clean():
+    assert dc.working_tree_check("")["level"] == "INFO"
+
+def test_working_branch_warn_when_on_base():
+    assert dc.working_branch_check("main", "main")["level"] == "WARN"
+
+def test_working_branch_info_when_off_base():
+    assert dc.working_branch_check("staging", "main")["level"] == "INFO"
 
 if __name__ == "__main__":
     fns = [g for n, g in sorted(globals().items()) if n.startswith("test_")]

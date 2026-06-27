@@ -12,30 +12,6 @@ def version_ge(have, want):
     return a >= b
 
 
-def _rule_matches(rule, token):
-    return rule in (f"Bash({token}:*)", f"Bash({token})") or rule.startswith(f"Bash({token}")
-
-
-def find_merge_permission(settings, token):
-    allowed_in = denied_in = None
-    for name, s in settings:
-        perms = (s or {}).get("permissions", {}) or {}
-        for d in perms.get("deny", []) or []:
-            if _rule_matches(d, token):
-                denied_in = name
-        for a in perms.get("allow", []) or []:
-            if _rule_matches(a, token):
-                allowed_in = name
-    return allowed_in, denied_in
-
-
-def parse_gh_scopes(auth_status_text):
-    m = re.search(r"Token scopes:\s*(.+)", auth_status_text or "")
-    if not m:
-        return []
-    return [s.strip().strip("'\"") for s in m.group(1).split(",") if s.strip()]
-
-
 def validate_queue(index_obj):
     problems = []
     goals = (index_obj or {}).get("goals") or {}
@@ -129,85 +105,8 @@ def _run(cmd):
         return 127, "", "not found"
 
 
-def _settings_sources(repo_root):
-    home = os.path.expanduser("~")
-    paths = [("project", os.path.join(repo_root, ".claude", "settings.json")),
-             ("project-droid", os.path.join(repo_root, ".factory", "settings.json")),
-             ("local", os.path.join(repo_root, ".claude", "settings.local.json")),
-             ("local-droid", os.path.join(repo_root, ".factory", "settings.local.json")),
-             ("user", os.path.join(home, ".claude", "settings.json")),
-             ("user-droid", os.path.join(home, ".factory", "settings.json"))]
-    out = []
-    for name, p in paths:
-        try:
-            out.append((name, json.load(open(p))))
-        except (FileNotFoundError, ValueError):
-            out.append((name, {}))
-    return out
-
-
-def _durable_merge_path(p):
-    # A plugin-cache install lives at .../flywheel/<version>/skills/...; the version dir
-    # changes on every update, which would break a literal allow-rule (and re-block merges
-    # until re-granted). Wildcard ONLY the version segment so the rule survives updates —
-    # mid-path `*` matches across `/` in Bash permission rules. Dev checkouts / the
-    # marketplace clone have no version dir, so they stay literal.
-    return re.sub(r"(/flywheel/)[^/]+(/skills/)", r"\1*\2", p)
-
-
-def _safemerge_token():
-    # Derive the wrapper from THIS script's own location — the plugin install that dispatch
-    # also resolves via $CLAUDE_PLUGIN_ROOT (Claude Code) or $DROID_PLUGIN_ROOT (Droid; the
-    # former is set as an alias for the latter). NEVER repo-relative: a target repo has no
-    # skills/ dir, so repo_root/skills/... is a non-existent path that wouldn't match the
-    # path dispatch actually invokes, leaving the allow-rule useless.
-    here = os.path.dirname(os.path.realpath(__file__))
-    p = os.path.realpath(os.path.join(here, "..", "..", "dispatch", "scripts", "pg_safe_merge.py"))
-    return f"python3 {_durable_merge_path(p)}"
-
-
-def state_branch_check(state_branch, base, exists, protected):
-    if state_branch == base:
-        return None  # default path: queue lives on base, covered by the base-push check
-    if not exists:
-        return {"name": "state-branch", "level": "WARN",
-                "detail": f"state branch {state_branch!r} is missing (does not exist on origin)",
-                "fix": f"FIX: git branch {state_branch} origin/{base} && git push origin {state_branch}  (or run /factory-doctor)"}
-    if protected:
-        return {"name": "state-branch", "level": "BLOCKER",
-                "detail": f"state branch {state_branch!r} is protected — claims can't push to it",
-                "fix": f"unprotect {state_branch} on GitHub, or set config.state_branch to a different unprotected branch"}
-    return {"name": "state-branch", "level": "INFO",
-            "detail": f"state branch {state_branch!r} exists and is pushable (not protected)"}
-
-
-def _pgvalidate_path():
-    # The deterministic gate dispatch runs under merge: auto — derived from THIS script's
-    # install (same fallback chain as $SAFEMERGE), never repo-relative.
-    here = os.path.dirname(os.path.realpath(__file__))
-    return os.path.realpath(os.path.join(here, "..", "..", "dispatch", "scripts", "pg_validate.py"))
-
-
-def validation_gate_check(merge, validation, pgvalidate_present):
-    # Under merge: auto, confirm the deterministic gate is actually wired: pg_validate.py
-    # resolvable AND config.validation not off. Read-only; never changes the mode.
-    if merge != "auto":
-        return None
-    if not pgvalidate_present:
-        return {"check": "validation-gate", "level": "WARN",
-                "detail": "pg_validate.py not resolvable from the plugin install — the deterministic gate can't run",
-                "fix": "refresh the flywheel marketplace so pg_validate.py is present"}
-    mode = validation or "risk_based"
-    if mode == "off":
-        return {"check": "validation-gate", "level": "WARN",
-                "detail": "config.validation: off under merge: auto — no deterministic gate runs before merge",
-                "fix": "set config.validation: risk_based (or required) in docs/goals/index.yaml"}
-    return {"check": "validation-gate", "level": "INFO",
-            "detail": f"deterministic gate wired (validation: {mode})"}
-
-
 def stale_claim_problems(goals, branch_exists):
-    # in_progress goals with no goal/<id> branch on origin and no recorded PR are stale
+    # in_progress goals with no goal/<id> branch locally and no recorded PR are stale
     # claims / silent-death candidates the next dispatch fire must respawn or unblock.
     out = []
     for gid, entry in (goals or {}).items():
@@ -217,7 +116,7 @@ def stale_claim_problems(goals, branch_exists):
         if entry.get("pr"):
             continue
         if not branch_exists.get(gid):
-            out.append(f"{gid}: in_progress but no goal/{gid} branch on origin and no pr — stale claim / silent-death candidate")
+            out.append(f"{gid}: in_progress but no goal/{gid} branch locally and no pr — stale claim / silent-death candidate")
     return out
 
 
@@ -244,7 +143,36 @@ def goal_contract_problems(goals):
             if g.get("status") in ("not_started", "in_progress") and not g.get("checkable")]
 
 
-def run_checks(base, merge, execution, state_branch="", validation=""):
+# ---- new local-gate check helpers ----
+
+def verify_check(verify_cmds, active_goals):
+    if not verify_cmds:
+        if active_goals:
+            return {"check": "verify", "level": "WARN",
+                    "detail": "no config.verify commands — the loop has no local gate",
+                    "fix": "add verify: [<build cmd>, <test cmd>] to docs/goals/index.yaml config"}
+        return {"check": "verify", "level": "INFO", "detail": "no config.verify (no active goals)", "fix": ""}
+    return {"check": "verify", "level": "INFO",
+            "detail": f"verify: {len(verify_cmds)} command(s) configured", "fix": ""}
+
+
+def working_tree_check(porcelain):
+    if porcelain.strip():
+        return {"check": "working-tree", "level": "WARN",
+                "detail": "uncommitted changes present",
+                "fix": "commit or stash before dispatch — goals commit onto the current branch"}
+    return {"check": "working-tree", "level": "INFO", "detail": "working tree clean", "fix": ""}
+
+
+def working_branch_check(current, base):
+    if current and current == base:
+        return {"check": "working-branch", "level": "WARN",
+                "detail": f"on base branch '{base}' — verify this is your intended working branch",
+                "fix": "checkout your working branch (e.g. staging) if base should stay clean"}
+    return {"check": "working-branch", "level": "INFO", "detail": f"on '{current or 'detached'}'", "fix": ""}
+
+
+def run_checks(base):
     C = []
 
     def add(check, level, detail, fix=""):
@@ -253,83 +181,38 @@ def run_checks(base, merge, execution, state_branch="", validation=""):
     rc, out, _ = _run(["git", "rev-parse", "--show-toplevel"])
     repo_root = out.strip() if rc == 0 else os.getcwd()
 
+    # working-tree check (before everything else — dirty tree is important to flag early)
+    _, porcelain, _ = _run(["git", "status", "--porcelain"])
+    wt = working_tree_check(porcelain or "")
+    C.append(wt)
+
+    # working-branch check
+    _, head_ref, _ = _run(["git", "symbolic-ref", "--short", "HEAD"])
+    wb = working_branch_check((head_ref or "").strip(), base)
+    C.append(wb)
+
     # software
     rc, out, _ = _run(["gh", "--version"])
-    if rc != 0:
-        add("gh", "BLOCKER", "gh CLI not found", "install GitHub CLI (https://cli.github.com)")
-    elif not version_ge(out, "2.40"):
-        add("gh", "WARN", f"gh too old: {out.splitlines()[0]}", "upgrade gh >= 2.40")
-    else:
-        add("gh", "INFO", out.splitlines()[0])
+    add("gh", "INFO", out.splitlines()[0] if rc == 0 and out.strip() else "gh not found or old")
+
     rc, out, _ = _run(["git", "--version"])
     add("git", "INFO" if rc == 0 and version_ge(out, "2.20") else "BLOCKER", out.strip() or "git missing")
+
     add("python3", "INFO", sys.version.split()[0])
     if yaml is None:
         add("pyyaml", "BLOCKER", "pyyaml not importable (dispatch + this probe parse the queue with it)",
             "FIX: python3 -m pip install --user pyyaml  (if PEP-668 externally-managed, add --break-system-packages — still user-scope)")
 
-    # auth
+    # auth (INFO-only)
     rc, out, err = _run(["gh", "auth", "status"])
-    if rc != 0:
-        add("gh-auth", "BLOCKER", "not authenticated", "gh auth login -h github.com")
-    else:
-        scopes = parse_gh_scopes(out + err)
-        miss = [s for s in ["repo"] if s not in scopes]
-        add("gh-auth", "BLOCKER" if miss else "INFO",
-            f"scopes: {', '.join(scopes) or 'unknown'}",
-            (f"gh auth refresh -h github.com -s repo" if miss else ""))
+    add("gh-auth", "INFO",
+        "authenticated" if rc == 0 else "not authenticated — gh features unavailable",
+        "" if rc == 0 else "gh auth login -h github.com")
 
-    # permissions (only relevant for merge: auto)
-    if merge == "auto":
-        token = _safemerge_token()
-        allowed_in, denied_in = find_merge_permission(_settings_sources(repo_root), token)
-        if denied_in:
-            add("merge-permission", "BLOCKER", f"a deny rule in {denied_in} blocks the merge wrapper",
-                f"remove the Bash({token}:*) deny in .claude/settings*.json or .factory/settings*.json")
-        elif allowed_in:
-            add("merge-permission", "INFO", f"allow-rule present in {allowed_in}")
-        else:
-            add("merge-permission", "BLOCKER", "no allow-rule for the merge wrapper",
-                f"FIX: add Bash({token}:*) to .claude/settings.local.json (Claude Code) or .factory/settings.local.json (Droid)")
-    else:
-        add("merge-permission", "INFO", "merge: pr — orchestrator never merges; no rule needed")
-
-    # branch protection
-    rc, out, _ = _run(["gh", "api", f"repos/{{owner}}/{{repo}}/branches/{base}/protection"])
-    if rc == 0:
-        try:
-            prot = json.loads(out or "{}")
-        except ValueError:
-            prot = {}
-        if prot.get("required_pull_request_reviews"):
-            add("branch-protection", "BLOCKER" if merge == "auto" else "WARN",
-                f"{base} requires PR reviews",
-                "merge: auto can't merge; set merge: pr or relax the rule")
-        add("base-push", "BLOCKER",
-            f"{base} is protected — the claim protocol can't push to it",
-            "set config.base to a state branch, or run a single dispatcher")
-    else:
-        add("base-push", "INFO", f"{base} not protected/unreadable (claim protocol can push)")
-
-    # state branch (only when config sets a branch != base)
-    if state_branch and state_branch != base:
-        rc1, lsout, _ = _run(["git", "ls-remote", "--heads", "origin", state_branch])
-        exists = bool([l for l in (lsout or "").splitlines() if state_branch in l])
-        rc2, _, _ = _run(["gh", "api", f"repos/{{owner}}/{{repo}}/branches/{state_branch}/protection"])
-        chk = state_branch_check(state_branch, base, exists, rc2 == 0)  # rc 0 => HTTP 200 => protected
-        if chk:
-            # helper returns {"name": ...} (its stable shape); normalize to the row schema
-            # ("check") the rest of run_checks emits so consumers/the runner test see one shape
-            C.append({"check": chk["name"], "level": chk["level"],
-                      "detail": chk["detail"], "fix": chk.get("fix", "")})
-
-    # CI
+    # CI (INFO-only)
     wf = os.path.join(repo_root, ".github", "workflows")
     has_wf = os.path.isdir(wf) and any(f.endswith((".yml", ".yaml")) for f in os.listdir(wf))
-    if not has_wf and merge == "auto":
-        add("ci", "WARN", "no CI workflow found", "merge: auto has no automated gate; prefer merge: pr")
-    else:
-        add("ci", "INFO", "CI workflow present" if has_wf else "no CI (merge: pr ok)")
+    add("ci", "INFO", "CI workflow present" if has_wf else "no CI workflow found")
 
     # browser verification (only when frontend/UI work is present)
     if detect_frontend(repo_root) or goals_reference_browser(repo_root):
@@ -347,14 +230,11 @@ def run_checks(base, merge, execution, state_branch="", validation=""):
     else:
         add("browser-verify", "INFO", "no frontend/UI work detected; browser verification not required")
 
-    # validation gate (merge: auto only) — confirm the deterministic gate is actually wired
-    vg = validation_gate_check(merge, validation, os.path.exists(_pgvalidate_path()))
-    if vg:
-        add(vg["check"], vg["level"], vg["detail"], vg.get("fix", ""))
-
     # queue
     idx = os.path.join(repo_root, "docs", "goals", "index.yaml")
     goals_dir = os.path.join(repo_root, "docs", "goals")
+    active_goals = 0
+    verify_cmds = []
     if not os.path.exists(idx):
         add("queue", "WARN", "no docs/goals/index.yaml", "FIX: scaffold a default index.yaml")
     elif yaml is not None:
@@ -364,11 +244,15 @@ def run_checks(base, merge, execution, state_branch="", validation=""):
             add("queue", "INFO" if ok else "WARN",
                 "queue valid" if ok else "; ".join(probs), "" if ok else "report drift")
             goals = index_obj.get("goals") or {}
-            # queue liveness: in_progress claims with no live branch/PR = silent-death candidate
+            config = index_obj.get("config") or {}
+            verify_cmds = config.get("verify") or []
+            active_goals = sum(1 for e in goals.values()
+                               if (e or {}).get("status") in ("not_started", "in_progress"))
+            # queue liveness: in_progress claims with no local goal/<id> branch and no PR
             branch_exists = {}
             for gid, e in goals.items():
                 if (e or {}).get("status") == "in_progress":
-                    _, ls, _ = _run(["git", "ls-remote", "--heads", "origin", f"goal/{gid}"])
+                    _, ls, _ = _run(["git", "branch", "--list", f"goal/{gid}"])
                     branch_exists[gid] = bool((ls or "").strip())
             stale = stale_claim_problems(goals, branch_exists)
             add("queue-liveness", "WARN" if stale else "INFO",
@@ -392,11 +276,9 @@ def run_checks(base, merge, execution, state_branch="", validation=""):
         except yaml.YAMLError as e:
             add("queue", "BLOCKER", f"index.yaml parse error: {e}")
 
-    # herdr
-    if execution == "herdr":
-        rc, out, _ = _run(["herdr", "--version"])
-        add("herdr", "INFO" if rc == 0 else "WARN",
-            out.strip() if rc == 0 else "herdr not found — dispatch degrades to native")
+    # verify check (local gate) — needs active_goals + verify_cmds from queue parse above
+    vc = verify_check(verify_cmds, active_goals)
+    C.append(vc)
 
     levels = {c["level"] for c in C}
     result = "BLOCKER" if "BLOCKER" in levels else "WARN" if "WARN" in levels else "READY"
@@ -405,12 +287,14 @@ def run_checks(base, merge, execution, state_branch="", validation=""):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="doctor_checks.py")
-    ap.add_argument("--base", default="main"); ap.add_argument("--merge", default="pr")
-    ap.add_argument("--execution", default="native")
-    ap.add_argument("--state-branch", default="")
-    ap.add_argument("--validation", default="")
+    ap.add_argument("--base", default="main")
+    ap.add_argument("--self-test", action="store_true", help="run the test suite and exit")
     a = ap.parse_args(argv)
-    checks, result = run_checks(a.base, a.merge, a.execution, a.state_branch, a.validation)
+    if a.self_test:
+        test_file = os.path.join(os.path.dirname(__file__), "test_doctor_checks.py")
+        rc = subprocess.run([sys.executable, "-m", "pytest", test_file, "-v"]).returncode
+        return rc
+    checks, result = run_checks(a.base)
     print(json.dumps({"checks": checks, "result": result}, indent=2))
     return {"READY": 0, "WARN": 1, "BLOCKER": 2}[result]
 
