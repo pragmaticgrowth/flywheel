@@ -225,37 +225,6 @@
   .tab.active{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
   .tab-pane{display:none}.tab-pane.active{display:block}
 
-  /* ---------- changelog ---------- */
-  .timeline{position:relative;padding-left:30px}
-  .timeline::before{content:"";position:absolute;left:7px;top:8px;bottom:8px;width:2px;background:var(--border)}
-  .rel{position:relative;margin-bottom:14px}
-  .rel::before{content:"";position:absolute;left:-30px;top:9px;width:16px;height:16px;border-radius:50%;background:var(--surface);
-    border:3px solid var(--a1);box-shadow:0 0 0 4px var(--bg)}
-  html[data-theme="dark"] .rel::before{border-color:var(--a3)}
-  .rel.latest::before{background:var(--grad);border-color:transparent}
-  .rel-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:0;box-shadow:var(--shadow);overflow:hidden}
-  .rel-sum{display:flex;align-items:center;gap:13px;padding:16px 19px;cursor:pointer;list-style:none}
-  .rel-sum::-webkit-details-marker{display:none}
-  .rel-v{font:700 .92rem var(--mono);color:var(--ink)}
-  .tag{font:600 .68rem var(--sans);padding:3px 8px;border-radius:999px;letter-spacing:.02em}
-  .tag.now{background:var(--grad);color:#fff}
-  .tag.date{background:var(--surface-2);color:var(--muted);font-family:var(--mono);font-weight:600}
-  .rel-title{font-weight:600;font-size:.96rem;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .rel-sha{font:600 .74rem var(--mono);color:var(--faint)}
-  .rel-sha:hover{color:var(--a1)}
-  .chev{width:16px;height:16px;color:var(--faint);transition:.2s;flex:none}
-  details[open] .chev{transform:rotate(180deg)}
-  .rel-body{padding:2px 19px 18px 19px;border-top:1px solid var(--border)}
-  .rel-body ul{margin:14px 0 0;padding-left:18px;display:grid;gap:7px}
-  .rel-body li{color:var(--muted);font-size:.9rem}
-  .rel-body li b,.rel-body li code{color:var(--ink)}
-  .rel-body code{font:600 .82rem var(--mono);color:var(--a1)}
-  html[data-theme="dark"] .rel-body code{color:var(--a3)}
-  .cl-more{margin-top:18px;font-size:.92rem;color:var(--muted)}
-  .cl-more a{color:var(--a1);font-weight:600}
-  html[data-theme="dark"] .cl-more a{color:var(--a3)}
-  @media(max-width:620px){.rel-title{white-space:normal}.rel-sha{display:none}.rel-sum{flex-wrap:wrap}}
-
   /* ---------- footer (very simple) ---------- */
   footer{border-top:1px solid var(--border);padding:28px 0;margin-top:44px}
   .foot{display:flex;align-items:center;gap:16px 22px;flex-wrap:wrap}
@@ -283,7 +252,6 @@
       <a href="#skills">Skills</a>
       <a href="#queue">The queue</a>
       <a href="#install">Install</a>
-      <a href="#changelog">Changelog</a>
     </nav>
     <div class="nav-actions">
       <span class="ver-pill" title="Current released version">v4.0.0</span>
@@ -518,34 +486,6 @@ droid plugin install flywheel@pragmatic-growth</pre>
   </div>
 </section>
 
-<!-- ===================== CHANGELOG ===================== -->
-<section id="changelog">
-  <div class="wrap">
-    <div class="sec-head reveal">
-      <span class="eyebrow">What's new</span>
-      <h2>Changelog.</h2>
-      <p>The latest release. The full, version-by-version history lives in <code>CHANGELOG.md</code> and on the GitHub Releases page.</p>
-    </div>
-    <div class="timeline reveal">
-
-      <details class="rel latest" data-family="4.0" open>
-        <summary class="rel-sum"><span class="rel-v">v4.0.0</span><span class="tag now">Latest</span><span class="tag date">2026-06-27</span><span class="rel-title">Sequential, local-gated, no-PR factory</span><a class="rel-sha" href="COMMIT_PLACEHOLDER" target="_blank" rel="noopener">latest</a><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></summary>
-        <div class="rel-body"><ul>
-          <li><b>dispatch now drains the queue sequentially in one session, on the currently-checked-out branch.</b> No PRs, no worktrees, no <code>goal/&lt;id&gt;</code> branches, no parallel/wip, no herdr, no merge wrapper.</li>
-          <li><b>Direct-to-branch commits.</b> A foreground implementer works each goal in turn and commits straight to the branch; the orchestrator keeps a squashed <code>feat(goal NNN)</code> commit only when the gate passes.</li>
-          <li><b>Local build+test gate.</b> <code>pg_validate.py</code> runs on the local <code>gate_base..HEAD</code> diff plus the repo's <code>verify</code> commands; PASS keeps the commit, FAIL rolls it back. CI becomes a non-blocking post-push observation.</li>
-          <li><b>Removed</b> <code>pg_safe_merge.py</code>, <code>pm.py</code>, and the herdr-mode reference — the PR/worktree/parallel substrate is gone.</li>
-          <li><b>factory-doctor</b> drops the PR / CI / merge-allow-rule checks and adds <code>verify</code>, working-tree, and working-branch checks.</li>
-          <li><b>Config slimmed</b> to <code>base</code>, <code>model</code>, <code>skills</code>, <code>verify</code>, and <code>budget</code>.</li>
-        </ul></div>
-      </details>
-
-      <div class="cl-more">Older versions (3.x and earlier) — see the full <a href="https://github.com/pragmaticgrowth/flywheel/blob/main/CHANGELOG.md" target="_blank" rel="noopener">CHANGELOG.md</a> and <a href="https://github.com/pragmaticgrowth/flywheel/releases" target="_blank" rel="noopener">GitHub Releases</a>.</div>
-
-    </div>
-  </div>
-</section>
-
 <!-- ===================== FOOTER ===================== -->
 <footer>
   <div class="wrap foot">
@@ -558,7 +498,6 @@ droid plugin install flywheel@pragmatic-growth</pre>
     <nav class="foot-links">
       <a href="https://github.com/pragmaticgrowth/flywheel" target="_blank" rel="noopener">GitHub</a>
       <a href="https://github.com/pragmaticgrowth/flywheel/blob/main/README.md" target="_blank" rel="noopener">README</a>
-      <a href="#changelog">Changelog</a>
       <a href="https://pragmaticgrowth.com" target="_blank" rel="noopener">Pragmatic Growth</a>
       <span class="foot-copy">© Pragmatic Growth · MIT</span>
     </nav>
