@@ -5,7 +5,7 @@ A skills-only plugin for [Claude Code](https://claude.com/claude-code) and
 [Droid](https://factory.ai) (Factory CLI), from Pragmatic Growth.
 
 [![Website](https://img.shields.io/badge/site-plugin.pragmaticgrowth.com-6366f1)](https://plugin.pragmaticgrowth.com)
-[![Version](https://img.shields.io/badge/version-3.0.1-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-4.0.0-8b5cf6)](CHANGELOG.md)
 [![CLIs](https://img.shields.io/badge/runs%20in-Claude%20Code%20%2B%20Droid-0ea66e)](#works-in-both-clis)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
@@ -44,7 +44,7 @@ merge surface; the queue is just the to-do list, and it travels with the repo.
 | Skill | One line | Invoke with |
 |---|---|---|
 | **define-goal** | Plain-language want → a measurable goal contract (or a whole document of them). Never writes code. | `/define-goal …` · or just say *“I want…”* |
-| **dispatch** | The factory orchestrator: claims goals, spawns one isolated implementer per goal, integrates verified merges. | `/dispatch` · `/loop 15m /dispatch` · *“work goal 005”* |
+| **dispatch** | The factory orchestrator: drains the docs/goals queue sequentially in one session — claim, implement, local gate, keep or roll back. | `/dispatch` · *”work goal 005”* |
 | **loop-architect** | Designs the *loop contract* (prompt + verification + stop conditions) for autonomous, scheduled, or remote runs. | *“keep working on X”* · setting up a `/loop`, routine, or cron |
 | **factory-doctor** | One-pass preflight/doctor for the repo + machine. Auto-fixes everything local; reports the rest with exact fixes. | `/factory-doctor` |
 
@@ -79,21 +79,24 @@ document, and it produces **goal contracts** — never implementation.
 
 ### dispatch — work the queue
 
-The orchestrator. It never writes code in its own context — it **shepherds**.
-Every time it runs, one idempotent iteration:
+The orchestrator. It drains the `docs/goals/` queue **sequentially** in a
+single session on the currently checked-out branch — no PRs, no worktrees, no
+parallel runners.
 
-1. Pushes any in-flight factory PRs forward (review → ready).
-2. Claims up to `wip` ready goals from the queue (claiming is a loop, so it
-   fills capacity every iteration, not one goal per run).
-3. Spawns **one isolated implementer agent per goal**, each in its own
-   `goal/<id>` worktree branched fresh from `origin/<base>`.
-4. Under `merge: auto`, runs a deterministic gate on a fresh checkout and
-   integrates verified merges — one goal at a time.
+Per goal:
 
-It’s built to run on a timer — `/loop 15m /dispatch` (Claude Code) or a
-`CronCreate` every 15 minutes (Droid) — and **parallel sessions are safe**
-because every status write goes through the claim protocol. You can also run it
-**solo** on one goal in an interactive session: *“work goal 005.”*
+1. **Claim** the next `not_started` goal (pull → flip → commit → push on the
+   queue’s branch).
+2. **Implement** — a foreground implementer commits work directly on `<base>`.
+3. **Local gate** — `pg_validate.py` runs the repo’s `config.verify` commands
+   (build + tests) against the local diff.  
+   - **PASS** → the implementer’s commits are squashed into one
+     `feat(goal NNN)` commit kept on the branch.  
+   - **FAIL** → work is rolled back; the goal is marked `blocked`.
+4. **Repeat** until the queue is empty or `config.budget` is exhausted.
+
+CI, if present, is a post-push observation — not a gate.  You can also target a
+single goal in an interactive session: *”work goal 005.”*
 
 ### loop-architect — make it run itself, safely
 
@@ -122,12 +125,12 @@ goals or merges PRs.
 flowchart TD
     you(["You — plain language"]) --> dg["define-goal<br/>writes measurable contracts"]
     dg -->|queues| q[("docs/goals/ queue<br/>index.yaml + goal files")]
-    q -->|claims ready goals| dsp{{"dispatch · orchestrator"}}
-    dsp -->|"spawns one isolated<br/>implementer per goal"| impl["goal/NNN worktree<br/>build · test"]
-    impl -->|"opens PR → base"| gate{"deterministic<br/>merge gate"}
-    gate -->|PASS| merge[["merge to base<br/>(pr / auto)"]]
-    gate -->|FAIL| blocked["blocked → needs-you"]
-    merge -.->|next ready goal| q
+    q -->|claim next goal| dsp{{"dispatch · orchestrator"}}
+    dsp -->|foreground implementer<br/>commits on branch| impl["work commits<br/>on &lt;base&gt;"]
+    impl --> gate{"local gate<br/>pg_validate.py<br/>build + test"}
+    gate -->|PASS| squash[["squash → feat(goal NNN)<br/>kept on &lt;base&gt;"]]
+    gate -->|FAIL| rollback["roll back → blocked"]
+    squash -.->|next ready goal| q
     fd["factory-doctor<br/>preflight + fixes setup"] -.->|readies| dsp
     la["loop-architect<br/>designs the loop"] -.->|keeps it running| dsp
     classDef brand fill:#059669,stroke:#047857,color:#ffffff;
@@ -136,12 +139,12 @@ flowchart TD
     classDef human fill:#0f172a,stroke:#0f172a,color:#ffffff;
     classDef support fill:#f1f5f9,stroke:#cbd5e1,color:#334155;
     classDef warn fill:#fee2e2,stroke:#e11d48,color:#9f1239;
-    class dg,dsp,merge brand
+    class dg,dsp,squash brand
     class q store
     class impl,gate neutral
     class you human
     class fd,la support
-    class blocked warn
+    class rollback warn
 ```
 
 The intended flow: **capture** wants with define-goal → **work** the queue with
@@ -192,14 +195,13 @@ The `type:` shapes the contract: **bugs** must lead with a failing test that
 reproduces the root cause; **features** must fill in *Out of scope*; **chores**
 must prove no behavior change (suite green before and after).
 
-### The claim protocol (why parallel sessions are safe)
+### The claim protocol
 
 Every status write is **pull → flip one entry → commit → push** on the queue’s
 branch. Git’s push acceptance is the arbiter: if two sessions claim the same
 goal at once, one push wins and the other retries. The same mechanism handles
-goal-number minting. Implementer agents work in isolated worktrees branched
-from `origin/<base>` and **never touch `docs/goals/` at all** — only the
-orchestrator does.
+goal-number minting. Implementer agents work directly on `<base>` and
+**never touch `docs/goals/` at all** — only the orchestrator does.
 
 ---
 
@@ -210,35 +212,25 @@ panel. Everything has a sensible default — an unconfigured repo just works.
 
 ```yaml
 config:
-  base: main              # integration branch goals fork from / merge back to
-  state_branch: main      # branch holding the queue (default = base)
-  merge: pr               # pr = a human merges · auto = the factory merges
-  wip: 2                  # how many goals run in parallel
+  base: main              # branch dispatch works on and commits to
   model: inherit          # inherit | sonnet | haiku (for spawned code agents)
-  validation: risk_based  # off | risk_based | required (auto-merge gate)
   # --- optional ---
   skills: []              # skills every implementer must invoke
-  execution: native       # native | herdr (spawn substrate)
-  autonomy: balanced      # conservative | balanced | bold
+  verify:                 # ordered local build + test gate (run before keeping a commit)
+    - pnpm build
+    - pnpm test
   budget:                 # external "burnstop" for long unattended runs
     max_spawns_per_session: 40
     max_iterations: 200
-  llm_validation: off     # add an adversarial LLM validator on top of the gate
 ```
 
 | Key | Default | What it does |
 |---|---|---|
-| `base` | repo default branch | The branch goals branch from and merge back to. Per-goal `base:` override allowed. |
-| `state_branch` | `= base` | Where the queue lives. Set to a separate unprotected branch when `base` is protected. |
-| `merge` | `pr` | `pr` = the factory opens PRs and a human merges. `auto` = the factory re-verifies and merges back itself. |
-| `wip` | `2` | Parallelism cap — how many implementers run at once. |
+| `base` | repo default branch | The branch dispatch works on — implementers commit here directly. Per-goal `base:` override allowed. |
 | `model` | `inherit` | Model for spawned **code** agents (`inherit`/`sonnet`/`haiku`). The depth-vs-quota trade. (Recon always runs on sonnet.) |
-| `validation` | `risk_based` | The deterministic auto-merge gate: `off`, `risk_based` (bugs/features + risky chores), or `required` (everything). |
 | `skills` | — | Repo-wide skills every implementer must use (e.g. your TDD or review skills). |
-| `execution` | `native` | `native` = in-process (fully portable). `herdr` = each implementer is a fresh `claude` in its own worktree pane (opt-in, still maturing). |
-| `autonomy` | `balanced` | How aggressively herdr mode auto-answers blocked implementers. |
-| `budget` | none | `max_spawns_per_session` / `max_iterations` ceilings the loop can’t exceed — the external brake on a multi-day run. |
-| `llm_validation` | `off` | Adds one read-only adversarial LLM validator **after** the deterministic gate passes (costs tokens). |
+| `verify` | — | Ordered list of local build + test commands. Run by `pg_validate.py` after each implementation; PASS keeps the squash commit, FAIL rolls it back. |
+| `budget` | none | `max_spawns_per_session` / `max_iterations` ceilings the session can’t exceed — the external brake on a long run. |
 
 ---
 
@@ -266,53 +258,43 @@ Code) or `droid plugin marketplace update pragmatic-growth` (Droid).
 ```bash
 /factory-doctor                              # 1. make sure the repo + machine are ready
 /define-goal I want the API p95 latency under 200ms   # 2. capture a want → queued contract
-/dispatch                                    # 3. work the queue once...
-/loop 15m /dispatch                          #    ...or keep working it, unattended
+/dispatch                                    # 3. work the queue — drains it in one session
 ```
 
 That’s the whole arc: preflight, capture, work. Add more goals any time —
-define-goal just appends to the queue, and dispatch picks them up on its next
-iteration.
+define-goal appends to the queue, and `/dispatch` (or `/loop /dispatch`) picks
+them up. Set `config.budget` in `index.yaml` before long unattended runs.
 
 ---
 
-## Merge modes & validation
+## The local gate
 
-Under **`merge: pr`** (the default), the factory opens a PR per goal and a
-human reviews and merges. Safe and familiar.
+After each implementation, `pg_validate.py` runs the repo’s `config.verify`
+commands (build + tests) against the local `gate_base..HEAD` diff:
 
-Under **`merge: auto`**, the orchestrator integrates merges itself — but never
-blindly. Before each merge it runs a **deterministic gate** (`pg_validate.py`)
-on a *fresh detached checkout*:
+- All `verify` commands must exit 0.
+- A secret / forbidden-content scan.
 
-- one-goal integrity (the PR does only its goal),
-- **bug repro-direction** (the acceptance suite is red on base, green on head),
-- fresh-checkout acceptance-green,
-- blast-radius check,
-- a secret / forbidden-content scan.
-
-It emits a SHA-bound verdict — `PASS`, `FAIL_FIXABLE`, `FAIL_CONTRACT`, or
-`INCONCLUSIVE` — and only the orchestrator merges; the validator never does. A
-deterministic FAIL always wins. With `llm_validation: on`, a single read-only
-adversarial LLM validator runs *after* the gate passes, fed only the contract +
-raw diff + checkout (never the worker’s own narrative), and must earn its PASS
-with replayable evidence.
+It emits a verdict — **PASS** or **FAIL** — and the orchestrator acts on it:
+PASS squashes the implementer’s commits into one `feat(goal NNN)` commit kept
+on the branch; FAIL rolls the work back and marks the goal `blocked`. CI,
+if configured, runs after the push as a non-blocking observation.
 
 ---
 
 ## Running it autonomously
 
-dispatch is designed for the loop. Each iteration is idempotent and reports
-**progress-first**: `6/8 done ████████████████░░░░ · running 2 · blocked 0`.
+`/dispatch` drains the whole queue in one session — just run it. Each goal is
+handled in turn and the session reports **progress-first**:
+`6/8 done ████████████████░░░░ · ready 0 · blocked 2`.
 
-- **Claude Code:** `/loop 15m /dispatch`
-- **Droid:** a `CronCreate` same-session job every 15 minutes
-
-For long unattended runs, set `config.budget` — an external ceiling the loop
-**cannot edit itself**, so a flaky queue can’t burn indefinitely. When the
-budget is hit (or the queue drains), dispatch stops claiming, lets in-flight
-work finish, and surfaces the reason for you. Let **loop-architect** design the
-loop contract (verification + stop conditions) rather than firing a bare prompt.
+If you add more goals later and want to keep working them without re-running
+manually, `/loop /dispatch` keeps firing dispatch after each batch. Use
+`config.budget` as the burnstop — an external ceiling the loop **cannot edit
+itself**, so a flaky queue can’t burn indefinitely. When the budget is hit (or
+the queue drains), dispatch stops and surfaces the reason. Let **loop-architect**
+design the loop contract (verification + stop conditions) rather than firing a
+bare prompt.
 
 ---
 
@@ -353,8 +335,8 @@ flywheel/
 │   ├── define-goal/SKILL.md
 │   ├── dispatch/
 │   │   ├── SKILL.md
-│   │   ├── references/herdr-mode.md   # config.execution: herdr contract
-│   │   └── scripts/                   # vendored herdr ops kit (pm.py, MIT) + pg_safe_merge.py
+│   │   └── scripts/
+│   │       └── pg_validate.py         # local gate: runs config.verify, PASS/FAIL verdict
 │   ├── factory-doctor/
 │   │   ├── SKILL.md
 │   │   └── scripts/doctor_checks.py   # read-only readiness probe
