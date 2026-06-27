@@ -1,5 +1,5 @@
-"""Deterministic PR validation gate for flywheel (Phase 1, no LLM).
-Dispatch Integration runs this on a fresh checkout BEFORE pg_safe_merge.
+"""Deterministic LOCAL validation gate for flywheel — no PRs, no network, no LLM.
+dispatch runs this on the goal's <base>..<head> local diff before keeping its commit.
 Emits a SHA-bound {PASS|FAIL_FIXABLE|FAIL_CONTRACT|INCONCLUSIVE} verdict.
 Never edits, pushes, or merges — read-only + runs the goal's own commands."""
 
