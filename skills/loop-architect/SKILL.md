@@ -40,7 +40,7 @@ all four are cheaper to prevent in a bounded loop than to detect in an open one.
 | Work until a verifiable end state is true | `/goal` (Haiku evaluator checks after every turn) | `droid exec --auto high "<condition>"` (agent self-verifies) or interactive paste |
 | Poll/babysit on a cadence while a session is open | `/loop <interval> <skill-or-prompt>` | `CronCreate` with `same_session: true`, `recurring: true` |
 | Recurring default maintenance for this repo | bare `/loop` + a `.claude/loop.md` | `CronCreate` same_session with the loop body as the job prompt (no loop.md equivalent) |
-| A backlog of shippable changes worked unattended | docs/goals queue — fill with `define-goal`, work with `/loop 15m /dispatch` | docs/goals queue — fill with `define-goal`, work with `CronCreate` same_session every 15m running `/dispatch` |
+| A backlog of shippable changes worked unattended | docs/goals queue — fill with `define-goal`, work with `/dispatch` (sequential single-session drain; re-run, or `/loop` only to pick up later-added goals) | docs/goals queue — fill with `define-goal`, work with `/dispatch` (sequential single-session drain; use `CronCreate` same_session only to pick up later-added goals) |
 | Must run with the laptop closed | Routine (`/schedule`; cloud; schedule / API / GitHub triggers) | `CreateAutomation` (cloud; runs on a Droid Computer) or `CronCreate` with `new_session` |
 | Needs local files, machine on, no session open | Desktop scheduled task | `CronCreate` with `new_session` (starts a fresh local session) |
 | React to external events (CI, chat) instead of polling | Channels (`--channels`) or Routine API trigger | Slack integration + `CronCreate` new_session; or `CreateAutomation` with event triggers |
@@ -131,16 +131,8 @@ access to the minimum the routine needs.
 - **State file**: a markdown/board/ledger outside the conversation records done/next/blocked
   so the next run resumes instead of restarting. Name the file in the prompt. For factory
   work, the canonical ledger is the `docs/goals/index.yaml` queue (created by `define-goal`,
-  worked by `/loop 15m /dispatch` in Claude Code or `CronCreate` same_session every 15m in
-  Droid) — prefer it over inventing a new state file.
-- **herdr-mode factory loop** (when the queue sets `config.execution: herdr`): run
-  `/loop 15m /dispatch` (Claude Code) or `CronCreate` same_session every 15m (Droid) from
-  an orchestrator ideally inside a herdr pane (a plain terminal also works — recovery then
-  leans on `lanes`); it spawns each goal as a fresh `claude` in its own `goal/NNN` worktree
-  pane, terminated by a unique done-marker, and survives client detach via the herdr server.
-  Capability-gated — degrades to native in-process agents when herdr is absent. **Droid
-  note:** herdr currently supports the `claude` backend only; in Droid, `execution: herdr`
-  degrades to `native`. See `dispatch/references/herdr-mode.md`.
+  worked by `/dispatch` as a sequential single-session drain) — prefer it over inventing a
+  new state file.
 - **Self-verification tooling** (Boris's #1, "2-3x the quality"): browser extension for web
   UI, simulator MCP for mobile, runnable server + tests for backend. Name the tool in the
   prompt and describe it.
