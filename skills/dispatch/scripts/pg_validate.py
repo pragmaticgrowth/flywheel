@@ -256,6 +256,8 @@ def _parse_goal(path):
                     cmds = [c.strip().strip("-\"'[] ") for c in field.split(",") if c.strip()]
                 else:
                     cmds = []; _collecting = "acceptance"
+            elif _collecting and ls.startswith("#"):
+                continue  # YAML comment inside the block list — skip, keep collecting
             elif _collecting and ls.startswith("-"):
                 item = ls.lstrip("- \t").strip("\"'")
                 if _collecting == "acceptance":
@@ -347,7 +349,22 @@ def run_validation(head, goal_id, base, goal_file, repo_root):
         # removes the bug, so it can only move base toward red (the PASS direction).
         test_files = _changed_test_files(sha_base, sha_head)
         with tempfile.TemporaryDirectory() as basewt:
-            _git(["worktree", "add", "--detach", basewt, sha_base])
+            rc_wt, _wt_out, wt_err = _git(["worktree", "add", "--detach", basewt, sha_base])
+            if rc_wt != 0:
+                # Could not populate the base checkout: acceptance would run in an
+                # empty/incomplete dir, go red, and forge a false repro PASS. Return
+                # INCONCLUSIVE (never PASS) rather than proceed. The temp dir is cleaned
+                # by the context manager; no worktree was registered, so no remove needed.
+                evidence = ("could not create base worktree for repro-direction: "
+                            + ((wt_err or "").strip() or "git worktree add failed"))
+                return {
+                    "verdict": "INCONCLUSIVE",
+                    "sha_head": sha_head,
+                    "sha_base": sha_base,
+                    "checks": checks + [{"name": "repro-direction", "pass": False,
+                                         "kind": "inconclusive", "evidence": evidence}],
+                    "summary": f"INCONCLUSIVE: {evidence}",
+                }
             try:
                 if test_files:
                     _git(["-C", basewt, "checkout", sha_head, "--", *test_files])

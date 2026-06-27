@@ -222,6 +222,71 @@ def test_integrity_edits_queue():
                                ["docs/goals/index.yaml"], "007-orders")
     assert r["pass"] is False and "docs/goals" in r["evidence"]
 
+import tempfile as _tf, os as _os
+def test_parse_goal_keeps_items_after_inline_comment():
+    # A YAML comment line inside the acceptance: block must not terminate list
+    # collection — all commands before/between/after the comment are kept.
+    d = _tf.mkdtemp()
+    gf = _os.path.join(d, "goal.md")
+    open(gf, "w").write(
+        "---\n"
+        "type: bug\n"
+        "acceptance:\n"
+        "  - \"cmd-one\"\n"
+        "  # this is a YAML comment, not a terminator\n"
+        "  - \"cmd-two\"\n"
+        "  # trailing comment\n"
+        "  - \"cmd-three\"\n"
+        "---\nbody\n")
+    gtype, touches, cmds, ac = pgv._parse_goal(gf)
+    assert cmds == ["cmd-one", "cmd-two", "cmd-three"], cmds
+
+def test_parse_goal_keeps_touches_after_inline_comment():
+    d = _tf.mkdtemp()
+    gf = _os.path.join(d, "goal.md")
+    open(gf, "w").write(
+        "---\n"
+        "type: chore\n"
+        "touches:\n"
+        "  - \"apps/a/*\"\n"
+        "  # comment between surfaces\n"
+        "  - \"apps/b/*\"\n"
+        "---\nbody\n")
+    gtype, touches, cmds, ac = pgv._parse_goal(gf)
+    assert touches == ["apps/a/*", "apps/b/*"], touches
+
+def test_run_validation_bug_inconclusive_when_base_worktree_fails(monkeypatch=None):
+    # FIX 1: if `git worktree add` for the repro-direction base checkout fails, the
+    # bug path must return INCONCLUSIVE (never run acceptance, never default-PASS).
+    import os as _o, subprocess as _sp, tempfile as _t, json as _j, sys as _s
+    def g(d, *a): return _sp.run(["git", "-C", d, *a], capture_output=True, text=True)
+    d = _t.mkdtemp(); g(d, "init", "-q"); g(d, "config", "user.email", "t@t"); g(d, "config", "user.name", "t")
+    open(_o.path.join(d, "f.txt"), "w").write("BUG\n"); g(d, "add", "f.txt"); g(d, "commit", "-qm", "base")
+    base = g(d, "rev-parse", "HEAD").stdout.strip()
+    gf = _o.path.join(d, "goal.md")
+    open(gf, "w").write('---\ntype: bug\nacceptance:\n  - "grep -q FIXED f.txt"\n---\nbody\n')
+    open(_o.path.join(d, "f.txt"), "w").write("FIXED\n"); g(d, "add", "f.txt"); g(d, "commit", "-qm", "fix")
+    head = g(d, "rev-parse", "HEAD").stdout.strip()
+    # Force `git worktree add` to fail by stubbing pgv._git for that subcommand only.
+    real_git = pgv._git
+    def fake_git(args, **kw):
+        if args[:2] == ["worktree", "add"]:
+            return (1, "", "fatal: could not create work tree dir (simulated)")
+        return real_git(args, **kw)
+    pgv._git = fake_git
+    try:
+        cwd0 = _o.getcwd(); _o.chdir(d)
+        try:
+            res = pgv.run_validation(head, "002", base, gf, d)
+        finally:
+            _o.chdir(cwd0)
+    finally:
+        pgv._git = real_git
+    assert res["verdict"] == "INCONCLUSIVE", res
+    assert any("base worktree" in c.get("evidence", "") for c in res["checks"]), res
+    # never a PASS when the base worktree can't be populated
+    assert res["verdict"] != "PASS"
+
 import subprocess, sys
 def test_self_test_exits_zero_and_announces():
     r = subprocess.run([sys.executable, os.path.join(_here, "pg_validate.py"), "--self-test"],
