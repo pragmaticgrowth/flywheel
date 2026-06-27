@@ -12,6 +12,25 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [4.0.1] — 2026-06-28
+
+**Patch: harden the bug repro-direction gate against a false PASS.** The local gate ran a
+`type: bug` goal's `acceptance:` command in a *fresh* base `git worktree` that lacks installed
+deps (`node_modules`/`.venv` are gitignored), so a test-runner command (`npm test`/`pytest`)
+could go red on base for **environment** reasons and be mistaken for a genuine bug
+reproduction — a false PASS. Two guards in `pg_validate.py`:
+
+- **Best-effort dep-sharing.** The base worktree now symlinks the live checkout's dependency
+  dirs (`node_modules`, `.venv`, `venv`, `vendor`) so the acceptance command runs against base
+  product code with a working environment. Cleanup removes only the symlink, never the target.
+- **Bare-base control run.** When a separate proving test is overlaid (the TDD case), the gate
+  runs the acceptance on the bare base *first*; if base can't run clean before the proving test
+  exists, the red is environment/pre-existing noise → **INCONCLUSIVE, never a forged PASS**.
+  Direct-probe acceptance (e.g. `grep`, no overlaid test file) is unchanged.
+
+This converts the prior false-PASS path into a safe INCONCLUSIVE → surfaced for a human, in
+keeping with the v4 "never silent-PASS" rule. (Caught by the v4.0.0 final review.)
+
 ## [4.0.0] — 2026-06-27
 
 **BREAKING — the factory goes sequential and local.** `dispatch` no longer opens

@@ -1,6 +1,6 @@
 {
   "name": "flywheel",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "description": "Pragmatic Growth workflow skills for Claude Code and Droid (Factory CLI) — define-goal (plain-language wants → measurable goal contracts, run now via /goal or droid exec, or queued in docs/goals), dispatch (sequential single-session orchestrator that drains the docs/goals queue on the current branch behind a local build+test gate), loop-architect (design autonomous loop contracts), and factory-doctor (one-pass preflight/doctor).",
   "author": {
     "name": "pragmaticgrowth"
