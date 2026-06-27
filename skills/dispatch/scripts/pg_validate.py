@@ -195,20 +195,13 @@ def _run(cmd, **kw):
         return 127, "", "not found"
 
 
-def _gh_json(args):
-    out = subprocess.run(["gh", *args], capture_output=True, text=True)
-    if out.returncode != 0:
-        raise RuntimeError(out.stderr.strip() or "gh failed")
-    return json.loads(out.stdout or "null")
-
-
 def _git(args, **kw):
     out = subprocess.run(["git", *args], capture_output=True, text=True, **kw)
     return out.returncode, out.stdout, out.stderr
 
 
-def _changed_paths(base):
-    rc, out, _ = _git(["diff", "--name-only", f"origin/{base}..HEAD"])
+def _changed_paths(base_ref, head_ref="HEAD"):
+    rc, out, _ = _git(["diff", "--name-only", f"{base_ref}..{head_ref}"])
     return [p for p in out.splitlines() if p.strip()] if rc == 0 else []
 
 
@@ -228,12 +221,12 @@ def is_test_path(p):
     return False
 
 
-def _changed_test_files(base):
-    return [p for p in _changed_paths(base) if is_test_path(p)]
+def _changed_test_files(base_ref, head_ref="HEAD"):
+    return [p for p in _changed_paths(base_ref, head_ref) if is_test_path(p)]
 
 
-def _diff_text(base):
-    rc, out, _ = _git(["diff", f"origin/{base}..HEAD"])
+def _diff_text(base_ref, head_ref="HEAD"):
+    rc, out, _ = _git(["diff", f"{base_ref}..{head_ref}"])
     return out if rc == 0 else ""
 
 
@@ -244,15 +237,33 @@ def _parse_goal(path):
     if text.startswith("---"):
         parts = text.split("---", 2)
         fm = parts[1] if len(parts) >= 3 else ""
+        _collecting = None  # tracks which list field we're accumulating into
         for line in fm.splitlines():
             field = line.split(":", 1)[1].strip() if ":" in line else ""
             ls = line.strip()
             if ls.startswith("type:") and field:
                 gtype = field.split()[0]
-            elif ls.startswith("touches:") and field:
-                touches = [t.strip().strip("-\"'[] ") for t in field.split(",") if t.strip()]
-            elif ls.startswith("acceptance:") and field:
-                cmds = [c.strip().strip("-\"'[] ") for c in field.split(",") if c.strip()]
+                _collecting = None
+            elif ls.startswith("touches:"):
+                _collecting = None
+                if field:
+                    touches = [t.strip().strip("-\"'[] ") for t in field.split(",") if t.strip()]
+                else:
+                    touches = []; _collecting = "touches"
+            elif ls.startswith("acceptance:"):
+                _collecting = None
+                if field:
+                    cmds = [c.strip().strip("-\"'[] ") for c in field.split(",") if c.strip()]
+                else:
+                    cmds = []; _collecting = "acceptance"
+            elif _collecting and ls.startswith("-"):
+                item = ls.lstrip("- \t").strip("\"'")
+                if _collecting == "acceptance":
+                    cmds.append(item)
+                elif _collecting == "touches":
+                    touches.append(item)
+            elif ls and not ls.startswith("-"):
+                _collecting = None  # non-list-item line ends collection
     already_correct = "already correct" in text.lower() or "already-correct" in text.lower()
     return gtype, touches, cmds, already_correct
 
@@ -288,33 +299,38 @@ def _self_test():
     return 0
 
 
-def run_validation(pr, goal_id, base, goal_file, repo_root):
+def run_validation(head, goal_id, base, goal_file, repo_root):
     checks = []
-    pr_meta = _gh_json(["pr", "view", pr, "--json", "headRefName,baseRefName,body,headRefOid"])
-    _, head_sha, _ = _git(["rev-parse", "HEAD"])
-    _, base_sha, _ = _git(["rev-parse", f"origin/{base}"])
-    sha_head, sha_base = head_sha.strip(), base_sha.strip()
-    changed = _changed_paths(base)
+    rc, sha_head, _ = _git(["rev-parse", head]); sha_head = sha_head.strip()
+    rc, sha_base, _ = _git(["rev-parse", base]); sha_base = sha_base.strip()
+    # No PR exists locally: synthesize the structural inputs so one_goal_integrity's
+    # branch-name and body-marker sub-checks are satisfied trivially; only the
+    # "no docs/goals/ edits" sub-check is meaningful in local mode.
+    head_branch = f"goal/{goal_id}"
+    body = f"Goal: {goal_id}"
+    pr_base = base
     gtype, touches, cmds, already_correct = _resolve_cmds(goal_file, repo_root)
+    changed = _changed_paths(sha_base, sha_head)
 
-    checks.append(one_goal_integrity(pr_meta["headRefName"], pr_meta["body"],
-                                     pr_meta["baseRefName"], base, changed, goal_id))
+    checks.append(one_goal_integrity(head_branch, body, pr_base, base, changed, goal_id))
     checks.append(blast_radius(changed, touches))
-    checks.append(forbidden_content(_diff_text(base)))
+    checks.append(forbidden_content(_diff_text(sha_base, sha_head)))
 
     if gtype == "bug":
-        # Overlay the PR head's changed test files onto the base checkout so a TDD test
-        # ADDED by this PR can still reproduce the bug on base product code (red-on-base).
+        # Overlay the head's changed test files onto the base checkout so a TDD test
+        # ADDED by the fix can still reproduce the bug on base product code (red-on-base).
         # Without this, every standard TDD fix (test introduced by the fix) is structurally
         # un-provable and FAIL_CONTRACTs. Overlay is monotonic: it only adds tests, never
         # removes the bug, so it can only move base toward red (the PASS direction).
-        test_files = _changed_test_files(base)
+        test_files = _changed_test_files(sha_base, sha_head)
         with tempfile.TemporaryDirectory() as basewt:
-            _git(["worktree", "add", "--detach", basewt, f"origin/{base}"])
-            if test_files:
-                _git(["-C", basewt, "checkout", sha_head, "--", *test_files])
-            base_exits = _run_cmds(cmds, basewt) if cmds else []
-            _git(["worktree", "remove", basewt, "--force"])
+            _git(["worktree", "add", "--detach", basewt, sha_base])
+            try:
+                if test_files:
+                    _git(["-C", basewt, "checkout", sha_head, "--", *test_files])
+                base_exits = _run_cmds(cmds, basewt) if cmds else []
+            finally:
+                _git(["worktree", "remove", basewt, "--force"])
         head_exits = _run_cmds(cmds, repo_root) if cmds else []
         checks.append(repro_direction(base_exits, head_exits, already_correct, test_files))
     else:
@@ -322,23 +338,30 @@ def run_validation(pr, goal_id, base, goal_file, repo_root):
         checks.append(acceptance_green(head_exits))
 
     verdict = aggregate(checks)
-    return {"verdict": verdict, "sha_head": sha_head, "sha_base": sha_base,
-            "checks": checks, "summary": f"{verdict} @ {sha_head[:12]} (base {sha_base[:12]})"}
+    return {
+        "verdict": verdict,
+        "sha_head": sha_head,
+        "sha_base": sha_base,
+        "checks": checks,
+        "summary": f"{verdict} @ {sha_head[:12]} (base {sha_base[:12]})",
+    }
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="pg_validate.py")
-    ap.add_argument("--pr"); ap.add_argument("--goal"); ap.add_argument("--base")
-    ap.add_argument("--goal-file"); ap.add_argument("--worktree-root")
+    ap.add_argument("--head", help="git ref or SHA of the head to validate (default HEAD)", default="HEAD")
+    ap.add_argument("--base", required=False)   # now a git ref/SHA, not a remote branch name
+    ap.add_argument("--goal"); ap.add_argument("--goal-file")
+    ap.add_argument("--worktree-root")
     ap.add_argument("--self-test", action="store_true")
     a = ap.parse_args(argv)
     if a.self_test:
         return _self_test()
-    if not (a.pr and a.goal and a.base and a.goal_file):
-        ap.error("--pr, --goal, --base and --goal-file are required")
+    if not (a.head and a.goal and a.base and a.goal_file):
+        ap.error("--head, --goal, --base, --goal-file are required")
     repo_root = a.worktree_root or os.getcwd()
     try:
-        result = run_validation(a.pr, a.goal, a.base, a.goal_file, repo_root)
+        result = run_validation(a.head, a.goal, a.base, a.goal_file, repo_root)
     except Exception as e:  # environment/infra failure -> INCONCLUSIVE, never default-PASS
         print(json.dumps({"verdict": "INCONCLUSIVE", "checks": [],
                           "summary": f"environment error: {e}"}, indent=2))

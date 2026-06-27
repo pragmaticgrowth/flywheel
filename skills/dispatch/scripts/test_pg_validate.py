@@ -229,6 +229,52 @@ def test_self_test_exits_zero_and_announces():
     assert r.returncode == 0, r.stdout + r.stderr
     assert "self-test" in r.stdout and "passed" in r.stdout, r.stdout + r.stderr
 
+import os, subprocess, tempfile, json, sys
+
+def _git_local(d, *a):
+    return subprocess.run(["git", "-C", d, *a], capture_output=True, text=True)
+
+def _make_repo(tmp):
+    _git_local(tmp, "init", "-q"); _git_local(tmp, "config", "user.email", "t@t"); _git_local(tmp, "config", "user.name", "t")
+    return tmp
+
+def test_local_chore_acceptance_green_passes(tmp_path=None):
+    d = tempfile.mkdtemp()
+    _make_repo(d)
+    # base commit
+    open(os.path.join(d, "app.py"), "w").write("x = 1\n")
+    _git_local(d, "add", "app.py"); _git_local(d, "commit", "-qm", "base")
+    base = _git_local(d, "rev-parse", "HEAD").stdout.strip()
+    # goal file (chore, acceptance always-green)
+    gf = os.path.join(d, "goal.md")
+    open(gf, "w").write("---\ntype: chore\nacceptance:\n  - \"true\"\n---\nbody\n")
+    # head commit (within declared/empty touches => benign)
+    open(os.path.join(d, "app.py"), "w").write("x = 2\n")
+    _git_local(d, "add", "app.py"); _git_local(d, "commit", "-qm", "work")
+    head = _git_local(d, "rev-parse", "HEAD").stdout.strip()
+    script = os.path.join(os.path.dirname(__file__), "pg_validate.py")
+    out = subprocess.run([sys.executable, script, "--head", head, "--base", base,
+                          "--goal", "001", "--goal-file", gf], capture_output=True, text=True, cwd=d)
+    payload = json.loads(out.stdout)
+    assert payload["verdict"] == "PASS", payload
+    assert payload["sha_head"].startswith(head[:12])
+    assert out.returncode == 0
+
+def test_local_bug_repro_direction_pass_and_contract():
+    import os, subprocess, tempfile, json, sys
+    def g(d,*a): return subprocess.run(["git","-C",d,*a],capture_output=True,text=True)
+    d = tempfile.mkdtemp(); g(d,"init","-q"); g(d,"config","user.email","t@t"); g(d,"config","user.name","t")
+    open(os.path.join(d,"f.txt"),"w").write("BUG\n"); g(d,"add","f.txt"); g(d,"commit","-qm","base")
+    base = g(d,"rev-parse","HEAD").stdout.strip()
+    gf = os.path.join(d,"goal.md")
+    open(gf,"w").write('---\ntype: bug\nacceptance:\n  - "grep -q FIXED f.txt"\n---\nbody\n')
+    open(os.path.join(d,"f.txt"),"w").write("FIXED\n"); g(d,"add","f.txt"); g(d,"commit","-qm","fix")
+    head = g(d,"rev-parse","HEAD").stdout.strip()
+    s = os.path.join(os.path.dirname(__file__),"pg_validate.py")
+    out = subprocess.run([sys.executable,s,"--head",head,"--base",base,"--goal","002","--goal-file",gf],
+                         capture_output=True,text=True,cwd=d)
+    assert json.loads(out.stdout)["verdict"] == "PASS", out.stdout
+
 if __name__ == "__main__":
     fns = [g for n, g in sorted(globals().items()) if n.startswith("test_")]
     for fn in fns:
