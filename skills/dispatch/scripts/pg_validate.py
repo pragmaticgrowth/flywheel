@@ -290,9 +290,14 @@ def _run_cmds(cmds, cwd):
 
 
 def _self_test():
+    # Pure-logic sweep only: skip the subprocess-driven self-test reentry and the
+    # local-mode integration tests (test_local_*), which spawn the CLI end-to-end and
+    # belong to the pytest run, not the in-process pure-check sweep.
     import test_pg_validate as t
     fns = [g for n, g in sorted(vars(t).items())
-           if n.startswith("test_") and n != "test_self_test_exits_zero_and_announces"]
+           if n.startswith("test_")
+           and n != "test_self_test_exits_zero_and_announces"
+           and not n.startswith("test_local_")]
     for fn in fns:
         fn()
     print(f"self-test: {len(fns)} pure check cases passed")
@@ -301,8 +306,26 @@ def _self_test():
 
 def run_validation(head, goal_id, base, goal_file, repo_root):
     checks = []
-    rc, sha_head, _ = _git(["rev-parse", head]); sha_head = sha_head.strip()
-    rc, sha_base, _ = _git(["rev-parse", base]); sha_base = sha_base.strip()
+    rc_head, sha_head, err_head = _git(["rev-parse", head]); sha_head = sha_head.strip()
+    rc_base, sha_base, err_base = _git(["rev-parse", base]); sha_base = sha_base.strip()
+    # Fail loud on unresolved refs: an empty/failed rev-parse must never flow into the
+    # diffs and summary as a silent degrade. The v4 gate returns INCONCLUSIVE, never a
+    # default PASS, when it cannot establish the SHAs it is validating.
+    if rc_head != 0 or not sha_head or rc_base != 0 or not sha_base:
+        bad = []
+        if rc_head != 0 or not sha_head:
+            bad.append(f"head {head!r} ({(err_head or '').strip() or 'empty SHA'})")
+        if rc_base != 0 or not sha_base:
+            bad.append(f"base {base!r} ({(err_base or '').strip() or 'empty SHA'})")
+        evidence = "could not resolve ref(s): " + "; ".join(bad)
+        return {
+            "verdict": "INCONCLUSIVE",
+            "sha_head": sha_head,
+            "sha_base": sha_base,
+            "checks": [{"name": "resolve-refs", "pass": False, "kind": "inconclusive",
+                        "evidence": evidence}],
+            "summary": f"INCONCLUSIVE: {evidence}",
+        }
     # No PR exists locally: synthesize the structural inputs so one_goal_integrity's
     # branch-name and body-marker sub-checks are satisfied trivially; only the
     # "no docs/goals/ edits" sub-check is meaningful in local mode.

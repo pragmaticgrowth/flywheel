@@ -263,6 +263,8 @@ def test_local_chore_acceptance_green_passes(tmp_path=None):
 def test_local_bug_repro_direction_pass_and_contract():
     import os, subprocess, tempfile, json, sys
     def g(d,*a): return subprocess.run(["git","-C",d,*a],capture_output=True,text=True)
+    s = os.path.join(os.path.dirname(__file__),"pg_validate.py")
+    # --- PASS direction: red on base (BUG), green on head (FIXED) -> real fix.
     d = tempfile.mkdtemp(); g(d,"init","-q"); g(d,"config","user.email","t@t"); g(d,"config","user.name","t")
     open(os.path.join(d,"f.txt"),"w").write("BUG\n"); g(d,"add","f.txt"); g(d,"commit","-qm","base")
     base = g(d,"rev-parse","HEAD").stdout.strip()
@@ -270,10 +272,37 @@ def test_local_bug_repro_direction_pass_and_contract():
     open(gf,"w").write('---\ntype: bug\nacceptance:\n  - "grep -q FIXED f.txt"\n---\nbody\n')
     open(os.path.join(d,"f.txt"),"w").write("FIXED\n"); g(d,"add","f.txt"); g(d,"commit","-qm","fix")
     head = g(d,"rev-parse","HEAD").stdout.strip()
-    s = os.path.join(os.path.dirname(__file__),"pg_validate.py")
     out = subprocess.run([sys.executable,s,"--head",head,"--base",base,"--goal","002","--goal-file",gf],
                          capture_output=True,text=True,cwd=d)
     assert json.loads(out.stdout)["verdict"] == "PASS", out.stdout
+    # --- FAIL_CONTRACT direction: already green on base (nothing red to fix), trivial head.
+    d2 = tempfile.mkdtemp(); g(d2,"init","-q"); g(d2,"config","user.email","t@t"); g(d2,"config","user.name","t")
+    open(os.path.join(d2,"f.txt"),"w").write("FIXED\n"); g(d2,"add","f.txt"); g(d2,"commit","-qm","base")
+    base2 = g(d2,"rev-parse","HEAD").stdout.strip()
+    gf2 = os.path.join(d2,"goal.md")
+    open(gf2,"w").write('---\ntype: bug\nacceptance:\n  - "grep -q FIXED f.txt"\n---\nbody\n')
+    open(os.path.join(d2,"other.txt"),"w").write("noop\n"); g(d2,"add","other.txt"); g(d2,"commit","-qm","noop")
+    head2 = g(d2,"rev-parse","HEAD").stdout.strip()
+    out2 = subprocess.run([sys.executable,s,"--head",head2,"--base",base2,"--goal","003","--goal-file",gf2],
+                          capture_output=True,text=True,cwd=d2)
+    assert json.loads(out2.stdout)["verdict"] == "FAIL_CONTRACT", out2.stdout
+
+def test_local_unresolved_ref_is_inconclusive():
+    import os, subprocess, tempfile, json, sys
+    def g(d,*a): return subprocess.run(["git","-C",d,*a],capture_output=True,text=True)
+    d = tempfile.mkdtemp(); g(d,"init","-q"); g(d,"config","user.email","t@t"); g(d,"config","user.name","t")
+    open(os.path.join(d,"f.txt"),"w").write("x\n"); g(d,"add","f.txt"); g(d,"commit","-qm","base")
+    base = g(d,"rev-parse","HEAD").stdout.strip()
+    gf = os.path.join(d,"goal.md")
+    open(gf,"w").write('---\ntype: chore\nacceptance:\n  - "true"\n---\nbody\n')
+    s = os.path.join(os.path.dirname(__file__),"pg_validate.py")
+    # bogus head ref must fail loud, never silently pass with an empty SHA
+    out = subprocess.run([sys.executable,s,"--head","does-not-exist","--base",base,
+                          "--goal","004","--goal-file",gf], capture_output=True,text=True,cwd=d)
+    payload = json.loads(out.stdout)
+    assert payload["verdict"] == "INCONCLUSIVE", out.stdout
+    assert "could not resolve" in payload["summary"], out.stdout
+    assert out.returncode == 4, out.returncode
 
 if __name__ == "__main__":
     fns = [g for n, g in sorted(globals().items()) if n.startswith("test_")]
