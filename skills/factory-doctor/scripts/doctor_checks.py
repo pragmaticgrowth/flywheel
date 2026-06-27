@@ -105,18 +105,22 @@ def _run(cmd):
         return 127, "", "not found"
 
 
-def stale_claim_problems(goals, branch_exists):
-    # in_progress goals with no goal/<id> branch locally and no recorded PR are stale
-    # claims / silent-death candidates the next dispatch fire must respawn or unblock.
+def stale_claim_problems(goals, claim_info):
+    # v4 (no goal/<id> branches, no PRs): an in_progress goal is stale ONLY if its claim
+    # commit exists on the current branch but NO work commit (non-chore(goals)) follows it
+    # — claimed but nothing worked, a silent-death candidate the next fire must respawn or
+    # unblock. If the claim commit can't be located, treat as cannot-determine (INFO, not
+    # a WARN). claim_info: {gid: {"claim_found": bool, "work_after": bool}}.
     out = []
     for gid, entry in (goals or {}).items():
         entry = entry or {}
         if entry.get("status") != "in_progress":
             continue
-        if entry.get("pr"):
-            continue
-        if not branch_exists.get(gid):
-            out.append(f"{gid}: in_progress but no goal/{gid} branch locally and no pr — stale claim / silent-death candidate")
+        info = (claim_info or {}).get(gid) or {}
+        if not info.get("claim_found"):
+            continue  # cannot determine — not flagged as stale
+        if not info.get("work_after"):
+            out.append(f"{gid}: in_progress, claim commit found but no work commits after it on the current branch — stale claim / silent-death candidate")
     return out
 
 
@@ -248,13 +252,27 @@ def run_checks(base):
             verify_cmds = config.get("verify") or []
             active_goals = sum(1 for e in goals.values()
                                if (e or {}).get("status") in ("not_started", "in_progress"))
-            # queue liveness: in_progress claims with no local goal/<id> branch and no PR
-            branch_exists = {}
+            # queue liveness (v4: no goal/<id> branches, no PRs): an in_progress goal is
+            # stale only if its claim commit exists but no work commit follows it on the
+            # current branch. Find the claim commit, then count non-chore(goals) commits after it.
+            claim_info = {}
             for gid, e in goals.items():
-                if (e or {}).get("status") == "in_progress":
-                    _, ls, _ = _run(["git", "branch", "--list", f"goal/{gid}"])
-                    branch_exists[gid] = bool((ls or "").strip())
-            stale = stale_claim_problems(goals, branch_exists)
+                if (e or {}).get("status") != "in_progress":
+                    continue
+                rc_c, claim_sha, _ = _run(["git", "log",
+                                           f"--grep=chore(goals): claim {gid}",
+                                           "--format=%H", "-1"])
+                claim_sha = (claim_sha or "").strip()
+                if rc_c != 0 or not claim_sha:
+                    claim_info[gid] = {"claim_found": False, "work_after": False}
+                    continue
+                # any non-chore(goals) commit subject after the claim == real work
+                _, subjects, _ = _run(["git", "log", "--format=%s",
+                                       f"{claim_sha}..HEAD"])
+                work_after = any(s.strip() and not s.strip().startswith("chore(goals):")
+                                 for s in (subjects or "").splitlines())
+                claim_info[gid] = {"claim_found": True, "work_after": work_after}
+            stale = stale_claim_problems(goals, claim_info)
             add("queue-liveness", "WARN" if stale else "INFO",
                 "; ".join(stale) if stale else "no stale in_progress claims",
                 "dispatch will respawn or it needs unblocking" if stale else "")

@@ -18,8 +18,9 @@ green report.
 
 ## Run order
 
-1. **Resolve paths.** `$DC` = `doctor_checks.py`, via the same fallback chain dispatch uses
-   for `$PM`: `$CLAUDE_PLUGIN_ROOT/skills/factory-doctor/scripts/doctor_checks.py`
+1. **Resolve paths.** `$DC` = `doctor_checks.py`, via the surviving scripts' resolution chain
+   (the same fallback chain dispatch uses for `$PGVALIDATE`):
+   `$CLAUDE_PLUGIN_ROOT/skills/factory-doctor/scripts/doctor_checks.py`
    (`$CLAUDE_PLUGIN_ROOT` is set by both Claude Code and Droid — Droid provides it as an alias
    for `$DROID_PLUGIN_ROOT`), else newest
    `~/.claude/plugins/{cache,marketplaces}/*/flywheel/*/skills/factory-doctor/scripts/doctor_checks.py`
@@ -58,8 +59,8 @@ For each check whose `fix` begins with `FIX:`:
       - npm ci
       - npm run build
       - npm test
-    # budget:           # optional — uncomment to cap spawns per session
-    #   max_spawns_per_session: 10
+    # budget:           # optional — uncomment to cap goals per session
+    #   max_goals_per_session: 10
   goals: {}
   ```
 
@@ -87,7 +88,7 @@ frontend/UI work (a UI framework in package.json, or any goal referencing `agent
 but `agent-browser` isn't installed, it WARNs with the install command — REPORT-only (a global
 npm install + Chromium is a system-level change, never auto-run). The probe also emits two
 REPORT-only loop-health checks (all read-only — never auto-fixed): `queue-liveness` (WARN naming
-any `in_progress` goal with no `goal/<id>` branch and no PR on origin — a stale claim /
+any `in_progress` goal with no work commits on the branch after its claim commit — a stale claim /
 silent-death candidate dispatch will respawn or that needs unblocking), and `goal-contracts`
 (WARN naming any active goal whose file lacks a checkable done-condition — tighten via
 `/define-goal` before dispatch picks it up). The `verify` check WARNs if `config.verify` is

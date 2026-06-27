@@ -90,17 +90,28 @@ def test_goal_contract_problems_flags_active_underspecified_only():
     assert not any("002-b" in p for p in probs)   # checkable
     assert not any("003-c" in p for p in probs)   # completed, not active
 
-def test_stale_claim_flags_in_progress_no_branch_no_pr():
+def test_stale_claim_flags_claimed_with_no_work_after():
+    # v4: an in_progress goal whose claim commit exists but has NO non-chore(goals)
+    # commit after it on the current branch is a stale claim / silent-death candidate.
     goals = {"001-a": {"status": "in_progress"},
-             "002-b": {"status": "in_progress", "pr": 12},
              "003-c": {"status": "not_started"}}
-    probs = dc.stale_claim_problems(goals, {"001-a": False, "002-b": False, "003-c": False})
+    claim_info = {"001-a": {"claim_found": True, "work_after": False}}
+    probs = dc.stale_claim_problems(goals, claim_info)
     assert any("001-a" in p for p in probs)
-    assert not any("002-b" in p for p in probs)   # has a PR → shepherd-able
     assert not any("003-c" in p for p in probs)   # not in_progress
 
-def test_stale_claim_clean_when_branch_present():
-    assert dc.stale_claim_problems({"001-a": {"status": "in_progress"}}, {"001-a": True}) == []
+def test_stale_claim_clean_when_work_commits_after_claim():
+    # v4: a healthy in_progress goal that HAS work commits after its claim is NOT stale.
+    goals = {"001-a": {"status": "in_progress"}}
+    claim_info = {"001-a": {"claim_found": True, "work_after": True}}
+    assert dc.stale_claim_problems(goals, claim_info) == []
+
+def test_stale_claim_info_when_claim_commit_not_found():
+    # v4: if the claim commit can't be located, treat as cannot-determine (INFO),
+    # NOT a stale WARN.
+    goals = {"001-a": {"status": "in_progress"}}
+    claim_info = {"001-a": {"claim_found": False, "work_after": False}}
+    assert dc.stale_claim_problems(goals, claim_info) == []
 
 def test_runner_emits_valid_json_and_exit_code():
     r = subprocess.run([sys.executable, os.path.join(_here, "doctor_checks.py"), "--base", "main"],
