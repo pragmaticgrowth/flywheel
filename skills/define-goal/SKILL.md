@@ -69,13 +69,16 @@ agent prints, not by taste or file inspection at evaluation time.
    decision it must enable + evidence standard; operations → healthy state, window,
    rollback trigger.
 
-Subjective dimensions: when a goal's success genuinely includes something that can't be
-reduced to a transcript-verifiable command (UX feel, prose quality, visual design), do not
-silently drop it — keep it as a criterion marked **needs independent review** so `dispatch`
-routes it to its opt-in LLM validator when `config.llm_validation: on`, else (the default
-`off`) to a human under needs-you — never the implementer's own self-grade. Self-checking is
-fine for objective oracles (tests, build, schema validates); a maker grading its own
-subjective work passes itself every time.
+Subjective dimensions: the only gate is the deterministic LOCAL gate (`pg_validate.py` plus
+the repo's `config.verify` commands), so a criterion that can't be expressed as an objective,
+command-verifiable check can't be auto-gated. First push to make criteria objectively
+verifiable — most "feel" criteria hide a measurable one (a contrast ratio, a render
+assertion, a count). When a dimension is genuinely subjective (UX feel, prose quality, visual
+design) and resists that, do not silently drop it — keep it as a criterion marked **needs
+independent review** so `dispatch` surfaces it to a human under needs-you at integration; it
+is a human-verification item, NOT something the gate decides, and never the implementer's own
+self-grade. Self-checking is fine for objective oracles (tests, build, schema validates); a
+maker grading its own subjective work passes itself every time.
 
 Quality bar before handing off — the contract must answer: what concrete thing will be
 true? what evidence proves it? what threshold defines success? what scope bounds matter?
@@ -266,8 +269,8 @@ skills: []      # goal-specific skills the implementer must invoke, e.g. [agent-
 - [ ] For UI work: a SCRIPTED browser check (agent-browser) — start the dev server, navigate
   to the route, and ASSERT a concrete visible result (element/text/count), with a screenshot
   attached as evidence (a screenshot alone is not verification)
-- [ ] <subjective criterion, if any> — **needs independent review** (routed to the LLM
-  validator or a human, never the implementer's self-grade)
+- [ ] <subjective criterion, if any> — **needs independent review** (surfaced to a human
+  under needs-you at integration, never the implementer's self-grade)
 
 Each criterion is proven by the command's actual final-run output appearing in the
 transcript — an assertion that "it passed" is a claim, not proof. This generalizes the
@@ -368,8 +371,8 @@ whole file to its implementer, and the user can run it directly via `claude -p "
 (Claude Code) or `droid exec --auto high "…"` (Droid).
 Keep the contract line under the 4,000-char cap (reference the file's sections instead of
 restating when long), and phrase UI evidence as transcript-visible output (the screenshot
-capture command's output and the PR URL), never as the attachment itself — the evaluator
-(Claude Code) or the agent's self-verification (Droid) only reads text.
+capture command's output), never as the attachment itself — the evaluator (Claude Code) or
+the agent's self-verification (Droid) only reads text.
 
 ## Batch mode (documents → many goals)
 
