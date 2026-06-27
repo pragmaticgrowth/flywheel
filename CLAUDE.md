@@ -144,7 +144,7 @@ a local gate. Git history has every prior model if ever needed.
 .claude-plugin/marketplace.json   # marketplace — name: pragmatic-growth
 skills/<name>/SKILL.md            # four skills (define-goal, dispatch, loop-architect, factory-doctor)
 skills/<name>/scripts/*.py        # dispatch/pg_validate.py (local gate), factory-doctor/doctor_checks.py
-CHANGELOG.md                      # canonical, git-tracked version history (mirrors the site changelog)
+CHANGELOG.md                      # canonical, git-tracked version history (site carries no on-page changelog)
 public/index.html                 # the public site (plugin.pragmaticgrowth.com) — self-contained, themed
 public/Logo*Black.svg             # Pragmatic Growth brand marks (icon + wordmark)
 wrangler.jsonc                    # Cloudflare Workers static-assets deploy config for the site
@@ -186,18 +186,16 @@ deps) plus the brand SVGs in `public/`, with `wrangler.jsonc` at the root.
   does, how it's invoked, the install commands, or the queue/config model,
   update BOTH `public/index.html` AND `README.md` to match in the SAME change.
   The site and README both document the four skills, the docs/goals pipeline,
-  the config model, install, and the changelog — drift in either is a
+  the config model, and install — drift in either is a
   shipped-but-wrong doc, same severity as a stale SKILL.md. (`AGENTS.md` is a
   symlink to this file; no separate edit.)
-- **Versioned changelog, two mirrors.** `CHANGELOG.md` (repo root) is the
-  canonical, git-tracked history; the `#changelog` section of `public/index.html`
-  renders the same entries (newest first, filterable by version line, each linked
-  to its commit). On every `plugin.json` version bump, add an entry to BOTH:
-  a `## [X.Y.Z] — <date>` block + a commit link in `CHANGELOG.md`, and a
-  matching `<details class="rel" data-family="X.Y">` card in the site's timeline
-  (move the `latest` class + `Latest` tag to the new top entry; bump the
-  `.ver-pill` and `<title>`). Also bump the README's version badge
-  (`version-X.Y.Z`). Older versions stay visible — never delete history.
+- **Versioned changelog (CHANGELOG.md is the single source).** `CHANGELOG.md`
+  (repo root) is the canonical, git-tracked history. The public site carries NO
+  on-page changelog timeline (removed in the site-simplify pass — canonical
+  history lives in `CHANGELOG.md` plus the GitHub Releases page). On every
+  `plugin.json` version bump: add a `## [X.Y.Z] — <date>` block + a commit link to
+  `CHANGELOG.md`, bump the site's `.ver-pill` and `<title>` in `public/index.html`,
+  and bump the README's version badge (`version-X.Y.Z`). Never delete history.
 - **Tag AND release every version in GitHub (this repo manages its own
   Releases page).** Each version bump gets BOTH an annotated git tag `vX.Y.Z`
   on its bump commit (`git tag -a vX.Y.Z <sha> -m "…"`, `git push --tags`) AND a
