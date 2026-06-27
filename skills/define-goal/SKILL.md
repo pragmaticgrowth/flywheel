@@ -84,10 +84,8 @@ what should cause the agent to stop and ask?
 ## Project grounding (resolve from the CURRENT repo, never hardcoded)
 
 - **Hard rules**: read CLAUDE.md / AGENTS.md (root + relevant subdirs). Copy rules that
-  constrain agents (protected branches, forbidden merges, deploy/migration rules, TDD
-  policy) verbatim into the Constraints section. Always add: "Implementers never merge. Under
-  `merge: pr` a human merges; under `merge: auto` only the orchestrator merges after gates
-  pass. Never push protected branches."
+  constrain agents (protected branches, deploy/migration rules, TDD policy) verbatim into the
+  Constraints section. Always add: "Never push protected branches."
 - **Verification commands**: prefer what the repo states — CLAUDE.md commands, package.json
   scripts, Makefile targets, CI steps. Every acceptance criterion must name a real command
   from THIS repo.
@@ -165,9 +163,7 @@ Recon details:
   session and matches, continue under it instead of duplicating.
 - **Queue** when the user wants it parked for the factory, hands over multiple items, or
   says to add it to the goals/backlog. After writing, point at the next step: run
-  `/dispatch` once, or keep it running with `/loop 15m /dispatch` (Claude Code) or
-  `CronCreate` with `same_session: true`, `recurring: true`, `expression: "*/15 * * * *"`
-  (Droid).
+  `/dispatch` (or *"work goal NNN"* for a single goal).
 
 ## The docs/goals queue
 
@@ -187,40 +183,31 @@ within priority:
 # claim protocol in the dispatch skill.
 # status: not_started | in_progress | completed | blocked
 config:
-  base: main        # integration branch — goals branch FROM it and merge BACK to it
-  state_branch: main # branch holding the docs/goals/ queue (default = base); set to a separate UNPROTECTED branch when base is protected
-  merge: pr         # pr = a human merges | auto = the factory merges after gates pass
-  wip: 2            # max goals in progress at once (parallelism)
+  base: main        # branch dispatch works on and commits to
   model: inherit    # spawned code agents: inherit | a model alias (sonnet, haiku, opus)
   skills: []        # repo-wide skills every implementer must invoke
-  execution: native # native = in-process agents | herdr = fresh claude per goal in a herdr worktree pane (needs the herdr CLI on the runner; Droid backend is future work — degrades to native in Droid)
-  autonomy: balanced # herdr only: conservative | balanced | bold — how readily the orchestrator auto-answers a blocked implementer vs escalates to you
+  verify:           # ordered local build+test gate commands (dispatch runs these to validate)
+    - npm ci
+    - npm run build
+    - npm test
 goals:
   001-receipt-emails: {status: not_started, priority: high}
   002-rate-limit-api: {status: not_started, depends_on: [001-receipt-emails]}
 ```
 
-The queue lives on `config.state_branch` (default `= base`); when `<base>` is protected,
-set it to a separate unprotected branch so define-goal can write goal files + index entries
-without pushing to the protected code branch.
-
 On first queue creation, suggest the user run `/factory-doctor` — it preflights gh auth,
-the merge allow-rule, branch protection, and CI, and scaffolds the queue, so a queue born
-into a known-good environment never hits setup errors mid-run. Then ask the user once
-(the interactive question tool — AskUserQuestion in Claude Code, AskUser in Droid):
-which branch is the integration base (main? staging? other?), and the
-merge policy (`pr` — safest, a human merges every PR; `auto` — the factory rebases,
-re-verifies, and merges back itself). If `state_branch` is set and does not yet exist on
-origin, create it off `<base>` first: `git branch <state_branch> origin/<base> && git push
-origin <state_branch>` (or run `/factory-doctor`).
-Defaults when unspecified: the repo's default branch, `merge: pr`, `wip: 2`,
-`model: inherit`, no repo skills, `execution: native`, `autonomy: balanced`.
-`model: sonnet` trades implementation depth for
-weekly-limit headroom — sensible on simple repos and especially on a queue that is mostly
-`type: chore` (mechanical, no-behavior-change work, where `inherit` would otherwise burn an
-expensive session model on rote edits), not on gnarly feature/bug work. A per-goal `base:`
-field on an index entry overrides `config.base` (epic branches). `execution: herdr`
-requires the herdr CLI on the runner; absent it, dispatch degrades to `native`.
+branch protection, and CI, and scaffolds the queue, so a queue born into a known-good
+environment never hits setup errors mid-run. Then ask the user once (the interactive
+question tool — AskUserQuestion in Claude Code, AskUser in Droid): which branch is the
+integration base (main? staging? other?), and what the build+test gate commands are
+(`config.verify`).
+Defaults when unspecified: the repo's default branch, `model: inherit`, no repo skills,
+no `verify` (dispatch auto-detects from Makefile / `go.mod` / `package.json`).
+`model: sonnet` trades implementation depth for weekly-limit headroom — sensible on simple
+repos and especially on a queue that is mostly `type: chore` (mechanical, no-behavior-change
+work, where `inherit` would otherwise burn an expensive session model on rote edits), not on
+gnarly feature/bug work. A per-goal `base:` field on an index entry overrides `config.base`
+(epic branches).
 
 Rules that keep the queue safe:
 
@@ -239,20 +226,18 @@ Rules that keep the queue safe:
   concurrency). Flow: re-read `index.yaml` and compute the next free `NNN`(s) = max existing
   + 1; append ONLY the minimal entry/entries (`NNN-slug: {status: not_started, priority: …}`)
   — for a multi-goal chain, reserve ALL its NNNs in ONE commit so the cross-refs are right the
-  first time; commit `chore(goals): reserve <id>` on `<state_branch>` and push to `<state_branch>`.
-  Push rejected → `git pull --rebase origin <state_branch>`,
+  first time; commit `chore(goals): reserve <id>` on `<base>` and push to `<base>`.
+  Push rejected → `git pull --rebase origin <base>`,
   recompute `NNN` from the now-larger index, retry (max 3). At this stage NOTHING is on disk, so
   a collision is just a new number — never a file rename. Once the push lands you OWN those
-  NNNs; NOW write the goal file(s) with the correct `id:`/branch/`Goal: <id>`/cross-refs stamped
-  in, commit `chore(goals): add <id>` on `<state_branch>`, push to `<state_branch>`. Never renumber existing goals.
+  NNNs; NOW write the goal file(s) with the correct `id:` and cross-refs stamped
+  in, commit `chore(goals): add <id>` on `<base>`, push to `<base>`. Never renumber existing goals.
 - **Concurrent edits to `index.yaml`:** it's shared state. Re-read it immediately before each
   edit; if the Edit tool reports the file changed under you (another session committed
   mid-edit), re-read and re-apply — don't force. Appending your highest-number entries at EOF
   (after `pull --rebase`) is naturally race-free: no two sessions mint the same top number, and
   a `grep -q '<your-id>'` guard before append makes it idempotent.
-- If `<base>` is protected, set `config.state_branch` to a separate unprotected branch
-  (define-goal writes there directly — no PR needed for queue metadata). Create `docs/goals/`
-  and `index.yaml` on first use.
+- Create `docs/goals/` and `index.yaml` on first use.
 
 ## Goal file template
 
@@ -263,9 +248,9 @@ title: Customers get a receipt email after payment
 created: 2026-06-12
 type: feature   # bug | feature | chore — shapes the contract, see below
 skills: []      # goal-specific skills the implementer must invoke, e.g. [agent-browser]
-# size: M                    # optional: S|M|L rough effort — lets dispatch/herdr size a run
-# touches: [apps/orders/*]   # optional: declared surfaces → pg_validate blast-radius allowlist
-# acceptance: [make test]    # optional: exact gate commands pg_validate runs (else it auto-detects)
+# size: M                    # optional: S|M|L rough effort — lets dispatch and any budget cap size a run
+# touches: [apps/orders/*]   # optional: declared surfaces → local gate scope allowlist
+# acceptance: [make test]    # optional: exact gate commands (else auto-detects from config.verify / repo)
 ---
 
 ## Outcome (plain language)
@@ -285,14 +270,12 @@ skills: []      # goal-specific skills the implementer must invoke, e.g. [agent-
   validator or a human, never the implementer's self-grade)
 
 Each criterion is proven by the command's actual final-run output appearing in the
-transcript / PR body — an assertion that "it passed" is a claim, not proof. This generalizes
-the screenshot rule to every check, and is the only guard under Droid self-verification.
+transcript — an assertion that "it passed" is a claim, not proof. This generalizes the
+screenshot rule to every check, and is the only guard under Droid self-verification.
 
 ## Constraints (hard rules)
 <repo hard rules from CLAUDE.md/AGENTS.md, verbatim>
-- Never merge mid-work — merge-back follows the queue's merge policy (a human under
-  `pr`, the orchestrator under `auto`). Never push protected branches.
-- Never edit docs/goals/ — the orchestrator owns queue state.
+- Never push protected branches.
 - <if recon found an irreversible/externally-visible action: "Stop and confirm before
   <action>", and make stateful external writes idempotent>
 
@@ -311,12 +294,10 @@ amendment), not a work failure.
 
 ## Goal contract
 /goal <acceptance criteria restated as one transcript-verifiable condition: exact commands
-+ expected outputs, the constraints above, and "open a PR from branch goal/<id> targeting
-the queue's base branch, whose body includes 'Goal: <id>', a plain-language summary for a
-non-technical reviewer, and verification evidence (test output, screenshots)."> Stop when
-every criterion verifiably passes, or when blocked or a criterion proves unreachable (follow
-"If blocked", declaring GOAL_UNREACHABLE if a check can be neither satisfied nor measured) —
-never grind past a blocker.
++ expected outputs, and the constraints above.> Stop when every criterion verifiably passes,
+or when blocked or a criterion proves unreachable (follow "If blocked", declaring
+GOAL_UNREACHABLE if a check can be neither satisfied nor measured) — never grind past a
+blocker.
 ```
 
 In Droid (no `/goal` command), the equivalent is:
@@ -326,12 +307,10 @@ acceptance command and showing output.
 
 Titles are plain language ("Customers get a receipt email after payment"), not jargon.
 One goal = one independently shippable change; split an ambitious want only when the parts
-ship and verify independently, ordering with `depends_on`. Goals run in parallel up to
-`config.wip`, so also chain with `depends_on` any two goals that will touch the same
-files — a dependency is far cheaper than a merge conflict between parallel implementers.
-Tight scoping is the cheapest brake: the optional `size:` hint (S|M|L) lets `dispatch`/herdr
-autonomy and any budget cap size a run — a goal whose acceptance is one mechanical check
-should read as `S`.
+ship and verify independently, ordering with `depends_on` for sequencing.
+Tight scoping is the cheapest brake: the optional `size:` hint (S|M|L) lets `dispatch`
+and any budget cap size a run — a goal whose acceptance is one mechanical check should
+read as `S`.
 
 Populate the frontmatter `skills:` field from the skills actually available in this
 session (the available-skills list), matched to the code area you located — domain skills
@@ -344,25 +323,25 @@ skills (TDD, plans, verification) are mandated by `dispatch`'s brief — don't r
 Repo-wide skills belong in `config.skills` instead; for a frontend repo, suggest moving
 `agent-browser` to `config.skills` when every (or most) goal would list it.
 
-Populate two more frontmatter fields that `dispatch`'s validator uses (both optional, but
-fill them when recon located the surfaces — they make validation far stronger):
+Populate two more frontmatter fields that serve as quality hints for the local gate (both
+optional, but fill them when recon located the surfaces — they make validation far stronger):
 `touches:` (path globs of the surfaces this goal changes — convert the surfaces recon
 located in Context — e.g. routes/UI/schema/jobs — into concrete globs like
-`["apps/orders/**", "frontend/src/orders/**"]`; gives `pg_validate`'s blast-radius a real
-allowlist so it flags out-of-scope churn instead of running lenient) and `acceptance:` (the
-exact gate commands `pg_validate` runs on a fresh checkout — the same verification commands
-named in the acceptance criteria, e.g. `["make test", "npm run lint"]`; omit and it
-auto-detects from the repo's Makefile / `go.mod` / `package.json`). Omitting either is safe
-(the validator degrades gracefully), but `touches:` in particular turns blast-radius from a
-coarse forbidden-path check into a real scope guard.
+`["apps/orders/**", "frontend/src/orders/**"]`; gives the gate a real scope allowlist so it
+can flag out-of-scope churn instead of running lenient) and `acceptance:` (the exact
+verification commands the gate runs on the local branch diff — the same commands named in the
+acceptance criteria, e.g. `["make test", "npm run lint"]`; omit and it auto-detects from the
+repo's `config.verify`, Makefile / `go.mod` / `package.json`). Omitting either is safe (the
+gate degrades gracefully), but `touches:` in particular turns scope checking from a coarse
+forbidden-path check into a real guard.
 
 **For `type: bug`, `acceptance:` MUST include a command that actually executes the
-regression test** — not just `typecheck`/`lint`/`build`. `pg_validate`'s repro-direction
-proof overlays the PR's new test file onto base product code and runs these commands,
-expecting one to go red on base and green on head. If none of them run the proving test
-(e.g. acceptance is only typecheck/lint/build while the bug is a runtime mismatch), nothing
-can go red on base and a genuinely-good fix is rejected as FAIL_CONTRACT. Name the precise
-test command that runs the failing test — scoped to the owning package is fine (e.g.
+regression test** — not just `typecheck`/`lint`/`build`. The local gate's repro-direction
+check runs these commands on the branch diff and expects at least one to go red without the
+fix and green with it. If none of them run the proving test (e.g. acceptance is only
+typecheck/lint/build while the bug is a runtime mismatch), the regression test's behavior
+can't be confirmed and the gate can't verify the fix. Name the precise test command that runs
+the failing test — scoped to the owning package is fine (e.g.
 `pnpm --filter @pkg/marketing test`, `pytest tests/test_dates.py`, `go test ./fmt/...`).
 
 Shape by `type:` — each type has a non-negotiable element, and it overrides the
@@ -373,8 +352,8 @@ behavior criteria; a chore's full-suite check replaces the owning-package one):
   with their `path:line` evidence (including the losing ones — the implementer's failing
   test arbitrates). First acceptance criterion, always: "a failing test reproducing the
   root cause, passing after the fix." The command that runs that test MUST appear in
-  `acceptance:` (see above) — the validator overlays the new test onto base to prove it
-  fails there, so a test no acceptance command executes can't be proven and blocks merge.
+  `acceptance:` (see above) — the local gate checks repro-direction (red without the fix,
+  green with it), so a test no acceptance command executes can't be verified.
 - **feature** — Outcome reads as what the user sees working; Context lists the surfaces
   to touch (routes, UI, schema, jobs) from recon; Out of scope is mandatory, never empty —
   features sprawl. If the feature has a UI surface, its acceptance criteria MUST include the
@@ -423,5 +402,4 @@ cheaper and simpler — the platform docs' own threshold.
 
 - Recurring or unattended run rather than a single goal → design the contract with
   **loop-architect**.
-- Working the queue → **dispatch** (one-off `/dispatch`, or `/loop 15m /dispatch` in
-  Claude Code, or `CronCreate` same_session in Droid).
+- Working the queue → **dispatch** (run `/dispatch`, or *"work goal NNN"* for one goal).
