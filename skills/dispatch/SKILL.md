@@ -98,12 +98,10 @@ Confirm the working tree is clean (dirty or diverged → stop and report rather 
 silently). If `docs/goals/index.yaml` is missing, report "no goals queue — create goals with
 /define-goal" and end the iteration.
 
-**Drained-queue terminal stop.** A loop must stop when there is nothing left to do. When
-`done == total` (or `ready == 0` with needs-you empty) AND the heartbeat cache shows it
-stayed drained since the prior fire, emit `factory drained — <done>/<total> done, loop
-stopped` and do nothing further on subsequent no-op fires. A later `/define-goal` +
-`/dispatch` restarts it. (One fire confirms; don't declare drained on the first drained fire
-in case a goal is mid-gate.)
+**Drained-queue terminal stop.** Dispatch stops when there is nothing left to do: when Phase 2
+finds no ready goals AND needs-you is empty, emit `factory drained — <done>/<total> done` and
+stop. A later `/dispatch` (or `/loop`) re-run picks up newly-added goals — a `/define-goal` +
+`/dispatch` restarts the drain from wherever the queue now stands.
 
 Read the queue with a real YAML parser (`python3 -c 'import yaml,sys; …'`), never line-greps
 or ad-hoc `jq` — grep probes on the queue invent phantom statuses and miscounts that cost an
@@ -161,15 +159,20 @@ not the verdict.
 ## Phase 1 — finish in-flight goals
 
 Before claiming anything new, settle every `in_progress` entry — finished work beats new work.
-For each `in_progress` entry:
+`gate_base` is not stored in `index.yaml`, so on a fresh session recover it from git: it is the
+SHA of the goal's claim commit on the current branch,
+`git log --grep="chore(goals): claim <id>" --format=%H -1` (the gate then diffs
+`gate_base..HEAD`). For each `in_progress` entry, decide by whether work commits exist on the
+branch after that claim commit:
 
-1. **Work commits present on the branch since `claimed`** → run the gate (Working a goal,
-   step 3) against the goal's `gate_base`. PASS → squash + `chore(goals): complete <id>`.
+1. **Work commits present after the claim commit** → recover `gate_base` as above, then run the
+   gate (Working a goal, step 3) against it. PASS → squash + `chore(goals): complete <id>`.
    FAIL_FIXABLE → one repair agent, re-gate; still failing → `git reset --hard <gate_base>` +
    `chore(goals): block <id> — <reason>`. FAIL_CONTRACT → reset + block (needs-you contract
    amendment). INCONCLUSIVE → reset + block "no runnable local gate".
-2. **No work commits and no active agent** (stale claim — the implementer died) → apply the
-   stale-claim rule from Re-entrancy: re-run from `gate_base`, or `blocked` per its final
+2. **No work commits after the claim commit and no active agent** (stale claim — the
+   implementer died) → `gate_base` is the current HEAD (no work landed). Apply the stale-claim
+   rule from Re-entrancy: re-spawn the implementer from current HEAD, or `blocked` per its final
    report / `GOAL_UNREACHABLE` / transient-death cap.
 
 ## Phase 2 — claim the next goal
