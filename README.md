@@ -22,8 +22,10 @@ keep an unattended agent loop from going off the rails.
 You say *“I want the pricing page to load in under 1.2 seconds.”* The plugin
 investigates your codebase, turns that into a **measurable contract** (what
 “done” means, how to verify it), drops it into a **queue that lives in your
-repo**, and then — when you’re ready — works that queue with isolated agents
-that open PRs, re-verify their own work, and (optionally) merge it back for you.
+repo**, and then — when you’re ready — works that queue **sequentially**: a
+foreground implementer commits each goal directly on your current branch, the
+orchestrator runs a local build + test gate, and only work that passes is kept
+(failures roll back).
 
 It is **skills-only**: no MCP servers, no slash commands of its own, no hooks,
 no background daemons, no build step. Just four
@@ -34,8 +36,10 @@ and Droid load automatically and invoke when the conversation calls for them.
 
 Because issues have body-size limits, need per-repo label bootstrapping, and
 drift away from the code. flywheel keeps goals as plain Markdown files
-**versioned alongside your code** in `docs/goals/`. PRs stay the review and
-merge surface; the queue is just the to-do list, and it travels with the repo.
+**versioned alongside your code** in `docs/goals/`. The queue is just the to-do
+list, and it travels with the repo; verified commits land directly on your
+branch through the local gate. (You can still open a PR yourself whenever you
+want a review surface — flywheel just doesn't require one.)
 
 ---
 
@@ -111,11 +115,11 @@ run unattended, on a schedule, or remotely.
 
 Run this **before your first `/dispatch`**, or any time the factory behaves
 like the environment isn’t ready. It checks software, `gh` auth + scopes, the
-harness merge allow-rule, branch protection, CI, and the queue itself —
-**auto-fixing everything local** (writing a *narrow* merge allow-rule, scaffolding
-the queue, in both `.claude/` and `.factory/` settings) and reporting remote/CI
-issues with the exact fix. It diagnoses and fixes setup; it never implements
-goals or merges PRs.
+local gate (`config.verify` present and runnable), a clean working tree, the
+working branch, CI, and the queue itself — **auto-fixing everything local**
+(scaffolding the queue, in both `.claude/` and `.factory/` settings) and
+reporting remote/CI issues with the exact fix. It diagnoses and fixes setup; it
+never implements goals.
 
 ---
 
