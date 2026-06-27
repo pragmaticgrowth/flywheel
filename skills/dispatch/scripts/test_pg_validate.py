@@ -369,6 +369,83 @@ def test_local_unresolved_ref_is_inconclusive():
     assert "could not resolve" in payload["summary"], out.stdout
     assert out.returncode == 4, out.returncode
 
+def test_local_bug_repro_inconclusive_on_env_red_base():
+    # A test-runner bug goal whose base run reds for an ENVIRONMENT reason (a gitignored
+    # artifact present only in the live checkout, absent from the fresh base worktree) must
+    # be INCONCLUSIVE, never a forged PASS. The bare-base control catches it.
+    import os, subprocess, tempfile, json, sys
+    def g(d,*a): return subprocess.run(["git","-C",d,*a],capture_output=True,text=True)
+    d = tempfile.mkdtemp(); g(d,"init","-q"); g(d,"config","user.email","t@t"); g(d,"config","user.name","t")
+    open(os.path.join(d,".gitignore"),"w").write("generated.bin\n")
+    open(os.path.join(d,"runner.sh"),"w").write("test -f generated.bin\n")  # needs a gitignored artifact
+    gf = os.path.join(d,"goal.md")
+    open(gf,"w").write('---\ntype: bug\nacceptance:\n  - "bash runner.sh"\n---\nbody\n')
+    g(d,"add",".gitignore","runner.sh"); g(d,"commit","-qm","base")
+    base = g(d,"rev-parse","HEAD").stdout.strip()
+    open(os.path.join(d,"new.test.sh"),"w").write("true\n")  # head adds a test file -> overlay/control path
+    g(d,"add","new.test.sh"); g(d,"commit","-qm","add test")
+    head = g(d,"rev-parse","HEAD").stdout.strip()
+    open(os.path.join(d,"generated.bin"),"w").write("x\n")  # present only in the live checkout (untracked)
+    s = os.path.join(os.path.dirname(__file__),"pg_validate.py")
+    out = subprocess.run([sys.executable,s,"--head",head,"--base",base,"--goal","010","--goal-file",gf],
+                         capture_output=True,text=True,cwd=d)
+    payload = json.loads(out.stdout)
+    assert payload["verdict"] == "INCONCLUSIVE", out.stdout
+    assert out.returncode == 4, out.returncode
+
+
+def test_local_bug_repro_pass_with_control():
+    # Genuine repro with a separate proving test: bare base is green (no test yet), the
+    # overlaid test reds base product code, head is green -> PASS (control does not block).
+    import os, subprocess, tempfile, json, sys
+    def g(d,*a): return subprocess.run(["git","-C",d,*a],capture_output=True,text=True)
+    d = tempfile.mkdtemp(); g(d,"init","-q"); g(d,"config","user.email","t@t"); g(d,"config","user.name","t")
+    # runner executes any *.test.sh present; green (exit 0) when none exist (the bare base).
+    open(os.path.join(d,"run-tests.sh"),"w").write(
+        'for t in *.test.sh; do [ -e "$t" ] || continue; bash "$t" || exit 1; done\nexit 0\n')
+    open(os.path.join(d,"product.txt"),"w").write("BUG\n")
+    gf = os.path.join(d,"goal.md")
+    open(gf,"w").write('---\ntype: bug\nacceptance:\n  - "bash run-tests.sh"\n---\nbody\n')
+    g(d,"add","run-tests.sh","product.txt"); g(d,"commit","-qm","base")
+    base = g(d,"rev-parse","HEAD").stdout.strip()
+    open(os.path.join(d,"check.test.sh"),"w").write("grep -q FIXED product.txt\n")  # proving test (added by fix)
+    open(os.path.join(d,"product.txt"),"w").write("FIXED\n")
+    g(d,"add","check.test.sh","product.txt"); g(d,"commit","-qm","fix + test")
+    head = g(d,"rev-parse","HEAD").stdout.strip()
+    s = os.path.join(os.path.dirname(__file__),"pg_validate.py")
+    out = subprocess.run([sys.executable,s,"--head",head,"--base",base,"--goal","011","--goal-file",gf],
+                         capture_output=True,text=True,cwd=d)
+    assert json.loads(out.stdout)["verdict"] == "PASS", out.stdout
+
+
+def test_local_bug_repro_symlink_preserves_live_deps():
+    # The base run shares the live checkout's dep dir via symlink; removing the worktree must
+    # NOT delete the live dir (we unlink the symlink, never the target).
+    import os, subprocess, tempfile, json, sys
+    def g(d,*a): return subprocess.run(["git","-C",d,*a],capture_output=True,text=True)
+    d = tempfile.mkdtemp(); g(d,"init","-q"); g(d,"config","user.email","t@t"); g(d,"config","user.name","t")
+    open(os.path.join(d,".gitignore"),"w").write("node_modules/\n")
+    open(os.path.join(d,"run-tests.sh"),"w").write(
+        'for t in *.test.sh; do [ -e "$t" ] || continue; bash "$t" || exit 1; done\nexit 0\n')
+    open(os.path.join(d,"product.txt"),"w").write("BUG\n")
+    gf = os.path.join(d,"goal.md")
+    open(gf,"w").write('---\ntype: bug\nacceptance:\n  - "bash run-tests.sh"\n---\nbody\n')
+    g(d,"add",".gitignore","run-tests.sh","product.txt"); g(d,"commit","-qm","base")
+    base = g(d,"rev-parse","HEAD").stdout.strip()
+    # proving test exercises the symlinked dep dir before checking the fix
+    open(os.path.join(d,"check.test.sh"),"w").write("test -f node_modules/marker && grep -q FIXED product.txt\n")
+    open(os.path.join(d,"product.txt"),"w").write("FIXED\n")
+    g(d,"add","check.test.sh","product.txt"); g(d,"commit","-qm","fix + test")
+    head = g(d,"rev-parse","HEAD").stdout.strip()
+    os.makedirs(os.path.join(d,"node_modules"))  # live (gitignored) dep dir
+    marker = os.path.join(d,"node_modules","marker"); open(marker,"w").write("dep\n")
+    s = os.path.join(os.path.dirname(__file__),"pg_validate.py")
+    out = subprocess.run([sys.executable,s,"--head",head,"--base",base,"--goal","012","--goal-file",gf],
+                         capture_output=True,text=True,cwd=d)
+    assert json.loads(out.stdout)["verdict"] == "PASS", out.stdout
+    assert os.path.exists(marker), "live node_modules/marker was destroyed by worktree cleanup"
+
+
 if __name__ == "__main__":
     fns = [g for n, g in sorted(globals().items()) if n.startswith("test_")]
     for fn in fns:

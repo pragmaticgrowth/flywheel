@@ -26,6 +26,11 @@ FORBIDDEN_PATHS = (".claude/*", ".github/workflows/*", "*/deploy*.sh", "deploy*.
 LOCKFILES = ("package-lock.json", "yarn.lock", "pnpm-lock.yaml", "go.sum",
              "Gemfile.lock", "poetry.lock", "Cargo.lock", "composer.lock")
 
+# Gitignored dependency dirs absent from a fresh checkout. The bug repro-direction
+# best-effort symlinks these from the live checkout into the base worktree so a
+# test-runner acceptance command (npm test / pytest) has a working environment on base.
+DEP_DIRS = ("node_modules", ".venv", "venv", "vendor")
+
 
 def _any_match(path, globs):
     return any(fnmatch.fnmatch(path, g) for g in globs)
@@ -347,7 +352,18 @@ def run_validation(head, goal_id, base, goal_file, repo_root):
         # Without this, every standard TDD fix (test introduced by the fix) is structurally
         # un-provable and FAIL_CONTRACTs. Overlay is monotonic: it only adds tests, never
         # removes the bug, so it can only move base toward red (the PASS direction).
+        #
+        # A fresh base worktree has NO installed deps (node_modules/.venv are gitignored), so
+        # a test-runner acceptance (npm test / pytest) would red on base for ENVIRONMENT
+        # reasons, not the bug — and be mistaken for a reproduction (false PASS). Two guards:
+        # (a) best-effort symlink the live checkout's dep dirs into the base worktree; and
+        # (b) when the proving test is a separate overlaid file, run a BARE-BASE control
+        # FIRST (no overlay) — if base can't run the acceptance clean before the proving
+        # test exists, the red is environment/pre-existing noise → INCONCLUSIVE, never PASS.
+        # (Direct-probe acceptance — no overlaid test file, e.g. `grep` — needs no deps, so
+        # the control is skipped and base-red is the legitimate bug signal.)
         test_files = _changed_test_files(sha_base, sha_head)
+        bare_base_exits = []
         with tempfile.TemporaryDirectory() as basewt:
             rc_wt, _wt_out, wt_err = _git(["worktree", "add", "--detach", basewt, sha_base])
             if rc_wt != 0:
@@ -365,12 +381,50 @@ def run_validation(head, goal_id, base, goal_file, repo_root):
                                          "kind": "inconclusive", "evidence": evidence}],
                     "summary": f"INCONCLUSIVE: {evidence}",
                 }
+            links = []
             try:
+                # (a) best-effort: share the live checkout's installed dep dirs. We only ever
+                # create/remove the symlink itself — never touch the real target dirs.
+                for d in DEP_DIRS:
+                    src = os.path.join(repo_root, d)
+                    dst = os.path.join(basewt, d)
+                    if os.path.isdir(src) and not os.path.exists(dst):
+                        try:
+                            os.symlink(src, dst)
+                            links.append(dst)
+                        except OSError:
+                            pass
+                # (b) control: bare base (only meaningful when a separate proving test is
+                # overlaid — otherwise base_exits IS the bare run).
                 if test_files:
+                    bare_base_exits = _run_cmds(cmds, basewt) if cmds else []
                     _git(["-C", basewt, "checkout", sha_head, "--", *test_files])
                 base_exits = _run_cmds(cmds, basewt) if cmds else []
             finally:
+                for link in links:
+                    try:
+                        os.unlink(link)  # remove the symlink, never the target
+                    except OSError:
+                        pass
                 _git(["worktree", "remove", basewt, "--force"])
+        # If the bare base (pre-overlay) couldn't run the acceptance clean, the base "red" is
+        # environment/setup noise or a pre-existing failure, not a bug reproduction — never
+        # let that forge a PASS.
+        if test_files and cmds and any(x != 0 for x in bare_base_exits):
+            evidence = ("base checkout could not run the acceptance command(s) clean before "
+                        "the proving test was overlaid (missing deps/setup in the base "
+                        "checkout, a pre-existing base failure, or an acceptance command that "
+                        "names a test file added by this fix — scope acceptance at a stable "
+                        "runner, not the new file) — cannot prove repro-direction. "
+                        "Verify the fix manually.")
+            return {
+                "verdict": "INCONCLUSIVE",
+                "sha_head": sha_head,
+                "sha_base": sha_base,
+                "checks": checks + [{"name": "repro-direction", "pass": False,
+                                     "kind": "inconclusive", "evidence": evidence}],
+                "summary": f"INCONCLUSIVE: {evidence}",
+            }
         head_exits = _run_cmds(cmds, repo_root) if cmds else []
         checks.append(repro_direction(base_exits, head_exits, already_correct, test_files))
     else:
