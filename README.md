@@ -5,7 +5,7 @@ A skills-only plugin for [Claude Code](https://claude.com/claude-code) and
 [Droid](https://factory.ai) (Factory CLI), from Pragmatic Growth.
 
 [![Website](https://img.shields.io/badge/site-plugin.pragmaticgrowth.com-6366f1)](https://plugin.pragmaticgrowth.com)
-[![Version](https://img.shields.io/badge/version-4.0.1-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-4.1.0-8b5cf6)](CHANGELOG.md)
 [![CLIs](https://img.shields.io/badge/runs%20in-Claude%20Code%20%2B%20Droid-0ea66e)](#works-in-both-clis)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
@@ -22,10 +22,10 @@ keep an unattended agent loop from going off the rails.
 You say *“I want the pricing page to load in under 1.2 seconds.”* The plugin
 investigates your codebase, turns that into a **measurable contract** (what
 “done” means, how to verify it), drops it into a **queue that lives in your
-repo**, and then — when you’re ready — works that queue **sequentially**: a
-foreground implementer commits each goal directly on your current branch, the
-orchestrator runs a local build + test gate, and only work that passes is kept
-(failures roll back).
+repo**, and then — when you’re ready — works that queue **one goal per run**:
+a foreground implementer commits directly on your current branch using TDD and
+a lightweight verifier/reviewer subagent loop, the orchestrator runs a local
+build + test gate, and only work that passes is kept (failures roll back).
 
 It is **skills-only**: no MCP servers, no slash commands of its own, no hooks,
 no background daemons, no build step. Just four
@@ -48,7 +48,7 @@ want a review surface — flywheel just doesn't require one.)
 | Skill | One line | Invoke with |
 |---|---|---|
 | **define-goal** | Plain-language want → a measurable goal contract (or a whole document of them). Never writes code. | `/define-goal …` · or just say *“I want…”* |
-| **dispatch** | The factory orchestrator: drains the docs/goals queue sequentially in one session — claim, implement, local gate, keep or roll back. | `/dispatch` · *”work goal 005”* |
+| **dispatch** | The factory orchestrator: works one ready goal per run — claim, implement with TDD + fresh checks, local gate, keep or roll back. | `/dispatch` · *”work goal 005”* |
 | **loop-architect** | Designs the *loop contract* (prompt + verification + stop conditions) for autonomous, scheduled, or remote runs. | *“keep working on X”* · setting up a `/loop`, routine, or cron |
 | **factory-doctor** | One-pass preflight/doctor for the repo + machine. Auto-fixes everything local; reports the rest with exact fixes. | `/factory-doctor` |
 
@@ -83,24 +83,28 @@ document, and it produces **goal contracts** — never implementation.
 
 ### dispatch — work the queue
 
-The orchestrator. It drains the `docs/goals/` queue **sequentially** in a
-single session on the currently checked-out branch — no PRs, no worktrees, no
-parallel runners.
+The orchestrator. It works **one ready goal per run** on the currently
+checked-out branch — no PRs, no worktrees, no parallel implementers. Use
+`/loop /dispatch` (Claude Code) or a same-session Droid cron to repeat that
+cycle until the queue is drained.
 
 Per goal:
 
 1. **Claim** the next `not_started` goal (flip one entry → commit on the
    current branch).
-2. **Implement** — a foreground implementer commits work directly on `<base>`.
+2. **Implement** — a foreground implementer commits work directly on `<base>`,
+   using a short plan/checklist, TDD for code changes, and a fresh verifier or
+   reviewer subagent for non-trivial work.
 3. **Local gate** — the dispatch orchestrator runs the repo’s `config.verify`
    commands (build + tests), and `pg_validate.py` runs the per-goal acceptance +
    structural checks on the `gate_base..HEAD` diff.  
    - **PASS** → the implementer’s commits are squashed into one
      `feat(goal NNN)` commit kept on the branch.  
    - **FAIL** → work is rolled back; the goal is marked `blocked`.
-4. **Repeat** until the queue is empty or `config.budget` is exhausted.
+4. **Stop** after this goal. A later `/dispatch` run picks up the next ready
+   goal; `/loop /dispatch` repeats automatically.
 
-CI, if present, is a post-push observation — not a gate.  You can also target a
+CI, if present, is a post-push observation — not a gate. You can also target a
 single goal in an interactive session: *”work goal 005.”*
 
 ### loop-architect — make it run itself, safely
@@ -131,11 +135,11 @@ flowchart TD
     you(["You — plain language"]) --> dg["define-goal<br/>writes measurable contracts"]
     dg -->|queues| q[("docs/goals/ queue<br/>index.yaml + goal files")]
     q -->|claim next goal| dsp{{"dispatch · orchestrator"}}
-    dsp -->|foreground implementer<br/>commits on branch| impl["work commits<br/>on &lt;base&gt;"]
+    dsp -->|foreground implementer<br/>TDD + fresh checks| impl["work commit<br/>on &lt;base&gt;"]
     impl --> gate{"local gate<br/>pg_validate.py<br/>build + test"}
     gate -->|PASS| squash[["squash → feat(goal NNN)<br/>kept on &lt;base&gt;"]]
     gate -->|FAIL| rollback["roll back → blocked"]
-    squash -.->|next ready goal| q
+    squash -.->|next dispatch fire| q
     fd["factory-doctor<br/>preflight + fixes setup"] -.->|readies| dsp
     la["loop-architect<br/>designs the loop"] -.->|keeps it running| dsp
     classDef brand fill:#059669,stroke:#047857,color:#ffffff;
@@ -225,7 +229,7 @@ config:
     - pnpm build
     - pnpm test
   budget:                 # external "burnstop" for long unattended runs
-    max_goals_per_session: 40
+    max_goals_per_session: 1
     max_iterations: 200
 ```
 
@@ -235,7 +239,7 @@ config:
 | `model` | `inherit` | Model for spawned **code** agents (`inherit`/`sonnet`/`haiku`). The depth-vs-quota trade. (Recon always runs on sonnet.) |
 | `skills` | — | Repo-wide skills every implementer must use (e.g. your TDD or review skills). |
 | `verify` | — | Ordered list of local build + test commands. Run by the dispatch orchestrator after each implementation; PASS keeps the squash commit, FAIL rolls it back. |
-| `budget` | none | `max_goals_per_session` / `max_iterations` ceilings the session can’t exceed — the external brake on a long run. |
+| `budget` | none | `max_goals_per_session` / `max_iterations` ceilings the loop can’t exceed — the external brake on a long run. Dispatch itself works one goal per run. |
 
 ---
 
@@ -263,7 +267,7 @@ Code) or `droid plugin marketplace update pragmatic-growth` (Droid).
 ```bash
 /factory-doctor                              # 1. make sure the repo + machine are ready
 /define-goal I want the API p95 latency under 200ms   # 2. capture a want → queued contract
-/dispatch                                    # 3. work the queue — drains it in one session
+/dispatch                                    # 3. work one ready goal
 ```
 
 That’s the whole arc: preflight, capture, work. Add more goals any time —
@@ -290,17 +294,15 @@ if configured, runs after the push as a non-blocking observation.
 
 ## Running it autonomously
 
-`/dispatch` drains the whole queue in one session — just run it. Each goal is
-handled in turn and the session reports **progress-first**:
+`/dispatch` works one ready goal and stops. Each run reports **progress-first**:
 `6/8 done ████████████████░░░░ · ready 0 · blocked 2`.
 
-If you add more goals later and want to keep working them without re-running
-manually, `/loop /dispatch` keeps firing dispatch after each batch. Use
-`config.budget` as the burnstop — an external ceiling the loop **cannot edit
-itself**, so a flaky queue can’t burn indefinitely. When the budget is hit (or
-the queue drains), dispatch stops and surfaces the reason. Let **loop-architect**
-design the loop contract (verification + stop conditions) rather than firing a
-bare prompt.
+If you want the queue to keep moving without re-running manually, `/loop
+/dispatch` keeps firing the same one-goal cycle. Use `config.budget` as the
+burnstop — an external ceiling the loop **cannot edit itself**, so a flaky queue
+can’t burn indefinitely. When the budget is hit (or the queue drains), dispatch
+stops and surfaces the reason. Let **loop-architect** design the loop contract
+(verification + stop conditions) rather than firing a bare prompt.
 
 ---
 

@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Skills-only plugin for Claude Code and Droid (Factory CLI) from Pragmatic Growth, v4.0.0.
+Skills-only plugin for Claude Code and Droid (Factory CLI) from Pragmatic Growth, v4.1.0.
 No MCP servers, no commands, no agents, no hooks, no build step — four skills
 under `skills/` (two ship deterministic Python helpers in `scripts/`),
 forming a plain-language → autonomous-execution pipeline around a
@@ -22,22 +22,22 @@ the runtime and use appropriate paths, commands, and scheduling primitives.
   tools don't exist in either CLI; `/goal` is user-run, transcript-
   evaluated in Claude Code, self-verified by the agent in Droid,
   4,000-char condition cap).
-- **dispatch** — factory orchestrator for the docs/goals queue: drains the
-  queue SEQUENTIALLY in one session, working goals one at a time on the
-  branch that's currently checked out — no PRs, no worktrees, no `goal/<id>`
-  branches, no parallel execution. Per goal it records the pre-claim clean
+- **dispatch** — factory orchestrator for the docs/goals queue: works ONE
+  ready goal per run on the branch that's currently checked out — no PRs, no
+  worktrees, no `goal/<id>` branches, no parallel implementation. Per goal it
+  records the pre-claim clean
   HEAD as `anchor`, commits the claim, records the post-claim HEAD as
   `gate_base`, spawns ONE foreground implementer that commits its work
-  directly on the branch, then runs the LOCAL gate authoritatively: the
-  deterministic `pg_validate.py` over the `gate_base..HEAD` diff plus the
-  repo's `config.verify` build+test commands. PASS → squash the goal's
-  commits to one `feat(goal NNN)` commit and mark it `completed`; FAIL →
-  `git reset --hard gate_base` and mark it `blocked` (with reason). CI, if
-  the repo has it, is a NON-BLOCKING post-push observation surfaced under
-  needs-you — never a merge gate. Solo mode ("work goal 005") turns an
-  interactive session into a one-goal drain. Built to run as
-  `/loop 15m /dispatch` (Claude Code) or `CronCreate` same_session every
-  15m (Droid); iterations are idempotent. Each iteration emits one report
+  directly on the branch, using a lightweight subagent-driven quality loop
+  (plan/checklist, TDD, fresh verifier/reviewer subagent for non-trivial work),
+  then runs the LOCAL gate authoritatively: the deterministic `pg_validate.py`
+  over the `gate_base..HEAD` diff plus the repo's `config.verify` build+test
+  commands. PASS → squash the goal's commits to one `feat(goal NNN)` commit
+  and mark it `completed`; FAIL → `git reset --hard gate_base` and mark it
+  `blocked` (with reason). CI, if the repo has it, is a NON-BLOCKING post-push
+  observation surfaced under needs-you — never a merge gate. Built to repeat as
+  `/loop 15m /dispatch` (Claude Code) or `CronCreate` same_session every 15m
+  (Droid); each fire handles at most one new goal and is idempotent. Each fire emits one report
   line leading with progress — `<done>/<total> done` plus a 20-cell fill
   bar, then labeled `ready`/`blocked` counts that sum to `total`
   (lead with done, never `ready/total`, which reads as "nothing done");
@@ -54,11 +54,11 @@ the runtime and use appropriate paths, commands, and scheduling primitives.
   to provision — the gate is local. The probe checks settings in both
   `.claude/` and `.factory/` (Droid) paths.
 
-## Queue design invariants (research-backed; v4.0.0 sequential model, 2026-06-27)
+## Queue design invariants (research-backed; v4.1.0 one-goal dispatch model, 2026-06-28)
 
-- **v4.0.0 sequential model.** dispatch drains the queue ONE goal at a time
-  in a single session, committing work DIRECTLY on the branch that's checked
-  out — no PRs, no worktrees, no `goal/<id>` branches, no parallelism. Each
+- **v4.1.0 one-goal dispatch model.** dispatch works ONE ready goal per run,
+  committing work DIRECTLY on the branch that's checked out — no PRs, no
+  worktrees, no `goal/<id>` branches, no parallel implementation. Each
   goal is bracketed by two anchors: `anchor` (the pre-claim clean HEAD) and
   `gate_base` (HEAD right after the claim commit). The implementer commits on
   the branch; then the orchestrator runs the LOCAL gate over the
@@ -67,6 +67,8 @@ the runtime and use appropriate paths, commands, and scheduling primitives.
   goal's commits into one `feat(goal NNN)` commit + `completed`; FAIL →
   `git reset --hard gate_base` + `blocked`. CI, where the repo has it, is a
   NON-BLOCKING post-push observation surfaced under needs-you, never a gate.
+  `/loop /dispatch` or Droid same-session cron advances the queue by repeating the
+  same one-goal run.
 - Status lives ONLY in `index.yaml`, never in goal-file frontmatter —
   dual-write drifts. Goal files are immutable contracts.
 - Statuses: `not_started | in_progress | completed | blocked` — blocked
@@ -78,7 +80,7 @@ the runtime and use appropriate paths, commands, and scheduling primitives.
   depth-vs-limit trade), repo-wide `skills`, `verify` (the ordered local
   build+test commands the gate runs after each implementer), and `budget`
   (optional; `max_goals_per_session` + optional `max_iterations` — a simple
-  cap on cumulative spend across a scheduled run; absent = no session cap).
+  cap on cumulative spend across repeated dispatch fires; absent = no loop cap).
   Defaults: repo default branch, inherit, no extra skills, repo-detected
   verify commands, no budget.
 - Goal frontmatter `type: bug|feature|chore` shapes the contract: bugs
@@ -92,7 +94,8 @@ the runtime and use appropriate paths, commands, and scheduling primitives.
   owns the branch. NNN minting is local too (a collision renumbers the NEW
   goal only; never renumber existing goals).
 - Skills mandates come in three layers: method skills (writing-plans,
-  TDD, verification-before-completion) hardcoded in dispatch's brief;
+  TDD, verification-before-completion, and a lightweight subagent-driven
+  verifier/reviewer loop for non-trivial work) hardcoded in dispatch's brief;
   repo skills in `config.skills`; goal-specific skills in goal
   frontmatter `skills:` (populated by define-goal from actually
   available skills).
@@ -114,10 +117,11 @@ the runtime and use appropriate paths, commands, and scheduling primitives.
   conditionally uses Workflow.)
 - Workflow tool only where the docs' thresholds say it wins: define-goal
   batch mode at ~5+ items (drafts in script variables, approval table
-  gates file writes). Dispatch implementers are NEVER workflows — runs
-  are session-bound; the branch commits + the two-anchor rollback are the
-  recovery path. The tool needs CLI ≥2.1.154 and can be disabled, so
-  skills never assume it.
+  gates file writes). Dispatch implementers may use workflow/mission mode only
+  for bounded read-only fan-out or review inside a single goal; they are NEVER
+  workflows for parallel code-writing or cross-run state. The branch commits +
+  the two-anchor rollback are the recovery path. The tool needs CLI ≥2.1.154 and
+  can be disabled, so skills never assume it.
 
 History note: this repo was previously `mcp-do`, a stdio MCP server
 wrapping droid/opencode CLIs (removed in v1.0.0 at ac2bd7c). The

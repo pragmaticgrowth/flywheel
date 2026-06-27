@@ -199,10 +199,10 @@ goals:
 ```
 
 On first queue creation, suggest the user run `/factory-doctor` — it preflights gh auth,
-branch protection, and CI, and scaffolds the queue, so a queue born into a known-good
-environment never hits setup errors mid-run. Then ask the user once (the interactive
-question tool — AskUserQuestion in Claude Code, AskUser in Droid): which branch is the
-integration base (main? staging? other?), and what the build+test gate commands are
+the working branch, CI, and the local gate, and scaffolds the queue, so a queue born into a
+known-good environment never hits setup errors mid-run. Then ask the user once (the
+interactive question tool — AskUserQuestion in Claude Code, AskUser in Droid): which branch
+is the integration base (main? staging? other?), and what the build+test gate commands are
 (`config.verify`).
 Defaults when unspecified: the repo's default branch, `model: inherit`, no repo skills,
 no `verify` (dispatch auto-detects from Makefile / `go.mod` / `package.json`).
@@ -223,6 +223,10 @@ Rules that keep the queue safe:
 - Keep each goal file well under 64 KB so it could mirror 1:1 into a GitHub issue.
 - Confirm the draft (title + acceptance criteria) with the user before writing; batch mode
   uses its approval table instead.
+- Dispatch works one ready goal per run on the checked-out branch. If the user wants the
+  whole queue worked unattended, the contract should point them to `/loop /dispatch` (Claude
+  Code) or a same-session Droid cron; do not imply one `/dispatch` invocation drains every
+  ready goal.
 - **Reserve the ID(s) BEFORE writing goal files** — the define-goal analog of dispatch's
   "claim the slot via push before spawning." It prevents a concurrent session from forcing a
   rename + cross-ref rewrite of files you already wrote (a real foot-gun under multi-machine
@@ -322,7 +326,8 @@ own skills), at most ~4, never invented names. **Any goal touching the UI MUST l
 `agent-browser`** in its `skills:` (it's what makes the scripted browser check in the
 acceptance criteria runnable); if agent-browser isn't available, say so and fall back to
 written manual-assertion steps rather than silently dropping the UI verification. Method
-skills (TDD, plans, verification) are mandated by `dispatch`'s brief — don't repeat them.
+skills (TDD, plans, verification, and the lightweight subagent-driven review loop) are
+mandated by `dispatch`'s brief — don't repeat them.
 Repo-wide skills belong in `config.skills` instead; for a frontend repo, suggest moving
 `agent-browser` to `config.skills` when every (or most) goal would list it.
 

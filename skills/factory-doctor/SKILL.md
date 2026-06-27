@@ -59,8 +59,8 @@ For each check whose `fix` begins with `FIX:`:
       - npm ci
       - npm run build
       - npm test
-    # budget:           # optional — uncomment to cap goals per session
-    #   max_goals_per_session: 10
+    # budget:           # optional — uncomment to cap repeated dispatch fires
+    #   max_goals_per_session: 1
   goals: {}
   ```
 

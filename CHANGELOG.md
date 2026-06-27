@@ -12,6 +12,31 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [4.1.0] — 2026-06-28
+
+**One-goal dispatch with a lightweight subagent-driven quality loop.** `dispatch` now works
+at most one ready goal per run, then reports and stops. Long unattended runs still drain the
+queue by repeating the same safe cycle with `/loop /dispatch` (Claude Code) or a
+same-session Droid cron. This keeps the v4 direct-to-branch model simple while making each
+fire easier to reason about and recover.
+
+- **One ready goal per `/dispatch` run.** The current branch remains the integration surface:
+  no PRs, no worktrees, no `goal/<id>` branches, and no parallel code-writing lanes. PASS
+  still squashes to one `feat(goal NNN)` commit and completes the goal; FAIL still rolls back
+  to `gate_base` and blocks with a reason.
+- **Latest-context preflight.** Before spawning the implementer, `dispatch` now gathers a
+  short read-only summary of the newest plan/progress note and any current/latest PR context
+  available through `gh`. That context is advisory only: it never creates a merge gate,
+  authorizes a branch switch, or overrides the goal contract/local gate.
+- **Subagent-driven discipline without the old orchestration machinery.** The single
+  foreground implementer must use a short plan/checklist, TDD for code changes, and a fresh
+  verifier/reviewer subagent for non-trivial work. Workflow/mission mode is allowed only for
+  bounded read-only fan-out or review inside that one goal, never for parallel
+  implementation or cross-run state.
+- **Docs aligned.** `define-goal`, `loop-architect`, `CLAUDE.md`, README, and the public site
+  now describe one-goal dispatch, TDD-backed checks, and repeated `/loop /dispatch` as the
+  queue-drain mechanism.
+
 ## [4.0.1] — 2026-06-28
 
 **Patch: harden the bug repro-direction gate against a false PASS.** The local gate ran a

@@ -1,6 +1,6 @@
 ---
 name: dispatch
-description: Factory dispatcher — use when the user says "/dispatch", "run the factory", wants the docs/goals queue worked, or wants to work one specific queued goal in this session ("work goal 005"). Drains the queue SEQUENTIALLY in one session, on the currently-checked-out branch — one goal at a time, no pull requests, no worktrees, no parallel agents. Each goal gets a foreground implementer, then a LOCAL gate the orchestrator runs authoritatively; PASS keeps a squashed commit on the branch, FAIL rolls back. Works in any repo with a docs/goals/ queue. Orchestrates only — never implements in its own context.
+description: Factory dispatcher — use when the user says "/dispatch", "run the factory", wants the docs/goals queue worked, or wants to work one specific queued goal in this session ("work goal 005"). Works ONE ready goal per run, on the currently checked-out branch — no pull requests, no worktrees, no parallel implementers. The single foreground implementer follows TDD and a lightweight subagent-driven quality loop, then the orchestrator runs the LOCAL gate authoritatively. Works in any repo with a docs/goals/ queue. Orchestrates only — never implements in its own context.
 ---
 
 # Dispatch — the factory orchestrator
@@ -10,12 +10,13 @@ and its nested helpers (depth 2+, system cap depth=5) hold the mess. Compose exi
 skills — never re-derive what a skill already encodes. The queue is `docs/goals/index.yaml`
 (see `define-goal` for the format).
 
-Dispatch drains the queue **sequentially, in one session, on the currently-checked-out
-branch** (e.g. `staging`). One goal at a time: claim it, spawn a single foreground
-implementer that commits its work on this branch, run a LOCAL gate yourself, and on PASS
-keep a squashed commit — on FAIL roll the goal back so the branch never carries unverified
-work. No pull requests, no worktrees, no `goal/<id>` branches, no parallel/background
-implementers.
+Dispatch works **one ready goal per run, on the currently checked-out branch**
+(e.g. `staging`). One goal at a time: claim it, spawn a single foreground implementer that
+commits its work on this branch, run a LOCAL gate yourself, and on PASS keep a squashed
+commit — on FAIL roll the goal back so the branch never carries unverified work. No pull
+requests, no worktrees, no `goal/<id>` branches, no parallel/background implementers.
+Use `/loop /dispatch` (Claude Code) or a same-session Droid cron to repeat this one-goal
+cycle until the queue is drained.
 
 Read the queue's `config:` block first; defaults when absent:
 `base` = the branch dispatch works ON (the started branch — staging, main, or other;
@@ -32,26 +33,28 @@ depth-vs-weekly-limit trade, not yours to override.
 
 ## Hard rules (every iteration, before any action)
 
-- One goal at a time, in this session, on the current branch. There are NO pull requests,
+- One goal per run, in this session, on the current branch. There are NO pull requests,
   NO worktrees, NO `goal/<id>` branches. After a goal's work passes the LOCAL gate you keep
-  its commit on the branch (squashed to one) and move on. A failed gate rolls the goal back
-  to its `gate_base` so the branch never carries unverified work. Implementers never merge.
+  its commit on the branch (squashed to one) and stop the run. A failed gate rolls the goal
+  back to its `gate_base` so the branch never carries unverified work. Implementers never
+  merge.
 - Read the repo's CLAUDE.md / AGENTS.md hard rules once per session and treat them as law
   (deploy rules, forbidden merges, migration rules). Repeat-check before any git/deploy action.
 - **Every queue write goes through the claim protocol below.** Implementers never touch
   `docs/goals/` — the orchestrator owns queue state.
 - No-progress rule: same goal fails the same way twice with no progress → stop retrying,
-  set the goal `blocked` with a `reason`, move on.
+  set the goal `blocked` with a `reason`, report, and stop the run.
 - Substantive conflicts are never guessed through. A local `git merge`/squash that hits a
   conflict on the current branch means two pieces of work changed the same logic → set the
   goal `blocked`, surface under needs-you, and roll back; never resolve by guessing.
 - **Session budget (external brake).** If `config.budget.max_goals_per_session` (or
-  `max_iterations`) is set, count goals worked this session. Once a cap is reached, STOP
-  claiming new work — let the in-flight goal finish its gate cleanly — surface
-  `budget exhausted (<n>/<cap> goals)` under needs-you, and send ONE notification per
-  Phase 4 (Claude Code PushNotification; Droid has no PushNotification, so the report line
-  carries it). The cap comes from config you cannot edit; that is what makes it a real brake
-  and not a soft self-limit.
+  `max_iterations`) is set, count this run as one worked goal. Because dispatch never claims
+  a second goal in the same run, `max_goals_per_session: 1` is the natural default behavior;
+  lower/zero or exhausted caps stop before claiming. Let any in-flight goal finish its gate
+  cleanly, surface `budget exhausted (<n>/<cap> goals)` under needs-you, and send ONE
+  notification per Phase 4 (Claude Code PushNotification; Droid has no PushNotification, so
+  the report line carries it). The cap comes from config you cannot edit; that is what makes
+  it a real brake and not a soft self-limit.
 
 ## Claim protocol — every status write
 
@@ -68,9 +71,10 @@ Every status transition uses the same convention — one entry, its own commit:
 
 ## Re-entrancy — idempotent iterations
 
-A direct `/dispatch` run works the queue top to bottom and stops when it drains or hits the
-budget. Each iteration must be idempotent so a re-run after a transient death picks up where
-it left off:
+A direct `/dispatch` run settles in-flight work first, then claims at most one new ready
+goal, gates it, reports, and stops. `/loop /dispatch` or Droid same-session cron repeats the
+same one-goal cycle. Each run must be idempotent so a re-run after a transient death picks up
+where it left off:
 
 1. **The index is the claim ledger.** A claim is a committed status flip made BEFORE the
    implementer runs.
@@ -105,13 +109,26 @@ mismatch handling in Phase 2 — never silently work on the wrong branch).
 **Drained-queue terminal stop.** Dispatch stops when there is nothing left to do: when Phase 2
 finds no ready goals AND needs-you is empty, emit `factory drained — <done>/<total> done` and
 stop. A later `/dispatch` (or `/loop`) re-run picks up newly-added goals — a `/define-goal` +
-`/dispatch` restarts the drain from wherever the queue now stands.
+`/dispatch` resumes from wherever the queue now stands.
 
 At end-of-drain only (NOT per-goal — no polling), if the working branch has a remote AND `gh`
 is available and authenticated, do ONE non-blocking check of the latest CI run on the current
 branch (`gh run list --branch <current> --limit 1`); if it is failing, surface it under
 needs-you as a non-blocking observation (a CI failure to look at — never block, never wait on
 it). If `gh` or the remote is absent, skip silently (`gh` is optional).
+
+**Latest-context preflight (read-only, never a gate).** Before spawning an implementer, gather
+only the context that helps avoid stale work:
+- Latest plan/progress note if present: newest `docs/superpowers/plans/*.md`, then
+  `.superpowers/sdd/progress.md` if present.
+- Latest PR context if `gh` is available: prefer an open PR for the current branch
+  (`gh pr view --json number,title,url,reviewDecision,statusCheckRollup`); otherwise the most
+  recently updated open PR (`gh pr list --state open --limit 1 --json ...`). If there is no PR
+  or `gh` is unavailable, record `none`.
+
+Summarize this in at most five bullets and pass it to the implementer under "Latest context".
+PRs, plan docs, and review comments are context only. They do not create a merge gate, they do
+not authorize a branch switch, and they do not override the goal contract or the local gate.
 
 Read the queue with a real YAML parser (`python3 -c 'import yaml,sys; …'`), never line-greps
 or ad-hoc `jq` — grep probes on the queue invent phantom statuses and miscounts that cost an
@@ -144,13 +161,15 @@ For each claimed goal, in order:
 1. `anchor` = current HEAD (clean). `git commit` the claim → `gate_base` = HEAD now.
 2. Spawn ONE foreground implementer (Agent, run_in_background: false) that works in this
    checkout on the current branch under the method mandates (writing-plans, TDD,
-   verification-before-completion) + config.skills + the goal's `skills:`. It commits its
-   work on the branch and ends with a verification summary. It never merges, never opens a PR.
+   verification-before-completion) + config.skills + the goal's `skills:`. It uses the
+   lightweight subagent-driven quality loop in Phase 3, commits its work on the branch, and
+   ends with verification evidence. It never merges, never opens a PR.
 3. Run the LOCAL gate authoritatively yourself:
    `python3 "$PGVALIDATE" --head HEAD --base <gate_base> --goal <id> --goal-file docs/goals/<id>.md`
    plus the repo `config.verify` commands (ordered, all must exit 0). Show output.
 4. PASS → `git reset --soft <gate_base> && git commit -m "feat(goal <id>): <slug>"` (squash to
-   one), then `chore(goals): complete <id>`; push if a remote exists (non-blocking).
+   one), then `chore(goals): complete <id>`; push if a remote exists (non-blocking); report
+   and stop without claiming another goal.
    FAIL_FIXABLE → one repair agent, re-gate; still failing → `git reset --hard <gate_base>`,
    `chore(goals): block <id> — <reason>`. FAIL_CONTRACT → reset + block (needs-you contract
    amendment). INCONCLUSIVE → reset + block "no runnable local gate".
@@ -196,7 +215,7 @@ differs from the started branch is surfaced under needs-you (switch branches and
 separate session), never silently worked on the wrong branch.
 
 If `config.budget` is set and `max_goals_per_session` is exhausted, stop claiming (Hard
-rules) and let the current goal finish.
+rules) and let the current goal finish. Never claim a second goal in the same dispatch run.
 
 ## Phase 3 — spawn the implementer (depth 1, foreground)
 
@@ -205,9 +224,15 @@ checkout on the current branch. Brief (fill in `<id>` and the resolved skill lis
 
 ```
 Implement the goal in docs/goals/<id>.md exactly per its "Goal contract" section — read
-that file first. You own this work end to end — nested subagents are for context isolation
-(explore / write tests / verify in fresh windows), never for passing the whole task down;
-spawn helpers at your own model.
+that file first.
+
+Latest context from the dispatcher:
+<latest plan/progress/PR bullets, or "none">
+
+You own this work end to end. Nested subagents are required when the runtime provides them
+and the task is more than a one-file mechanical edit: use them for context isolation,
+independent verification, and review in fresh windows. They are never a second implementer
+lane. If subagents are unavailable, say so and run the same checklist yourself.
 
 Workspace: you are on the current branch in this checkout — work on the current branch in
 this checkout, commit your intended files here. Do NOT create a worktree, do NOT create a
@@ -215,6 +240,24 @@ new branch, do NOT open a PR. Run project setup (install deps) and the repo's te
 a dirty baseline is reported, never built on. Failures that are already red on the current
 branch before you start (unrelated suites, missing-secret/env environments) are pre-existing,
 not your regression: note them and move on — do not fix them, and they do not block your goal.
+
+Quality loop — keep it lightweight, but do not skip it:
+1. Plan: before editing, write a short checklist from the goal contract and latest context.
+   Use `writing-plans` first if the change spans >2 files or changes architecture; otherwise
+   keep the checklist inline.
+2. TDD: for every code change, use `test-driven-development` and watch the proving test fail
+   before implementation. Bug goals must reproduce the root cause first; upstream findings
+   are hypotheses, not facts.
+3. Implement on the current branch only. You may use read-only helper subagents for
+   exploration and test-design; do not spawn parallel code-writing agents. Workflow/mission
+   mode is allowed only for bounded read-only fan-out or review when there are ~5+ independent
+   checks; never use it to implement across branches or survive the session.
+4. Verify: run the goal acceptance commands and any repo baseline command you touched.
+5. Fresh check: for non-trivial work, dispatch a verifier/reviewer subagent to compare the
+   diff against the goal contract and check for missing requirements, overbuild, test gaps,
+   and stray files. Treat reviewer feedback as findings to verify, not orders to obey; fix
+   Critical/Important issues or explain why they are false.
+6. Self-review the final diff, stage only intended files, commit, and report evidence.
 
 Skills are mandatory — invoke each via the Skill tool:
 1. BEFORE touching the work they cover: <config.skills + the goal frontmatter's skills:>.
@@ -235,8 +278,8 @@ Finish: before committing, review your diff and stage only the files you meant t
 revert stray lockfile / dependency-manager / formatter churn, or any file you didn't intend
 to touch, that the toolchain introduced (never `git add -A` blind). Commit your intended
 files on the current branch and end with verification evidence (the commands you ran and
-their output). Do NOT merge anything, do NOT push, do NOT open a PR — the orchestrator runs
-the gate and integrates.
+their output), plus the reviewer/subagent verdict when one was required. Do NOT merge
+anything, do NOT push, do NOT open a PR — the orchestrator runs the gate and integrates.
 
 Constraints: the goal file's "Constraints" section verbatim, plus: never merge, never push,
 never open a PR, and NEVER edit docs/goals/ — the orchestrator owns queue state. If blocked:
@@ -259,7 +302,8 @@ The default model is already one-goal-at-a-time on the current branch, so "work 
 just scopes the iteration to a single id: skip Phase 2's ready-scan, claim goal 005 directly
 via the protocol, and run it through Working a goal (anchor → claim → foreground implementer
 → local gate → PASS squash+complete / FAIL roll back+block). Everything else — the brief, the
-gate, the rollback — is identical.
+gate, the rollback — is identical. `/dispatch` already stops after that one goal; solo mode
+only changes which goal is selected.
 
 ## Phase 4 — report (always, exactly one line)
 

@@ -40,7 +40,7 @@ all four are cheaper to prevent in a bounded loop than to detect in an open one.
 | Work until a verifiable end state is true | `/goal` (Haiku evaluator checks after every turn) | `droid exec --auto high "<condition>"` (agent self-verifies) or interactive paste |
 | Poll/babysit on a cadence while a session is open | `/loop <interval> <skill-or-prompt>` | `CronCreate` with `same_session: true`, `recurring: true` |
 | Recurring default maintenance for this repo | bare `/loop` + a `.claude/loop.md` | `CronCreate` same_session with the loop body as the job prompt (no loop.md equivalent) |
-| A backlog of shippable changes worked unattended | docs/goals queue — fill with `define-goal`, work with `/dispatch` (sequential single-session drain; re-run, or `/loop` only to pick up later-added goals) | docs/goals queue — fill with `define-goal`, work with `/dispatch` (sequential single-session drain; use `CronCreate` same_session only to pick up later-added goals) |
+| A backlog of shippable changes worked unattended | docs/goals queue — fill with `define-goal`, then repeat `/dispatch` (one ready goal per run on the checked-out branch; `/loop /dispatch` drains over repeated fires) | docs/goals queue — fill with `define-goal`, then repeat `/dispatch` (one ready goal per run on the checked-out branch; use `CronCreate` same_session to drain over repeated fires) |
 | Must run with the laptop closed | Routine (`/schedule`; cloud; schedule / API / GitHub triggers) | `CreateAutomation` (cloud; runs on a Droid Computer) or `CronCreate` with `new_session` |
 | Needs local files, machine on, no session open | Desktop scheduled task | `CronCreate` with `new_session` (starts a fresh local session) |
 | React to external events (CI, chat) instead of polling | Channels (`--channels`) or Routine API trigger | Slack integration + `CronCreate` new_session; or `CreateAutomation` with event triggers |
@@ -53,10 +53,13 @@ cadence; routine/automation + channel for laptop-closed with phone telemetry.
 Workflow thresholds (per platform docs): >5 independent agents or a multi-stage
 find→verify→synthesize loop → workflow (Claude Code) or mission mode (Droid); 2–4 parallel
 lookups → plain subagents, cheaper and simpler; anything that must survive the session
-(cross-iteration implementers, multi-day queues) → background agents + a state file, never a
-workflow — runs are session-bound and don't resume across sessions. The Workflow tool needs
-Claude Code ≥2.1.154 and can be disabled; Droid's mission mode (`droid exec --mission`) is
-the equivalent but also optional. Design a plain-subagent fallback for either CLI.
+(cross-iteration implementers, multi-day queues) → the `docs/goals/index.yaml` ledger plus
+repeated one-goal dispatch runs, never workflow state — workflows are session-bound and don't
+resume across sessions. Dispatch implementers may use workflows only for bounded read-only
+fan-out or review inside that one goal, never as parallel code-writing lanes. The Workflow
+tool needs Claude Code ≥2.1.154 and can be disabled; Droid's mission mode
+(`droid exec --mission`) is the equivalent but also optional. Design a plain-subagent
+fallback for either CLI.
 
 ## Step 3 — Write the contract
 
@@ -131,8 +134,7 @@ access to the minimum the routine needs.
 - **State file**: a markdown/board/ledger outside the conversation records done/next/blocked
   so the next run resumes instead of restarting. Name the file in the prompt. For factory
   work, the canonical ledger is the `docs/goals/index.yaml` queue (created by `define-goal`,
-  worked by `/dispatch` as a sequential single-session drain) — prefer it over inventing a
-  new state file.
+  worked by repeated one-goal `/dispatch` runs) — prefer it over inventing a new state file.
 - **Self-verification tooling** (Boris's #1, "2-3x the quality"): browser extension for web
   UI, simulator MCP for mobile, runnable server + tests for backend. Name the tool in the
   prompt and describe it.
