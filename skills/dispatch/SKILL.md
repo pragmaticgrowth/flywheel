@@ -98,10 +98,20 @@ Confirm the working tree is clean (dirty or diverged → stop and report rather 
 silently). If `docs/goals/index.yaml` is missing, report "no goals queue — create goals with
 /define-goal" and end the iteration.
 
+If `config.base` is set and the current branch != `config.base`, STOP and report — you are on
+the wrong working branch; checkout `<config.base>` first (mirroring the per-goal `base:`
+mismatch handling in Phase 2 — never silently work on the wrong branch).
+
 **Drained-queue terminal stop.** Dispatch stops when there is nothing left to do: when Phase 2
 finds no ready goals AND needs-you is empty, emit `factory drained — <done>/<total> done` and
 stop. A later `/dispatch` (or `/loop`) re-run picks up newly-added goals — a `/define-goal` +
 `/dispatch` restarts the drain from wherever the queue now stands.
+
+At end-of-drain only (NOT per-goal — no polling), if the working branch has a remote AND `gh`
+is available and authenticated, do ONE non-blocking check of the latest CI run on the current
+branch (`gh run list --branch <current> --limit 1`); if it is failing, surface it under
+needs-you as a non-blocking observation (a CI failure to look at — never block, never wait on
+it). If `gh` or the remote is absent, skip silently (`gh` is optional).
 
 Read the queue with a real YAML parser (`python3 -c 'import yaml,sys; …'`), never line-greps
 or ad-hoc `jq` — grep probes on the queue invent phantom statuses and miscounts that cost an
