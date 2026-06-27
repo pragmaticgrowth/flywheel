@@ -3,25 +3,25 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>flywheel — plain-language wants in, verified PRs out · Pragmatic Growth</title>
-<meta name="description" content="Turn plain-language wants into a measurable goal queue, then let Claude Code & Droid agents build, verify, and merge each one in isolation — autonomy you can actually leave running. Skills-only: define-goal, dispatch, loop-architect, factory-doctor.">
+<title>flywheel — plain-language wants in, verified commits out · Pragmatic Growth</title>
+<meta name="description" content="Turn plain-language wants into a measurable goal queue, then let Claude Code & Droid agents work it sequentially — committing each goal straight to your branch only after a local build+test gate passes, no PR overhead. Skills-only: define-goal, dispatch, loop-architect, factory-doctor.">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="manifest" href="/site.webmanifest">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Pragmatic Growth">
-<meta property="og:title" content="flywheel — plain-language wants in, verified PRs out">
-<meta property="og:description" content="Four skills turn what you ask for into a measurable goal queue. Agents build each goal in isolation, verify it against the contract, and merge only what passes — autonomy you can actually leave running.">
+<meta property="og:title" content="flywheel — plain-language wants in, verified commits out">
+<meta property="og:description" content="Four skills turn what you ask for into a measurable goal queue. Agents work it sequentially, commit each goal straight to your branch, and keep only what passes a local build+test gate — autonomy you can actually leave running, no PR overhead.">
 <meta property="og:url" content="https://plugin.pragmaticgrowth.com">
 <meta property="og:image" content="https://plugin.pragmaticgrowth.com/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:type" content="image/png">
-<meta property="og:image:alt" content="flywheel — plain-language wants in, verified PRs out. A skills-only Claude Code + Droid plugin from Pragmatic Growth.">
+<meta property="og:image:alt" content="flywheel — plain-language wants in, verified commits out. A skills-only Claude Code + Droid plugin from Pragmatic Growth.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="flywheel — plain-language wants in, verified PRs out">
-<meta name="twitter:description" content="Describe what you want; agents build it in isolation, verify it against the contract, and merge only what passes — autonomy you can leave running.">
+<meta name="twitter:title" content="flywheel — plain-language wants in, verified commits out">
+<meta name="twitter:description" content="Describe what you want; agents work the queue sequentially, commit each goal to your branch, and keep only what passes a local build+test gate — autonomy you can leave running.">
 <meta name="twitter:image" content="https://plugin.pragmaticgrowth.com/og.png">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#020617" media="(prefers-color-scheme: dark)">
@@ -225,6 +225,37 @@
   .tab.active{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
   .tab-pane{display:none}.tab-pane.active{display:block}
 
+  /* ---------- changelog ---------- */
+  .timeline{position:relative;padding-left:30px}
+  .timeline::before{content:"";position:absolute;left:7px;top:8px;bottom:8px;width:2px;background:var(--border)}
+  .rel{position:relative;margin-bottom:14px}
+  .rel::before{content:"";position:absolute;left:-30px;top:9px;width:16px;height:16px;border-radius:50%;background:var(--surface);
+    border:3px solid var(--a1);box-shadow:0 0 0 4px var(--bg)}
+  html[data-theme="dark"] .rel::before{border-color:var(--a3)}
+  .rel.latest::before{background:var(--grad);border-color:transparent}
+  .rel-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:0;box-shadow:var(--shadow);overflow:hidden}
+  .rel-sum{display:flex;align-items:center;gap:13px;padding:16px 19px;cursor:pointer;list-style:none}
+  .rel-sum::-webkit-details-marker{display:none}
+  .rel-v{font:700 .92rem var(--mono);color:var(--ink)}
+  .tag{font:600 .68rem var(--sans);padding:3px 8px;border-radius:999px;letter-spacing:.02em}
+  .tag.now{background:var(--grad);color:#fff}
+  .tag.date{background:var(--surface-2);color:var(--muted);font-family:var(--mono);font-weight:600}
+  .rel-title{font-weight:600;font-size:.96rem;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rel-sha{font:600 .74rem var(--mono);color:var(--faint)}
+  .rel-sha:hover{color:var(--a1)}
+  .chev{width:16px;height:16px;color:var(--faint);transition:.2s;flex:none}
+  details[open] .chev{transform:rotate(180deg)}
+  .rel-body{padding:2px 19px 18px 19px;border-top:1px solid var(--border)}
+  .rel-body ul{margin:14px 0 0;padding-left:18px;display:grid;gap:7px}
+  .rel-body li{color:var(--muted);font-size:.9rem}
+  .rel-body li b,.rel-body li code{color:var(--ink)}
+  .rel-body code{font:600 .82rem var(--mono);color:var(--a1)}
+  html[data-theme="dark"] .rel-body code{color:var(--a3)}
+  .cl-more{margin-top:18px;font-size:.92rem;color:var(--muted)}
+  .cl-more a{color:var(--a1);font-weight:600}
+  html[data-theme="dark"] .cl-more a{color:var(--a3)}
+  @media(max-width:620px){.rel-title{white-space:normal}.rel-sha{display:none}.rel-sum{flex-wrap:wrap}}
+
   /* ---------- footer (very simple) ---------- */
   footer{border-top:1px solid var(--border);padding:28px 0;margin-top:44px}
   .foot{display:flex;align-items:center;gap:16px 22px;flex-wrap:wrap}
@@ -252,9 +283,10 @@
       <a href="#skills">Skills</a>
       <a href="#queue">The queue</a>
       <a href="#install">Install</a>
+      <a href="#changelog">Changelog</a>
     </nav>
     <div class="nav-actions">
-      <span class="ver-pill" title="Current released version">v3.0.1</span>
+      <span class="ver-pill" title="Current released version">v4.0.0</span>
       <a class="icon-btn" href="https://github.com/pragmaticgrowth/flywheel" target="_blank" rel="noopener" aria-label="GitHub repository">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.7.5.5 5.7.5 12a11.5 11.5 0 0 0 7.9 10.9c.6.1.8-.2.8-.5v-2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.4-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.6 18.3 5 18.3 5c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.6.8.5A11.5 11.5 0 0 0 23.5 12C23.5 5.7 18.3.5 12 .5Z"/></svg>
       </a>
@@ -277,8 +309,8 @@
   <div class="wrap hero-grid">
     <div>
       <span class="h-badge"><span class="dot"></span> <b>Skills-only</b> · Claude&nbsp;Code&nbsp;+&nbsp;Droid</span>
-      <h1 class="title">Plain-language wants in.<br><span class="grad-text">Verified&nbsp;PRs&nbsp;out.</span></h1>
-      <p class="lead">Four skills turn what you ask for into a measurable goal queue. Agents claim each goal, build it in an isolated worktree, and merge only what passes a deterministic gate — autonomy you can actually leave running.</p>
+      <h1 class="title">Plain-language wants in.<br><span class="grad-text">Verified&nbsp;commits&nbsp;out.</span></h1>
+      <p class="lead">Four skills turn what you ask for into a measurable goal queue. One agent works the queue in turn, committing each goal straight to your branch — and keeping it only after a local build+test gate passes. Autonomy you can actually leave running.</p>
       <div class="cta">
         <a class="btn btn-primary" href="#install">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
@@ -303,11 +335,11 @@
 <span class="u">&gt;</span> I want first paint under 1.2s on the pricing page<br>
 <span class="m">  define-goal</span> ▸ recon (3 read-only agents) ▸ contract<br>
 <span class="g">  ✓ queued</span> <b>docs/goals/014-fast-pricing-fcp.md</b>  ·  type: feature<br><br>
-<span class="c"># 2 · let the factory work the queue, unattended</span><br>
-<span class="u">&gt;</span> /loop 15m /dispatch<br>
+<span class="c"># 2 · let the factory drain the queue, one goal at a time</span><br>
+<span class="u">&gt;</span> /dispatch<br>
 <span class="m">  dispatch</span> ▸ <b>6/8 done</b> <span class="bar">████████████████░░░░</span><br>
-<span class="c">           running 2 · ready 0 · blocked 0</span><br>
-<span class="g">  ✓ merged</span> goal 014 → main   <span class="c">(gate: PASS)</span><br>
+<span class="c">           working goal 014 · ready 1 · blocked 0</span><br>
+<span class="g">  ✓ goal 014</span> verified locally → committed to <b>staging</b><br>
       </div>
     </div>
   </div>
@@ -318,17 +350,17 @@
   <div class="wrap">
     <div class="sec-head reveal">
       <span class="eyebrow">How it works</span>
-      <h2>From a sentence to a merged PR — on a loop.</h2>
-      <p>The skills chain: capture wants as contracts, queue them in the repo, work the queue with isolated agents, and integrate verified merges — with a loop designed to run unattended.</p>
+      <h2>From a sentence to a verified commit — on a loop.</h2>
+      <p>The skills chain: capture wants as contracts, queue them in the repo, work the queue one goal at a time, and keep each commit only after a local gate passes — a loop designed to run unattended.</p>
     </div>
     <div class="flow">
       <div class="step reveal"><div class="n">01 · define-goal</div><h3>Capture</h3><p>Plain-language want → a measurable contract, grounded by recon. Queued into <code>docs/goals/</code>.</p>
         <svg class="arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></div>
-      <div class="step reveal"><div class="n">02 · the queue</div><h3>Queue</h3><p>Goal files + <code>index.yaml</code> live in the repo. Status lives only in the index, arbitrated by git push.</p>
+      <div class="step reveal"><div class="n">02 · the queue</div><h3>Queue</h3><p>Goal files + <code>index.yaml</code> live in the repo. Status lives only in the index, so a goal is never worked twice.</p>
         <svg class="arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></div>
-      <div class="step reveal"><div class="n">03 · dispatch</div><h3>Work</h3><p>Claims ready goals, spawns one isolated implementer per goal in its own worktree, shepherds the PR.</p>
+      <div class="step reveal"><div class="n">03 · dispatch</div><h3>Work</h3><p>Works each ready goal in turn, on the current branch — no worktrees, no PRs. One foreground implementer at a time.</p>
         <svg class="arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></div>
-      <div class="step reveal"><div class="n">04 · integrate</div><h3>Merge</h3><p>Under <code>merge: auto</code>, a deterministic gate re-verifies on a fresh checkout, then the orchestrator merges.</p></div>
+      <div class="step reveal"><div class="n">04 · gate</div><h3>Verify</h3><p>Each goal's commit is kept only after a local build+test gate passes; a failure rolls it back. CI is a non-blocking post-push check.</p></div>
     </div>
   </div>
 </section>
@@ -356,7 +388,7 @@
         <div class="skill-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2.4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg></div>
         <div class="skill-main">
           <h3>dispatch</h3>
-          <p>The factory orchestrator. Claims queued goals, spawns one isolated implementer per goal, and integrates verified merges through a deterministic gate. Orchestrates only.</p>
+          <p>The factory orchestrator. Drains the queue one goal at a time, commits each straight to your branch, and keeps only what passes a local build+test gate. Orchestrates only.</p>
         </div>
         <span class="cmd">/dispatch</span>
       </article>
@@ -374,7 +406,7 @@
         <div class="skill-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></div>
         <div class="skill-main">
           <h3>factory-doctor</h3>
-          <p>One-pass preflight for a repo + machine: software, gh auth, merge allow-rule, branch protection, CI, queue state. Auto-fixes everything local; never merges.</p>
+          <p>One-pass preflight for a repo + machine: software, a clean working tree, the working branch, the <code>verify</code> commands, and queue state. Auto-fixes everything local.</p>
         </div>
         <span class="cmd">/factory-doctor</span>
       </article>
@@ -389,7 +421,7 @@
     <div class="sec-head reveal">
       <span class="eyebrow">The work queue</span>
       <h2>Goals live in the repo, not on a board.</h2>
-      <p>No issue-body size limits, no per-repo label bootstrap — versioned with the code. PRs stay the review and merge surface.</p>
+      <p>No issue-body size limits, no per-repo label bootstrap — versioned with the code. The branch you're on is the integration surface.</p>
     </div>
     <div class="two">
       <div class="reveal">
@@ -405,26 +437,28 @@ docs/goals/
         </div>
         <div class="code">
           <div class="code-head"><span>index.yaml · config block</span>
-            <button class="copy" data-copy="config:&#10;  base: main&#10;  state_branch: main&#10;  merge: auto&#10;  wip: 2&#10;  model: inherit&#10;  validation: risk_based"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>Copy</button></div>
+            <button class="copy" data-copy="config:&#10;  base: staging&#10;  model: inherit&#10;  skills: [test-driven-development]&#10;  verify:&#10;    - npm run build&#10;    - npm test&#10;  budget:&#10;    max_iterations: 20"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>Copy</button></div>
 <pre><span class="k">config:</span>
-  <span class="k">base:</span> main            <span class="c"># branch goals fork from / merge back to</span>
-  <span class="k">state_branch:</span> main    <span class="c"># where the queue lives (default = base)</span>
-  <span class="k">merge:</span> auto           <span class="c"># pr = human merges · auto = factory merges</span>
-  <span class="k">wip:</span> 2               <span class="c"># parallelism cap</span>
+  <span class="k">base:</span> staging         <span class="c"># the branch goals are committed to</span>
   <span class="k">model:</span> inherit        <span class="c"># inherit | sonnet | haiku</span>
-  <span class="k">validation:</span> risk_based <span class="c"># off | risk_based | required</span></pre>
+  <span class="k">skills:</span> [test-driven-development]  <span class="c"># repo-wide mandates</span>
+  <span class="k">verify:</span>                <span class="c"># local build+test gate (ordered)</span>
+    - npm run build
+    - npm test
+  <span class="k">budget:</span>                <span class="c"># optional external brake</span>
+    <span class="k">max_iterations:</span> 20</pre>
         </div>
       </div>
       <div class="reveal">
         <div class="panel">
           <h3>Invariants that keep it safe</h3>
-          <p>Decided from real production runs, encoded so parallel sessions and unattended loops don’t corrupt the queue.</p>
+          <p>Decided from real production runs, encoded so an unattended loop drains the queue without corrupting it.</p>
           <div class="kv">
             <div><code>single source</code><span>Status lives only in <code>index.yaml</code>; dual-writing frontmatter drifts.</span></div>
-            <div><code>claim protocol</code><span>pull → flip one entry → commit → push; push acceptance arbitrates parallel sessions.</span></div>
-            <div><code>isolation</code><span>Implementers branch <code>goal/&lt;id&gt;</code> from <code>origin/&lt;base&gt;</code> and never touch <code>docs/goals/</code>.</span></div>
+            <div><code>claim protocol</code><span>Flip one entry to <code>in_progress</code> before working it, so a goal is never picked up twice.</span></div>
+            <div><code>direct-to-branch</code><span>The implementer commits straight to the checked-out branch — no worktrees, no <code>goal/&lt;id&gt;</code> branches.</span></div>
             <div><code>blocked ≠ lost</code><span>A blocked goal keeps a reason and is surfaced under <b>needs-you</b>, never re-dispatched into livelock.</span></div>
-            <div><code>auto-merge</code><span>One goal at a time, sync-with-base then re-verify on a fresh checkout before every merge.</span></div>
+            <div><code>local gate</code><span>One goal at a time; the commit is kept only after the <code>verify</code> build+test gate passes, else rolled back.</span></div>
           </div>
         </div>
       </div>
@@ -478,8 +512,36 @@ droid plugin install flywheel@pragmatic-growth</pre>
         <div class="code-head"><span>then — capture your first goal, preflight, and run the factory</span></div>
 <pre><span class="p">/</span>factory-doctor              <span class="c"># preflight the repo + machine</span>
 <span class="p">/</span>define-goal I want the API p95 latency under 200ms
-<span class="p">/</span>loop 15m /dispatch          <span class="c"># work the queue, unattended</span></pre>
+<span class="p">/</span>dispatch                    <span class="c"># work the queue (sequential)</span></pre>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== CHANGELOG ===================== -->
+<section id="changelog">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="eyebrow">What's new</span>
+      <h2>Changelog.</h2>
+      <p>The latest release. The full, version-by-version history lives in <code>CHANGELOG.md</code> and on the GitHub Releases page.</p>
+    </div>
+    <div class="timeline reveal">
+
+      <details class="rel latest" data-family="4.0" open>
+        <summary class="rel-sum"><span class="rel-v">v4.0.0</span><span class="tag now">Latest</span><span class="tag date">2026-06-27</span><span class="rel-title">Sequential, local-gated, no-PR factory</span><a class="rel-sha" href="COMMIT_PLACEHOLDER" target="_blank" rel="noopener">latest</a><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></summary>
+        <div class="rel-body"><ul>
+          <li><b>dispatch now drains the queue sequentially in one session, on the currently-checked-out branch.</b> No PRs, no worktrees, no <code>goal/&lt;id&gt;</code> branches, no parallel/wip, no herdr, no merge wrapper.</li>
+          <li><b>Direct-to-branch commits.</b> A foreground implementer works each goal in turn and commits straight to the branch; the orchestrator keeps a squashed <code>feat(goal NNN)</code> commit only when the gate passes.</li>
+          <li><b>Local build+test gate.</b> <code>pg_validate.py</code> runs on the local <code>gate_base..HEAD</code> diff plus the repo's <code>verify</code> commands; PASS keeps the commit, FAIL rolls it back. CI becomes a non-blocking post-push observation.</li>
+          <li><b>Removed</b> <code>pg_safe_merge.py</code>, <code>pm.py</code>, and the herdr-mode reference — the PR/worktree/parallel substrate is gone.</li>
+          <li><b>factory-doctor</b> drops the PR / CI / merge-allow-rule checks and adds <code>verify</code>, working-tree, and working-branch checks.</li>
+          <li><b>Config slimmed</b> to <code>base</code>, <code>model</code>, <code>skills</code>, <code>verify</code>, and <code>budget</code>.</li>
+        </ul></div>
+      </details>
+
+      <div class="cl-more">Older versions (3.x and earlier) — see the full <a href="https://github.com/pragmaticgrowth/flywheel/blob/main/CHANGELOG.md" target="_blank" rel="noopener">CHANGELOG.md</a> and <a href="https://github.com/pragmaticgrowth/flywheel/releases" target="_blank" rel="noopener">GitHub Releases</a>.</div>
+
     </div>
   </div>
 </section>
@@ -496,6 +558,7 @@ droid plugin install flywheel@pragmatic-growth</pre>
     <nav class="foot-links">
       <a href="https://github.com/pragmaticgrowth/flywheel" target="_blank" rel="noopener">GitHub</a>
       <a href="https://github.com/pragmaticgrowth/flywheel/blob/main/README.md" target="_blank" rel="noopener">README</a>
+      <a href="#changelog">Changelog</a>
       <a href="https://pragmaticgrowth.com" target="_blank" rel="noopener">Pragmatic Growth</a>
       <span class="foot-copy">© Pragmatic Growth · MIT</span>
     </nav>
