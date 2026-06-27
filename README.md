@@ -9,7 +9,7 @@ A skills-only plugin for [Claude Code](https://claude.com/claude-code) and
 [![CLIs](https://img.shields.io/badge/runs%20in-Claude%20Code%20%2B%20Droid-0ea66e)](#works-in-both-clis)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
-> 🌐 **Full docs & changelog:** **<https://plugin.pragmaticgrowth.com>**
+> 🌐 **Full docs:** **<https://plugin.pragmaticgrowth.com>**
 
 ---
 
@@ -89,11 +89,12 @@ parallel runners.
 
 Per goal:
 
-1. **Claim** the next `not_started` goal (pull → flip → commit → push on the
-   queue’s branch).
+1. **Claim** the next `not_started` goal (flip one entry → commit on the
+   current branch).
 2. **Implement** — a foreground implementer commits work directly on `<base>`.
-3. **Local gate** — `pg_validate.py` runs the repo’s `config.verify` commands
-   (build + tests) against the local diff.  
+3. **Local gate** — the dispatch orchestrator runs the repo’s `config.verify`
+   commands (build + tests), and `pg_validate.py` runs the per-goal acceptance +
+   structural checks on the `gate_base..HEAD` diff.  
    - **PASS** → the implementer’s commits are squashed into one
      `feat(goal NNN)` commit kept on the branch.  
    - **FAIL** → work is rolled back; the goal is marked `blocked`.
@@ -201,11 +202,11 @@ must prove no behavior change (suite green before and after).
 
 ### The claim protocol
 
-Every status write is **pull → flip one entry → commit → push** on the queue’s
-branch. Git’s push acceptance is the arbiter: if two sessions claim the same
-goal at once, one push wins and the other retries. The same mechanism handles
-goal-number minting. Implementer agents work directly on `<base>` and
-**never touch `docs/goals/` at all** — only the orchestrator does.
+Every status write is **flip one entry → commit** (`chore(goals):
+claim|complete|block|archive <id>`) on the current branch — one entry per
+commit. The single session owns the branch, so there is no push-arbitration;
+push is an optional backup only. Implementer agents work directly on `<base>`
+and **never touch `docs/goals/` at all** — only the orchestrator does.
 
 ---
 
@@ -224,7 +225,7 @@ config:
     - pnpm build
     - pnpm test
   budget:                 # external "burnstop" for long unattended runs
-    max_spawns_per_session: 40
+    max_goals_per_session: 40
     max_iterations: 200
 ```
 
@@ -233,8 +234,8 @@ config:
 | `base` | repo default branch | The branch dispatch works on — implementers commit here directly. Per-goal `base:` override allowed. |
 | `model` | `inherit` | Model for spawned **code** agents (`inherit`/`sonnet`/`haiku`). The depth-vs-quota trade. (Recon always runs on sonnet.) |
 | `skills` | — | Repo-wide skills every implementer must use (e.g. your TDD or review skills). |
-| `verify` | — | Ordered list of local build + test commands. Run by `pg_validate.py` after each implementation; PASS keeps the squash commit, FAIL rolls it back. |
-| `budget` | none | `max_spawns_per_session` / `max_iterations` ceilings the session can’t exceed — the external brake on a long run. |
+| `verify` | — | Ordered list of local build + test commands. Run by the dispatch orchestrator after each implementation; PASS keeps the squash commit, FAIL rolls it back. |
+| `budget` | none | `max_goals_per_session` / `max_iterations` ceilings the session can’t exceed — the external brake on a long run. |
 
 ---
 
@@ -273,8 +274,9 @@ them up. Set `config.budget` in `index.yaml` before long unattended runs.
 
 ## The local gate
 
-After each implementation, `pg_validate.py` runs the repo’s `config.verify`
-commands (build + tests) against the local `gate_base..HEAD` diff:
+After each implementation, the dispatch orchestrator runs the repo’s
+`config.verify` commands (build + tests), and `pg_validate.py` runs the
+per-goal acceptance + structural checks on the local `gate_base..HEAD` diff:
 
 - All `verify` commands must exit 0.
 - A secret / forbidden-content scan.
@@ -319,8 +321,8 @@ that for you.
   every release, each entry linked to its commit.
 - **Git tags** — every release is tagged `vX.Y.Z` on its commit, so the version
   history is browsable on GitHub.
-- **The site** — <https://plugin.pragmaticgrowth.com> renders the same changelog
-  as a filterable timeline, alongside the full docs.
+- **The site** — <https://plugin.pragmaticgrowth.com> hosts the full docs and
+  install (canonical version history lives in CHANGELOG.md and GitHub Releases).
 
 The plugin version lives in `.claude-plugin/plugin.json`. The public site is
 regenerated and redeployed on each release (see `CLAUDE.md` →
@@ -340,7 +342,7 @@ flywheel/
 │   ├── dispatch/
 │   │   ├── SKILL.md
 │   │   └── scripts/
-│   │       └── pg_validate.py         # local gate: runs config.verify, PASS/FAIL verdict
+│   │       └── pg_validate.py         # local gate: per-goal acceptance + structural checks, PASS/FAIL verdict
 │   ├── factory-doctor/
 │   │   ├── SKILL.md
 │   │   └── scripts/doctor_checks.py   # read-only readiness probe

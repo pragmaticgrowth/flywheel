@@ -39,7 +39,7 @@ the runtime and use appropriate paths, commands, and scheduling primitives.
   `/loop 15m /dispatch` (Claude Code) or `CronCreate` same_session every
   15m (Droid); iterations are idempotent. Each iteration emits one report
   line leading with progress — `<done>/<total> done` plus a 20-cell fill
-  bar, then labeled `ready`/`running`/`blocked` counts that sum to `total`
+  bar, then labeled `ready`/`blocked` counts that sum to `total`
   (lead with done, never `ready/total`, which reads as "nothing done");
   `needs-you` holds human-blocked goals plus any non-blocking CI failures.
 - **loop-architect** — designs loop contracts (prompt + verification +
@@ -77,7 +77,7 @@ the runtime and use appropriate paths, commands, and scheduling primitives.
   applied to every code agent dispatch spawns; the repo owner's
   depth-vs-limit trade), repo-wide `skills`, `verify` (the ordered local
   build+test commands the gate runs after each implementer), and `budget`
-  (optional; `max_spawns_per_session` + optional `max_iterations` — a simple
+  (optional; `max_goals_per_session` + optional `max_iterations` — a simple
   cap on cumulative spend across a scheduled run; absent = no session cap).
   Defaults: repo default branch, inherit, no extra skills, repo-detected
   verify commands, no budget.
