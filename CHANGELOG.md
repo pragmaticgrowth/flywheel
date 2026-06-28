@@ -12,6 +12,24 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [4.1.3] — 2026-06-28
+
+**Patch: recon subagents inherit the session model.** This release removes the hard-coded
+Sonnet policy for `define-goal` recon and synthesis subagents.
+
+- **Model inheritance for recon.** `define-goal` now tells recon search subagents and the
+  optional synthesis/judgment subagent to inherit the current session/runtime model, and not
+  set a fixed alias, including Sonnet, unless the user explicitly asks for one in that run.
+  Source change:
+  [`89ae165`](https://github.com/pragmaticgrowth/flywheel/commit/89ae165).
+- **Config scope clarified.** `config.model` remains scoped to spawned code-writing agents,
+  while recon and batch-mode finder agents inherit the current model by default. The README,
+  public site, and repo agent guide now use the same wording.
+- **Regression coverage added.** A docs policy test now fails if active docs reintroduce
+  forced-Sonnet recon language or drift in the public config model vocabulary.
+- **Release metadata aligned.** The plugin manifest, README version badge, and public site
+  version text now advertise v4.1.3.
+
 ## [4.1.2] — 2026-06-28
 
 **Patch: versioned agent-guide alignment.** This release packages the
