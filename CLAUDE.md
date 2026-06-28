@@ -168,6 +168,12 @@ AGENTS.md                         # symlink → CLAUDE.md (one source, no drift)
   refresh with `/plugin marketplace update pragmatic-growth` (Claude Code)
   or `droid plugin marketplace update flywheel` (Droid; Factory registers the
   GitHub marketplace as `flywheel`).
+- **Keep CLAUDE.md and AGENTS.md aligned.** `AGENTS.md` is a symlink to
+  `CLAUDE.md`; preserve that one-source setup. When Claude Code updates
+  `CLAUDE.md`, it must verify `AGENTS.md` reflects the same content. When Codex
+  or Droid updates `AGENTS.md`, it must update `CLAUDE.md` too (prefer editing
+  `CLAUDE.md` and keeping `AGENTS.md` as the symlink). Do not leave either name
+  stale.
 - **Push every time.** Pushing to GitHub (`origin main`) after committing
   is pre-authorized — always push without asking. The installed plugin
   refreshes from GitHub, so an unpushed commit is an unshipped skill.
