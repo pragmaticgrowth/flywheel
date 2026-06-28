@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Skills-only plugin for Claude Code and Droid (Factory CLI) from Pragmatic Growth, v4.1.0.
+Skills-only plugin for Claude Code and Droid (Factory CLI) from Pragmatic Growth, v4.1.1.
 No MCP servers, no commands, no agents, no hooks, no build step — four skills
 under `skills/` (two ship deterministic Python helpers in `scripts/`),
 forming a plain-language → autonomous-execution pipeline around a
@@ -54,9 +54,9 @@ the runtime and use appropriate paths, commands, and scheduling primitives.
   to provision — the gate is local. The probe checks settings in both
   `.claude/` and `.factory/` (Droid) paths.
 
-## Queue design invariants (research-backed; v4.1.0 one-goal dispatch model, 2026-06-28)
+## Queue design invariants (research-backed; v4.1.x one-goal dispatch model, 2026-06-28)
 
-- **v4.1.0 one-goal dispatch model.** dispatch works ONE ready goal per run,
+- **v4.1.x one-goal dispatch model.** dispatch works ONE ready goal per run,
   committing work DIRECTLY on the branch that's checked out — no PRs, no
   worktrees, no `goal/<id>` branches, no parallel implementation. Each
   goal is bracketed by two anchors: `anchor` (the pre-claim clean HEAD) and
@@ -166,15 +166,19 @@ AGENTS.md                         # symlink → CLAUDE.md (one source, no drift)
   user-level copies in `~/.claude/skills/` were deleted on 2026-06-10.
   Skill edits land here, bump the `plugin.json` version, push, then
   refresh with `/plugin marketplace update pragmatic-growth` (Claude Code)
-  or `droid plugin marketplace update pragmatic-growth` (Droid).
+  or `droid plugin marketplace update flywheel` (Droid; Factory registers the
+  GitHub marketplace as `flywheel`).
 - **Push every time.** Pushing to GitHub (`origin main`) after committing
   is pre-authorized — always push without asking. The installed plugin
   refreshes from GitHub, so an unpushed commit is an unshipped skill.
 - **Validation.** After changing plugin structure or manifests, run the
   `plugin-dev:plugin-validator` agent before committing (Claude Code only;
   Droid has no equivalent agent — validate manually: check skill frontmatter
-  has `name` + `description`, run `droid plugin marketplace add ./` locally
-  to test-install).
+  has `name` + `description`, then test the published Claude-compatible
+  marketplace path with `droid plugin marketplace add https://github.com/pragmaticgrowth/flywheel`
+  (skip if already added), `droid plugin marketplace list`, and
+  `droid plugin install flywheel@flywheel`. `droid plugin link .` is only for native
+  `.factory-plugin` plugins, not this `.claude-plugin` manifest).
 - **Skill edits are tested.** New or changed skill mechanics get a
   subagent dry-run (scenario + "cite the section that decides each
   answer") before shipping; close every flagged ambiguity.

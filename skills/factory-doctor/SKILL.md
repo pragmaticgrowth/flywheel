@@ -21,8 +21,8 @@ green report.
 1. **Resolve paths.** `$DC` = `doctor_checks.py`, via the surviving scripts' resolution chain
    (the same fallback chain dispatch uses for `$PGVALIDATE`):
    `$CLAUDE_PLUGIN_ROOT/skills/factory-doctor/scripts/doctor_checks.py`
-   (`$CLAUDE_PLUGIN_ROOT` is set by both Claude Code and Droid — Droid provides it as an alias
-   for `$DROID_PLUGIN_ROOT`), else newest
+   (Claude Code), else
+   `$DROID_PLUGIN_ROOT/skills/factory-doctor/scripts/doctor_checks.py` (Droid), else newest
    `~/.claude/plugins/{cache,marketplaces}/*/flywheel/*/skills/factory-doctor/scripts/doctor_checks.py`
    (Claude Code) or
    `~/.factory/plugins/{cache,marketplaces}/*/flywheel/*/skills/factory-doctor/scripts/doctor_checks.py`

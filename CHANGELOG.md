@@ -12,6 +12,28 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [4.1.1] — 2026-06-28
+
+**Patch: brief-first goal intake and Droid install hardening.** This keeps the v4.1
+one-goal dispatch model unchanged while removing two autonomy blockers found in review.
+
+- **Brief-first goal and loop intake.** `define-goal` now explicitly extracts the desired
+  outcome, target system/environment, validator, scope, risk, and destination before recon,
+  asks at most one concise proactive question round when those facts would change the goal,
+  and still finishes with a real run-now command or queued goal artifact. `loop-architect`
+  now uses the same short intake and returns to `define-goal` when a recurring factory run
+  needs an actual goal contract.
+- **Droid install path aligned with current Factory docs and the local CLI.** README and the
+  public site use the tested GitHub marketplace add + `flywheel@flywheel` install flow,
+  include `droid plugin marketplace list` so users can confirm Factory's registered
+  marketplace name, and include a Droid headless `/factory-doctor` preflight command.
+  `CLAUDE.md` no longer recommends invalid `droid plugin marketplace add ./` validation.
+- **Factory Doctor path resolution hardened.** The skill resolves `$DROID_PLUGIN_ROOT`
+  directly before falling back to the Factory plugin cache, instead of relying on an
+  undocumented `$CLAUDE_PLUGIN_ROOT` alias in Droid.
+- **Marketplace copy aligned.** The marketplace description now says Flywheel works one
+  ready goal per run on the current branch, not isolated implementer lanes.
+
 ## [4.1.0] — 2026-06-28
 
 **One-goal dispatch with a lightweight subagent-driven quality loop.** `dispatch` now works

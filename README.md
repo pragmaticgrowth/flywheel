@@ -5,7 +5,7 @@ A skills-only plugin for [Claude Code](https://claude.com/claude-code) and
 [Droid](https://factory.ai) (Factory CLI), from Pragmatic Growth.
 
 [![Website](https://img.shields.io/badge/site-plugin.pragmaticgrowth.com-6366f1)](https://plugin.pragmaticgrowth.com)
-[![Version](https://img.shields.io/badge/version-4.1.0-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-4.1.1-8b5cf6)](CHANGELOG.md)
 [![CLIs](https://img.shields.io/badge/runs%20in-Claude%20Code%20%2B%20Droid-0ea66e)](#works-in-both-clis)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
@@ -65,6 +65,9 @@ document, and it produces **goal contracts** — never implementation.
   sends parallel read-only agents to investigate the actual system (your repo,
   a separate service, a database — wherever it lives). “The description sounded
   clear” is the failure mode this replaces.
+- **Brief first, then a real artifact.** If outcome, environment, validator,
+  scope, or risk is missing, it asks one concise question round, then finishes
+  with either a run-now command or a queued goal file — not open-ended advice.
 - **Two destinations.** It can hand you a copy-pasteable **run-now** line
   (`/goal …` in Claude Code, `droid exec --auto high "…"` in Droid), or **queue**
   a goal file (`docs/goals/NNN-slug.md` + an `index.yaml` entry) to be worked
@@ -114,7 +117,9 @@ when it’s finished and can burn for hours. loop-architect designs the **loop
 contract** instead — the prompt, the verification step, and the **stop
 conditions** — and maps the right primitives for your CLI (`/loop` vs
 `CronCreate`, `/goal` vs `droid exec`). Use it whenever you want something to
-run unattended, on a schedule, or remotely.
+run unattended, on a schedule, or remotely. If the cadence, gate, budget, or
+stop condition is unclear, it asks a short calibration round before writing the
+copy-pasteable setup.
 
 ### factory-doctor — get the environment ready
 
@@ -122,7 +127,7 @@ Run this **before your first `/dispatch`**, or any time the factory behaves
 like the environment isn’t ready. It checks software, `gh` auth + scopes, the
 local gate (`config.verify` present and runnable), a clean working tree, the
 working branch, CI, and the queue itself — **auto-fixing everything local**
-(scaffolding the queue, in both `.claude/` and `.factory/` settings) and
+(scaffolding the queue and checking both `.claude/` and `.factory/` settings) and
 reporting remote/CI issues with the exact fix. It diagnoses and fixes setup; it
 never implements goals.
 
@@ -256,11 +261,12 @@ config:
 
 ```bash
 droid plugin marketplace add https://github.com/pragmaticgrowth/flywheel
-droid plugin install flywheel@pragmatic-growth
+droid plugin marketplace list   # confirms the marketplace name is flywheel
+droid plugin install flywheel@flywheel
 ```
 
 Pull updates later with `/plugin marketplace update pragmatic-growth` (Claude
-Code) or `droid plugin marketplace update pragmatic-growth` (Droid).
+Code) or `droid plugin marketplace update flywheel` (Droid).
 
 ### Quick start
 
@@ -268,6 +274,12 @@ Code) or `droid plugin marketplace update pragmatic-growth` (Droid).
 /factory-doctor                              # 1. make sure the repo + machine are ready
 /define-goal I want the API p95 latency under 200ms   # 2. capture a want → queued contract
 /dispatch                                    # 3. work one ready goal
+```
+
+Droid headless equivalent for the first preflight:
+
+```bash
+droid exec --auto high "Run flywheel factory-doctor for this repo, apply safe local fixes, and report needs-you"
 ```
 
 That’s the whole arc: preflight, capture, work. Add more goals any time —

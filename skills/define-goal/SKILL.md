@@ -24,6 +24,22 @@ Every goal ends at one of two destinations:
 Defining ends the skill. Never implement. Do not create planning artifacts, ledgers,
 decision logs, or resume files beyond the goal file itself.
 
+## Brief first, then artifact
+
+Start by extracting a short brief from the user's words and current repo context:
+desired outcome, target repo/system/environment, success evidence, scope/out of scope,
+urgency, and any action that could be irreversible or externally visible. Ask one concise
+proactive question round (max 4 questions) only when missing information would change the
+outcome, validator, scope, risk gate, or destination. If repo/context already answers it,
+state the assumption and proceed; if the user cannot answer, choose the conservative binary
+validator available and include the uncertainty in the goal's If blocked/stop condition.
+
+Do not let the clarification loop replace the artifact. After the brief, recon, and any
+approval required for file writes, finish with a real destination: either the run-now command
+or the queued goal file + `index.yaml` entry. If loop-architect is also needed for recurring
+work, use it to design the repeat mechanism, then return here and emit or queue the goal
+contract the loop will run.
+
 ## Goal command facts (CLI-specific)
 
 **Claude Code** has a built-in `/goal` command (user-run only; no `create_goal` or
@@ -57,7 +73,8 @@ agent prints, not by taste or file inspection at evaluation time.
    must name its legitimate exceptions (server-safe subpaths, generated files), or it
    forces implementers into a measurably worse design to satisfy the contract.
 3. Repair weak goals: rewrite vague goals into measurable objectives when context makes it
-   safe; ask one concise question when the missing detail changes the outcome or validation;
+   safe; ask a concise brief/question round when missing detail changes the outcome,
+   validation, scope, risk gate, or destination;
    reject pure activity goals ("make progress", "keep investigating") until sharpened. A
    criterion that can't be made objectively measurable still needs a declared give-up
    condition (GOAL_UNREACHABLE after N attempts — see "If blocked") so the contract
@@ -101,8 +118,9 @@ what should cause the agent to stop and ask?
   only if it can assert, not just screenshot; else written manual steps that name the exact
   assertion. The implementer must start the project's dev server to drive it.
 - Interview with the interactive question tool (AskUserQuestion in Claude Code, AskUser
-  in Droid) only for non-technical gaps (who is it for, what would they see working, what
-  must not break, urgency, out of scope) — max 4 questions per round. Derive technical
+  in Droid) only for user-owned gaps or technical targets the repo cannot reveal (which
+  repo/environment, which user-visible outcome matters, what must not break, urgency, out
+  of scope, acceptable risk) — max 4 questions per round. Derive code-level technical
   detail yourself by reading the codebase.
 
 ## Recon — investigate the existing situation BEFORE defining (default, not optional)
@@ -167,6 +185,11 @@ Recon details:
 - **Queue** when the user wants it parked for the factory, hands over multiple items, or
   says to add it to the goals/backlog. After writing, point at the next step: run
   `/dispatch` (or *"work goal NNN"* for a single goal).
+
+Recurring/unattended requests are a combo, not an escape hatch: first define the measurable
+goal, then use loop-architect to choose how it repeats (`/loop /dispatch`, Droid same-session
+cron, routine/automation, etc.). The final answer still includes the real goal destination
+above; never stop at generic loop advice when the user asked to create/add a goal.
 
 ## The docs/goals queue
 

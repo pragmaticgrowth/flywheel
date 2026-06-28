@@ -14,6 +14,16 @@ Design loops and goals the way Boris Cherny does: "Turn workflows into skills, t
 Output of this skill = a concrete, copy-pasteable setup (goal contract, loop prompt, or routine
 prompt) with verification and hard stops — not a vague plan.
 
+## Intake rule
+
+Start with a short brief: repeated task, target repo/system/environment, gate command(s),
+state file/ledger, budget/cadence, tools available, and the stop/escalation condition. Ask
+one concise proactive question round (max 4 questions) when any of those missing pieces
+changes the primitive, safety, or verifiability. If enough context exists, proceed with
+explicit assumptions. If the user is also asking to create work for the factory, pair this
+skill with define-goal: design the repeat mechanism, then return to a real goal artifact
+(`docs/goals/` entry or run-now command). Do not leave the user with loop advice only.
+
 ## Step 1 — Qualify (the four-condition test)
 
 A loop pays off only when ALL four hold. Check honestly; if one fails, recommend a plain
@@ -99,7 +109,8 @@ since there is no separate evaluator model to check them automatically.
   a missing "blocked" bucket makes the goal bounce forever on reality.
 - Prefer two small goals with a checkpoint over one mega-goal.
 - If the user's ask is vague, run pre-goal calibration: ask what "done" means until it is
-  specific and measurable, THEN draft the condition for approval.
+  specific and measurable, THEN draft the condition for approval. Keep the question round
+  short; derive code-level detail from repo recon instead of asking the user to debug for you.
 
 ### For /loop — skill-first
 
