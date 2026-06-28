@@ -347,7 +347,7 @@
         <div class="skill-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg></div>
         <div class="skill-main">
           <h3>define-goal</h3>
-          <p>Turns a plain-language want — or a whole document of them — into a measurable goal contract, grounded by recon and a concise brief. Produces goals only; never implements.</p>
+          <p>Turns a plain-language want — or a whole document of them — into a measurable goal contract, grounded by model-inheriting recon and a concise brief. Produces goals only; never implements.</p>
         </div>
         <span class="cmd">/define-goal</span>
       </article>
@@ -408,7 +408,7 @@ docs/goals/
             <button class="copy" data-copy="config:&#10;  base: staging&#10;  model: inherit&#10;  skills: [test-driven-development]&#10;  verify:&#10;    - npm run build&#10;    - npm test&#10;  budget:&#10;    max_iterations: 20"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>Copy</button></div>
 <pre><span class="k">config:</span>
   <span class="k">base:</span> staging         <span class="c"># the branch goals are committed to</span>
-  <span class="k">model:</span> inherit        <span class="c"># inherit | sonnet | haiku</span>
+  <span class="k">model:</span> inherit        <span class="c"># code agents: inherit | sonnet | haiku</span>
   <span class="k">skills:</span> [test-driven-development]  <span class="c"># repo-wide mandates</span>
   <span class="k">verify:</span>                <span class="c"># local build+test gate (ordered)</span>
     - npm run build

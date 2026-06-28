@@ -63,8 +63,9 @@ document, and it produces **goal contracts** — never implementation.
 
 - **Recon first, by default.** Before writing a single success criterion, it
   sends parallel read-only agents to investigate the actual system (your repo,
-  a separate service, a database — wherever it lives). “The description sounded
-  clear” is the failure mode this replaces.
+  a separate service, a database — wherever it lives). Those agents inherit the
+  current model; flywheel does not force Sonnet for recon. “The description
+  sounded clear” is the failure mode this replaces.
 - **Brief first, then a real artifact.** If outcome, environment, validator,
   scope, or risk is missing, it asks one concise question round, then finishes
   with either a run-now command or a queued goal file — not open-ended advice.
@@ -241,7 +242,7 @@ config:
 | Key | Default | What it does |
 |---|---|---|
 | `base` | repo default branch | The branch dispatch works on — implementers commit here directly. Per-goal `base:` override allowed. |
-| `model` | `inherit` | Model for spawned **code** agents (`inherit`/`sonnet`/`haiku`). The depth-vs-quota trade. (Recon always runs on sonnet.) |
+| `model` | `inherit` | Model for spawned **code** agents (`inherit`/`sonnet`/`haiku`). The depth-vs-quota trade. Recon subagents inherit the current session/runtime model. |
 | `skills` | — | Repo-wide skills every implementer must use (e.g. your TDD or review skills). |
 | `verify` | — | Ordered list of local build + test commands. Run by the dispatch orchestrator after each implementation; PASS keeps the squash commit, FAIL rolls it back. |
 | `budget` | none | `max_goals_per_session` / `max_iterations` ceilings the loop can’t exceed — the external brake on a long run. Dispatch itself works one goal per run. |

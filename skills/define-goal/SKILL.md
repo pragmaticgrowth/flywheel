@@ -135,16 +135,17 @@ guessing is exactly what recon exists to replace. Skip recon ONLY when the want 
 greenfield (nothing existing to understand) or a one-liner you can already pin with certainty.
 Recon details:
 
-- **Model (mandatory)**: recon never inherits the session model (which may be opus —
-  capping at sonnet is the economy). Run every recon search subagent as the
-  `general-purpose` type with `model: sonnet`, strictly READ-ONLY (report only — never
-  edit, fix, or run heavy repro). Do NOT use the built-in `Explore` type here: it is locked
-  to a fast cheap model and can't be raised, and recon's job is real understanding of the
-  existing system, not shallow grep — sonnet earns its keep. The synthesis/judgment step
-  (when you split one out to weigh evidence and rank hypotheses) is also `model: sonnet`;
-  search agents report what the code shows (files, call paths, suspect commits), ranking
-  what it means happens there or in your own synthesis. The queue's `config.model` never
-  applies here — it governs code-writing agents only.
+- **Model (mandatory)**: recon search subagents inherit the current session/runtime model.
+  Do NOT set a fixed model alias for recon, including Sonnet, unless the user explicitly asks
+  for that model in this run. In Claude Code, use the `general-purpose` type
+  without a model override, strictly READ-ONLY (report only — never edit, fix, or run heavy
+  repro). Do NOT use the built-in `Explore` type if it would force a cheaper model instead
+  of inheriting the current one; recon's job is real understanding of the existing system,
+  not shallow grep. The synthesis/judgment step (when you split one out to weigh evidence
+  and rank hypotheses) also inherits the current session/runtime model. Search agents report
+  what the code shows (files, call paths, suspect commits), ranking what it means happens
+  there or in your own synthesis. The queue's `config.model` never applies here — it governs
+  code-writing agents only.
 - **Angles, 2–4 per fan-out** — for a bug: symptom trace (error strings/log lines → the
   code that throws and handles them), data/control flow (entry point → failure area),
   recent-change scan (`git log`/`blame` on suspect areas), config/wiring (flags, env,
@@ -210,7 +211,7 @@ within priority:
 # status: not_started | in_progress | completed | blocked
 config:
   base: main        # branch dispatch works on and commits to
-  model: inherit    # spawned code agents: inherit | a model alias (sonnet, haiku, opus)
+  model: inherit    # spawned code agents: inherit | sonnet | haiku
   skills: []        # repo-wide skills every implementer must invoke
   verify:           # ordered local build+test gate commands (dispatch runs these to validate)
     - npm ci
@@ -229,11 +230,10 @@ is the integration base (main? staging? other?), and what the build+test gate co
 (`config.verify`).
 Defaults when unspecified: the repo's default branch, `model: inherit`, no repo skills,
 no `verify` (dispatch auto-detects from Makefile / `go.mod` / `package.json`).
-`model: sonnet` trades implementation depth for weekly-limit headroom — sensible on simple
-repos and especially on a queue that is mostly `type: chore` (mechanical, no-behavior-change
-work, where `inherit` would otherwise burn an expensive session model on rote edits), not on
-gnarly feature/bug work. A per-goal `base:` field on an index entry overrides `config.base`
-(epic branches).
+Leave `model` at `inherit` unless the repo owner intentionally chooses a fixed alias for
+spawned code agents; fixed aliases are a depth-vs-weekly-limit trade and should not be
+applied to recon subagents. A per-goal `base:` field on an index entry overrides
+`config.base` (epic branches).
 
 Rules that keep the queue safe:
 
@@ -423,8 +423,8 @@ When given a document (pasted text, file path, attachment):
 Sizing the orchestration: with ~5+ confirmed items and the Workflow tool available
 (Claude Code ≥2.1.154; in Droid the equivalent is mission mode via `droid exec --mission`;
 both can be disabled — never assume either), run the per-item work as one
-workflow — `pipeline(items, locate, draft)` with finder agents on cheap models — instead
-of repeated fan-outs; drafts land in script variables, never as files — the step-4
+workflow — `pipeline(items, locate, draft)` with finder agents inheriting the current model —
+instead of repeated fan-outs; drafts land in script variables, never as files — the step-4
 approval table still gates every file write. The user also approves the workflow's phase
 plan before it runs. Below that size, or without the tool, the plain Recon fan-out is
 cheaper and simpler — the platform docs' own threshold.

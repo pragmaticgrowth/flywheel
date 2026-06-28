@@ -143,10 +143,9 @@ command, a queue the claim protocol can't write), stop the iteration and surface
 the same way every fire instead of burning quota on a wall it can't clear.
 
 **Implementer-cost awareness.** When `config.model: inherit` resolves to an expensive model
-(you are running on opus) and the queue is mostly `type: chore` (mechanical, no-behavior-
-change work), note once in the report that the implementer inherits your model and that
-`config.model: sonnet` would cut cost sharply with little risk on chores — the owner decides,
-you don't override.
+and the queue is mostly `type: chore` (mechanical, no-behavior-change work), note once in the
+report that the implementer inherits your model and that the repo owner can intentionally set
+a fixed lower-cost alias if they want that trade. Do not name or apply a fixed alias yourself.
 
 `$PGVALIDATE` resolution (do this once, before the first gate): use the same fallback chain
 the surviving scripts use — `$CLAUDE_PLUGIN_ROOT/skills/dispatch/scripts/pg_validate.py`,

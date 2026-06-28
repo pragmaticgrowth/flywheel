@@ -104,17 +104,17 @@ the runtime and use appropriate paths, commands, and scheduling primitives.
   optional — "the description sounds clear" is the failure mode it replaces;
   skip only for genuinely greenfield or one-liner wants. Reaches the system
   wherever it lives (local checkout, separate repo, a host you connect to, a
-  service/DB), told to each subagent, never hardcoded. It never inherits the
-  session model; recon search subagents run as the `general-purpose` type on
-  `model: sonnet`, strictly read-only (the built-in Explore type is locked to
-  haiku and can't be raised, so general-purpose/sonnet is how recon buys real
-  understanding; capping at sonnet vs an opus session is the remaining
-  economy; the owner chose sonnet-for-all-recon over haiku-breadth). The
-  synthesis agent is also sonnet. `config.model` governs only code agents,
-  never recon. (Recon stays plain parallel subagents, NOT a Workflow: 2–4
-  agents is below the workflow scale threshold and a workflow can be disabled
-  on a user's machine — define-goal batch mode is the only place that
-  conditionally uses Workflow.)
+  service/DB), told to each subagent, never hardcoded. Recon search subagents
+  inherit the current session/runtime model; do not set a fixed model alias,
+  including Sonnet, unless the user explicitly asks for it in that run.
+  In Claude Code, use the `general-purpose` type without a model override,
+  strictly read-only, and avoid the built-in Explore type if it would force a
+  cheaper model instead of inheriting the current one. The optional synthesis
+  agent also inherits the current session/runtime model. `config.model`
+  governs only code-writing agents, never recon. (Recon stays plain parallel
+  subagents, NOT a Workflow: 2–4 agents is below the workflow scale threshold
+  and a workflow can be disabled on a user's machine — define-goal batch mode
+  is the only place that conditionally uses Workflow.)
 - Workflow tool only where the docs' thresholds say it wins: define-goal
   batch mode at ~5+ items (drafts in script variables, approval table
   gates file writes). Dispatch implementers may use workflow/mission mode only
