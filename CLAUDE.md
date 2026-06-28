@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Skills-only plugin for Claude Code and Droid (Factory CLI) from Pragmatic Growth, v4.1.1.
+Skills-only plugin for Claude Code and Droid (Factory CLI) from Pragmatic Growth, v4.1.2.
 No MCP servers, no commands, no agents, no hooks, no build step — four skills
 under `skills/` (two ship deterministic Python helpers in `scripts/`),
 forming a plain-language → autonomous-execution pipeline around a
@@ -172,8 +172,9 @@ AGENTS.md                         # symlink → CLAUDE.md (one source, no drift)
   `CLAUDE.md`; preserve that one-source setup. When Claude Code updates
   `CLAUDE.md`, it must verify `AGENTS.md` reflects the same content. When Codex
   or Droid updates `AGENTS.md`, it must update `CLAUDE.md` too (prefer editing
-  `CLAUDE.md` and keeping `AGENTS.md` as the symlink). Do not leave either name
-  stale.
+  `CLAUDE.md` and keeping `AGENTS.md` as the symlink). If the symlink is missing
+  or broken, restore it or update both filenames in the same commit. Do not leave
+  either name stale.
 - **Push every time.** Pushing to GitHub (`origin main`) after committing
   is pre-authorized — always push without asking. The installed plugin
   refreshes from GitHub, so an unpushed commit is an unshipped skill.

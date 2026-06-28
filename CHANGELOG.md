@@ -12,6 +12,20 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [4.1.2] — 2026-06-28
+
+**Patch: versioned agent-guide alignment.** This release packages the
+`CLAUDE.md` / `AGENTS.md` synchronization rule as an explicit versioned update.
+
+- **Cross-runtime guide alignment.** `CLAUDE.md` now says Claude Code must verify
+  `AGENTS.md` after guide edits, while Codex or Droid must update `CLAUDE.md`
+  when they touch `AGENTS.md`. The repo keeps `AGENTS.md` as a symlink to
+  `CLAUDE.md`, and the guideline now says to restore that symlink or update both
+  filenames in the same commit if it is ever missing or broken. Source change:
+  [`d1f8400`](https://github.com/pragmaticgrowth/flywheel/commit/d1f8400).
+- **Release metadata aligned.** The plugin manifest, README version badge, and
+  public site version text now advertise v4.1.2.
+
 ## [4.1.1] — 2026-06-28
 
 **Patch: brief-first goal intake and Droid install hardening.** This keeps the v4.1
