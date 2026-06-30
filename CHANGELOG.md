@@ -12,6 +12,28 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [4.2.0] — 2026-06-30
+
+**Minor: HTML artifacts join the marketplace.** This release adds a fifth skill,
+`html-artifacts`, for rich browser deliverables when markdown would flatten the work.
+
+- **New `html-artifacts` skill.** Produces self-contained `.html` plans, specs, PR/code
+  review writeups, module maps, diagrams, timelines, research explainers, status/incident
+  reports, decks, prototypes, and one-off editors with copy/export round trips. Source
+  change: [`fff9b12`](https://github.com/pragmaticgrowth/flywheel/commit/fff9b12).
+- **Progressive-disclosure references.** The skill keeps a compact trigger/routing
+  `SKILL.md`, with separate references for foundation rules, planning/comparison,
+  code review, design/prototypes, diagrams/data, reports/research, custom editors,
+  decks, and source coverage.
+- **Skills-only boundary preserved.** The new skill does not add commands, servers,
+  listeners, hooks, MCP surfaces, or a build step; interactive artifacts round-trip via
+  in-file copy/export buttons.
+- **Docs and coverage aligned.** README, CLAUDE/AGENTS, the public site, and regression
+  tests now advertise the five-skill lineup and guard against accidentally adding a
+  listener/server surface to `html-artifacts`.
+- **Release metadata aligned.** The plugin manifest, marketplace copy, README version
+  badge, and public site version text now advertise v4.2.0.
+
 ## [4.1.3] — 2026-06-28
 
 **Patch: recon subagents inherit the session model.** This release removes the hard-coded
