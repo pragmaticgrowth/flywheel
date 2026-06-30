@@ -33,7 +33,7 @@ marketplace, but publishes it as a separate installable plugin.
   the separate install commands: `flywheel@pragmatic-growth` and
   `html-artifacts@pragmatic-growth` for Claude Code, or `flywheel@flywheel` and
   `html-artifacts@flywheel` for Droid. Source change:
-  [`6f1aa9e`](https://github.com/pragmaticgrowth/flywheel/commit/6f1aa9e4ddbfae4bcf92ef4f1fe7644a76ee96e2).
+  [`d802bbc`](https://github.com/pragmaticgrowth/flywheel/commit/d802bbc5f6517929e3656651b7cd64c9f5bec342).
 - **Release metadata aligned.** The root plugin manifest, README version badge,
   and public site version text now advertise v4.3.0.
 
