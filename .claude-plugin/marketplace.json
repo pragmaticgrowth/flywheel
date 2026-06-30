@@ -1,5 +1,6 @@
 {
   "name": "pragmatic-growth",
+  "description": "Skills-only Claude Code and Droid plugins from Pragmatic Growth, including flywheel for autonomous goal queues and html-artifacts for rich browser deliverables.",
   "owner": {
     "name": "pragmaticgrowth",
     "url": "https://github.com/pragmaticgrowth"
@@ -7,12 +8,22 @@
   "plugins": [
     {
       "name": "flywheel",
-      "description": "Pragmatic Growth workflow skills for Claude Code and Droid — define-goal, html-artifacts, dispatch, loop-architect, and factory-doctor: turn wants into measurable goal contracts, create rich self-contained HTML deliverables, work one ready goal per run on the current branch, design autonomous loop contracts, and preflight the environment.",
+      "description": "Pragmatic Growth workflow skills for Claude Code and Droid — define-goal, dispatch, loop-architect, and factory-doctor: turn wants into measurable goal contracts, work one ready goal per run on the current branch, design autonomous loop contracts, and preflight the environment.",
       "source": "./",
       "homepage": "https://github.com/pragmaticgrowth/flywheel",
       "author": {
         "name": "pragmaticgrowth"
       }
+    },
+    {
+      "name": "html-artifacts",
+      "description": "Create self-contained HTML plans, specs, reports, research syntheses, diagrams, timelines, dashboards, decks, prototypes, and one-off editors when markdown would flatten the work.",
+      "source": "./plugins/html-artifacts",
+      "homepage": "https://github.com/pragmaticgrowth/flywheel/tree/main/plugins/html-artifacts",
+      "author": {
+        "name": "pragmaticgrowth"
+      },
+      "category": "productivity"
     }
   ]
 }

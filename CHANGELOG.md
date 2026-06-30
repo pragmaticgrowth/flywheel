@@ -1,6 +1,7 @@
 # Changelog
 
-All notable changes to **flywheel** are recorded here. Versions match the
+All notable changes to the **pragmatic-growth** marketplace in this repo are
+recorded here. The primary release version matches the `flywheel` plugin's
 `version` field in `.claude-plugin/plugin.json`; each is tagged in git
 (`vX.Y.Z`) and linked to its release commit on GitHub.
 
@@ -11,6 +12,30 @@ carries a changelog section — this file is the single source.)
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
+
+## [4.3.0] — 2026-06-30
+
+**Minor: HTML artifacts split into their own marketplace plugin.** This release
+keeps `html-artifacts` in the same GitHub repository and `pragmatic-growth`
+marketplace, but publishes it as a separate installable plugin.
+
+- **Two-plugin marketplace.** `.claude-plugin/marketplace.json` now lists both
+  `flywheel` and `html-artifacts`; the new plugin is sourced from
+  `./plugins/html-artifacts`.
+- **Flywheel refocused.** The root `flywheel` plugin now contains the four
+  workflow skills only: `define-goal`, `dispatch`, `loop-architect`, and
+  `factory-doctor`.
+- **HTML artifacts preserved.** The existing `html-artifacts` skill and its
+  progressive-disclosure references moved intact under
+  `plugins/html-artifacts/skills/html-artifacts/`, with its own plugin manifest
+  at version 1.0.0.
+- **Install docs aligned.** README, CLAUDE/AGENTS, and the public site now show
+  the separate install commands: `flywheel@pragmatic-growth` and
+  `html-artifacts@pragmatic-growth` for Claude Code, or `flywheel@flywheel` and
+  `html-artifacts@flywheel` for Droid. Source change:
+  [`6f1aa9e`](https://github.com/pragmaticgrowth/flywheel/commit/6f1aa9e4ddbfae4bcf92ef4f1fe7644a76ee96e2).
+- **Release metadata aligned.** The root plugin manifest, README version badge,
+  and public site version text now advertise v4.3.0.
 
 ## [4.2.0] — 2026-06-30
 

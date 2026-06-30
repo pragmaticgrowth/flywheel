@@ -34,8 +34,8 @@ Use this when maintaining or auditing the skill, not for every artifact generati
 
 - Single skill, many references. This keeps triggering simple while preserving progressive
   disclosure.
-- No listener/server submit pipeline. Flywheel remains skills-only: no MCP, hooks, commands,
-  daemons, or background processes.
+- No listener/server submit pipeline. The html-artifacts plugin remains skills-only: no MCP,
+  hooks, commands, daemons, or background processes.
 - Clipboard/export is the universal round trip. It works in Claude Code, Droid, local
   browsers, and other agent shells.
 - Foundation rules are centralized in one reference instead of repeated in every topic file.
@@ -52,5 +52,5 @@ When changing this skill:
    - stakeholder-ready implementation plan becomes an HTML file;
    - custom editor includes export;
    - diagram uses inline SVG and handles labels.
-4. Keep README and `public/index.html` aligned with the skill count and description.
+4. Keep README and `public/index.html` aligned with the plugin boundary and description.
 5. Do not add servers, commands, hooks, or MCP surfaces without an explicit user request.

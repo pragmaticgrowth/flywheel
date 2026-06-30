@@ -1,11 +1,11 @@
 # flywheel
 
 **Turn plain-language wants into autonomous execution.**
-A skills-only plugin for [Claude Code](https://claude.com/claude-code) and
-[Droid](https://factory.ai) (Factory CLI), from Pragmatic Growth.
+A skills-only plugin marketplace for [Claude Code](https://claude.com/claude-code)
+and [Droid](https://factory.ai) (Factory CLI), from Pragmatic Growth.
 
 [![Website](https://img.shields.io/badge/site-plugin.pragmaticgrowth.com-6366f1)](https://plugin.pragmaticgrowth.com)
-[![Version](https://img.shields.io/badge/version-4.2.0-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-4.3.0-8b5cf6)](CHANGELOG.md)
 [![CLIs](https://img.shields.io/badge/runs%20in-Claude%20Code%20%2B%20Droid-0ea66e)](#works-in-both-clis)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
@@ -28,9 +28,10 @@ a lightweight verifier/reviewer subagent loop, the orchestrator runs a local
 build + test gate, and only work that passes is kept (failures roll back).
 
 It is **skills-only**: no MCP servers, no slash commands of its own, no hooks,
-no background daemons, no build step. Just five
-[skills](https://docs.claude.com/en/docs/claude-code/skills) that Claude Code
-and Droid load automatically and invoke when the conversation calls for them.
+no background daemons, no build step. The marketplace now exposes two plugins:
+`flywheel` with four workflow
+[skills](https://docs.claude.com/en/docs/claude-code/skills), and
+`html-artifacts` as a separate rich-deliverables plugin.
 
 ### Why a queue in the repo instead of GitHub issues?
 
@@ -43,19 +44,27 @@ want a review surface — flywheel just doesn't require one.)
 
 ---
 
-## The five skills
+## Marketplace plugins
+
+| Plugin | What it contains | Install |
+|---|---|---|
+| **flywheel** | `define-goal`, `dispatch`, `loop-architect`, and `factory-doctor` for the docs/goals execution pipeline. | `/plugin install flywheel@pragmatic-growth` |
+| **html-artifacts** | One `html-artifacts` skill with references for self-contained browser deliverables. | `/plugin install html-artifacts@pragmatic-growth` |
+
+## The workflow skills
 
 | Skill | One line | Invoke with |
 |---|---|---|
 | **define-goal** | Plain-language want → a measurable goal contract (or a whole document of them). Never writes code. | `/define-goal …` · or just say *“I want…”* |
-| **html-artifacts** | Produces self-contained HTML plans, reports, explainers, diagrams, decks, prototypes, and one-off editors when markdown would flatten the work. | *“make a stakeholder-ready plan”* · *“diagram this”* · *“build a triage editor”* |
 | **dispatch** | The factory orchestrator: works one ready goal per run — claim, implement with TDD + fresh checks, local gate, keep or roll back. | `/dispatch` · *”work goal 005”* |
 | **loop-architect** | Designs the *loop contract* (prompt + verification + stop conditions) for autonomous, scheduled, or remote runs. | *“keep working on X”* · setting up a `/loop`, routine, or cron |
 | **factory-doctor** | One-pass preflight/doctor for the repo + machine. Auto-fixes everything local; reports the rest with exact fixes. | `/factory-doctor` |
 
-In Claude Code these are namespaced — `flywheel:define-goal`, etc. They also
-activate **automatically** when your message matches what they’re for, so most
-of the time you don’t type the name at all.
+In Claude Code the workflow skills are namespaced — `flywheel:define-goal`,
+etc. `html-artifacts` installs as its own plugin and exposes
+`html-artifacts:html-artifacts`. Skills also activate **automatically** when
+your message matches what they’re for, so most of the time you don’t type the
+name at all.
 
 ### define-goal — capture wants as contracts
 
@@ -86,11 +95,12 @@ document, and it produces **goal contracts** — never implementation.
   ✓ queued  docs/goals/021-welcome-email.md   type: feature
 ```
 
-### html-artifacts — make rich deliverables readable
+### html-artifacts plugin — make rich deliverables readable
 
-The browser-file sidecar for work that markdown flattens: implementation
-plans, specs, PR reviews, codebase tours, diagrams, research explainers,
-status reports, decks, prototypes, and custom editors.
+The browser-file sidecar lives as a separate plugin in the same marketplace. Use
+it for work that markdown flattens: implementation plans, specs, PR reviews,
+codebase tours, diagrams, research explainers, status reports, decks,
+prototypes, and custom editors.
 
 - **One skill, many references.** The skill has a small trigger/routing front
   door, then loads category references only when needed: planning,
@@ -279,6 +289,7 @@ config:
 ```bash
 /plugin marketplace add pragmaticgrowth/flywheel
 /plugin install flywheel@pragmatic-growth
+/plugin install html-artifacts@pragmatic-growth
 ```
 
 **Droid (Factory CLI):**
@@ -287,10 +298,12 @@ config:
 droid plugin marketplace add https://github.com/pragmaticgrowth/flywheel
 droid plugin marketplace list   # confirms the marketplace name is flywheel
 droid plugin install flywheel@flywheel
+droid plugin install html-artifacts@flywheel
 ```
 
 Pull updates later with `/plugin marketplace update pragmatic-growth` (Claude
-Code) or `droid plugin marketplace update flywheel` (Droid).
+Code) or `droid plugin marketplace update flywheel` (Droid), then update any
+installed plugin from the Installed tab or with the CLI's plugin update command.
 
 ### Quick start
 
@@ -344,7 +357,7 @@ stops and surfaces the reason. Let **loop-architect** design the loop contract
 
 ## Works in both CLIs
 
-One plugin, two runtimes. Droid auto-translates the `.claude-plugin/` manifest
+Two plugins, two runtimes. Droid auto-translates the `.claude-plugin/` manifest
 format, and the skills **detect the runtime** and use the right paths,
 commands, and scheduling primitives (`/goal` vs `droid exec`, `/loop` vs
 `CronCreate`, `.claude/` vs `.factory/` settings). Everything above works the
@@ -362,7 +375,9 @@ that for you.
 - **The site** — <https://plugin.pragmaticgrowth.com> hosts the full docs and
   install (canonical version history lives in CHANGELOG.md and GitHub Releases).
 
-The plugin version lives in `.claude-plugin/plugin.json`. The public site is
+The `flywheel` plugin version lives in `.claude-plugin/plugin.json`; the
+`html-artifacts` plugin version lives in
+`plugins/html-artifacts/.claude-plugin/plugin.json`. The public site is
 regenerated and redeployed on each release (see `CLAUDE.md` →
 *Public site & changelog*).
 
@@ -373,8 +388,8 @@ regenerated and redeployed on each release (see `CLAUDE.md` →
 ```
 flywheel/
 ├── .claude-plugin/
-│   ├── plugin.json        # plugin manifest (Droid auto-translates this format)
-│   └── marketplace.json   # the pragmatic-growth marketplace
+│   ├── plugin.json        # flywheel plugin manifest
+│   └── marketplace.json   # the pragmatic-growth marketplace, listing both plugins
 ├── skills/
 │   ├── define-goal/SKILL.md
 │   ├── dispatch/
@@ -384,10 +399,13 @@ flywheel/
 │   ├── factory-doctor/
 │   │   ├── SKILL.md
 │   │   └── scripts/doctor_checks.py   # read-only readiness probe
-│   ├── html-artifacts/
-│   │   ├── SKILL.md
-│   │   └── references/                # HTML artifact recipes and foundation rules
 │   └── loop-architect/SKILL.md
+├── plugins/
+│   └── html-artifacts/
+│       ├── .claude-plugin/plugin.json
+│       └── skills/html-artifacts/
+│           ├── SKILL.md
+│           └── references/            # HTML artifact recipes and foundation rules
 ├── public/                # the plugin.pragmaticgrowth.com site (index.html + brand SVGs)
 ├── wrangler.jsonc         # Cloudflare deploy config for the site
 ├── CHANGELOG.md           # canonical version history
@@ -398,8 +416,8 @@ flywheel/
 
 ## Contributing & maintenance
 
-This repo is the single source of truth — the plugin installs from the
-`pragmatic-growth` marketplace and refreshes from GitHub. If you’re editing
+This repo is the single source of truth — both plugins install from the
+`pragmatic-growth` marketplace and refresh from GitHub. If you’re editing
 skills, read **[CLAUDE.md](CLAUDE.md)**: it documents the queue design
 invariants, the release flow (bump `plugin.json` → update `CHANGELOG.md` + the
 site → tag → push → refresh), and the rule that skills stay portable (no

@@ -2,15 +2,18 @@
 
 ## Project Overview
 
-Skills-only plugin for Claude Code and Droid (Factory CLI) from Pragmatic Growth, v4.2.0.
-No MCP servers, no commands, no agents, no hooks, no build step — five skills
-under `skills/` (two ship deterministic Python helpers in `scripts/`),
-forming a plain-language → autonomous-execution pipeline around a
-file-based goal queue (`docs/goals/` in target repos), plus a portable
-HTML-artifact workbench for rich plans/reports/diagrams/editors. The plugin works in
-both CLIs via Droid's Claude Code compatibility layer (Droid auto-translates
-the `.claude-plugin/` manifest format). Skills are CLI-aware — they detect
-the runtime and use appropriate paths, commands, and scheduling primitives.
+Skills-only Claude Code and Droid (Factory CLI) marketplace from Pragmatic Growth.
+The repo now publishes two plugins from one `pragmatic-growth` marketplace:
+`flywheel` v4.3.0 and `html-artifacts` v1.0.0. No MCP servers, no commands, no
+agents, no hooks, no build step. `flywheel` has four skills under root
+`skills/` (two ship deterministic Python helpers in `scripts/`), forming a
+plain-language → autonomous-execution pipeline around a file-based goal queue
+(`docs/goals/` in target repos). `html-artifacts` lives under
+`plugins/html-artifacts/` as a separate plugin for rich
+plans/reports/diagrams/editors. Both plugins work in both CLIs via Droid's
+Claude Code compatibility layer (Droid auto-translates the `.claude-plugin/`
+manifest format). Skills are CLI-aware — they detect the runtime and use
+appropriate paths, commands, and scheduling primitives.
 
 - **define-goal** — plain-language wants → measurable goal contracts.
   Two destinations: a copy-pasteable `/goal` line (Claude Code) or
@@ -46,14 +49,6 @@ the runtime and use appropriate paths, commands, and scheduling primitives.
 - **loop-architect** — designs loop contracts (prompt + verification +
   stop conditions) for autonomous /goal, /loop, routine, or remote runs;
   names `docs/goals/index.yaml` the canonical factory ledger.
-- **html-artifacts** — produces self-contained browser artifacts for
-  deliverables where markdown is the wrong shape: stakeholder-ready plans,
-  specs, PR/code-review writeups, module maps, diagrams, timelines,
-  research explainers, status/incident reports, decks, prototypes, and
-  one-off editors with export/copy round trips. Single skill with
-  `references/` for progressive disclosure. No listener, server, command,
-  MCP surface, or build step; interactive results export through the HTML
-  file's copy/export button.
 - **factory-doctor** — one-pass preflight/doctor for a repo + machine:
   checks software, gh auth + scopes, the git working tree, CI, and queue
   state; aggressively auto-fixes everything local (scaffolds the queue) and
@@ -62,6 +57,18 @@ the runtime and use appropriate paths, commands, and scheduling primitives.
   model commits directly on the local branch, so there is no merge allow-rule
   to provision — the gate is local. The probe checks settings in both
   `.claude/` and `.factory/` (Droid) paths.
+
+Separate marketplace plugin:
+
+- **html-artifacts** — produces self-contained browser artifacts for
+  deliverables where markdown is the wrong shape: stakeholder-ready plans,
+  specs, PR/code-review writeups, module maps, diagrams, timelines,
+  research explainers, status/incident reports, decks, prototypes, and
+  one-off editors with export/copy round trips. Single skill with
+  `references/` for progressive disclosure under
+  `plugins/html-artifacts/skills/html-artifacts/`. No listener, server,
+  command, MCP surface, or build step; interactive results export through
+  the HTML file's copy/export button.
 
 ## Queue design invariants (research-backed; v4.1.x one-goal dispatch model, 2026-06-28)
 
@@ -153,10 +160,12 @@ a local gate. Git history has every prior model if ever needed.
 ## Structure
 
 ```
-.claude-plugin/plugin.json        # manifest — name: flywheel (Droid auto-translates this format)
-.claude-plugin/marketplace.json   # marketplace — name: pragmatic-growth
-skills/<name>/SKILL.md            # five skills (define-goal, html-artifacts, dispatch, loop-architect, factory-doctor)
-skills/html-artifacts/references/ # HTML artifact recipes and foundation rules
+.claude-plugin/plugin.json        # root flywheel plugin manifest
+.claude-plugin/marketplace.json   # marketplace — name: pragmatic-growth, lists flywheel + html-artifacts
+skills/<name>/SKILL.md            # four flywheel skills (define-goal, dispatch, loop-architect, factory-doctor)
+plugins/html-artifacts/.claude-plugin/plugin.json
+plugins/html-artifacts/skills/html-artifacts/SKILL.md
+plugins/html-artifacts/skills/html-artifacts/references/ # HTML artifact recipes and foundation rules
 skills/<name>/scripts/*.py        # dispatch/pg_validate.py (local gate), factory-doctor/doctor_checks.py
 CHANGELOG.md                      # canonical, git-tracked version history (site carries no on-page changelog)
 public/index.html                 # the public site (plugin.pragmaticgrowth.com) — self-contained, themed
@@ -171,13 +180,16 @@ AGENTS.md                         # symlink → CLAUDE.md (one source, no drift)
   without an explicit ask.
 - **Portability.** Skills must not contain user-specific absolute paths
   (`/Users/...`, `~/.claude/...`, `~/.factory/...`). They run in arbitrary repos.
-- **This repo is the single source of truth.** The plugin is installed
+- **This repo is the single source of truth.** The plugins are installed
   user-scoped from the `pragmatic-growth` marketplace; the former
   user-level copies in `~/.claude/skills/` were deleted on 2026-06-10.
-  Skill edits land here, bump the `plugin.json` version, push, then
+  Root flywheel skill edits land here, bump the root `plugin.json` version,
+  push, then
   refresh with `/plugin marketplace update pragmatic-growth` (Claude Code)
   or `droid plugin marketplace update flywheel` (Droid; Factory registers the
-  GitHub marketplace as `flywheel`).
+  GitHub marketplace as `flywheel`). `html-artifacts` edits bump
+  `plugins/html-artifacts/.claude-plugin/plugin.json`; if the root marketplace
+  copy/docs also change, keep the root release metadata aligned too.
 - **Keep CLAUDE.md and AGENTS.md aligned.** `AGENTS.md` is a symlink to
   `CLAUDE.md`; preserve that one-source setup. When Claude Code updates
   `CLAUDE.md`, it must verify `AGENTS.md` reflects the same content. When Codex
@@ -194,7 +206,9 @@ AGENTS.md                         # symlink → CLAUDE.md (one source, no drift)
   has `name` + `description`, then test the published Claude-compatible
   marketplace path with `droid plugin marketplace add https://github.com/pragmaticgrowth/flywheel`
   (skip if already added), `droid plugin marketplace list`, and
-  `droid plugin install flywheel@flywheel`. `droid plugin link .` is only for native
+  `droid plugin install flywheel@flywheel` plus
+  `droid plugin install html-artifacts@flywheel` when that plugin changes.
+  `droid plugin link .` is only for native
   `.factory-plugin` plugins, not this `.claude-plugin` manifest).
 - **Skill edits are tested.** New or changed skill mechanics get a
   subagent dry-run (scenario + "cite the section that decides each
@@ -202,16 +216,18 @@ AGENTS.md                         # symlink → CLAUDE.md (one source, no drift)
 
 ## Public site, changelog & releases (plugin.pragmaticgrowth.com)
 
-The plugin has a public landing/docs site at **https://plugin.pragmaticgrowth.com**,
+The marketplace has a public landing/docs site at **https://plugin.pragmaticgrowth.com**,
 served from Cloudflare (Workers static assets, Pragmatic Growth account). It is
 part of this repo — `public/index.html` (self-contained, light/dark, no external
 deps) plus the brand SVGs in `public/`, with `wrangler.jsonc` at the root.
 
 - **Keep the docs current with the skills.** Whenever you change what a skill
-  does, how it's invoked, the install commands, or the queue/config model,
+  does, how it's invoked, the plugin boundaries, the install commands, or the
+  queue/config model,
   update BOTH `public/index.html` AND `README.md` to match in the SAME change.
-  The site and README both document the five skills, the docs/goals pipeline,
-  the config model, and install — drift in either is a
+  The site and README both document the two marketplace plugins, the flywheel
+  workflow skills, the html-artifacts plugin, the docs/goals pipeline, the
+  config model, and install — drift in either is a
   shipped-but-wrong doc, same severity as a stale SKILL.md. (`AGENTS.md` is a
   symlink to this file; no separate edit.)
 - **Versioned changelog (CHANGELOG.md is the single source).** `CHANGELOG.md`
@@ -238,7 +254,7 @@ deps) plus the brand SVGs in `public/`, with `wrangler.jsonc` at the root.
   in `wrangler.jsonc` (the `pragmaticgrowth.com` zone is in the same account), so
   a deploy redeploys to the same URL. Push the repo too — the site source is
   tracked here, single source of truth.
-- The site is **content only** — bumping the plugin's own `plugin.json` version is
-  NOT required just to ship a site/changelog edit (the installed plugin doesn't
-  depend on the site). Bump `plugin.json` only for actual skill changes, and when
-  you do, that's the trigger to add the changelog entry + tag above.
+- The site is **content only** — bumping a plugin's own `plugin.json` version is
+  NOT required just to ship a site/changelog edit (installed plugins don't
+  depend on the site). Bump a plugin manifest only for actual skill changes, and
+  when you do, that's the trigger to add the changelog entry + tag above.

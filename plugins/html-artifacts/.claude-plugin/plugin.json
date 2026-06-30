@@ -1,0 +1,12 @@
+{
+  "name": "html-artifacts",
+  "version": "1.0.0",
+  "description": "Self-contained HTML deliverables for Claude Code and Droid — plans, specs, reports, research syntheses, diagrams, timelines, dashboards, decks, prototypes, and one-off editors when markdown would flatten the work.",
+  "author": {
+    "name": "pragmaticgrowth"
+  },
+  "repository": "https://github.com/pragmaticgrowth/flywheel",
+  "homepage": "https://github.com/pragmaticgrowth/flywheel/tree/main/plugins/html-artifacts",
+  "license": "MIT",
+  "keywords": ["skills", "html", "artifacts", "plans", "reports", "diagrams", "decks", "prototypes", "editors"]
+}
