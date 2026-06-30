@@ -28,7 +28,7 @@ a lightweight verifier/reviewer subagent loop, the orchestrator runs a local
 build + test gate, and only work that passes is kept (failures roll back).
 
 It is **skills-only**: no MCP servers, no slash commands of its own, no hooks,
-no background daemons, no build step. Just four
+no background daemons, no build step. Just five
 [skills](https://docs.claude.com/en/docs/claude-code/skills) that Claude Code
 and Droid load automatically and invoke when the conversation calls for them.
 
@@ -43,11 +43,12 @@ want a review surface — flywheel just doesn't require one.)
 
 ---
 
-## The four skills
+## The five skills
 
 | Skill | One line | Invoke with |
 |---|---|---|
 | **define-goal** | Plain-language want → a measurable goal contract (or a whole document of them). Never writes code. | `/define-goal …` · or just say *“I want…”* |
+| **html-artifacts** | Produces self-contained HTML plans, reports, explainers, diagrams, decks, prototypes, and one-off editors when markdown would flatten the work. | *“make a stakeholder-ready plan”* · *“diagram this”* · *“build a triage editor”* |
 | **dispatch** | The factory orchestrator: works one ready goal per run — claim, implement with TDD + fresh checks, local gate, keep or roll back. | `/dispatch` · *”work goal 005”* |
 | **loop-architect** | Designs the *loop contract* (prompt + verification + stop conditions) for autonomous, scheduled, or remote runs. | *“keep working on X”* · setting up a `/loop`, routine, or cron |
 | **factory-doctor** | One-pass preflight/doctor for the repo + machine. Auto-fixes everything local; reports the rest with exact fixes. | `/factory-doctor` |
@@ -84,6 +85,25 @@ document, and it produces **goal contracts** — never implementation.
   define-goal ▸ recon (3 read-only agents) ▸ contract
   ✓ queued  docs/goals/021-welcome-email.md   type: feature
 ```
+
+### html-artifacts — make rich deliverables readable
+
+The browser-file sidecar for work that markdown flattens: implementation
+plans, specs, PR reviews, codebase tours, diagrams, research explainers,
+status reports, decks, prototypes, and custom editors.
+
+- **One skill, many references.** The skill has a small trigger/routing front
+  door, then loads category references only when needed: planning,
+  code-review, design/prototypes, diagrams/data, research/reports, editors,
+  decks, and source coverage.
+- **Self-contained files.** It writes real `.html` artifacts with inline CSS
+  and JavaScript — no server, no listener, no build step, no new plugin
+  surface.
+- **Round-trip editors.** If the user manipulates state (triage, tuning,
+  annotation, selection), the artifact includes an export/copy button that
+  returns JSON, markdown, CSV, or prompt text back to the agent.
+- **Default only when it helps.** Short chat answers, code-only snippets, and
+  command sequences stay in markdown.
 
 ### dispatch — work the queue
 
@@ -139,6 +159,7 @@ never implements goals.
 ```mermaid
 flowchart TD
     you(["You — plain language"]) --> dg["define-goal<br/>writes measurable contracts"]
+    you -->|asks for plan, report, diagram, deck, editor| ha["html-artifacts<br/>self-contained .html files"]
     dg -->|queues| q[("docs/goals/ queue<br/>index.yaml + goal files")]
     q -->|claim next goal| dsp{{"dispatch · orchestrator"}}
     dsp -->|foreground implementer<br/>TDD + fresh checks| impl["work commit<br/>on &lt;base&gt;"]
@@ -148,15 +169,16 @@ flowchart TD
     squash -.->|next dispatch fire| q
     fd["factory-doctor<br/>preflight + fixes setup"] -.->|readies| dsp
     la["loop-architect<br/>designs the loop"] -.->|keeps it running| dsp
+    ha --> art[/"browser artifact<br/>export when interactive"/]
     classDef brand fill:#059669,stroke:#047857,color:#ffffff;
     classDef store fill:#d1fae5,stroke:#10b981,color:#064e3b;
     classDef neutral fill:#ffffff,stroke:#cbd5e1,color:#0f172a;
     classDef human fill:#0f172a,stroke:#0f172a,color:#ffffff;
     classDef support fill:#f1f5f9,stroke:#cbd5e1,color:#334155;
     classDef warn fill:#fee2e2,stroke:#e11d48,color:#9f1239;
-    class dg,dsp,squash brand
+    class dg,ha,dsp,squash brand
     class q store
-    class impl,gate neutral
+    class impl,gate,art neutral
     class you human
     class fd,la support
     class rollback warn
@@ -164,7 +186,8 @@ flowchart TD
 
 The intended flow: **capture** wants with define-goal → **work** the queue with
 dispatch → **keep it running** unattended with a loop designed by
-loop-architect. factory-doctor makes sure the ground is solid first.
+loop-architect. html-artifacts handles rich browser deliverables along the way,
+and factory-doctor makes sure the ground is solid first.
 
 ---
 
@@ -361,6 +384,9 @@ flywheel/
 │   ├── factory-doctor/
 │   │   ├── SKILL.md
 │   │   └── scripts/doctor_checks.py   # read-only readiness probe
+│   ├── html-artifacts/
+│   │   ├── SKILL.md
+│   │   └── references/                # HTML artifact recipes and foundation rules
 │   └── loop-architect/SKILL.md
 ├── public/                # the plugin.pragmaticgrowth.com site (index.html + brand SVGs)
 ├── wrangler.jsonc         # Cloudflare deploy config for the site

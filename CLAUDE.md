@@ -2,11 +2,12 @@
 
 ## Project Overview
 
-Skills-only plugin for Claude Code and Droid (Factory CLI) from Pragmatic Growth, v4.1.2.
-No MCP servers, no commands, no agents, no hooks, no build step — four skills
+Skills-only plugin for Claude Code and Droid (Factory CLI) from Pragmatic Growth, v4.2.0.
+No MCP servers, no commands, no agents, no hooks, no build step — five skills
 under `skills/` (two ship deterministic Python helpers in `scripts/`),
 forming a plain-language → autonomous-execution pipeline around a
-file-based goal queue (`docs/goals/` in target repos). The plugin works in
+file-based goal queue (`docs/goals/` in target repos), plus a portable
+HTML-artifact workbench for rich plans/reports/diagrams/editors. The plugin works in
 both CLIs via Droid's Claude Code compatibility layer (Droid auto-translates
 the `.claude-plugin/` manifest format). Skills are CLI-aware — they detect
 the runtime and use appropriate paths, commands, and scheduling primitives.
@@ -45,6 +46,14 @@ the runtime and use appropriate paths, commands, and scheduling primitives.
 - **loop-architect** — designs loop contracts (prompt + verification +
   stop conditions) for autonomous /goal, /loop, routine, or remote runs;
   names `docs/goals/index.yaml` the canonical factory ledger.
+- **html-artifacts** — produces self-contained browser artifacts for
+  deliverables where markdown is the wrong shape: stakeholder-ready plans,
+  specs, PR/code-review writeups, module maps, diagrams, timelines,
+  research explainers, status/incident reports, decks, prototypes, and
+  one-off editors with export/copy round trips. Single skill with
+  `references/` for progressive disclosure. No listener, server, command,
+  MCP surface, or build step; interactive results export through the HTML
+  file's copy/export button.
 - **factory-doctor** — one-pass preflight/doctor for a repo + machine:
   checks software, gh auth + scopes, the git working tree, CI, and queue
   state; aggressively auto-fixes everything local (scaffolds the queue) and
@@ -146,7 +155,8 @@ a local gate. Git history has every prior model if ever needed.
 ```
 .claude-plugin/plugin.json        # manifest — name: flywheel (Droid auto-translates this format)
 .claude-plugin/marketplace.json   # marketplace — name: pragmatic-growth
-skills/<name>/SKILL.md            # four skills (define-goal, dispatch, loop-architect, factory-doctor)
+skills/<name>/SKILL.md            # five skills (define-goal, html-artifacts, dispatch, loop-architect, factory-doctor)
+skills/html-artifacts/references/ # HTML artifact recipes and foundation rules
 skills/<name>/scripts/*.py        # dispatch/pg_validate.py (local gate), factory-doctor/doctor_checks.py
 CHANGELOG.md                      # canonical, git-tracked version history (site carries no on-page changelog)
 public/index.html                 # the public site (plugin.pragmaticgrowth.com) — self-contained, themed
@@ -200,7 +210,7 @@ deps) plus the brand SVGs in `public/`, with `wrangler.jsonc` at the root.
 - **Keep the docs current with the skills.** Whenever you change what a skill
   does, how it's invoked, the install commands, or the queue/config model,
   update BOTH `public/index.html` AND `README.md` to match in the SAME change.
-  The site and README both document the four skills, the docs/goals pipeline,
+  The site and README both document the five skills, the docs/goals pipeline,
   the config model, and install — drift in either is a
   shipped-but-wrong doc, same severity as a stale SKILL.md. (`AGENTS.md` is a
   symlink to this file; no separate edit.)

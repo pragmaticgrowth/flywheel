@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>flywheel v4.1.3 — plain-language wants in, verified commits out · Pragmatic Growth</title>
-<meta name="description" content="Turn plain-language wants into a measurable goal queue, then let Claude Code & Droid agents work one ready goal per run — TDD, fresh checks, and a local build+test gate before each commit is kept.">
+<meta name="description" content="Turn plain-language wants into a measurable goal queue, produce rich HTML artifacts when markdown is too flat, and let Claude Code & Droid agents work one ready goal per run behind local checks.">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -12,7 +12,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Pragmatic Growth">
 <meta property="og:title" content="flywheel — plain-language wants in, verified commits out">
-<meta property="og:description" content="Four skills turn what you ask for into a measurable goal queue. Agents work one ready goal per run, commit straight to your branch, and keep only what passes TDD-backed local checks.">
+<meta property="og:description" content="Five skills turn requests into measurable goal contracts, rich HTML artifacts, safe autonomous loops, and one-goal-per-run verified commits.">
 <meta property="og:url" content="https://plugin.pragmaticgrowth.com">
 <meta property="og:image" content="https://plugin.pragmaticgrowth.com/og.png">
 <meta property="og:image:width" content="1200">
@@ -21,7 +21,7 @@
 <meta property="og:image:alt" content="flywheel — plain-language wants in, verified commits out. A skills-only Claude Code + Droid plugin from Pragmatic Growth.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="flywheel — plain-language wants in, verified commits out">
-<meta name="twitter:description" content="Describe what you want; agents work one ready goal per run, commit straight to your branch, and keep only what passes TDD-backed local checks.">
+<meta name="twitter:description" content="Describe what you want; get goal contracts, rich HTML artifacts, and one-goal-per-run verified commits.">
 <meta name="twitter:image" content="https://plugin.pragmaticgrowth.com/og.png">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#020617" media="(prefers-color-scheme: dark)">
@@ -173,7 +173,7 @@
   .step .arrow{position:absolute;right:-19px;top:50%;transform:translateY(-50%);color:var(--border-strong);z-index:2}
   @media(max-width:880px){.step .arrow{display:none}}
 
-  /* ---------- skills (4 stacked line cards) ---------- */
+  /* ---------- skills (5 stacked line cards) ---------- */
   .skills{display:flex;flex-direction:column;gap:12px}
   .skill{display:flex;align-items:center;gap:18px;background:var(--surface);border:1px solid var(--border);
     border-radius:var(--r);padding:20px 22px;box-shadow:var(--shadow);transition:.18s}
@@ -278,7 +278,7 @@
     <div>
       <span class="h-badge"><span class="dot"></span> <b>Skills-only</b> · Claude&nbsp;Code&nbsp;+&nbsp;Droid</span>
       <h1 class="title">Plain-language wants in.<br><span class="grad-text">Verified&nbsp;commits&nbsp;out.</span></h1>
-      <p class="lead">Four skills turn what you ask for into a measurable goal queue. One agent works one ready goal per run on your branch, with TDD, fresh checks, and a local build+test gate before the commit is kept. Autonomy you can actually leave running.</p>
+      <p class="lead">Five skills turn requests into measurable goal contracts, rich HTML artifacts, safe autonomous loops, and one-goal-per-run commits kept only after local checks pass. Autonomy you can actually leave running.</p>
       <div class="cta">
         <a class="btn btn-primary" href="#install">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
@@ -290,7 +290,7 @@
         </a>
       </div>
       <div class="h-meta">
-        <div><b>4</b><span>focused skills</span></div>
+        <div><b>5</b><span>focused skills</span></div>
         <div><b>0</b><span>servers, hooks, or build</span></div>
         <div><b>2</b><span>CLIs, one install</span></div>
       </div>
@@ -303,7 +303,10 @@
 <span class="u">&gt;</span> I want first paint under 1.2s on the pricing page<br>
 <span class="m">  define-goal</span> ▸ recon (3 read-only agents) ▸ contract<br>
 <span class="g">  ✓ queued</span> <b>docs/goals/014-fast-pricing-fcp.md</b>  ·  type: feature<br><br>
-<span class="c"># 2 · work one ready goal; loop repeats it when you want</span><br>
+<span class="c"># 2 · optional rich handoff — HTML when markdown is too flat</span><br>
+<span class="u">&gt;</span> make a stakeholder-ready implementation plan<br>
+<span class="m">  html-artifacts</span> ▸ <b>pricing-fcp-plan.html</b> · timeline · data flow · risks<br><br>
+<span class="c"># 3 · work one ready goal; loop repeats it when you want</span><br>
 <span class="u">&gt;</span> /dispatch<br>
 <span class="m">  dispatch</span> ▸ <b>6/8 done</b> <span class="bar">████████████████░░░░</span><br>
 <span class="c">           working goal 014 · ready 1 · blocked 0</span><br>
@@ -319,7 +322,7 @@
     <div class="sec-head reveal">
       <span class="eyebrow">How it works</span>
       <h2>From a sentence to a verified commit — on a loop.</h2>
-      <p>The skills chain: capture wants as contracts, queue them in the repo, work one ready goal per run, and keep each commit only after TDD-backed local checks pass — a loop designed to run unattended.</p>
+      <p>The factory chain captures wants as contracts, queues them in the repo, works one ready goal per run, and keeps each commit only after TDD-backed local checks pass. html-artifacts adds rich browser deliverables when the work needs a plan, diagram, report, deck, or editor instead of a wall of markdown.</p>
     </div>
     <div class="flow">
       <div class="step reveal"><div class="n">01 · define-goal</div><h3>Capture</h3><p>Plain-language want → a measurable contract, grounded by recon. Queued into <code>docs/goals/</code>.</p>
@@ -338,7 +341,7 @@
   <div class="wrap">
     <div class="sec-head reveal">
       <span class="eyebrow">The toolkit</span>
-      <h2>Four skills that do one thing each, well.</h2>
+      <h2>Five skills that do one thing each, well.</h2>
       <p>They activate automatically when the conversation matches, or you invoke them directly. In Claude Code they're namespaced <code>flywheel:&lt;skill&gt;</code>.</p>
     </div>
     <div class="skills">
@@ -350,6 +353,15 @@
           <p>Turns a plain-language want — or a whole document of them — into a measurable goal contract, grounded by model-inheriting recon and a concise brief. Produces goals only; never implements.</p>
         </div>
         <span class="cmd">/define-goal</span>
+      </article>
+
+      <article class="skill reveal">
+        <div class="skill-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg></div>
+        <div class="skill-main">
+          <h3>html-artifacts</h3>
+          <p>Creates self-contained browser artifacts for rich plans, specs, PR reviews, diagrams, research explainers, decks, prototypes, and one-off editors with export/copy round trips.</p>
+        </div>
+        <span class="cmd">html-artifacts</span>
       </article>
 
       <article class="skill reveal">
