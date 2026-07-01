@@ -38,7 +38,9 @@ the last one stopped. For unattended cadence you don't have to babysit:
   validation — helpful, not required; the loop procedure is unchanged either way.
 
 Pick the primitive matching your runtime once at setup; everything below is identical in
-both.
+both. When the termination condition is met, the loop runs Finalization once and then you
+should **cancel the `/loop` or delete the `CronCreate`** — otherwise it keeps re-firing and
+re-reading already-completed state.
 
 ## Resolve the helper path
 
@@ -88,7 +90,11 @@ Ask the user (or infer from context) for:
 
 ### Step 2: Create Branch and State Files
 
+Record the branch you're starting from — finalization merges results back into it, so
+**don't assume `main`** — then create the session branch:
+
 ```bash
+base=$(git branch --show-current)   # the base branch; record it in autoresearch.md below
 git checkout autoresearch/<goal>-<date> 2>/dev/null || git checkout -b autoresearch/<goal>-<date>
 ```
 
@@ -105,6 +111,10 @@ The living research document. A fresh agent with no context should be able to re
 
 ## Objective
 <Specific description of what we're optimizing and the workload.>
+
+## Base branch
+<The branch this session was started from (the `$base` captured in Step 2) — finalization
+merges results back here. e.g. `develop`.>
 
 ## Metrics
 - **Primary**: <name> (<unit>, lower/higher is better) — the optimization target
@@ -194,6 +204,7 @@ python3 "$AR" log --jsonl autoresearch.jsonl \
   --metric <baseline_value> \
   --status keep \
   --description "baseline" \
+  --direction <lower|higher> \
   --asi '{"hypothesis": "baseline measurement"}'
 ```
 
@@ -262,9 +273,9 @@ python3 "$AR" log --jsonl autoresearch.jsonl \
   --metric <value> \
   --status keep \
   --description "<what was tried>" \
-  --asi '{"hypothesis": "<what you tried>"}' \
-  # --metrics '{"compile_us": <value>, "render_us": <value>}'  # optional secondary metrics
-  --direction <lower|higher>
+  --direction <lower|higher> \
+  --asi '{"hypothesis": "<what you tried>"}'
+# optional: append secondary metrics with  --metrics '{"compile_us": <value>, "render_us": <value>}'
 ```
 
 Then commit all changes (including the JSONL entry):
@@ -284,9 +295,9 @@ python3 "$AR" log --jsonl autoresearch.jsonl \
   --metric <value_or_0> \
   --status <discard|crash|checks_failed> \
   --description "<what was tried>" \
-  --asi '{"hypothesis": "<what you tried>", "rollback_reason": "<why it failed>"}' \
-  # --metrics '{"compile_us": <value>, "render_us": <value>}'  # optional secondary metrics
-  --direction <lower|higher>
+  --direction <lower|higher> \
+  --asi '{"hypothesis": "<what you tried>", "rollback_reason": "<why it failed>"}'
+# optional: append secondary metrics with  --metrics '{"compile_us": <value>, "render_us": <value>}'
 ```
 
 Then revert changes, backing up state files so `git clean -fd` doesn't destroy them:
@@ -306,6 +317,10 @@ cp autoresearch.md.bak autoresearch.md 2>/dev/null || true
 cp autoresearch.ideas.md.bak autoresearch.ideas.md 2>/dev/null || true
 rm -f autoresearch.jsonl.bak autoresearch.md.bak autoresearch.ideas.md.bak
 ```
+
+> **Caution:** `git clean -fd` removes *all* untracked files in the repo, not just this
+> experiment's changes. The backup/restore above only shields the named state files —
+> commit or stash any unrelated untracked work before running the loop.
 
 #### 6. Update Research Journal
 
@@ -410,12 +425,22 @@ When the experiment loop ends (termination condition met, user interrupts, or co
 python3 "$AR" summary --jsonl autoresearch.jsonl
 ```
 
-Detect the base branch and review the git log for actual commits:
+Detect the base branch and review the git log for actual commits. Resolve the base in
+priority order — the branch recorded in `autoresearch.md`, then `origin/HEAD`, then the
+remote's advertised default — and **never blindly assume `main`** (a `develop`-only repo
+with `origin/HEAD` unset would otherwise silently break here):
 
 ```bash
-base=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null | sed 's#^origin/##')
+base=$(sed -n '/^## Base branch/{n;p}' autoresearch.md 2>/dev/null | tr -d '[:space:]')
+[ -z "$base" ] && base=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null | sed 's#^origin/##')
+[ -z "$base" ] && base=$(git remote show origin 2>/dev/null | sed -n 's/.*HEAD branch: //p')
 base=${base:-main}
-merge_base=$(git merge-base HEAD "$base")
+merge_base=$(git merge-base HEAD "$base" 2>/dev/null)
+if [ -z "$merge_base" ]; then
+  echo "No merge-base with base '$base'. Set the real base branch by hand before finalizing, e.g.:"
+  echo "  base=develop; merge_base=\$(git merge-base HEAD \"\$base\")"
+  # Do NOT create finalize branches until \$merge_base resolves.
+fi
 git log --oneline --stat "$merge_base"..HEAD
 ```
 
