@@ -13,6 +13,38 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [4.4.0] — 2026-07-01
+
+**Minor: dispatch's intra-goal quality loop gets a multi-lens fresh check and
+named subagent patterns.** No change to the sequential, one-goal-per-run,
+worktree-free dispatch model — this sharpens the per-goal quality loop and
+documents why the model is shaped the way it is.
+
+- **Multi-lens fresh check.** The implementer's post-implementation review
+  (quality-loop step 5) upgrades from a single verifier/reviewer subagent to a
+  small panel of independent read-only lenses run concurrently:
+  contract-conformance, tests + overbuild, and stray-files + regressions. Two or
+  three lenses is the norm and stays lightweight; it escalates to a read-only
+  review Workflow only at the ~5+ independent-checks threshold already defined in
+  quality-loop step 3. Proportional by design — a one-file mechanical edit skips
+  the panel entirely. Source change:
+  [`44aa885`](https://github.com/pragmaticgrowth/flywheel/commit/44aa885).
+- **Named subagent patterns.** The implementer brief now names
+  `subagent-driven-development` as the method behind its nested read-only
+  fan-out, and calls out two patterns that fit inside one goal: adversarial
+  verification (a reviewer tries to refute the change, not rubber-stamp it) and
+  loop-until-dry for bug hunts. All graceful — "invoke the skill when it is
+  available," with the run-it-yourself fallback intact when subagents aren't
+  provided.
+- **The sequential model documented as deliberate scar tissue.** The dispatch
+  header now states outright that the single-branch, worktree-free, no-parallel
+  shape is a deliberate choice with the v3 livelock behind it (see 4.0.0), so
+  worktrees and cross-goal parallelism are not re-proposed as "missing." The
+  extra concurrency lives INSIDE one goal (read-only recon/review), never across
+  goals.
+- **Docs aligned.** README's per-goal description reflects the multi-lens fresh
+  check; the public site and README version text advertise v4.4.0.
+
 ## [4.3.0] — 2026-06-30
 
 **Minor: HTML artifacts split into their own marketplace plugin.** This release

@@ -5,7 +5,7 @@ A skills-only plugin marketplace for [Claude Code](https://claude.com/claude-cod
 and [Droid](https://factory.ai) (Factory CLI), from Pragmatic Growth.
 
 [![Website](https://img.shields.io/badge/site-plugin.pragmaticgrowth.com-6366f1)](https://plugin.pragmaticgrowth.com)
-[![Version](https://img.shields.io/badge/version-4.3.0-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-4.4.0-8b5cf6)](CHANGELOG.md)
 [![CLIs](https://img.shields.io/badge/runs%20in-Claude%20Code%20%2B%20Droid-0ea66e)](#works-in-both-clis)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
@@ -24,7 +24,7 @@ investigates your codebase, turns that into a **measurable contract** (what
 “done” means, how to verify it), drops it into a **queue that lives in your
 repo**, and then — when you’re ready — works that queue **one goal per run**:
 a foreground implementer commits directly on your current branch using TDD and
-a lightweight verifier/reviewer subagent loop, the orchestrator runs a local
+a lightweight subagent review loop (independent read-only lenses), the orchestrator runs a local
 build + test gate, and only work that passes is kept (failures roll back).
 
 It is **skills-only**: no MCP servers, no slash commands of its own, no hooks,
@@ -127,8 +127,8 @@ Per goal:
 1. **Claim** the next `not_started` goal (flip one entry → commit on the
    current branch).
 2. **Implement** — a foreground implementer commits work directly on `<base>`,
-   using a short plan/checklist, TDD for code changes, and a fresh verifier or
-   reviewer subagent for non-trivial work.
+   using a short plan/checklist, TDD for code changes, and a fresh multi-lens
+   review (a small panel of independent read-only lenses) for non-trivial work.
 3. **Local gate** — the dispatch orchestrator runs the repo’s `config.verify`
    commands (build + tests), and `pg_validate.py` runs the per-goal acceptance +
    structural checks on the `gate_base..HEAD` diff.  
