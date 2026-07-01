@@ -42,7 +42,7 @@ running an `index.yaml` full of dead config.
   version-dependent; the stable fact is the format.
 - **Docs aligned.** CLAUDE.md/AGENTS.md, README, and the site version reflect the
   new factory-doctor auto-fix. Source change:
-  [`a703477`](https://github.com/pragmaticgrowth/flywheel/commit/a703477).
+  [`11006c0`](https://github.com/pragmaticgrowth/flywheel/commit/11006c0).
 
 ## [4.4.0] — 2026-07-01
 
