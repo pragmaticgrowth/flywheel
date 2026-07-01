@@ -4,7 +4,7 @@
 
 Skills-only Claude Code and Droid (Factory CLI) marketplace from Pragmatic Growth.
 The repo now publishes three plugins from one `pragmatic-growth` marketplace:
-`flywheel` v4.5.0, `html-artifacts` v1.0.0, and `autoresearch` v1.0.0. No MCP
+`flywheel` v4.6.0, `html-artifacts` v1.0.0, and `autoresearch` v1.0.0. No MCP
 servers, no commands, no
 agents, no hooks, no build step. `flywheel` has four skills under root
 `skills/` (two ship deterministic Python helpers in `scripts/`), forming a

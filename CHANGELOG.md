@@ -13,6 +13,41 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [4.6.0] — 2026-07-01
+
+**Minor: new third marketplace plugin — `autoresearch` 1.0.0**, an autonomous
+optimization loop, alongside `flywheel` and `html-artifacts` in the same
+`pragmatic-growth` marketplace. Adapted from Factory's `autoresearch` plugin
+(MIT) and translated to be Claude-Code-first while staying CLI-aware, matching
+the conventions of the existing plugins.
+
+- **What it does.** Given a measurable metric, a benchmark command, files in
+  scope, constraints, and a termination condition, it works an
+  `autoresearch/<goal>-<date>` branch: try one hypothesis → run the benchmark →
+  keep the change if the primary metric improves and `git`-revert it if not →
+  journal what was learned (ASI) → repeat. **MAD-based confidence scoring**
+  separates real gains from benchmark noise. On termination it groups the kept
+  experiments into independently-mergeable branches for review; the raw
+  experiment branch is always preserved.
+- **File-based, resumable.** All state lives in the target repo
+  (`autoresearch.md` living doc, `autoresearch.sh` benchmark emitting
+  `METRIC name=value`, append-only `autoresearch.jsonl`, optional `.checks.sh` /
+  `.ideas.md`), so a fresh session with no memory reads them and continues
+  exactly where the last one stopped. Ships one stdlib-only helper,
+  `scripts/autoresearch_helper.py` (`init`/`log`/`evaluate`/`summary`/`status`).
+- **Translated to Claude Code, still CLI-aware.** `.claude-plugin` manifest; the
+  helper is resolved via `$CLAUDE_PLUGIN_ROOT`/`$DROID_PLUGIN_ROOT` with a
+  cache-glob fallback (the house convention) instead of the source's
+  cwd-relative call; the Factory mission-mode spine is replaced with `/loop`
+  (Claude Code) or same-session `CronCreate` (Droid) for unattended cadence,
+  with an optional Droid-mission note; finalization detects the repo's default
+  branch instead of hardcoding `main`; context wording is session-neutral.
+- **Install.** `/plugin install autoresearch@pragmatic-growth` (Claude Code) or
+  `droid plugin install autoresearch@flywheel` (Droid). marketplace.json,
+  README, the public site, and CLAUDE.md/AGENTS.md all updated to list three
+  plugins. Source change:
+  [`5c2590f`](https://github.com/pragmaticgrowth/flywheel/commit/5c2590f).
+
 ## [4.5.0] — 2026-07-01
 
 **Minor: factory-doctor detects and strips deprecated v3 config keys, and
