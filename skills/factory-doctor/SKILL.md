@@ -67,7 +67,20 @@ For each check whose `fix` begins with `FIX:`:
   Adjust `verify` to the repo's actual local build+test commands (inspect `package.json`,
   `Makefile`, `pyproject.toml`, etc.). Mark FIXED.
 
-Each fix is one atomic edit, named in the report.
+- **`config-drift` (removed v3 keys in `index.yaml` config — WARN with a `FIX:`):** a queue
+  set up under the v3 model still carries keys the v4 one-goal/local-gate model removed
+  (`merge`, `wip`, `execution`, `autonomy`); v4 dispatch silently ignores them, so the owner
+  keeps thinking in the old PR/worktree/herdr model. **Auto-strip them:** edit
+  `docs/goals/index.yaml` config to remove ONLY the keys the probe named, in one atomic edit —
+  preserve every live key (`base`, `model`, `skills`, `verify`, `budget`), comments, and
+  formatting; NEVER touch `goals:` entries or any goal file. Under `fixed:` echo each removed
+  `key=value` (so any owner intent a dead key's value encoded is visible, not silently dropped).
+  Mark FIXED. Drives the `queue: …drift` status token below.
+
+Each fix is one atomic edit, named in the report. Like every factory-doctor local fix, leave
+the edit in the working tree — do NOT commit or push it (committing is dispatch's job, not the
+doctor's). The edits show up in the `working-tree` WARN as expected; the user reviews the
+`fixed:` list and commits when ready, before the first `/dispatch`.
 
 ## Never (even though you're aggressive)
 

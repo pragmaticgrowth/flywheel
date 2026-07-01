@@ -136,8 +136,7 @@ greenfield (nothing existing to understand) or a one-liner you can already pin w
 Recon details:
 
 - **Model (mandatory)**: recon search subagents inherit the current session/runtime model.
-  Do NOT set a fixed model alias for recon, including Sonnet, unless the user explicitly asks
-  for that model in this run. In Claude Code, use the `general-purpose` type
+  In Claude Code, use the `general-purpose` type
   without a model override, strictly READ-ONLY (report only — never edit, fix, or run heavy
   repro). Do NOT use the built-in `Explore` type if it would force a cheaper model instead
   of inheriting the current one; recon's job is real understanding of the existing system,
@@ -145,7 +144,20 @@ Recon details:
   and rank hypotheses) also inherits the current session/runtime model. Search agents report
   what the code shows (files, call paths, suspect commits), ranking what it means happens
   there or in your own synthesis. The queue's `config.model` never applies here — it governs
-  code-writing agents only.
+  code-writing agents only, and there is NO persistent config knob for a recon model
+  (a `config.research_model` would need per-CLI translation and re-invites the shallow-recon
+  failure this rule guards against — deliberately not added).
+  - **Per-run override (the ONLY override, and it's CLI-aware).** Do NOT set a fixed model
+    alias for recon unless the user explicitly asks for a model in THIS run; the ask applies
+    to this run only and is never persisted to `index.yaml`. Because the two runtimes have
+    incompatible model namespaces, honor the ask in the CLI's own terms — never translate one
+    into the other: in **Claude Code** the subagent model is an Anthropic-only alias
+    (`opus | sonnet | haiku`, or `inherit`) — pass it as the spawn's `model`; in **Droid**
+    there is no such short alias — `droid exec -m <full-model-id>` takes a concrete
+    provider ID (e.g. `claude-sonnet-4-5-…`, `gpt-5-codex`, a Gemini/GLM id), and headless
+    accepts only Droid's built-in IDs (not BYOK/config.json models). Treat any specific
+    model-ID string as version-dependent (re-check `droid exec --help` / the `/model` picker);
+    the stable fact is the format, not the string.
 - **Angles, 2–4 per fan-out** — for a bug: symptom trace (error strings/log lines → the
   code that throws and handles them), data/control flow (entry point → failure area),
   recent-change scan (`git log`/`blame` on suspect areas), config/wiring (flags, env,

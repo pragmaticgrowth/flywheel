@@ -5,7 +5,7 @@ A skills-only plugin marketplace for [Claude Code](https://claude.com/claude-cod
 and [Droid](https://factory.ai) (Factory CLI), from Pragmatic Growth.
 
 [![Website](https://img.shields.io/badge/site-plugin.pragmaticgrowth.com-6366f1)](https://plugin.pragmaticgrowth.com)
-[![Version](https://img.shields.io/badge/version-4.4.0-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-4.5.0-8b5cf6)](CHANGELOG.md)
 [![CLIs](https://img.shields.io/badge/runs%20in-Claude%20Code%20%2B%20Droid-0ea66e)](#works-in-both-clis)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
@@ -158,7 +158,9 @@ Run this **before your first `/dispatch`**, or any time the factory behaves
 like the environment isn’t ready. It checks software, `gh` auth + scopes, the
 local gate (`config.verify` present and runnable), a clean working tree, the
 working branch, CI, and the queue itself — **auto-fixing everything local**
-(scaffolding the queue and checking both `.claude/` and `.factory/` settings) and
+(scaffolding the queue, stripping deprecated v3 config keys —
+`merge`/`wip`/`execution`/`autonomy` — from a stale `index.yaml`, and checking
+both `.claude/` and `.factory/` settings) and
 reporting remote/CI issues with the exact fix. It diagnoses and fixes setup; it
 never implements goals.
 

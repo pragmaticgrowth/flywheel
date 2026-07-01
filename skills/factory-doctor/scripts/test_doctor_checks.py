@@ -143,6 +143,25 @@ def test_working_branch_warn_when_on_base():
 def test_working_branch_info_when_off_base():
     assert dc.working_branch_check("staging", "main")["level"] == "INFO"
 
+def test_config_drift_warns_on_v3_keys():
+    r = dc.config_drift_check({"base": "main", "model": "inherit", "merge": "auto",
+                              "wip": 2, "execution": "herdr", "autonomy": "balanced"})
+    assert r["level"] == "WARN"
+    for k in ("merge", "wip", "execution", "autonomy"):
+        assert k in r["detail"]
+    assert r["fix"].startswith("FIX:")
+
+def test_config_drift_info_when_clean():
+    r = dc.config_drift_check({"base": "main", "model": "inherit", "skills": [], "verify": ["npm test"]})
+    assert r["level"] == "INFO"
+    assert r["fix"] == ""
+
+def test_config_drift_lists_only_present_keys():
+    r = dc.config_drift_check({"base": "main", "wip": 2})
+    assert r["level"] == "WARN"
+    assert "wip" in r["detail"]
+    assert "merge" not in r["detail"]
+
 if __name__ == "__main__":
     fns = [g for n, g in sorted(globals().items()) if n.startswith("test_")]
     for fn in fns: fn(); print("ok ", fn.__name__)

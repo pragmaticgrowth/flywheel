@@ -51,7 +51,10 @@ appropriate paths, commands, and scheduling primitives.
   names `docs/goals/index.yaml` the canonical factory ledger.
 - **factory-doctor** — one-pass preflight/doctor for a repo + machine:
   checks software, gh auth + scopes, the git working tree, CI, and queue
-  state; aggressively auto-fixes everything local (scaffolds the queue) and
+  state; aggressively auto-fixes everything local (scaffolds the queue,
+  strips deprecated v3 config keys — `merge`/`wip`/`execution`/`autonomy` —
+  from a stale `index.yaml` so v3-era projects stop silently running dead
+  config under the v4 model) and
   reports remote/CI issues with exact fixes. Ships `scripts/doctor_checks.py`
   (read-only probe, `BLOCKER|WARN|FIXED|INFO`, exit 0/1/2). The v4 sequential
   model commits directly on the local branch, so there is no merge allow-rule

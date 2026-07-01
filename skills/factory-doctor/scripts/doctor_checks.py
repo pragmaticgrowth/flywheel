@@ -149,6 +149,24 @@ def goal_contract_problems(goals):
 
 # ---- new local-gate check helpers ----
 
+# v3.x queue config keys removed in the v4 one-goal/local-gate model. A stale index.yaml
+# updated to the v4 plugin still carries them; v4 dispatch silently ignores them, so the
+# owner keeps thinking in the old PR/worktree/herdr model. factory-doctor strips them.
+# Extend this ONE set when future keys are removed.
+DEPRECATED_V3_KEYS = ("merge", "wip", "execution", "autonomy")
+
+
+def config_drift_check(config):
+    present = [k for k in DEPRECATED_V3_KEYS if k in (config or {})]
+    if present:
+        keys = ", ".join(present)
+        return {"check": "config-drift", "level": "WARN",
+                "detail": f"index.yaml config carries removed v3 keys: {keys} — v4 dispatch silently ignores them",
+                "fix": f"FIX: strip {keys} from docs/goals/index.yaml config "
+                       "(v4 is one-goal, local-gated, direct-to-branch: no merge/wip/execution/autonomy)"}
+    return {"check": "config-drift", "level": "INFO", "detail": "no deprecated v3 config keys", "fix": ""}
+
+
 def verify_check(verify_cmds, active_goals):
     if not verify_cmds:
         if active_goals:
@@ -249,6 +267,7 @@ def run_checks(base):
                 "queue valid" if ok else "; ".join(probs), "" if ok else "report drift")
             goals = index_obj.get("goals") or {}
             config = index_obj.get("config") or {}
+            C.append(config_drift_check(config))
             verify_cmds = config.get("verify") or []
             active_goals = sum(1 for e in goals.values()
                                if (e or {}).get("status") in ("not_started", "in_progress"))

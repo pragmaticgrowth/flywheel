@@ -13,6 +13,37 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [4.5.0] — 2026-07-01
+
+**Minor: factory-doctor detects and strips deprecated v3 config keys, and
+recon's per-run model override is made CLI-aware.** Closes a real gap found on a
+project that was set up under the v3 model, updated to the v4 plugin, and kept
+running an `index.yaml` full of dead config.
+
+- **`config-drift` check + auto-strip (factory-doctor).** A queue set up under
+  v3 still carries `merge` / `wip` / `execution` / `autonomy` — keys the v4
+  one-goal/local-gate model removed and that v4 dispatch now **silently ignores**,
+  so the owner keeps thinking in the old PR/worktree/herdr model. The read-only
+  probe (`doctor_checks.py`) gains a `config-drift` check (new
+  `DEPRECATED_V3_KEYS` constant + `config_drift_check` helper, unit-tested) that
+  WARNs naming exactly which dead keys are present; factory-doctor then
+  **auto-strips only those keys** from `index.yaml` config in one atomic edit,
+  preserving every live key (`base`/`model`/`skills`/`verify`/`budget`), comments,
+  and all `goals:` entries, echoing each removed `key=value` under `fixed:`. The
+  removed-key set is one constant so future removals extend one list.
+- **Recon model override made CLI-aware (define-goal).** Recon still inherits the
+  session/runtime model by default and there is deliberately **no**
+  `config.research_model` knob (it would need per-CLI translation and re-invites
+  the shallow-recon failure the rule guards against). The one override — a per-run
+  user ask — is now documented as CLI-aware: in Claude Code it's an Anthropic-only
+  alias (`opus`/`sonnet`/`haiku`/`inherit`); in Droid it's a concrete full model
+  ID via `droid exec -m <id>` (no `sonnet`-style short alias exists there, and
+  headless accepts only built-in IDs). Model-ID strings are treated as
+  version-dependent; the stable fact is the format.
+- **Docs aligned.** CLAUDE.md/AGENTS.md, README, and the site version reflect the
+  new factory-doctor auto-fix. Source change:
+  [`a703477`](https://github.com/pragmaticgrowth/flywheel/commit/a703477).
+
 ## [4.4.0] — 2026-07-01
 
 **Minor: dispatch's intra-goal quality loop gets a multi-lens fresh check and
