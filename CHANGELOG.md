@@ -46,7 +46,7 @@ the conventions of the existing plugins.
   `droid plugin install autoresearch@flywheel` (Droid). marketplace.json,
   README, the public site, and CLAUDE.md/AGENTS.md all updated to list three
   plugins. Source change:
-  [`5c2590f`](https://github.com/pragmaticgrowth/flywheel/commit/5c2590f).
+  [`557b933`](https://github.com/pragmaticgrowth/flywheel/commit/557b933).
 
 ## [4.5.0] — 2026-07-01
 
