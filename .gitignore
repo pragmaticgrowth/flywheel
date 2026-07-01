@@ -10,12 +10,15 @@
 .env.local
 .env.*.local
 
+# python build artifacts
+__pycache__/
+*.pyc
+
 # plugin-cache artifacts (Claude Code writes these during version bumps)
 .orphaned_at
 
-# local-only: never published to the public repo.
-# NOTE: docs/ is intentionally NOT ignored — it stays visible/greppable on disk
-# and is deleted before pushing to main. A local pre-push hook (.git/hooks/pre-push)
-# blocks any push that contains docs/, so internal content can't leak to history.
+# local-only maintainer config (stays out of the public repo).
+# NOTE: docs/ IS tracked and pushed as of 2026-07-01 (policy change) — it is NOT
+# ignored. The pre-push hook now guards against secrets/credentials, not docs/.
 CLAUDE.local.md
 .claude/settings.json

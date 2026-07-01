@@ -236,9 +236,18 @@ AGENTS.md                         # symlink → CLAUDE.md (one source, no drift)
   `CLAUDE.md` and keeping `AGENTS.md` as the symlink). If the symlink is missing
   or broken, restore it or update both filenames in the same commit. Do not leave
   either name stale.
-- **Push every time.** Pushing to GitHub (`origin main`) after committing
-  is pre-authorized — always push without asking. The installed plugin
+- **Push every time — on every completion.** Pushing to GitHub (`origin main`)
+  after committing is pre-authorized — always push without asking. Whenever you
+  complete a unit of work (a fix, a plugin, a doc change), commit AND push before
+  treating it as done; keep everything in the remote. The installed plugin
   refreshes from GitHub, so an unpushed commit is an unshipped skill.
+- **Internal docs are tracked and pushed.** Planning/design artifacts under
+  `docs/` (specs, plans, research) are a normal tracked directory as of
+  2026-07-01 — commit and push them with the rest. The remote is **public and
+  permanent**, so the one hard guard (enforced by the `pre-push` hook) is **no
+  secrets/credentials**, and stay mindful of real client/project names in any
+  committed file, message, or history. (`CLAUDE.local.md` and
+  `.claude/settings.json` remain gitignored local maintainer config.)
 - **Validation.** After changing plugin structure or manifests, run the
   `plugin-dev:plugin-validator` agent before committing (Claude Code only;
   Droid has no equivalent agent — validate manually: check skill frontmatter
