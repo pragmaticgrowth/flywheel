@@ -45,6 +45,13 @@ def blast_radius(changed_paths, touches):
         if name in LOCKFILES and not _any_match(p, touches):
             return {"name": "blast-radius", "pass": False, "kind": "fixable",
                     "evidence": f"lockfile/dep churn not in declared surfaces: {p}"}
+        # Test files are EXPECTED to land outside the product-surface `touches` globs:
+        # TDD mandates the implementer add a proving test, and split-tree layouts
+        # (tests/, __tests__/, spec/) sit outside routes/UI/schema globs. Exempt them from
+        # the out-of-scope check only (they are still subject to the forbidden/lockfile
+        # branches above), or every correct TDD goal FAIL_FIXABLEs on its own regression test.
+        if is_test_path(p):
+            continue
         if touches and not _any_match(p, touches):
             return {"name": "blast-radius", "pass": False, "kind": "fixable",
                     "evidence": f"changed path outside declared surfaces: {p}"}
@@ -170,22 +177,17 @@ def acceptance_green(head_exits):
             "evidence": f"acceptance command(s) red on fresh head checkout: index {red}"}
 
 
-def one_goal_integrity(head_branch, body, pr_base, base, changed_paths, goal_id):
-    if head_branch != f"goal/{goal_id}":
-        return {"name": "one-goal-integrity", "pass": False, "kind": "fixable",
-                "evidence": f"head branch {head_branch!r} is not goal/{goal_id}"}
-    if f"Goal: {goal_id}" not in (body or ""):
-        return {"name": "one-goal-integrity", "pass": False, "kind": "fixable",
-                "evidence": f"PR body missing the 'Goal: {goal_id}' marker"}
-    if pr_base != base:
-        return {"name": "one-goal-integrity", "pass": False, "kind": "fixable",
-                "evidence": f"PR base {pr_base!r} != configured base {base!r}"}
+def queue_untouched(changed_paths):
+    """The implementer must never edit docs/goals/ — the orchestrator owns queue state.
+    v4.1.x is direct-to-branch (no goal/<id> branch, no PR), so the old branch-name /
+    PR-body-marker / PR-base sub-checks are gone; this is the only integrity check with
+    meaning on a local gate_base..HEAD diff."""
     for p in changed_paths:
         if p.startswith("docs/goals/"):
-            return {"name": "one-goal-integrity", "pass": False, "kind": "fixable",
-                    "evidence": f"PR edits queue file {p!r}; implementers must never touch docs/goals/"}
-    return {"name": "one-goal-integrity", "pass": True, "kind": "fixable",
-            "evidence": "single-goal PR, correct base, no queue edits"}
+            return {"name": "queue-untouched", "pass": False, "kind": "fixable",
+                    "evidence": f"implementer edited queue file {p!r}; the orchestrator owns docs/goals/"}
+    return {"name": "queue-untouched", "pass": True, "kind": "fixable",
+            "evidence": "implementer left docs/goals/ untouched"}
 
 
 import argparse, json, os, subprocess, tempfile
@@ -236,9 +238,15 @@ def _diff_text(base_ref, head_ref="HEAD"):
 
 
 def _parse_goal(path):
-    """Return (type, touches, acceptance_cmds, already_correct_doc)."""
+    """Return (type, touches, acceptance_cmds, already_correct).
+
+    already_correct comes ONLY from an explicit frontmatter key
+    (`already_correct: true`), never a substring scan of the body — a prose mention
+    of the phrase (even negated, "was not already correct") must not flip an unproven
+    bug fix into a PASS.
+    """
     text = open(path).read() if os.path.exists(path) else ""
-    gtype, touches, cmds = "feature", [], []
+    gtype, touches, cmds, already_correct = "feature", [], [], False
     if text.startswith("---"):
         parts = text.split("---", 2)
         fm = parts[1] if len(parts) >= 3 else ""
@@ -248,6 +256,9 @@ def _parse_goal(path):
             ls = line.strip()
             if ls.startswith("type:") and field:
                 gtype = field.split()[0]
+                _collecting = None
+            elif ls.startswith("already_correct:") and field:
+                already_correct = field.split()[0].strip().lower() in ("true", "yes", "1")
                 _collecting = None
             elif ls.startswith("touches:"):
                 _collecting = None
@@ -271,7 +282,6 @@ def _parse_goal(path):
                     touches.append(item)
             elif ls and not ls.startswith("-"):
                 _collecting = None  # non-list-item line ends collection
-    already_correct = "already correct" in text.lower() or "already-correct" in text.lower()
     return gtype, touches, cmds, already_correct
 
 
@@ -333,16 +343,10 @@ def run_validation(head, goal_id, base, goal_file, repo_root):
                         "evidence": evidence}],
             "summary": f"INCONCLUSIVE: {evidence}",
         }
-    # No PR exists locally: synthesize the structural inputs so one_goal_integrity's
-    # branch-name and body-marker sub-checks are satisfied trivially; only the
-    # "no docs/goals/ edits" sub-check is meaningful in local mode.
-    head_branch = f"goal/{goal_id}"
-    body = f"Goal: {goal_id}"
-    pr_base = base
     gtype, touches, cmds, already_correct = _resolve_cmds(goal_file, repo_root)
     changed = _changed_paths(sha_base, sha_head)
 
-    checks.append(one_goal_integrity(head_branch, body, pr_base, base, changed, goal_id))
+    checks.append(queue_untouched(changed))
     checks.append(blast_radius(changed, touches))
     checks.append(forbidden_content(_diff_text(sha_base, sha_head)))
 
@@ -444,7 +448,7 @@ def run_validation(head, goal_id, base, goal_file, repo_root):
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="pg_validate.py")
     ap.add_argument("--head", help="git ref or SHA of the head to validate (default HEAD)", default="HEAD")
-    ap.add_argument("--base", required=False)   # now a git ref/SHA, not a remote branch name
+    ap.add_argument("--base", required=False)   # git ref/SHA of the gate base (the post-claim HEAD)
     ap.add_argument("--goal"); ap.add_argument("--goal-file")
     ap.add_argument("--worktree-root")
     ap.add_argument("--self-test", action="store_true")

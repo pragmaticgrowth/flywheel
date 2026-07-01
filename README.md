@@ -5,7 +5,7 @@ A skills-only plugin marketplace for [Claude Code](https://claude.com/claude-cod
 and [Droid](https://factory.ai) (Factory CLI), from Pragmatic Growth.
 
 [![Website](https://img.shields.io/badge/site-plugin.pragmaticgrowth.com-6366f1)](https://plugin.pragmaticgrowth.com)
-[![Version](https://img.shields.io/badge/version-4.6.0-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-4.7.0-8b5cf6)](CHANGELOG.md)
 [![CLIs](https://img.shields.io/badge/runs%20in-Claude%20Code%20%2B%20Droid-0ea66e)](#works-in-both-clis)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
@@ -382,6 +382,11 @@ It emits a verdict — **PASS** or **FAIL** — and the orchestrator acts on it:
 PASS squashes the implementer’s commits into one `feat(goal NNN)` commit kept
 on the branch; FAIL rolls the work back and marks the goal `blocked`. CI,
 if configured, runs after the push as a non-blocking observation.
+
+(FAIL is itself two internal verdicts — a *fixable* failure gets one repair pass
+before rollback, a *contract* failure rolls back for a human. A third verdict,
+**INCONCLUSIVE**, means the gate could not run at all — no runnable `config.verify`
+or test command — which is a setup gap, not a code failure: run `/factory-doctor`.)
 
 ---
 

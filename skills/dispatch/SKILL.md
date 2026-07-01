@@ -101,6 +101,16 @@ where it left off:
    `blocked: repeated transient death`) so it can't livelock. Only a real blocker in the final
    report, or repeated failure to make ANY commit progress, sets `blocked` (a goal must never
    sit blocked for hours over one flaky connection).
+   **Cross-fire brake (the per-session cap alone is not enough).** The ~3-respawn budget lives
+   in this run's context, so under `/loop /dispatch` each fresh fire re-detects the same stale
+   claim and restarts the budget from zero — a goal whose implementer keeps dying transiently
+   before landing ANY commit would be respawned forever. Add a session-independent age brake:
+   when a stale `in_progress` claim has zero work commits after its claim commit AND that claim
+   commit is old relative to the loop cadence (its git author date, or the `claimed` date, is
+   more than a few cadences back — e.g. > ~2h for a 15m loop), block it
+   `blocked: repeated transient death` instead of respawning again. This uses only data already
+   in git/the index (no new persisted counter — that would violate status-only-in-index), and
+   it is what actually stops the cross-fire livelock.
 3. **Finish before claiming** (Phase 1 before Phase 2) so finished work always settles first.
 
 ## Phase 0 — read the queue
@@ -194,6 +204,17 @@ not the verdict.
 ## Phase 1 — finish in-flight goals
 
 Before claiming anything new, settle every `in_progress` entry — finished work beats new work.
+
+**Single-`in_progress` invariant (data-loss guard).** A healthy queue has at most ONE
+`in_progress` entry (Phase 1 runs before Phase 2, one claim per run). If you find MORE than one
+`in_progress` on the current branch, do NOT settle them one at a time: the branch is linear, so
+an older goal's `gate_base` is an ancestor of a newer goal's claim + work, and a
+`git reset --hard <older gate_base>` on a FAIL would rewind past the newer claim and silently
+destroy its committed work. STOP, roll back nothing, and surface
+`multiple in_progress claims — manual review` under needs-you. (This state only arises from a
+crash between claims, a manual index edit, or a prior buggy run; resume once a human resolves
+it.) When exactly one `in_progress` exists, proceed:
+
 `gate_base` is not stored in `index.yaml`, so on a fresh session recover it from git: it is the
 SHA of the goal's claim commit on the current branch,
 `git log --grep="chore(goals): claim <id>" --format=%H -1` (the gate then diffs
@@ -329,6 +350,10 @@ after this iteration's mutations:
 - `done` = completed · `ready` = not_started with all `depends_on` completed (claimable now) ·
   `blocked` = `blocked` status or not_started with an unmet dependency · `current` = the goal
   being worked this fire (or none) · `last` = the most recently gated goal and its verdict.
+- Any residual `in_progress` entry this fire could not settle (e.g. one claimed on a different
+  `base:` branch) counts into `blocked` (as blocked-pending) so that `done + ready + blocked`
+  always equals `total` — the reconciliation the report line promises a human never silently
+  breaks.
 
 The bar is 20 cells: `filled = round(20 × done ÷ total)` (0.5 rounds up), clamped to [0, 20];
 empty = 20 − filled. Filled cells = █, empty = ░; omit the whole bar when total = 0.

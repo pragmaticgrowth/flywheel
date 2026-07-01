@@ -137,11 +137,18 @@ def test_working_tree_warn_when_dirty():
 def test_working_tree_info_when_clean():
     assert dc.working_tree_check("")["level"] == "INFO"
 
-def test_working_branch_warn_when_on_base():
-    assert dc.working_branch_check("main", "main")["level"] == "WARN"
+def test_working_branch_info_when_on_base():
+    # on config.base is the healthy steady state — dispatch commits there.
+    assert dc.working_branch_check("main", "main")["level"] == "INFO"
 
-def test_working_branch_info_when_off_base():
-    assert dc.working_branch_check("staging", "main")["level"] == "INFO"
+def test_working_branch_warn_when_off_base():
+    # off config.base is the real problem — dispatch hard-STOPS.
+    r = dc.working_branch_check("staging", "main")
+    assert r["level"] == "WARN" and "checkout main" in r["fix"]
+
+def test_working_branch_info_when_no_explicit_base():
+    # no config.base → dispatch defaults base to the checked-out branch, nothing to flag.
+    assert dc.working_branch_check("feature/x", None)["level"] == "INFO"
 
 def test_config_drift_warns_on_v3_keys():
     r = dc.config_drift_check({"base": "main", "model": "inherit", "merge": "auto",

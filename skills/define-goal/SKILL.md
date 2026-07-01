@@ -262,18 +262,21 @@ Rules that keep the queue safe:
   whole queue worked unattended, the contract should point them to `/loop /dispatch` (Claude
   Code) or a same-session Droid cron; do not imply one `/dispatch` invocation drains every
   ready goal.
-- **Reserve the ID(s) BEFORE writing goal files** — the define-goal analog of dispatch's
-  "claim the slot via push before spawning." It prevents a concurrent session from forcing a
-  rename + cross-ref rewrite of files you already wrote (a real foot-gun under multi-machine
-  concurrency). Flow: re-read `index.yaml` and compute the next free `NNN`(s) = max existing
-  + 1; append ONLY the minimal entry/entries (`NNN-slug: {status: not_started, priority: …}`)
-  — for a multi-goal chain, reserve ALL its NNNs in ONE commit so the cross-refs are right the
-  first time; commit `chore(goals): reserve <id>` on `<base>` and push to `<base>`.
-  Push rejected → `git pull --rebase origin <base>`,
-  recompute `NNN` from the now-larger index, retry (max 3). At this stage NOTHING is on disk, so
-  a collision is just a new number — never a file rename. Once the push lands you OWN those
-  NNNs; NOW write the goal file(s) with the correct `id:` and cross-refs stamped
-  in, commit `chore(goals): add <id>` on `<base>`, push to `<base>`. Never renumber existing goals.
+- **Reserve the ID(s) BEFORE writing goal files** — the define-goal analog of dispatch's LOCAL
+  claim: mint the slot and commit it before writing files, so a concurrent session can't force
+  a rename + cross-ref rewrite of files you already wrote. The reservation is LOCAL, matching
+  the v4 claim protocol — IDs/status live in `index.yaml` and the single session owns the
+  branch; there is NO push arbitration and NO remote is required (the queue works fully locally,
+  exactly as dispatch does). Flow: re-read `index.yaml` and compute the next free `NNN`(s) = max
+  existing + 1; append ONLY the minimal entry/entries (`NNN-slug: {status: not_started,
+  priority: …}`) — for a multi-goal chain, reserve ALL its NNNs in ONE commit so the cross-refs
+  are right the first time; commit `chore(goals): reserve <id>` locally on `<base>`. At this
+  stage NOTHING is on disk, so a collision is just a new number — never a file rename. Then
+  write the goal file(s) with the correct `id:` and cross-refs stamped in, commit
+  `chore(goals): add <id>`. Never renumber existing goals. **Push is OPTIONAL backup only** —
+  never gated, never required. Only if a remote exists AND you choose to push AND it is
+  rejected (a genuine multi-machine queue): `git pull --rebase origin <base>`, recompute `NNN`
+  from the now-larger index, re-stamp, retry (max 3) — the rare case, not the default path.
 - **Concurrent edits to `index.yaml`:** it's shared state. Re-read it immediately before each
   edit; if the Edit tool reports the file changed under you (another session committed
   mid-edit), re-read and re-apply — don't force. Appending your highest-number entries at EOF
@@ -291,8 +294,13 @@ created: 2026-06-12
 type: feature   # bug | feature | chore — shapes the contract, see below
 skills: []      # goal-specific skills the implementer must invoke, e.g. [agent-browser]
 # size: M                    # optional: S|M|L rough effort — lets dispatch and any budget cap size a run
-# touches: [apps/orders/*]   # optional: declared surfaces → local gate scope allowlist
+# touches: [apps/orders/*]   # optional: declared surfaces (PRODUCT code) → local gate scope allowlist.
+#                            #   Do NOT enumerate test dirs — the gate auto-exempts test paths
+#                            #   (tests/, __tests__/, *_test.go, *.test.ts…) so a TDD test lands cleanly.
 # acceptance: [make test]    # optional: exact gate commands (else auto-detects from config.verify / repo)
+# already_correct: true      # bug goals ONLY: set when recon shows the code is already correct and the
+#                            #   fix is a locking regression test (nothing goes red on base). The gate
+#                            #   reads this frontmatter KEY — a prose mention of the phrase does nothing.
 ---
 
 ## Outcome (plain language)
@@ -377,6 +385,16 @@ acceptance criteria, e.g. `["make test", "npm run lint"]`; omit and it auto-dete
 repo's `config.verify`, Makefile / `go.mod` / `package.json`). Omitting either is safe (the
 gate degrades gracefully), but `touches:` in particular turns scope checking from a coarse
 forbidden-path check into a real guard.
+
+**`acceptance:` holds only the HEADLESS-runnable subset of the acceptance criteria.** The gate
+runs each `acceptance:` command on a fresh checkout with NO services started — it never boots
+the app or a dev server. So `acceptance:` must contain only commands that pass headlessly:
+tests, lint, typecheck, build. Do NOT put a dev-server-dependent scripted browser check (e.g.
+`agent-browser` driving a running app) into `acceptance:` — it would exit non-zero with nothing
+listening and FAIL a correct UI goal. The scripted browser check still lives in the
+human-readable **Acceptance criteria** list (the implementer starts the dev server and runs it
+during its own verification), and any subjective dimension stays **needs independent review**;
+neither belongs in the gate's `acceptance:` field.
 
 **For `type: bug`, `acceptance:` MUST include a command that actually executes the
 regression test** — not just `typecheck`/`lint`/`build`. The local gate's repro-direction

@@ -200,27 +200,41 @@ def test_acceptance_green_empty_is_inconclusive():
     r = pgv.acceptance_green([])
     assert r["pass"] is False and r["kind"] == "inconclusive"
 
-def test_integrity_ok():
-    r = pgv.one_goal_integrity("goal/007-orders", "Goal: 007-orders\n", "main", "main",
-                               ["apps/orders/main.go"], "007-orders")
+def test_queue_untouched_clean():
+    r = pgv.queue_untouched(["apps/orders/main.go", "tests/test_orders.py"])
     assert r["pass"] is True
 
-def test_integrity_wrong_branch():
-    r = pgv.one_goal_integrity("feature/x", "Goal: 007-orders", "main", "main", [], "007-orders")
-    assert r["pass"] is False and "goal/007-orders" in r["evidence"]
+def test_queue_untouched_edits_queue():
+    r = pgv.queue_untouched(["apps/orders/main.go", "docs/goals/index.yaml"])
+    assert r["pass"] is False and "docs/goals" in r["evidence"]
 
-def test_integrity_missing_body_marker():
-    r = pgv.one_goal_integrity("goal/007-orders", "no marker", "main", "main", [], "007-orders")
+def test_blast_radius_test_file_outside_touches_exempt():
+    # A TDD test in a split-tree layout (tests/) is EXPECTED outside the product-surface
+    # globs and must NOT trip the out-of-scope check — else every correct TDD goal blocks.
+    r = pgv.blast_radius(["apps/orders/main.go", "tests/test_orders.py"], ["apps/orders/**"])
+    assert r["pass"] is True, r
+    # a non-test file outside the surfaces still fails
+    r2 = pgv.blast_radius(["apps/billing/main.go"], ["apps/orders/**"])
+    assert r2["pass"] is False and "outside declared surfaces" in r2["evidence"]
+
+def test_blast_radius_test_file_still_bound_by_forbidden():
+    # exemption is only for the generic out-of-scope check; a test path that is also a
+    # forbidden path (a workflow file) still fails.
+    r = pgv.blast_radius([".github/workflows/test_ci.yml"], ["apps/orders/**"])
     assert r["pass"] is False
 
-def test_integrity_wrong_base():
-    r = pgv.one_goal_integrity("goal/007-orders", "Goal: 007-orders", "dev", "main", [], "007-orders")
-    assert r["pass"] is False and "base" in r["evidence"]
+def test_parse_goal_already_correct_from_frontmatter(tmp_path=None):
+    d = _tf.mkdtemp(); gf = _os.path.join(d, "goal.md")
+    open(gf, "w").write("---\ntype: bug\nalready_correct: true\n---\nbody\n")
+    _g, _t, _c, ac = pgv._parse_goal(gf)
+    assert ac is True
 
-def test_integrity_edits_queue():
-    r = pgv.one_goal_integrity("goal/007-orders", "Goal: 007-orders", "main", "main",
-                               ["docs/goals/index.yaml"], "007-orders")
-    assert r["pass"] is False and "docs/goals" in r["evidence"]
+def test_parse_goal_already_correct_ignores_body_prose():
+    # The phrase in the body (even negated) must NOT set the flag — only the frontmatter key.
+    d = _tf.mkdtemp(); gf = _os.path.join(d, "goal.md")
+    open(gf, "w").write("---\ntype: bug\n---\nThe export was not already correct in edge cases.\n")
+    _g, _t, _c, ac = pgv._parse_goal(gf)
+    assert ac is False
 
 import tempfile as _tf, os as _os
 def test_parse_goal_keeps_items_after_inline_comment():

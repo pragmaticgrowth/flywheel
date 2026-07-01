@@ -13,6 +13,64 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [4.7.0] — 2026-07-02
+
+**Patch/minor: end-to-end audit of the goal + autonomous-dispatch pipeline —
+gate correctness fixes and robustness hardening.** A multi-agent audit (finders
+per subsystem + adversarial verification) surfaced 13 verified findings across
+`define-goal`, `dispatch`, `pg_validate.py`, `loop-architect`, `factory-doctor`,
+and the docs; all confirmed ones are fixed here. No new machinery — the changes
+tighten existing checks and remove retired v3 vocabulary.
+
+#### Local gate (`pg_validate.py`) — correctness
+
+- **Fixed a false PASS on unproven bug fixes.** `already_correct` was a naive
+  full-text substring scan of the immutable goal body, so any prose containing
+  "already correct" (even negated, "was *not* already correct") flipped a bug
+  fix that reproduced nothing into a PASS. It now reads an explicit
+  `already_correct: true` frontmatter KEY only.
+- **Fixed correct TDD goals being blocked.** `blast_radius` now exempts test
+  paths (`tests/`, `__tests__/`, `*_test.go`, `*.test.ts`, …) from the
+  out-of-scope check, so a proving test added in a split-tree layout no longer
+  trips scope validation when `touches:` names product surfaces. Test paths are
+  still bound by the forbidden-path and lockfile checks.
+- **Retired dead v3 checks.** `one_goal_integrity` (which asserted `goal/<id>`
+  branch names, PR-body markers, and PR base — all removed in v4.0.0) is replaced
+  by `queue_untouched`, the one check meaningful on a local diff. Removes the
+  synthesized fake-PR inputs and misleading vocabulary a maintainer could mistake
+  for "dispatch still opens PRs".
+
+#### Dispatch — robustness
+
+- **Cross-fire transient-death brake.** The `~3 respawns per session` cap reset
+  every `/loop` fire; a chronically-dying goal could livelock forever. Added a
+  session-independent age brake (claim-commit age vs loop cadence) that blocks
+  `repeated transient death` — no new persisted counter.
+- **Single-`in_progress` data-loss guard.** Phase 1 now stops (surfaces
+  needs-you) if it finds more than one `in_progress` claim, instead of
+  `git reset --hard`-ing an older claim's `gate_base` and silently rewinding a
+  newer claim's committed work on the linear branch.
+- **Report reconciliation.** A residual `in_progress` entry now counts into
+  `blocked` so `done + ready + blocked` always equals `total`.
+
+#### define-goal, loop-architect, factory-doctor, docs
+
+- **define-goal:** ID reservation is now LOCAL (push optional/backup-only) to
+  match the v4 claim model — no longer breaks on repos with no remote;
+  documented the `already_correct` frontmatter key; scoped `acceptance:` to the
+  headless-runnable subset (dev-server browser checks stay in the human-visible
+  criteria, not the gate); noted the gate auto-exempts test paths from `touches:`.
+- **loop-architect:** replaced "merged PR" / "merge ledger" health-metric
+  vocabulary with the no-PR v4 "gate-passed completed goal" / "completion ledger".
+- **factory-doctor:** `working_branch_check` had inverted semantics — it WARNed
+  on the healthy state (on `config.base`) and stayed silent on the dangerous one.
+  Now WARNs when off an explicit `config.base` (mirroring dispatch's hard-STOP),
+  INFO when on it; status-line token `⚠ on-base` → `⚠ off-base`.
+- **Test hygiene:** the stale `test_public_docs_advertise_two_plugins` root test
+  (asserted "two plugin" while the repo ships four) now derives the expected
+  count from the marketplace manifest so it self-updates; README documents the
+  gate's `INCONCLUSIVE` verdict (setup gap → `/factory-doctor`).
+
 ## [4.6.0] — 2026-07-01
 
 **Minor: two new marketplace plugins — `autoresearch` 1.0.0 and `human-writing`

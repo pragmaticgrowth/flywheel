@@ -187,11 +187,19 @@ def working_tree_check(porcelain):
 
 
 def working_branch_check(current, base):
+    # v4.1.x: dispatch commits DIRECTLY on config.base and hard-STOPS when the checked-out
+    # branch != config.base. So being ON base is the healthy steady state; a mismatch is the
+    # real problem to flag. (When no explicit config.base is set, dispatch defaults it to the
+    # checked-out branch, so there is nothing to mismatch against — INFO.)
+    if not base:
+        return {"check": "working-branch", "level": "INFO",
+                "detail": f"on '{current or 'detached'}' (no explicit config.base)", "fix": ""}
     if current and current == base:
-        return {"check": "working-branch", "level": "WARN",
-                "detail": f"on base branch '{base}' — verify this is your intended working branch",
-                "fix": "checkout your working branch (e.g. staging) if base should stay clean"}
-    return {"check": "working-branch", "level": "INFO", "detail": f"on '{current or 'detached'}'", "fix": ""}
+        return {"check": "working-branch", "level": "INFO",
+                "detail": f"on base '{base}' — dispatch works here", "fix": ""}
+    return {"check": "working-branch", "level": "WARN",
+            "detail": f"on '{current or 'detached'}' but config.base is '{base}' — dispatch will STOP",
+            "fix": f"git checkout {base} before running /dispatch"}
 
 
 def run_checks(base):
@@ -324,7 +332,9 @@ def run_checks(base):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="doctor_checks.py")
-    ap.add_argument("--base", default="main")
+    ap.add_argument("--base", default=None,
+                    help="config.base if explicitly set; omit when the queue has no config.base "
+                         "(dispatch then defaults base to the checked-out branch)")
     ap.add_argument("--self-test", action="store_true", help="run the test suite and exit")
     a = ap.parse_args(argv)
     if a.self_test:

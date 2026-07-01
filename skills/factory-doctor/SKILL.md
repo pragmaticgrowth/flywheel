@@ -27,9 +27,11 @@ green report.
    (Claude Code) or
    `~/.factory/plugins/{cache,marketplaces}/*/flywheel/*/skills/factory-doctor/scripts/doctor_checks.py`
    (Droid).
-2. **Read the queue config** (`docs/goals/index.yaml` `config:` if present) for `base` —
-   default `base` = repo default branch.
-3. **Run the read-only probe:** `python3 "$DC" --base <base>`
+2. **Read the queue config** (`docs/goals/index.yaml` `config:` if present) for `base`.
+   Pass `--base <base>` ONLY when `config.base` is explicitly set. If it is absent, omit
+   `--base` — dispatch defaults base to the checked-out branch, so there is no separate
+   working branch to mismatch against (the probe reports INFO, not a spurious warning).
+3. **Run the read-only probe:** `python3 "$DC" [--base <config.base>]`
    It emits JSON `{checks:[{check,level,detail,fix}], result}` and exits 0/1/2. Never edit it.
 
 ## Apply local fixes (aggressive — these and ONLY these)
@@ -108,7 +110,7 @@ silent-death candidate dispatch will respawn or that needs unblocking), and `goa
 absent and there are active goals — copy its `fix` (add a `verify:` list to `index.yaml`). Then
 one status line:
 
-`[doctor] software: <ok|missing> · auth: <ok|n/a> · verify: <configured|⚠ missing|n/a> · working-tree: <clean|⚠ dirty> · working-branch: <ok|⚠ on-base> · ci: <present|none> · queue: <valid|scaffolded|drift> · health: <live|⚠ stale claims|⚠ underspecified goals> · result: READY|WARN|BLOCKER`
+`[doctor] software: <ok|missing> · auth: <ok|n/a> · verify: <configured|⚠ missing|n/a> · working-tree: <clean|⚠ dirty> · working-branch: <ok|⚠ off-base> · ci: <present|none> · queue: <valid|scaffolded|drift> · health: <live|⚠ stale claims|⚠ underspecified goals> · result: READY|WARN|BLOCKER`
 
 ## Relationship to the other skills
 

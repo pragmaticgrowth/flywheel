@@ -44,8 +44,16 @@ def test_html_artifacts_plugin_stays_skills_only():
     assert not any("server" in path or "listen" in path for path in files)
 
 
-def test_public_docs_advertise_two_plugins_and_html_artifacts():
+_COUNT_WORD = {2: "two", 3: "three", 4: "four", 5: "five", 6: "six"}
+
+
+def test_public_docs_advertise_current_plugin_count_and_html_artifacts():
+    # Derive the expected count from the marketplace manifest so this self-updates when a
+    # plugin is added — and catches the NEXT addition if the docs' prose word isn't bumped.
+    marketplace = json.loads(read(".claude-plugin/marketplace.json"))
+    n = len(marketplace["plugins"])
+    word = _COUNT_WORD[n]
     for path in ["README.md", "CLAUDE.md", "public/index.html"]:
-        text = read(path)
-        assert "two plugin" in text.lower(), path
-        assert "html-artifacts" in text, path
+        text = read(path).lower()
+        assert f"{word} plugin" in text, f"{path}: expected '{word} plugin' (marketplace lists {n})"
+        assert "html-artifacts" in read(path), path

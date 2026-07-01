@@ -155,9 +155,11 @@ access to the minimum the routine needs.
   otherwise looks alive. For unattended/cloud runs, recommend an external silence-detector
   ("no heartbeat in N intervals → alert").
 - **Health metric**: the number that matters is cost (tokens/$) per ACCEPTED change — a
-  merged PR or a passing artifact — not raw tokens or loops run. A sustained acceptance rate
-  below ~50% means the loop is making slop: tighten the gate or stop it. For factory work the
-  merge ledger (`index.yaml` completed count) is the acceptance denominator.
+  gate-passed completed goal or a passing artifact — not raw tokens or loops run. A sustained
+  acceptance rate below ~50% means the loop is making slop: tighten the gate or stop it. For
+  factory work the completion ledger (`index.yaml` completed count) is the acceptance
+  denominator. (The v4 dispatch model has no PRs — nothing is "merged"; a goal is accepted when
+  it passes the local gate and its squashed commit lands on the branch.)
 
 ## Step 5 — Hard stops and safety rails
 
