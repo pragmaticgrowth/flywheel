@@ -1,0 +1,12 @@
+{
+  "name": "autoresearch",
+  "version": "1.0.0",
+  "description": "Autonomous optimization loop for Claude Code and Droid — try an idea, measure it, keep what works, revert what doesn't, repeat. MAD-based confidence scoring, git branch isolation, and file-based experiment logging any fresh session can resume. Adapted from Factory's autoresearch pattern (MIT).",
+  "author": {
+    "name": "pragmaticgrowth"
+  },
+  "repository": "https://github.com/pragmaticgrowth/flywheel",
+  "homepage": "https://github.com/pragmaticgrowth/flywheel/tree/main/plugins/autoresearch",
+  "license": "MIT",
+  "keywords": ["skills", "autoresearch", "optimization", "experiments", "benchmark", "autonomous", "loop"]
+}
