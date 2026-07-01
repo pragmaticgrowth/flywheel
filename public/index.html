@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>flywheel v4.6.0 — plain-language wants in, verified commits out · Pragmatic Growth</title>
-<meta name="description" content="The pragmatic-growth marketplace ships flywheel for measurable goal queues, html-artifacts for rich browser deliverables, and autoresearch for autonomous optimization loops — all skills-only for Claude Code and Droid.">
+<meta name="description" content="The pragmatic-growth marketplace ships flywheel for measurable goal queues, html-artifacts for rich browser deliverables, autoresearch for autonomous optimization loops, and human-writing for AI-writing cleanup — all skills-only for Claude Code and Droid.">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -12,7 +12,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Pragmatic Growth">
 <meta property="og:title" content="flywheel — plain-language wants in, verified commits out">
-<meta property="og:description" content="Three skills-only plugins: flywheel for measurable goal queues, html-artifacts for rich browser deliverables, and autoresearch for autonomous optimization loops.">
+<meta property="og:description" content="Four skills-only plugins: flywheel for measurable goal queues, html-artifacts for rich browser deliverables, autoresearch for autonomous optimization loops, and human-writing for AI-writing cleanup.">
 <meta property="og:url" content="https://plugin.pragmaticgrowth.com">
 <meta property="og:image" content="https://plugin.pragmaticgrowth.com/og.png">
 <meta property="og:image:width" content="1200">
@@ -278,7 +278,7 @@
     <div>
       <span class="h-badge"><span class="dot"></span> <b>Skills-only</b> · Claude&nbsp;Code&nbsp;+&nbsp;Droid</span>
       <h1 class="title">Plain-language wants in.<br><span class="grad-text">Verified&nbsp;commits&nbsp;out.</span></h1>
-      <p class="lead">Three skills-only plugins turn requests into measurable goal contracts, rich HTML artifacts, autonomous metric optimization, and one-goal-per-run commits kept only after local checks pass.</p>
+      <p class="lead">Four skills-only plugins turn requests into measurable goal contracts, rich HTML artifacts, autonomous metric optimization, cleaner human-sounding prose, and one-goal-per-run commits kept only after local checks pass.</p>
       <div class="cta">
         <a class="btn btn-primary" href="#install">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
@@ -322,7 +322,7 @@
     <div class="sec-head reveal">
       <span class="eyebrow">How it works</span>
       <h2>From a sentence to a verified commit — on a loop.</h2>
-      <p>The marketplace pairs flywheel's factory chain with a separate html-artifacts plugin and the autoresearch optimization loop. flywheel captures wants as contracts, queues them in the repo, works one ready goal per run, and keeps each commit only after TDD-backed local checks pass.</p>
+      <p>The marketplace pairs flywheel's factory chain with three focused sidecar plugins — html-artifacts, autoresearch, and human-writing. flywheel captures wants as contracts, queues them in the repo, works one ready goal per run, and keeps each commit only after TDD-backed local checks pass.</p>
     </div>
     <div class="flow">
       <div class="step reveal"><div class="n">01 · define-goal</div><h3>Capture</h3><p>Plain-language want → a measurable contract, grounded by recon. Queued into <code>docs/goals/</code>.</p>
@@ -341,8 +341,8 @@
   <div class="wrap">
     <div class="sec-head reveal">
       <span class="eyebrow">The toolkit</span>
-      <h2>Three plugins, each kept focused.</h2>
-      <p>Install flywheel for the goal queue and autonomous execution. Install html-artifacts separately for browser-file deliverables, and autoresearch for autonomous metric optimization. In Claude Code they're namespaced by plugin.</p>
+      <h2>Four plugins, each kept focused.</h2>
+      <p>Install flywheel for the goal queue and autonomous execution. Install html-artifacts for browser-file deliverables, autoresearch for autonomous metric optimization, and human-writing to strip AI-writing tells. In Claude Code they're namespaced by plugin.</p>
     </div>
     <div class="skills">
 
@@ -398,6 +398,15 @@
           <p>Separate plugin for an autonomous optimization loop: try a hypothesis, measure it, keep improvements and revert regressions, with MAD-based confidence scoring and file-based logs any session can resume.</p>
         </div>
         <span class="cmd">autoresearch</span>
+      </article>
+
+      <article class="skill reveal">
+        <div class="skill-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>
+        <div class="skill-main">
+          <h3>human-writing</h3>
+          <p>Separate plugin that edits AI-sounding text into human prose: strips inflated significance, promotional language, em-dash and rule-of-three overuse, AI vocabulary, and chatbot artifacts. Based on Wikipedia's "Signs of AI writing".</p>
+        </div>
+        <span class="cmd">human-writing</span>
       </article>
 
     </div>
@@ -461,7 +470,7 @@ docs/goals/
     <div class="sec-head reveal">
       <span class="eyebrow">Get started</span>
       <h2>Install from the <code>pragmatic-growth</code> marketplace.</h2>
-      <p>One marketplace, three plugins, both CLIs — Droid auto-translates the <code>.claude-plugin/</code> manifests, and the skills detect the runtime to use the right paths and commands.</p>
+      <p>One marketplace, four plugins, both CLIs — Droid auto-translates the <code>.claude-plugin/</code> manifests, and the skills detect the runtime to use the right paths and commands.</p>
     </div>
     <div class="reveal">
       <div class="tabs" role="tablist">
@@ -472,11 +481,12 @@ docs/goals/
       <div class="tab-pane active" id="cc">
         <div class="code">
           <div class="code-head"><span>add the marketplace &amp; install</span>
-            <button class="copy" data-copy="/plugin marketplace add pragmaticgrowth/flywheel&#10;/plugin install flywheel@pragmatic-growth&#10;/plugin install html-artifacts@pragmatic-growth&#10;/plugin install autoresearch@pragmatic-growth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>Copy</button></div>
+            <button class="copy" data-copy="/plugin marketplace add pragmaticgrowth/flywheel&#10;/plugin install flywheel@pragmatic-growth&#10;/plugin install html-artifacts@pragmatic-growth&#10;/plugin install autoresearch@pragmatic-growth&#10;/plugin install human-writing@pragmatic-growth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>Copy</button></div>
 <pre><span class="p">/</span>plugin marketplace add pragmaticgrowth/flywheel
 <span class="p">/</span>plugin install flywheel@pragmatic-growth
 <span class="p">/</span>plugin install html-artifacts@pragmatic-growth
-<span class="p">/</span>plugin install autoresearch@pragmatic-growth</pre>
+<span class="p">/</span>plugin install autoresearch@pragmatic-growth
+<span class="p">/</span>plugin install human-writing@pragmatic-growth</pre>
         </div>
         <div class="code">
           <div class="code-head"><span>later, pull updates</span>
@@ -488,20 +498,22 @@ docs/goals/
       <div class="tab-pane" id="droid">
         <div class="code">
           <div class="code-head"><span>add the marketplace &amp; install</span>
-            <button class="copy" data-copy="droid plugin marketplace add https://github.com/pragmaticgrowth/flywheel&#10;droid plugin marketplace list&#10;droid plugin install flywheel@flywheel&#10;droid plugin install html-artifacts@flywheel&#10;droid plugin install autoresearch@flywheel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>Copy</button></div>
+            <button class="copy" data-copy="droid plugin marketplace add https://github.com/pragmaticgrowth/flywheel&#10;droid plugin marketplace list&#10;droid plugin install flywheel@flywheel&#10;droid plugin install html-artifacts@flywheel&#10;droid plugin install autoresearch@flywheel&#10;droid plugin install human-writing@flywheel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>Copy</button></div>
 <pre>droid plugin marketplace add https://github.com/pragmaticgrowth/flywheel
 droid plugin marketplace list   <span class="c"># confirms the marketplace name is flywheel</span>
 droid plugin install flywheel@flywheel
 droid plugin install html-artifacts@flywheel
-droid plugin install autoresearch@flywheel</pre>
+droid plugin install autoresearch@flywheel
+droid plugin install human-writing@flywheel</pre>
         </div>
         <div class="code">
           <div class="code-head"><span>later, pull updates</span>
-            <button class="copy" data-copy="droid plugin marketplace update flywheel&#10;droid plugin update flywheel@flywheel&#10;droid plugin update html-artifacts@flywheel&#10;droid plugin update autoresearch@flywheel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>Copy</button></div>
+            <button class="copy" data-copy="droid plugin marketplace update flywheel&#10;droid plugin update flywheel@flywheel&#10;droid plugin update html-artifacts@flywheel&#10;droid plugin update autoresearch@flywheel&#10;droid plugin update human-writing@flywheel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>Copy</button></div>
 <pre>droid plugin marketplace update flywheel
 droid plugin update flywheel@flywheel
 droid plugin update html-artifacts@flywheel
-droid plugin update autoresearch@flywheel</pre>
+droid plugin update autoresearch@flywheel
+droid plugin update human-writing@flywheel</pre>
         </div>
       </div>
 

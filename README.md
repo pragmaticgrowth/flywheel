@@ -28,11 +28,12 @@ a lightweight subagent review loop (independent read-only lenses), the orchestra
 build + test gate, and only work that passes is kept (failures roll back).
 
 It is **skills-only**: no MCP servers, no slash commands of its own, no hooks,
-no background daemons, no build step. The marketplace now exposes three plugins:
+no background daemons, no build step. The marketplace now exposes four plugins:
 `flywheel` with four workflow
 [skills](https://docs.claude.com/en/docs/claude-code/skills),
-`html-artifacts` as a separate rich-deliverables plugin, and
-`autoresearch` for autonomous optimization loops.
+`html-artifacts` as a separate rich-deliverables plugin,
+`autoresearch` for autonomous optimization loops, and
+`human-writing` for AI-writing cleanup.
 
 ### Why a queue in the repo instead of GitHub issues?
 
@@ -52,6 +53,7 @@ want a review surface — flywheel just doesn't require one.)
 | **flywheel** | `define-goal`, `dispatch`, `loop-architect`, and `factory-doctor` for the docs/goals execution pipeline. | `/plugin install flywheel@pragmatic-growth` |
 | **html-artifacts** | One `html-artifacts` skill with references for self-contained browser deliverables. | `/plugin install html-artifacts@pragmatic-growth` |
 | **autoresearch** | One `autoresearch` skill (+ a Python helper) for an autonomous try/measure/keep/revert optimization loop. | `/plugin install autoresearch@pragmatic-growth` |
+| **human-writing** | One `human-writing` skill that strips AI-writing tells and adds human voice. | `/plugin install human-writing@pragmatic-growth` |
 
 ## The workflow skills
 
@@ -185,6 +187,21 @@ noise.
   independently-mergeable branches for review — the raw experiment branch is
   always preserved. Adapted from Factory's `autoresearch` plugin (MIT).
 
+### human-writing plugin — make text sound human
+
+The fourth plugin does one focused thing: **edit AI-sounding text into something a
+person would actually write.** It scans for the tells catalogued in Wikipedia's
+"Signs of AI writing" — inflated significance, promotional language, `-ing` filler,
+em-dash and rule-of-three overuse, AI vocabulary, vague attributions, and chatbot
+artifacts ("I hope this helps!") — rewrites them, and pushes for real voice
+(opinions, varied rhythm, specific detail) instead of clean-but-soulless prose.
+
+- **Pure guidance, no runtime.** One skill, no scripts or state — it works identically
+  in Claude Code and Droid. Use it when writing or reviewing markdown, docs, emails,
+  blog posts, or PRDs.
+- **Sourced and attributed.** Based on Wikipedia's "Signs of AI writing" (WikiProject
+  AI Cleanup, CC BY-SA); adapted from Factory's `droid-evolved` plugin.
+
 ---
 
 ## How it all fits together
@@ -314,6 +331,7 @@ config:
 /plugin install flywheel@pragmatic-growth
 /plugin install html-artifacts@pragmatic-growth
 /plugin install autoresearch@pragmatic-growth
+/plugin install human-writing@pragmatic-growth
 ```
 
 **Droid (Factory CLI):**
@@ -324,6 +342,7 @@ droid plugin marketplace list   # confirms the marketplace name is flywheel
 droid plugin install flywheel@flywheel
 droid plugin install html-artifacts@flywheel
 droid plugin install autoresearch@flywheel
+droid plugin install human-writing@flywheel
 ```
 
 Pull updates later with `/plugin marketplace update pragmatic-growth` (Claude
@@ -382,7 +401,7 @@ stops and surfaces the reason. Let **loop-architect** design the loop contract
 
 ## Works in both CLIs
 
-Three plugins, two runtimes. Droid auto-translates the `.claude-plugin/` manifest
+Four plugins, two runtimes. Droid auto-translates the `.claude-plugin/` manifest
 format, and the skills **detect the runtime** and use the right paths,
 commands, and scheduling primitives (`/goal` vs `droid exec`, `/loop` vs
 `CronCreate`, `.claude/` vs `.factory/` settings). Everything above works the
@@ -414,7 +433,7 @@ regenerated and redeployed on each release (see `CLAUDE.md` →
 flywheel/
 ├── .claude-plugin/
 │   ├── plugin.json        # flywheel plugin manifest
-│   └── marketplace.json   # the pragmatic-growth marketplace, listing all three plugins
+│   └── marketplace.json   # the pragmatic-growth marketplace, listing all four plugins
 ├── skills/
 │   ├── define-goal/SKILL.md
 │   ├── dispatch/
@@ -431,11 +450,14 @@ flywheel/
 │   │   └── skills/html-artifacts/
 │   │       ├── SKILL.md
 │   │       └── references/            # HTML artifact recipes and foundation rules
-│   └── autoresearch/
+│   ├── autoresearch/
+│   │   ├── .claude-plugin/plugin.json
+│   │   └── skills/autoresearch/
+│   │       ├── SKILL.md
+│   │       └── scripts/autoresearch_helper.py  # stdlib JSONL + MAD-confidence helper
+│   └── human-writing/
 │       ├── .claude-plugin/plugin.json
-│       └── skills/autoresearch/
-│           ├── SKILL.md
-│           └── scripts/autoresearch_helper.py  # stdlib JSONL + MAD-confidence helper
+│       └── skills/human-writing/SKILL.md       # AI-writing cleanup guidance (no scripts)
 ├── public/                # the plugin.pragmaticgrowth.com site (index.html + brand SVGs)
 ├── wrangler.jsonc         # Cloudflare deploy config for the site
 ├── CHANGELOG.md           # canonical version history
@@ -446,7 +468,7 @@ flywheel/
 
 ## Contributing & maintenance
 
-This repo is the single source of truth — all three plugins install from the
+This repo is the single source of truth — all four plugins install from the
 `pragmatic-growth` marketplace and refresh from GitHub. If you’re editing
 skills, read **[CLAUDE.md](CLAUDE.md)**: it documents the queue design
 invariants, the release flow (bump `plugin.json` → update `CHANGELOG.md` + the

@@ -3,8 +3,9 @@
 ## Project Overview
 
 Skills-only Claude Code and Droid (Factory CLI) marketplace from Pragmatic Growth.
-The repo now publishes three plugins from one `pragmatic-growth` marketplace:
-`flywheel` v4.6.0, `html-artifacts` v1.0.0, and `autoresearch` v1.0.0. No MCP
+The repo now publishes four plugins from one `pragmatic-growth` marketplace:
+`flywheel` v4.6.0, `html-artifacts` v1.0.0, `autoresearch` v1.0.0, and
+`human-writing` v1.0.0. No MCP
 servers, no commands, no
 agents, no hooks, no build step. `flywheel` has four skills under root
 `skills/` (two ship deterministic Python helpers in `scripts/`), forming a
@@ -13,7 +14,9 @@ plain-language → autonomous-execution pipeline around a file-based goal queue
 `plugins/html-artifacts/` as a separate plugin for rich
 plans/reports/diagrams/editors. `autoresearch` lives under
 `plugins/autoresearch/` as a separate plugin for an autonomous try/measure/keep/
-revert optimization loop (ships one Python helper). All three plugins work in
+revert optimization loop (ships one Python helper). `human-writing` lives under
+`plugins/human-writing/` as a separate single-skill plugin for AI-writing
+cleanup (pure guidance, no scripts). All four plugins work in
 both CLIs via Droid's
 Claude Code compatibility layer (Droid auto-translates the `.claude-plugin/`
 manifest format). Skills are CLI-aware — they detect the runtime and use
@@ -90,6 +93,15 @@ Separate marketplace plugins:
   `plugins/autoresearch/skills/autoresearch/`. CLI-aware: `/loop` (Claude Code)
   or same-session `CronCreate` (Droid) for unattended cadence. Adapted from
   Factory's `autoresearch` plugin (MIT).
+- **human-writing** — edits AI-sounding text into human prose: scans for the tells
+  catalogued in Wikipedia's "Signs of AI writing" (inflated significance,
+  promotional language, `-ing` filler, em-dash/rule-of-three overuse, AI
+  vocabulary, vague attributions, chatbot artifacts), rewrites them, and pushes
+  for real voice. Deliberately CLI-neutral — pure writing guidance, one
+  `SKILL.md`, no scripts/state/references, so it needs no runtime translation.
+  Single skill under `plugins/human-writing/skills/human-writing/`. Based on
+  Wikipedia's guide (WikiProject AI Cleanup, CC BY-SA); adapted from Factory's
+  `droid-evolved` plugin.
 
 ## Queue design invariants (research-backed; v4.1.x one-goal dispatch model, 2026-06-28)
 
@@ -182,7 +194,7 @@ a local gate. Git history has every prior model if ever needed.
 
 ```
 .claude-plugin/plugin.json        # root flywheel plugin manifest
-.claude-plugin/marketplace.json   # marketplace — name: pragmatic-growth, lists flywheel + html-artifacts + autoresearch
+.claude-plugin/marketplace.json   # marketplace — name: pragmatic-growth, lists flywheel + html-artifacts + autoresearch + human-writing
 skills/<name>/SKILL.md            # four flywheel skills (define-goal, dispatch, loop-architect, factory-doctor)
 plugins/html-artifacts/.claude-plugin/plugin.json
 plugins/html-artifacts/skills/html-artifacts/SKILL.md
@@ -190,6 +202,8 @@ plugins/html-artifacts/skills/html-artifacts/references/ # HTML artifact recipes
 plugins/autoresearch/.claude-plugin/plugin.json
 plugins/autoresearch/skills/autoresearch/SKILL.md
 plugins/autoresearch/skills/autoresearch/scripts/autoresearch_helper.py # stdlib JSONL/MAD-confidence helper
+plugins/human-writing/.claude-plugin/plugin.json
+plugins/human-writing/skills/human-writing/SKILL.md # AI-writing cleanup (no scripts)
 skills/<name>/scripts/*.py        # dispatch/pg_validate.py (local gate), factory-doctor/doctor_checks.py
 CHANGELOG.md                      # canonical, git-tracked version history (site carries no on-page changelog)
 public/index.html                 # the public site (plugin.pragmaticgrowth.com) — self-contained, themed
@@ -211,7 +225,8 @@ AGENTS.md                         # symlink → CLAUDE.md (one source, no drift)
   push, then
   refresh with `/plugin marketplace update pragmatic-growth` (Claude Code)
   or `droid plugin marketplace update flywheel` (Droid; Factory registers the
-  GitHub marketplace as `flywheel`). `html-artifacts` and `autoresearch` edits
+  GitHub marketplace as `flywheel`). `html-artifacts`, `autoresearch`, and
+  `human-writing` edits
   bump their own `plugins/<name>/.claude-plugin/plugin.json`; if the root
   marketplace copy/docs also change, keep the root release metadata aligned too.
 - **Keep CLAUDE.md and AGENTS.md aligned.** `AGENTS.md` is a symlink to
@@ -232,7 +247,7 @@ AGENTS.md                         # symlink → CLAUDE.md (one source, no drift)
   (skip if already added), `droid plugin marketplace list`, and
   `droid plugin install flywheel@flywheel` plus
   `droid plugin install html-artifacts@flywheel` / `droid plugin install autoresearch@flywheel`
-  when those plugins change.
+  / `droid plugin install human-writing@flywheel` when those plugins change.
   `droid plugin link .` is only for native
   `.factory-plugin` plugins, not this `.claude-plugin` manifest).
 - **Skill edits are tested.** New or changed skill mechanics get a
