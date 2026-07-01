@@ -3,14 +3,18 @@
 ## Project Overview
 
 Skills-only Claude Code and Droid (Factory CLI) marketplace from Pragmatic Growth.
-The repo now publishes two plugins from one `pragmatic-growth` marketplace:
-`flywheel` v4.3.0 and `html-artifacts` v1.0.0. No MCP servers, no commands, no
+The repo now publishes three plugins from one `pragmatic-growth` marketplace:
+`flywheel` v4.5.0, `html-artifacts` v1.0.0, and `autoresearch` v1.0.0. No MCP
+servers, no commands, no
 agents, no hooks, no build step. `flywheel` has four skills under root
 `skills/` (two ship deterministic Python helpers in `scripts/`), forming a
 plain-language → autonomous-execution pipeline around a file-based goal queue
 (`docs/goals/` in target repos). `html-artifacts` lives under
 `plugins/html-artifacts/` as a separate plugin for rich
-plans/reports/diagrams/editors. Both plugins work in both CLIs via Droid's
+plans/reports/diagrams/editors. `autoresearch` lives under
+`plugins/autoresearch/` as a separate plugin for an autonomous try/measure/keep/
+revert optimization loop (ships one Python helper). All three plugins work in
+both CLIs via Droid's
 Claude Code compatibility layer (Droid auto-translates the `.claude-plugin/`
 manifest format). Skills are CLI-aware — they detect the runtime and use
 appropriate paths, commands, and scheduling primitives.
@@ -61,7 +65,7 @@ appropriate paths, commands, and scheduling primitives.
   to provision — the gate is local. The probe checks settings in both
   `.claude/` and `.factory/` (Droid) paths.
 
-Separate marketplace plugin:
+Separate marketplace plugins:
 
 - **html-artifacts** — produces self-contained browser artifacts for
   deliverables where markdown is the wrong shape: stakeholder-ready plans,
@@ -72,6 +76,20 @@ Separate marketplace plugin:
   `plugins/html-artifacts/skills/html-artifacts/`. No listener, server,
   command, MCP surface, or build step; interactive results export through
   the HTML file's copy/export button.
+- **autoresearch** — autonomous optimization loop: given a measurable metric,
+  a benchmark command, files-in-scope, constraints, and a termination
+  condition, it works an `autoresearch/<goal>-<date>` branch — try one
+  hypothesis, run the benchmark, keep the change if the primary metric improves
+  and `git`-revert it if not, journaling every run — with MAD-based confidence
+  scoring separating real gains from noise. All state lives in files
+  (`autoresearch.md`/`.sh`/`.jsonl` in the target repo) so any fresh session
+  resumes exactly where the last stopped; on termination it groups kept
+  experiments into independently-mergeable branches. Single skill +
+  `scripts/autoresearch_helper.py` (stdlib-only JSONL/confidence helper,
+  resolved via `$CLAUDE_PLUGIN_ROOT`/`$DROID_PLUGIN_ROOT`) under
+  `plugins/autoresearch/skills/autoresearch/`. CLI-aware: `/loop` (Claude Code)
+  or same-session `CronCreate` (Droid) for unattended cadence. Adapted from
+  Factory's `autoresearch` plugin (MIT).
 
 ## Queue design invariants (research-backed; v4.1.x one-goal dispatch model, 2026-06-28)
 
@@ -164,11 +182,14 @@ a local gate. Git history has every prior model if ever needed.
 
 ```
 .claude-plugin/plugin.json        # root flywheel plugin manifest
-.claude-plugin/marketplace.json   # marketplace — name: pragmatic-growth, lists flywheel + html-artifacts
+.claude-plugin/marketplace.json   # marketplace — name: pragmatic-growth, lists flywheel + html-artifacts + autoresearch
 skills/<name>/SKILL.md            # four flywheel skills (define-goal, dispatch, loop-architect, factory-doctor)
 plugins/html-artifacts/.claude-plugin/plugin.json
 plugins/html-artifacts/skills/html-artifacts/SKILL.md
 plugins/html-artifacts/skills/html-artifacts/references/ # HTML artifact recipes and foundation rules
+plugins/autoresearch/.claude-plugin/plugin.json
+plugins/autoresearch/skills/autoresearch/SKILL.md
+plugins/autoresearch/skills/autoresearch/scripts/autoresearch_helper.py # stdlib JSONL/MAD-confidence helper
 skills/<name>/scripts/*.py        # dispatch/pg_validate.py (local gate), factory-doctor/doctor_checks.py
 CHANGELOG.md                      # canonical, git-tracked version history (site carries no on-page changelog)
 public/index.html                 # the public site (plugin.pragmaticgrowth.com) — self-contained, themed
@@ -190,9 +211,9 @@ AGENTS.md                         # symlink → CLAUDE.md (one source, no drift)
   push, then
   refresh with `/plugin marketplace update pragmatic-growth` (Claude Code)
   or `droid plugin marketplace update flywheel` (Droid; Factory registers the
-  GitHub marketplace as `flywheel`). `html-artifacts` edits bump
-  `plugins/html-artifacts/.claude-plugin/plugin.json`; if the root marketplace
-  copy/docs also change, keep the root release metadata aligned too.
+  GitHub marketplace as `flywheel`). `html-artifacts` and `autoresearch` edits
+  bump their own `plugins/<name>/.claude-plugin/plugin.json`; if the root
+  marketplace copy/docs also change, keep the root release metadata aligned too.
 - **Keep CLAUDE.md and AGENTS.md aligned.** `AGENTS.md` is a symlink to
   `CLAUDE.md`; preserve that one-source setup. When Claude Code updates
   `CLAUDE.md`, it must verify `AGENTS.md` reflects the same content. When Codex
@@ -210,7 +231,8 @@ AGENTS.md                         # symlink → CLAUDE.md (one source, no drift)
   marketplace path with `droid plugin marketplace add https://github.com/pragmaticgrowth/flywheel`
   (skip if already added), `droid plugin marketplace list`, and
   `droid plugin install flywheel@flywheel` plus
-  `droid plugin install html-artifacts@flywheel` when that plugin changes.
+  `droid plugin install html-artifacts@flywheel` / `droid plugin install autoresearch@flywheel`
+  when those plugins change.
   `droid plugin link .` is only for native
   `.factory-plugin` plugins, not this `.claude-plugin` manifest).
 - **Skill edits are tested.** New or changed skill mechanics get a

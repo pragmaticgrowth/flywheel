@@ -1,6 +1,6 @@
 {
   "name": "pragmatic-growth",
-  "description": "Skills-only Claude Code and Droid plugins from Pragmatic Growth, including flywheel for autonomous goal queues and html-artifacts for rich browser deliverables.",
+  "description": "Skills-only Claude Code and Droid plugins from Pragmatic Growth: flywheel for autonomous goal queues, html-artifacts for rich browser deliverables, and autoresearch for autonomous optimization loops.",
   "owner": {
     "name": "pragmaticgrowth",
     "url": "https://github.com/pragmaticgrowth"
@@ -20,6 +20,16 @@
       "description": "Create self-contained HTML plans, specs, reports, research syntheses, diagrams, timelines, dashboards, decks, prototypes, and one-off editors when markdown would flatten the work.",
       "source": "./plugins/html-artifacts",
       "homepage": "https://github.com/pragmaticgrowth/flywheel/tree/main/plugins/html-artifacts",
+      "author": {
+        "name": "pragmaticgrowth"
+      },
+      "category": "productivity"
+    },
+    {
+      "name": "autoresearch",
+      "description": "Autonomous optimization loop — try an idea, measure it, keep what works, revert what doesn't, repeat. MAD-based confidence scoring, git branch isolation, and file-based experiment logs any fresh session can resume.",
+      "source": "./plugins/autoresearch",
+      "homepage": "https://github.com/pragmaticgrowth/flywheel/tree/main/plugins/autoresearch",
       "author": {
         "name": "pragmaticgrowth"
       },

@@ -28,10 +28,11 @@ a lightweight subagent review loop (independent read-only lenses), the orchestra
 build + test gate, and only work that passes is kept (failures roll back).
 
 It is **skills-only**: no MCP servers, no slash commands of its own, no hooks,
-no background daemons, no build step. The marketplace now exposes two plugins:
+no background daemons, no build step. The marketplace now exposes three plugins:
 `flywheel` with four workflow
-[skills](https://docs.claude.com/en/docs/claude-code/skills), and
-`html-artifacts` as a separate rich-deliverables plugin.
+[skills](https://docs.claude.com/en/docs/claude-code/skills),
+`html-artifacts` as a separate rich-deliverables plugin, and
+`autoresearch` for autonomous optimization loops.
 
 ### Why a queue in the repo instead of GitHub issues?
 
@@ -50,6 +51,7 @@ want a review surface — flywheel just doesn't require one.)
 |---|---|---|
 | **flywheel** | `define-goal`, `dispatch`, `loop-architect`, and `factory-doctor` for the docs/goals execution pipeline. | `/plugin install flywheel@pragmatic-growth` |
 | **html-artifacts** | One `html-artifacts` skill with references for self-contained browser deliverables. | `/plugin install html-artifacts@pragmatic-growth` |
+| **autoresearch** | One `autoresearch` skill (+ a Python helper) for an autonomous try/measure/keep/revert optimization loop. | `/plugin install autoresearch@pragmatic-growth` |
 
 ## The workflow skills
 
@@ -163,6 +165,25 @@ working branch, CI, and the queue itself — **auto-fixing everything local**
 both `.claude/` and `.factory/` settings) and
 reporting remote/CI issues with the exact fix. It diagnoses and fixes setup; it
 never implements goals.
+
+### autoresearch plugin — optimize by experiment
+
+A separate plugin in the same marketplace for a different job: **autonomously
+optimizing a measurable metric**. Point it at a benchmark (training loss, test
+runtime, bundle size, build time…) and it runs a disciplined loop — try one
+hypothesis, measure, keep the change if it improves and revert it if it doesn't,
+then repeat — with **MAD-based confidence scoring** to tell a real gain from
+noise.
+
+- **Isolated and resumable.** Work happens on an `autoresearch/<goal>-<date>`
+  branch; all state lives in files (`autoresearch.md`, `autoresearch.sh`,
+  `autoresearch.jsonl`) so a fresh session with no memory reads them and
+  continues exactly where the last one stopped.
+- **Runs unattended, both CLIs.** Let it loop in one session, or wrap the resume
+  in `/loop` (Claude Code) or a same-session `CronCreate` (Droid).
+- **Clean output.** On termination it groups the kept experiments into
+  independently-mergeable branches for review — the raw experiment branch is
+  always preserved. Adapted from Factory's `autoresearch` plugin (MIT).
 
 ---
 
@@ -292,6 +313,7 @@ config:
 /plugin marketplace add pragmaticgrowth/flywheel
 /plugin install flywheel@pragmatic-growth
 /plugin install html-artifacts@pragmatic-growth
+/plugin install autoresearch@pragmatic-growth
 ```
 
 **Droid (Factory CLI):**
@@ -301,6 +323,7 @@ droid plugin marketplace add https://github.com/pragmaticgrowth/flywheel
 droid plugin marketplace list   # confirms the marketplace name is flywheel
 droid plugin install flywheel@flywheel
 droid plugin install html-artifacts@flywheel
+droid plugin install autoresearch@flywheel
 ```
 
 Pull updates later with `/plugin marketplace update pragmatic-growth` (Claude
@@ -359,7 +382,7 @@ stops and surfaces the reason. Let **loop-architect** design the loop contract
 
 ## Works in both CLIs
 
-Two plugins, two runtimes. Droid auto-translates the `.claude-plugin/` manifest
+Three plugins, two runtimes. Droid auto-translates the `.claude-plugin/` manifest
 format, and the skills **detect the runtime** and use the right paths,
 commands, and scheduling primitives (`/goal` vs `droid exec`, `/loop` vs
 `CronCreate`, `.claude/` vs `.factory/` settings). Everything above works the
@@ -391,7 +414,7 @@ regenerated and redeployed on each release (see `CLAUDE.md` →
 flywheel/
 ├── .claude-plugin/
 │   ├── plugin.json        # flywheel plugin manifest
-│   └── marketplace.json   # the pragmatic-growth marketplace, listing both plugins
+│   └── marketplace.json   # the pragmatic-growth marketplace, listing all three plugins
 ├── skills/
 │   ├── define-goal/SKILL.md
 │   ├── dispatch/
@@ -403,11 +426,16 @@ flywheel/
 │   │   └── scripts/doctor_checks.py   # read-only readiness probe
 │   └── loop-architect/SKILL.md
 ├── plugins/
-│   └── html-artifacts/
+│   ├── html-artifacts/
+│   │   ├── .claude-plugin/plugin.json
+│   │   └── skills/html-artifacts/
+│   │       ├── SKILL.md
+│   │       └── references/            # HTML artifact recipes and foundation rules
+│   └── autoresearch/
 │       ├── .claude-plugin/plugin.json
-│       └── skills/html-artifacts/
+│       └── skills/autoresearch/
 │           ├── SKILL.md
-│           └── references/            # HTML artifact recipes and foundation rules
+│           └── scripts/autoresearch_helper.py  # stdlib JSONL + MAD-confidence helper
 ├── public/                # the plugin.pragmaticgrowth.com site (index.html + brand SVGs)
 ├── wrangler.jsonc         # Cloudflare deploy config for the site
 ├── CHANGELOG.md           # canonical version history
@@ -418,7 +446,7 @@ flywheel/
 
 ## Contributing & maintenance
 
-This repo is the single source of truth — both plugins install from the
+This repo is the single source of truth — all three plugins install from the
 `pragmatic-growth` marketplace and refresh from GitHub. If you’re editing
 skills, read **[CLAUDE.md](CLAUDE.md)**: it documents the queue design
 invariants, the release flow (bump `plugin.json` → update `CHANGELOG.md` + the
