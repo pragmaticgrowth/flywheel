@@ -15,6 +15,13 @@ Dispatch works **one ready goal per run, on the currently checked-out branch**
 commits its work on this branch, run a LOCAL gate yourself, and on PASS keep a squashed
 commit — on FAIL roll the goal back so the branch never carries unverified work. No pull
 requests, no worktrees, no `goal/<id>` branches, no parallel/background implementers.
+This sequential, single-branch, worktree-free shape is deliberate scar tissue, not an
+unfinished simplification: v3's per-goal worktree PRs + parallel `wip` implementers +
+CI-gated auto-merge livelocked on real autonomous runs — PR-shepherding churn, CI runners
+blocking every merge, and stale `goal/*`/`worktree-agent-*` branch garbage (see CHANGELOG
+4.0.0). Do NOT reintroduce worktrees or cross-goal parallelism without re-reading why they
+were removed; the extra concurrency lives INSIDE one goal (read-only recon/review), never
+across goals.
 Use `/loop /dispatch` (Claude Code) or a same-session Droid cron to repeat this one-goal
 cycle until the queue is drained.
 
@@ -230,8 +237,11 @@ Latest context from the dispatcher:
 
 You own this work end to end. Nested subagents are required when the runtime provides them
 and the task is more than a one-file mechanical edit: use them for context isolation,
-independent verification, and review in fresh windows. They are never a second implementer
-lane. If subagents are unavailable, say so and run the same checklist yourself.
+independent verification, and review in fresh windows — this is `subagent-driven-development`
+(invoke the skill when it is available). Two patterns earn their keep here: adversarial
+verification (a reviewer tries to REFUTE the change, not rubber-stamp it) and, for bug hunts,
+loop-until-dry (keep looking until a pass turns up nothing new). They are never a second
+implementer lane. If subagents are unavailable, say so and run the same checklist yourself.
 
 Workspace: you are on the current branch in this checkout — work on the current branch in
 this checkout, commit your intended files here. Do NOT create a worktree, do NOT create a
@@ -252,10 +262,15 @@ Quality loop — keep it lightweight, but do not skip it:
    mode is allowed only for bounded read-only fan-out or review when there are ~5+ independent
    checks; never use it to implement across branches or survive the session.
 4. Verify: run the goal acceptance commands and any repo baseline command you touched.
-5. Fresh check: for non-trivial work, dispatch a verifier/reviewer subagent to compare the
-   diff against the goal contract and check for missing requirements, overbuild, test gaps,
-   and stray files. Treat reviewer feedback as findings to verify, not orders to obey; fix
-   Critical/Important issues or explain why they are false.
+5. Fresh check: for non-trivial work (more than a one-file mechanical edit), review the diff
+   against the goal contract in fresh read-only windows — not one generalist reviewer but a
+   small panel of independent lenses
+   run concurrently: (a) contract-conformance (every acceptance criterion met, nothing
+   missing), (b) tests + overbuild (proving tests are real, no scope creep), (c) stray files
+   + regressions (only intended files touched, baseline still green). Two or three lenses is
+   the norm and stays lightweight; escalate to a read-only review Workflow only at the ~5+
+   independent-checks threshold from step 3. Treat every finding as something to verify, not
+   an order to obey; fix Critical/Important issues or explain why they are false.
 6. Self-review the final diff, stage only intended files, commit, and report evidence.
 
 Skills are mandatory — invoke each via the Skill tool:
@@ -277,7 +292,7 @@ Finish: before committing, review your diff and stage only the files you meant t
 revert stray lockfile / dependency-manager / formatter churn, or any file you didn't intend
 to touch, that the toolchain introduced (never `git add -A` blind). Commit your intended
 files on the current branch and end with verification evidence (the commands you ran and
-their output), plus the reviewer/subagent verdict when one was required. Do NOT merge
+their output), plus the fresh-check verdicts when they were required. Do NOT merge
 anything, do NOT push, do NOT open a PR — the orchestrator runs the gate and integrates.
 
 Constraints: the goal file's "Constraints" section verbatim, plus: never merge, never push,
