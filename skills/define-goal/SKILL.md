@@ -43,11 +43,17 @@ contract the loop will run.
 ## Goal command facts (CLI-specific)
 
 **Claude Code** has a built-in `/goal` command (user-run only; no `create_goal` or
-`get_goal` tool). After each turn, a separate evaluator model reads the conversation
-transcript and checks whether the condition holds (condition cap: 4,000 chars). The
-evaluator cannot run commands or read files — every clause must be provable by output
-that appears in the transcript (test results, exit codes, diffs, counts). Never write
-taste conditions ("clean", "better").
+`get_goal` tool). After each turn, a separate evaluator model — the configured small-fast
+model, default Haiku — reads the conversation transcript and checks whether the condition
+holds (condition cap: 4,000 chars). The evaluator cannot run commands or read files —
+every clause must be provable by output that appears in the transcript (test results,
+exit codes, diffs, counts). Never write taste conditions ("clean", "better"). Bound every
+condition with a turn or time clause ("or stop after 20 turns" — the official guidance):
+the evaluator judges the cap from the conversation, so a wedged goal terminates by cap
+instead of spinning. Hand these with any run-now line: `/goal` with no arguments shows the
+active goal's turns, token spend, and the evaluator's latest reason; and `/goal` needs a
+trusted workspace with hooks enabled — it is implemented as a session-scoped Stop hook, so
+`disableAllHooks` (or managed `allowManagedHooksOnly`) blocks it, and the command says why.
 
 **Droid** has no built-in `/goal` command. For headless runs use
 `droid exec --auto high "<condition>"`. In an interactive session, paste the goal
@@ -340,14 +346,16 @@ attempts a criterion can be neither satisfied nor shown measurable (a flaky,
 non-deterministic, or contradictory check), declare GOAL_UNREACHABLE with evidence (which
 criterion, why unmeasurable, last measurement) and stop — never retry the identical failing
 approach. The orchestrator treats GOAL_UNREACHABLE as a contract defect (a needs-you
-amendment), not a work failure.
+amendment), not a work failure. Hitting the turn cap before completion is different — a
+budget stop, not a contract defect: stop and report the same way, with reason "turn cap
+reached (<N>)" and the remaining criteria.
 
 ## Goal contract
 /goal <acceptance criteria restated as one transcript-verifiable condition: exact commands
 + expected outputs, and the constraints above.> Stop when every criterion verifiably passes,
 or when blocked or a criterion proves unreachable (follow "If blocked", declaring
 GOAL_UNREACHABLE if a check can be neither satisfied nor measured) — never grind past a
-blocker.
+blocker. Stop after <N> turns.
 ```
 
 In Droid (no `/goal` command), the equivalent is:
@@ -431,6 +439,14 @@ Keep the contract line under the 4,000-char cap (reference the file's sections i
 restating when long), and phrase UI evidence as transcript-visible output (the screenshot
 capture command's output), never as the attachment itself — the evaluator (Claude Code) or
 the agent's self-verification (Droid) only reads text.
+The closing turn cap (`Stop after <N> turns`) is not optional — official guidance bounds
+every goal with a turn or time clause. Size `<N>` to the goal (roughly 10 for an `S`, 20
+for an `M`, 30 for an `L`): generous enough for setup + TDD + verification, small enough
+that a wedged goal dies by cap instead of by budget. The "If blocked" ~3-honest-attempts
+rule still fires first when one specific check is stuck. Enforcement differs by
+destination: run-now `/goal` has the evaluator enforce the cap; in the queue destination
+the implementer self-enforces it as its attempt/iteration budget (dispatch's no-progress
+rule and `config.budget` back it up).
 
 ## Batch mode (documents → many goals)
 

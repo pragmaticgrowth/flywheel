@@ -14,7 +14,8 @@ Dispatch works **one ready goal per run, on the currently checked-out branch**
 (e.g. `staging`). One goal at a time: claim it, spawn a single foreground implementer that
 commits its work on this branch, run a LOCAL gate yourself, and on PASS keep a squashed
 commit — on FAIL roll the goal back so the branch never carries unverified work. No pull
-requests, no worktrees, no `goal/<id>` branches, no parallel/background implementers.
+requests, no worktrees, no `goal/<id>` branches, no parallel/background implementers, no
+agent-team teammates.
 This sequential, single-branch, worktree-free shape is deliberate scar tissue, not an
 unfinished simplification: v3's per-goal worktree PRs + parallel `wip` implementers +
 CI-gated auto-merge livelocked on real autonomous runs — PR-shepherding churn, CI runners
@@ -50,7 +51,8 @@ depth-vs-weekly-limit trade, not yours to override.
 - **Every queue write goes through the claim protocol below.** Implementers never touch
   `docs/goals/` — the orchestrator owns queue state.
 - No-progress rule: same goal fails the same way twice with no progress → stop retrying,
-  set the goal `blocked` with a `reason`, report, and stop the run.
+  set the goal `blocked` with a `reason`, report, and stop the run. (Orchestrator-level —
+  distinct from the implementer's own ~3-honest-attempts rule inside one spawn.)
 - Substantive conflicts are never guessed through. A local `git merge`/squash that hits a
   conflict on the current branch means two pieces of work changed the same logic → set the
   goal `blocked`, surface under needs-you, and roll back; never resolve by guessing.
@@ -279,7 +281,8 @@ Quality loop — keep it lightweight, but do not skip it:
    before implementation. Bug goals must reproduce the root cause first; upstream findings
    are hypotheses, not facts.
 3. Implement on the current branch only. You may use read-only helper subagents for
-   exploration and test-design; do not spawn parallel code-writing agents. Workflow/mission
+   exploration and test-design; do not spawn parallel code-writing agents or agent-team
+   teammates (a teammate is a second implementer lane by another name). Workflow/mission
    mode is allowed only for bounded read-only fan-out or review when there are ~5+ independent
    checks; never use it to implement across branches or survive the session.
 4. Verify: run the goal acceptance commands and any repo baseline command you touched.
@@ -390,3 +393,11 @@ When `completed` entries crowd the index (~20+), move their files to `docs/goals
 and their entries to `docs/goals/archive.yaml` in one `chore(goals): archive` commit. The
 queue commit is always its own step (see the claim protocol). Agents read the whole index
 every iteration — keep it small.
+
+**Encode recurring lessons.** When the same class of gate failure recurs across different
+goals (the same lint family, the same missing verify step, the same scope-creep shape),
+that is a system defect, not a string of per-goal bugs: surface ONE needs-you line
+proposing where to encode it — a `config.verify` command, a `config.skills` entry, a
+CLAUDE.md rule, or a contract fix via define-goal — so future implementers inherit the
+rule instead of re-learning it one blocked goal at a time. Propose only; the repo owner
+decides what lands.

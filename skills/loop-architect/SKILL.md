@@ -45,9 +45,19 @@ all four are cheaper to prevent in a bounded loop than to detect in an open one.
 
 ## Step 2 — Pick the primitive
 
+Anthropic's official loops guidance ("Getting started with loops") names four loop types;
+they map onto this table as: **turn-based** = a plain prompt + verification skills (no loop
+primitive — Step 1's one-shot answer), **goal-based** = `/goal`, **time-based** = `/loop` /
+routines via `/schedule`, **proactive** = the no-human-in-real-time compositions (the
+docs/goals queue + repeated `/dispatch`, routines/automations, channels — goals, skills,
+workflows, and auto mode composed in). A user asking for a "proactive loop" over a work
+stream (bug reports, triage) usually wants the queue row or a routine, not just a channel.
+(Workflows, agent teams, and Stop hooks below aren't loop types — they're building blocks
+a loop composes.)
+
 | Situation | Claude Code | Droid |
 |---|---|---|
-| Work until a verifiable end state is true | `/goal` (Haiku evaluator checks after every turn) | `droid exec --auto high "<condition>"` (agent self-verifies) or interactive paste |
+| Work until a verifiable end state is true | `/goal` (a separate small-fast-model evaluator — default Haiku — checks after every turn) | `droid exec --auto high "<condition>"` (agent self-verifies) or interactive paste |
 | Poll/babysit on a cadence while a session is open | `/loop <interval> <skill-or-prompt>` | `CronCreate` with `same_session: true`, `recurring: true` |
 | Recurring default maintenance for this repo | bare `/loop` + a `.claude/loop.md` | `CronCreate` same_session with the loop body as the job prompt (no loop.md equivalent) |
 | A backlog of shippable changes worked unattended | docs/goals queue — fill with `define-goal`, then repeat `/dispatch` (one ready goal per run on the checked-out branch; `/loop /dispatch` drains over repeated fires) | docs/goals queue — fill with `define-goal`, then repeat `/dispatch` (one ready goal per run on the checked-out branch; use `CronCreate` same_session to drain over repeated fires) |
@@ -55,6 +65,7 @@ all four are cheaper to prevent in a bounded loop than to detect in an open one.
 | Needs local files, machine on, no session open | Desktop scheduled task | `CronCreate` with `new_session` (starts a fresh local session) |
 | React to external events (CI, chat) instead of polling | Channels (`--channels`) or Routine API trigger | Slack integration + `CronCreate` new_session; or `CreateAutomation` with event triggers |
 | Massively parallel / adversarial / unknown-size work | Dynamic workflow (pair with `/goal` for hard completion) | Mission mode (`droid exec --mission`; pair with `droid exec --auto high` for hard completion) |
+| A few collaborating peers that message each other (competing debug hypotheses, cross-layer feature) | Agent teams (own contexts + shared task list; markedly more tokens than subagents) | No equivalent — parallel subagents, or mission mode at scale |
 | Deterministic check on every turn, all sessions | Stop hook | Hook in `.factory/hooks/hooks.json` |
 
 Combos are normal: workflow + `/goal` for hard completion; skill + `/loop`/`CronCreate` for
@@ -66,7 +77,9 @@ lookups → plain subagents, cheaper and simpler; anything that must survive the
 (cross-iteration implementers, multi-day queues) → the `docs/goals/index.yaml` ledger plus
 repeated one-goal dispatch runs, never workflow state — workflows are session-bound and don't
 resume across sessions. Dispatch implementers may use workflows only for bounded read-only
-fan-out or review inside that one goal, never as parallel code-writing lanes. The Workflow
+fan-out or review inside that one goal, never as parallel code-writing lanes. Agent teams are
+interactive-session machinery, never a factory lane — dispatch implementers don't spawn
+teammates. The Workflow
 tool needs Claude Code ≥2.1.154 and can be disabled; Droid's mission mode
 (`droid exec --mission`) is the equivalent but also optional. Design a plain-subagent
 fallback for either CLI.
@@ -75,8 +88,9 @@ fallback for either CLI.
 
 ### For /goal — six elements, one cap (condition max 4,000 chars)
 
-CRITICAL CONSTRAINT: the evaluator (Claude Code's `/goal` Haiku evaluator, or Droid's
-agent self-verification) only reads the transcript. It cannot run commands or read
+CRITICAL CONSTRAINT: the evaluator (Claude Code's `/goal` evaluator — the configured
+small-fast model, default Haiku — or Droid's agent self-verification) only reads the
+transcript. It cannot run commands or read
 files. Every clause must be demonstrable by output the agent prints (test results, exit
 codes, diffs, counts). Never write taste conditions ("clean", "better", "high quality").
 
@@ -108,6 +122,10 @@ since there is no separate evaluator model to check them automatically.
   fixed | acknowledged-stale | abandoned | blocked-external; 0 items left unclassified") —
   a missing "blocked" bucket makes the goal bounce forever on reality.
 - Prefer two small goals with a checkpoint over one mega-goal.
+- Unattended runs: pair the goal with auto mode — auto mode removes per-tool permission
+  prompts, `/goal` removes per-turn prompts (complementary, not redundant). `/goal` is a
+  session-scoped Stop hook under the hood: it needs a trusted workspace with hooks enabled
+  (`disableAllHooks` blocks it, and the command says why).
 - If the user's ask is vague, run pre-goal calibration: ask what "done" means until it is
   specific and measurable, THEN draft the condition for approval. Keep the question round
   short; derive code-level detail from repo recon instead of asking the user to debug for you.
@@ -119,10 +137,12 @@ since there is no separate evaluator model to check them automatically.
    state-file location, one-line status format per iteration). The loop body is then just
    `/loop 10m /skill-name` (Claude Code) or `CronCreate` same_session every 10m running
    `/skill-name` (Droid).
-3. Fixed interval for predictable cadence; omit the interval to let the agent self-pace
-   (1m–1h based on observed activity); bare `/loop` uses `.claude/loop.md` if present
-   (Claude Code only — Droid has no loop.md equivalent; embed the loop body directly in the
-   `CronCreate` job prompt).
+3. Fixed interval for predictable cadence — match it to how often the watched thing
+   actually changes (don't poll a nightly job every 5 minutes); omit the interval to let
+   the agent self-pace (1m–1h based on observed activity; it may switch to the Monitor
+   tool and stream instead of polling); bare `/loop` uses `loop.md` if present — project
+   `.claude/loop.md` beats user `~/.claude/loop.md` (Claude Code only — Droid has no
+   loop.md equivalent; embed the loop body directly in the `CronCreate` job prompt).
 4. Remember mechanics: fires between turns only, 7-day expiry, jitter up to 30m on
    recurring tasks, Esc cancels a pending iteration, restored on `--resume` (Claude Code).
    Droid's `CronCreate` same_session has analogous semantics (fires between turns in the
@@ -134,6 +154,10 @@ The prompt must be self-contained: what to read, what to do, how to verify, wher
 results, what success means, what to escalate. Pushes only to `claude/`-prefixed branches
 unless unrestricted pushes were explicitly enabled. Scope repos, connectors, and network
 access to the minimum the routine needs.
+Create conversationally with `/schedule` (recurring or one-off); manage with
+`/schedule list|update|run`. Scheduled cadence has a 1-hour minimum (custom cron via
+`/schedule update`); API and GitHub event triggers are added on the web
+(claude.ai/code/routines).
 
 ## Step 4 — Wire verification and state (non-negotiable)
 
@@ -159,7 +183,10 @@ access to the minimum the routine needs.
   acceptance rate below ~50% means the loop is making slop: tighten the gate or stop it. For
   factory work the completion ledger (`index.yaml` completed count) is the acceptance
   denominator. (The v4 dispatch model has no PRs — nothing is "merged"; a goal is accepted when
-  it passes the local gate and its squashed commit lands on the branch.)
+  it passes the local gate and its squashed commit lands on the branch.) Numerator data
+  comes from the built-in usage surfaces: `/usage` (recent usage by skill/subagent/MCP),
+  `/goal` with no arguments (the active goal's turns + token spend), `/workflows`
+  (per-agent tokens, stoppable mid-run); Droid surfaces usage in the Factory app.
 
 ## Step 5 — Hard stops and safety rails
 
@@ -176,7 +203,9 @@ Always include, in the prompt itself (the soft layer, restated for the agent):
 - Convergence stop for review/verification loops: stop when the gate verdict clears even if
   cosmetic nits remain — treat reviewer comments as findings to verify, not orders to obey,
   and cap review rounds. Chasing a perfectly clean review spawns fresh nits forever.
-- Token budget for workflows ("+200k budget") — workflows balloon 5–10× without one
+- Token budget for workflows ("+200k budget") — workflows balloon 5–10× without one; and
+  pilot on a smaller slice first (a dynamic workflow can spawn hundreds of agents — gauge
+  cost before the full run)
 - The repo's hard rules verbatim (e.g. forbidden merges, protected branches, prod flags) —
   hooks are a backstop, not the encoding
 - Human gate before merge / deploy / dependency changes
