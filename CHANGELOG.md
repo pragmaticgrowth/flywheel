@@ -13,6 +13,53 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [4.8.0] — 2026-07-07
+
+**Minor: alignment pass with Anthropic's official loops guidance** — the
+"Getting started with loops" article (Claude Devs, 2026-07-06) and the current
+`/goal` / scheduled-tasks / routines / workflows / agent-teams docs pages. The
+official taxonomy and token guidance map cleanly onto the v4 model (no
+architectural changes); this release closes the drift a docs-vs-skills diff
+found. Scenario-tested before/after: a baseline subagent run documented the
+gaps, a fresh run with citations confirmed the fixes, and every flagged
+ambiguity was closed.
+
+- **define-goal:** the emitted Goal contract now ends with a mandatory turn cap
+  (`Stop after <N> turns`, sized S≈10 / M≈20 / L≈30) — official guidance bounds
+  every `/goal` with a turn or time clause. Enforcement is per-destination
+  (run-now: the evaluator; queue: implementer self-enforced, backed by
+  dispatch's brakes), and a cap-out reports as a budget stop ("turn cap
+  reached"), distinct from a GOAL_UNREACHABLE contract defect. "Goal command
+  facts" now documents the evaluator precisely (the configured small-fast
+  model, default Haiku), the `/goal` no-argument status readout (turns, token
+  spend, latest evaluator reason), and availability (`/goal` is a
+  session-scoped Stop hook — needs a trusted workspace with hooks enabled;
+  `disableAllHooks` blocks it).
+- **loop-architect:** Step 2 maps the official four-loop taxonomy (turn-based /
+  goal-based / time-based / proactive) onto the primitive table — a "proactive
+  loop" ask routes to the queue/routine rows, not just channels; workflows,
+  agent teams, and Stop hooks are called out as building blocks, not loop
+  types — and adds an agent-teams row (collaborating peers that message each
+  other; never a factory lane). Evaluator naming fixed ("Haiku evaluator" →
+  configured small-fast model, default Haiku). New guidance: pair `/goal` with
+  auto mode for unattended runs (per-tool vs per-turn prompts); match `/loop`
+  intervals to the watched system's change rate (Monitor-tool alternative;
+  project `loop.md` beats user); routines management (`/schedule
+  list|update|run`, 1-hour minimum cadence, web-only API/GitHub triggers);
+  Step 4 names the built-in usage surfaces (`/usage`, `/goal` status,
+  `/workflows`); Step 5 adds pilot-on-a-smaller-slice before large workflow
+  runs.
+- **dispatch:** the parallel-implementer ban now names agent-team teammates
+  explicitly (intro + implementer brief); new Hygiene rule **encode recurring
+  lessons** — a gate-failure class recurring across goals is a system defect:
+  propose (one needs-you line) encoding it into `config.verify` /
+  `config.skills` / CLAUDE.md instead of re-fixing per goal; the
+  orchestrator-level no-progress rule is marked distinct from the
+  implementer's ~3-honest-attempts rule.
+- **Site/README:** one-line note that flywheel implements the official
+  guidance's "proactive loops" composition. Skills commit:
+  [`da15b6a`](https://github.com/pragmaticgrowth/flywheel/commit/da15b6a).
+
 ## [4.7.0] — 2026-07-02
 
 **Patch/minor: end-to-end audit of the goal + autonomous-dispatch pipeline —

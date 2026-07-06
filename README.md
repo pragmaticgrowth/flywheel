@@ -5,7 +5,7 @@ A skills-only plugin marketplace for [Claude Code](https://claude.com/claude-cod
 and [Droid](https://factory.ai) (Factory CLI), from Pragmatic Growth.
 
 [![Website](https://img.shields.io/badge/site-plugin.pragmaticgrowth.com-6366f1)](https://plugin.pragmaticgrowth.com)
-[![Version](https://img.shields.io/badge/version-4.7.0-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-4.8.0-8b5cf6)](CHANGELOG.md)
 [![CLIs](https://img.shields.io/badge/runs%20in-Claude%20Code%20%2B%20Droid-0ea66e)](#works-in-both-clis)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
@@ -26,6 +26,11 @@ repo**, and then — when you’re ready — works that queue **one goal per run
 a foreground implementer commits directly on your current branch using TDD and
 a lightweight subagent review loop (independent read-only lenses), the orchestrator runs a local
 build + test gate, and only work that passes is kept (failures roll back).
+
+That shape is the **proactive loops** pattern from Anthropic's official
+["Getting started with loops"](https://x.com/ClaudeDevs/status/2074208949205881033)
+guidance: scheduled dispatch over a work queue, goal contracts with verifiable
+stop conditions, deterministic gate scripts, and fresh-context review.
 
 It is **skills-only**: no MCP servers, no slash commands of its own, no hooks,
 no background daemons, no build step. The marketplace now exposes four plugins:
