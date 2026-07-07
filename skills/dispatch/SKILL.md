@@ -181,8 +181,21 @@ For each claimed goal, in order:
    checkout on the current branch under the method mandates (writing-plans, TDD,
    verification-before-completion) + config.skills + the goal's `skills:`. It uses the
    lightweight subagent-driven quality loop in Phase 3, commits its work on the branch, and
-   ends with verification evidence. It never merges, never opens a PR.
-3. Run the LOCAL gate authoritatively yourself:
+   ends with verification evidence + a `Fresh-check:` block (step 3 checks for it). It never
+   merges, never opens a PR.
+3. Run the LOCAL gate authoritatively yourself — review evidence first, then commands:
+   **Review-evidence check.** For non-trivial work (more than a one-file mechanical edit)
+   the implementer's report must carry its `Fresh-check:` block — the lens verdicts, or the
+   literal `Fresh-check: not required (one-file mechanical edit)` for work that genuinely is.
+   Missing block, or a not-required claim on plainly multi-file work → don't block on the
+   miss, self-heal: spawn the 2–3 read-only lenses yourself over the `gate_base..HEAD` diff
+   (same lenses as the brief's Quality loop step 5, fresh windows, concurrent; findings are
+   hypotheses to verify, not orders). Their verified Critical/Important findings enter the
+   FAIL_FIXABLE repair path like any gate finding. A skipped panel is a compliance miss: when
+   the same miss recurs across goals in this session's fires (no persisted counter — session
+   memory only, per the status-only-in-index rule), surface it once via Hygiene's
+   lesson-encoding rule.
+   **Then the gate commands:**
    `python3 "$PGVALIDATE" --head HEAD --base <gate_base> --goal <id> --goal-file docs/goals/<id>.md`
    plus the repo `config.verify` commands (ordered, all must exit 0). Show output.
 4. PASS → `git reset --soft <gate_base> && git commit -m "feat(goal <id>): <slug>"` (squash to
@@ -294,7 +307,9 @@ Quality loop — keep it lightweight, but do not skip it:
    + regressions (only intended files touched, baseline still green). Two or three lenses is
    the norm and stays lightweight; escalate to a read-only review Workflow only at the ~5+
    independent-checks threshold from step 3. Treat every finding as something to verify, not
-   an order to obey; fix Critical/Important issues or explain why they are false.
+   an order to obey; fix Critical/Important issues or explain why they are false. These
+   verdicts go into your final report's `Fresh-check:` block (see Finish) — the orchestrator
+   checks for it and runs the panel itself if it is missing.
 6. Self-review the final diff, stage only intended files, commit, and report evidence.
 
 Skills are mandatory — invoke each via the Skill tool:
@@ -316,8 +331,12 @@ Finish: before committing, review your diff and stage only the files you meant t
 revert stray lockfile / dependency-manager / formatter churn, or any file you didn't intend
 to touch, that the toolchain introduced (never `git add -A` blind). Commit your intended
 files on the current branch and end with verification evidence (the commands you ran and
-their output), plus the fresh-check verdicts when they were required. Do NOT merge
-anything, do NOT push, do NOT open a PR — the orchestrator runs the gate and integrates.
+their output), plus a labeled `Fresh-check:` block: the lens verdicts when Quality loop
+step 5 applied, or the literal line `Fresh-check: not required (one-file mechanical edit)`
+when it did not. This block is not optional — the orchestrator checks for it and runs the
+review panel itself when it is missing OR when a not-required claim doesn't match the diff
+(multi-file work claiming a one-file edit). Do NOT merge anything, do NOT push, do NOT open a
+PR — the orchestrator runs the gate and integrates.
 
 Constraints: the goal file's "Constraints" section verbatim, plus: never merge, never push,
 never open a PR, and NEVER edit docs/goals/ — the orchestrator owns queue state. If blocked:
@@ -330,9 +349,10 @@ of churning your whole window — never retry the identical failing approach; th
 routes that to a needs-you contract amendment.
 ```
 
-After the implementer returns, run the gate yourself (Working a goal, steps 3–4). A
-`FAIL_FIXABLE` verdict spawns ONE repair agent (same brief, `model: config.model`, fed the
-gate findings); a second identical FAIL → roll back + block.
+After the implementer returns, run the review-evidence check and the gate yourself
+(Working a goal, steps 3–4). A `FAIL_FIXABLE` verdict spawns ONE repair agent (same brief,
+`model: config.model`, fed the gate findings — including any verified Critical/Important
+findings from an orchestrator-run review panel); a second identical FAIL → roll back + block.
 
 ## Solo mode — work one named goal in this session
 
