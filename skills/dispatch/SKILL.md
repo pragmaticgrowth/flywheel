@@ -106,13 +106,21 @@ where it left off:
    **Cross-fire brake (the per-session cap alone is not enough).** The ~3-respawn budget lives
    in this run's context, so under `/loop /dispatch` each fresh fire re-detects the same stale
    claim and restarts the budget from zero — a goal whose implementer keeps dying transiently
-   before landing ANY commit would be respawned forever. Add a session-independent age brake:
-   when a stale `in_progress` claim has zero work commits after its claim commit AND that claim
-   commit is old relative to the loop cadence (its git author date, or the `claimed` date, is
-   more than a few cadences back — e.g. > ~2h for a 15m loop), block it
-   `blocked: repeated transient death` instead of respawning again. This uses only data already
-   in git/the index (no new persisted counter — that would violate status-only-in-index), and
-   it is what actually stops the cross-fire livelock.
+   before landing ANY commit would be respawned forever. Add a session-independent brake
+   measured in FIRES OBSERVED, never wall-clock: count the heartbeat log's lines (Phase 4
+   appends one per fire) timestamped after the claim commit's author date. Three or more
+   fires since the claim with still zero work commits → block it
+   `blocked: repeated transient death` instead of respawning again. Wall-clock age is NOT a
+   valid proxy for attempts: an account usage-limit stop (the subscription's 5-hour or weekly
+   window — see loop-architect's limit-proofing) suspends ALL fires for hours and leaves the
+   same shape (old claim, zero work commits) with zero attempts actually made. An
+   old-but-untried claim — fewer than 3 heartbeat lines since it — is resumed, never blocked.
+   Only when no heartbeat log exists at all (e.g. pre-append plugin versions wrote a
+   single overwritten line) fall back to the old age heuristic: a claim more than a few
+   cadences old (e.g. > ~2h for a 15m loop) is blocked with the same
+   `blocked: repeated transient death` reason. This uses only git/index data plus the runtime
+   heartbeat cache (no new queue state — status-only-in-index holds), and it is what actually
+   stops the cross-fire livelock without mislabeling a quota pause as a dead goal.
 3. **Finish before claiming** (Phase 1 before Phase 2) so finished work always settles first.
 
 ## Phase 0 — read the queue
@@ -397,15 +405,19 @@ surface the stalled state in the report line only. One notification per distinct
 identical no-op fires after it send no further notifications, though the report line still goes
 out every fire — new blocker content notifies again.
 
-**Heartbeat (liveness) — every fire.** Write a one-line heartbeat —
+**Heartbeat (liveness) — every fire.** APPEND a one-line heartbeat —
 `<UTC timestamp> · <done>/<total> · current <id or none> · drained <yes|no>` — to the runtime
 cache at `~/.local/state/pg-dispatch/<SLUG>/heartbeat` (`<SLUG>` = the repo dir name;
-`mkdir -p` then overwrite the file). A silently-dead orchestrator (a 500 / context-exhaustion
-mid-turn) emits nothing, so the next `/dispatch` — or an external watcher — compares the
-heartbeat's age to the expected cadence and treats a long silence as a dead-loop signal,
-turning silent death into a detectable anomaly. The drained flag also feeds the drained-queue
-terminal stop (Phase 0). `factory-doctor`'s queue-liveness probe reports the same staleness
-from the queue side (stale `in_progress` claims).
+`mkdir -p` first; after appending, trim the file to its newest ~50 lines). The log serves two
+readers. (1) Liveness: a silently-dead orchestrator (a 500 / context-exhaustion mid-turn)
+emits nothing, so the next `/dispatch` — or an external watcher — compares the newest line's
+age to the expected cadence and treats a long silence as a dead-loop signal, turning silent
+death into a detectable anomaly. (2) The cross-fire brake (Re-entrancy) counts lines after a
+stale claim's date to measure fires observed — which is how a usage-limit pause (no fires, so
+no lines) is told apart from a goal that keeps failing across live fires. The drained flag
+also feeds the drained-queue terminal stop (Phase 0). `factory-doctor`'s queue-liveness probe
+reports the same staleness from the queue side (stale `in_progress` claims), and its
+limit-resilience probe warns when this loop has no way to survive a usage-limit stop.
 
 ## Hygiene
 

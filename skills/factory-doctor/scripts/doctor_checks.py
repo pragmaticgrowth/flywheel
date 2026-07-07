@@ -178,6 +178,92 @@ def verify_check(verify_cmds, active_goals):
             "detail": f"verify: {len(verify_cmds)} command(s) configured", "fix": ""}
 
 
+def limit_resilience_check(active_goals, heartbeat_lines, signal_configured, scheduler_evidence):
+    # Subscription usage limits (the 5-hour/weekly windows) block ALL turns until reset;
+    # an in-session /loop or same_session cron dies with the session and nothing inside
+    # the CLI restarts it — no hook fires on the limit banner. Survivable setups: an
+    # external OS scheduler firing fresh sessions, or a StopFailure hook (rate_limit
+    # matcher) arming an external resume. WARN only when a loop demonstrably fires on
+    # this repo (heartbeat lines exist) yet neither protection is present.
+    if not active_goals:
+        return {"check": "limit-resilience", "level": "INFO",
+                "detail": "no active goals; usage-limit exposure not applicable", "fix": ""}
+    if heartbeat_lines == 0:
+        return {"check": "limit-resilience", "level": "INFO",
+                "detail": "no dispatch loop has fired here yet; if you set up an unattended "
+                          "loop, make it usage-limit-proof (see loop-architect Step 5)", "fix": ""}
+    if signal_configured or scheduler_evidence:
+        via = "external scheduler" if scheduler_evidence else "StopFailure hook"
+        return {"check": "limit-resilience", "level": "INFO",
+                "detail": f"loop is usage-limit-aware via {via}", "fix": ""}
+    return {"check": "limit-resilience", "level": "WARN",
+            "detail": "a dispatch loop fires on this repo but nothing survives an account "
+                      "usage-limit stop (5-hour/weekly window): in-session loops die at the "
+                      "limit and no hook fires on the banner",
+            "fix": "schedule fresh sessions OUTSIDE the CLI (cron/launchd running "
+                   "claude -p \"/dispatch\"; Droid: CronCreate new_session), and/or add a "
+                   "StopFailure hook (rate_limit matcher) that arms a resume at "
+                   "rate_limits.*.resets_at — see loop-architect Step 5 limit-proofing"}
+
+
+def _heartbeat_line_count(repo_root):
+    # dispatch appends one line per fire to ~/.local/state/pg-dispatch/<SLUG>/heartbeat
+    # (<SLUG> = repo dir name). 0 = no loop has ever fired here (or unreadable).
+    path = os.path.join(os.path.expanduser("~"), ".local", "state", "pg-dispatch",
+                        os.path.basename(repo_root or ""), "heartbeat")
+    try:
+        with open(path) as f:
+            return sum(1 for line in f if line.strip())
+    except OSError:
+        return 0
+
+
+def _has_stop_failure_hook(repo_root):
+    # A configured StopFailure hook = the machine gets a signal when a turn dies on an
+    # API error (incl. rate_limit) and can arm an external resume. Read-only; checks
+    # project + user settings for both CLIs. Parse errors count as absent.
+    home = os.path.expanduser("~")
+    candidates = [os.path.join(repo_root, d, f)
+                  for d in (".claude", ".factory")
+                  for f in ("settings.json", "settings.local.json")]
+    candidates += [os.path.join(home, d, "settings.json") for d in (".claude", ".factory")]
+    for p in candidates:
+        try:
+            hooks = (json.load(open(p)) or {}).get("hooks") or {}
+            if hooks.get("StopFailure"):
+                return True
+        except (OSError, ValueError):
+            continue
+    return False
+
+
+def _external_scheduler_evidence():
+    # Best-effort, read-only sweep for an OS-level scheduler that fires fresh CLI
+    # sessions (the limit-proof loop shape): user crontab, macOS LaunchAgents, and
+    # systemd user timers. Match only unambiguous patterns — a bare "claude" would
+    # false-positive on desktop-app agents.
+    patterns = ("claude -p", "claude --print", "droid exec", "/dispatch")
+
+    def hit(text):
+        return any(p in (text or "") for p in patterns)
+
+    rc, out, _ = _run(["crontab", "-l"])
+    if rc == 0 and hit(out):
+        return True
+    home = os.path.expanduser("~")
+    unit_globs = [os.path.join(home, "Library", "LaunchAgents", "*.plist"),
+                  os.path.join(home, ".config", "systemd", "user", "*.service"),
+                  os.path.join(home, ".config", "systemd", "user", "*.timer")]
+    for g in unit_globs:
+        for p in glob.glob(g):
+            try:
+                if hit(open(p, errors="ignore").read()):
+                    return True
+            except OSError:
+                continue
+    return False
+
+
 def working_tree_check(porcelain):
     if porcelain.strip():
         return {"check": "working-tree", "level": "WARN",
@@ -324,6 +410,12 @@ def run_checks(base):
     # verify check (local gate) — needs active_goals + verify_cmds from queue parse above
     vc = verify_check(verify_cmds, active_goals)
     C.append(vc)
+
+    # usage-limit resilience — needs active_goals from the queue parse above
+    C.append(limit_resilience_check(active_goals,
+                                    _heartbeat_line_count(repo_root),
+                                    _has_stop_failure_hook(repo_root),
+                                    _external_scheduler_evidence()))
 
     levels = {c["level"] for c in C}
     result = "BLOCKER" if "BLOCKER" in levels else "WARN" if "WARN" in levels else "READY"

@@ -101,16 +101,20 @@ text IS the exact command or guidance for the human (the `gh auth refresh …` l
 install command for a missing system tool). The probe checks `browser-verify`: if the repo has
 frontend/UI work (a UI framework in package.json, or any goal referencing `agent-browser`)
 but `agent-browser` isn't installed, it WARNs with the install command — REPORT-only (a global
-npm install + Chromium is a system-level change, never auto-run). The probe also emits two
+npm install + Chromium is a system-level change, never auto-run). The probe also emits three
 REPORT-only loop-health checks (all read-only — never auto-fixed): `queue-liveness` (WARN naming
 any `in_progress` goal with no work commits on the branch after its claim commit — a stale claim /
-silent-death candidate dispatch will respawn or that needs unblocking), and `goal-contracts`
+silent-death candidate dispatch will respawn or that needs unblocking), `goal-contracts`
 (WARN naming any active goal whose file lacks a checkable done-condition — tighten via
-`/define-goal` before dispatch picks it up). The `verify` check WARNs if `config.verify` is
+`/define-goal` before dispatch picks it up), and `limit-resilience` (WARN when a dispatch loop
+demonstrably fires on this repo — heartbeat log lines exist — but nothing survives an account
+usage-limit stop: no external scheduler firing fresh sessions and no `StopFailure` hook; its
+`fix` field carries the limit-proofing guidance from loop-architect Step 5. INFO-only when no
+loop has fired here or a rail is detected). The `verify` check WARNs if `config.verify` is
 absent and there are active goals — copy its `fix` (add a `verify:` list to `index.yaml`). Then
 one status line:
 
-`[doctor] software: <ok|missing> · auth: <ok|n/a> · verify: <configured|⚠ missing|n/a> · working-tree: <clean|⚠ dirty> · working-branch: <ok|⚠ off-base> · ci: <present|none> · queue: <valid|scaffolded|drift> · health: <live|⚠ stale claims|⚠ underspecified goals> · result: READY|WARN|BLOCKER`
+`[doctor] software: <ok|missing> · auth: <ok|n/a> · verify: <configured|⚠ missing|n/a> · working-tree: <clean|⚠ dirty> · working-branch: <ok|⚠ off-base> · ci: <present|none> · queue: <valid|scaffolded|drift> · health: <live|⚠ stale claims|⚠ underspecified goals|⚠ limit-exposed> · result: READY|WARN|BLOCKER`
 
 ## Relationship to the other skills
 

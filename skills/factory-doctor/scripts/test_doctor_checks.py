@@ -169,6 +169,30 @@ def test_config_drift_lists_only_present_keys():
     assert "wip" in r["detail"]
     assert "merge" not in r["detail"]
 
+def test_limit_resilience_not_applicable_without_active_goals():
+    # nothing queued → nothing an outage could stall; never warn.
+    assert dc.limit_resilience_check(0, 5, False, False)["level"] == "INFO"
+
+def test_limit_resilience_info_before_first_loop():
+    # active goals but no heartbeat log = no loop has ever fired here — guidance only,
+    # a WARN would nag every attended repo that never runs unattended.
+    r = dc.limit_resilience_check(2, 0, False, False)
+    assert r["level"] == "INFO"
+
+def test_limit_resilience_warn_when_looping_unprotected():
+    # a loop demonstrably fires on this repo (heartbeat lines exist) and nothing survives
+    # a usage-limit stop: no external scheduler, no StopFailure signal → WARN with fix.
+    r = dc.limit_resilience_check(2, 3, False, False)
+    assert r["level"] == "WARN"
+    assert "usage-limit" in r["detail"]
+    assert r["fix"]
+
+def test_limit_resilience_ok_with_external_scheduler():
+    assert dc.limit_resilience_check(2, 3, False, True)["level"] == "INFO"
+
+def test_limit_resilience_ok_with_stopfailure_hook():
+    assert dc.limit_resilience_check(2, 3, True, False)["level"] == "INFO"
+
 if __name__ == "__main__":
     fns = [g for n, g in sorted(globals().items()) if n.startswith("test_")]
     for fn in fns: fn(); print("ok ", fn.__name__)

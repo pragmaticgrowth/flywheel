@@ -61,6 +61,7 @@ a loop composes.)
 | Poll/babysit on a cadence while a session is open | `/loop <interval> <skill-or-prompt>` | `CronCreate` with `same_session: true`, `recurring: true` |
 | Recurring default maintenance for this repo | bare `/loop` + a `.claude/loop.md` | `CronCreate` same_session with the loop body as the job prompt (no loop.md equivalent) |
 | A backlog of shippable changes worked unattended | docs/goals queue — fill with `define-goal`, then repeat `/dispatch` (one ready goal per run on the checked-out branch; `/loop /dispatch` drains over repeated fires) | docs/goals queue — fill with `define-goal`, then repeat `/dispatch` (one ready goal per run on the checked-out branch; use `CronCreate` same_session to drain over repeated fires) |
+| Unattended loop must survive account usage-limit stops (subscription 5-hour/weekly windows) | OS scheduler (cron/launchd) firing fresh `claude -p "/dispatch"` sessions — the limit-proof wrapper around the backlog row's drain; in-session `/loop` dies at the limit (see Step 5 limit-proofing) | `CronCreate` with `new_session` — fresh session per fire is already the limit-proof shape |
 | Must run with the laptop closed | Routine (`/schedule`; cloud; schedule / API / GitHub triggers) | `CreateAutomation` (cloud; runs on a Droid Computer) or `CronCreate` with `new_session` |
 | Needs local files, machine on, no session open | Desktop scheduled task | `CronCreate` with `new_session` (starts a fresh local session) |
 | React to external events (CI, chat) instead of polling | Channels (`--channels`) or Routine API trigger | Slack integration + `CronCreate` new_session; or `CreateAutomation` with event triggers |
@@ -177,7 +178,9 @@ Create conversationally with `/schedule` (recurring or one-off); manage with
   status) to the state file/ledger and announces the cycle number, so the ABSENCE of an
   update is detectable — a loop that silently dies (e.g. after a context-window blowout)
   otherwise looks alive. For unattended/cloud runs, recommend an external silence-detector
-  ("no heartbeat in N intervals → alert").
+  ("no heartbeat in N intervals → alert"). Note a usage-limit stop is indistinguishable
+  from silent death on the heartbeat alone — Step 5's limit-proofing rail is what tells
+  them apart and survives it.
 - **Health metric**: the number that matters is cost (tokens/$) per ACCEPTED change — a
   gate-passed completed goal or a passing artifact — not raw tokens or loops run. A sustained
   acceptance rate below ~50% means the loop is making slop: tighten the gate or stop it. For
@@ -211,6 +214,35 @@ Always include, in the prompt itself (the soft layer, restated for the agent):
 - Human gate before merge / deploy / dependency changes
 - Quarantine: agents reading untrusted content (tickets, scraped pages) get no
   high-privilege tools; separate actor agents never see the raw text
+
+### Usage-limit proofing (unattended runs on subscription plans)
+
+A subscription usage limit (the 5-hour rolling window; a separate weekly window) blocks EVERY
+turn until its reset time. An in-session `/loop` (or Droid same_session cron) simply stops
+firing, in one of two shapes — neither self-recovering: hit the limit BETWEEN turns and the
+banner just blocks new prompts (no hook fires, SessionEnd never reports it); hit it MID-turn
+and the turn dies on a rate-limit API error, the one case a `StopFailure` hook can observe.
+Either way the CLI ships no wait-until-reset auto-resume. Treat the limit like a power cut,
+not an error the loop can handle from inside. Rails, in order of leverage:
+
+- **Schedule outside the session.** The limit-proof shape is an OS scheduler (cron / launchd /
+  Task Scheduler) firing a fresh `claude -p "/dispatch"` (or `droid exec …`) per cadence.
+  Fires during the limit window fail cheaply; the first fire after reset just works — dispatch
+  fires are idempotent and one-goal, so no state transfer is needed. Droid's `CronCreate
+  new_session` is already this shape.
+- **Detect instead of blind-firing (optional refinement).** Two supported surfaces expose the
+  reset clock: the statusline stdin JSON carries `rate_limits.five_hour.resets_at` /
+  `rate_limits.seven_day.resets_at` (Unix epoch seconds; subscription plans; present after the
+  session's first API response), and a `StopFailure` hook with the `rate_limit` matcher fires
+  when a turn dies mid-flight on a rate-limit API error (informational only, and it misses the
+  between-turns banner shape — have it write a marker file the outer scheduler reads; never
+  make it the only rail). Sleep until the relevant `resets_at` plus jitter, then fire.
+- **Respect the weekly window.** `seven_day.resets_at` can be days away — retrying a
+  weekly-capped account hourly is pure noise; stand down until that reset.
+- **Bookkeeping survives on its own.** The docs/goals ledger plus dispatch's fires-observed
+  cross-fire brake already treat a quota pause as "no attempts made" (stale claims resume,
+  never get blocked as dead). `factory-doctor`'s `limit-resilience` probe warns when a repo
+  with a live loop has none of these rails.
 
 ## Step 6 — Remote layer (offer when relevant)
 
