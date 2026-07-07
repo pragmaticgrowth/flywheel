@@ -188,6 +188,114 @@ def test_main_dryrun_noop_when_toggle_off():
         assert rc == 0 and out.strip() == ""
 
 
+# ---- v4.12.0: config resolution chain (env > project > global) ----
+
+def _write(path, obj):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    json.dump(obj, open(path, "w"))
+
+
+def _state(d):
+    # point the notifier's state dir at a temp dir for resolution tests
+    os.environ["XDG_STATE_HOME"] = d
+    os.environ.pop("PG_TELEGRAM_CONFIG", None)
+    os.environ.pop("PG_TELEGRAM_BOT_TOKEN", None)
+    os.environ.pop("PG_TELEGRAM_CHAT_ID", None)
+
+
+def test_resolve_env_creds_win_without_any_file():
+    with tempfile.TemporaryDirectory() as d:
+        _state(d)
+        os.environ["PG_TELEGRAM_BOT_TOKEN"] = "1:ENVTOK"
+        os.environ["PG_TELEGRAM_CHAT_ID"] = "77"
+        try:
+            cfg = ptn.resolve_config("/repos/anything")
+            assert cfg and cfg["bot_token"] == "1:ENVTOK" and cfg["chat_id"] == "77"
+            assert cfg["events"].get("dispatch")  # env path enables all categories
+        finally:
+            _state(d)
+
+
+def test_resolve_project_longest_prefix_wins():
+    with tempfile.TemporaryDirectory() as d:
+        _state(d)
+        pdir = os.path.join(d, "pg-telegram", "projects")
+        _write(os.path.join(pdir, "a.json"),
+               _cfg(chat_id="short", project_root="/repos"))
+        _write(os.path.join(pdir, "b.json"),
+               _cfg(chat_id="long", project_root="/repos/site"))
+        cfg = ptn.resolve_config("/repos/site/src")
+        assert cfg["chat_id"] == "long"
+
+
+def test_resolve_project_optout_beats_global():
+    with tempfile.TemporaryDirectory() as d:
+        _state(d)
+        _write(os.path.join(d, "pg-telegram", "config.json"), _cfg())
+        _write(os.path.join(d, "pg-telegram", "projects", "x.json"),
+               _cfg(enabled=False, project_root="/repos/quiet"))
+        cfg = ptn.resolve_config("/repos/quiet")
+        assert cfg["enabled"] is False  # explicit opt-out, no fallthrough to global
+
+
+def test_resolve_falls_back_to_global():
+    with tempfile.TemporaryDirectory() as d:
+        _state(d)
+        _write(os.path.join(d, "pg-telegram", "config.json"), _cfg(chat_id="glob"))
+        cfg = ptn.resolve_config("/repos/other")
+        assert cfg["chat_id"] == "glob"
+
+
+def test_resolve_none_when_nothing_configured():
+    with tempfile.TemporaryDirectory() as d:
+        _state(d)
+        assert ptn.resolve_config("/repos/x") is None
+
+
+def test_explicit_config_env_still_wins_over_everything():
+    with tempfile.TemporaryDirectory() as d:
+        _state(d)
+        p = os.path.join(d, "explicit.json"); _write(p, _cfg(chat_id="explicit"))
+        os.environ["PG_TELEGRAM_CONFIG"] = p
+        os.environ["PG_TELEGRAM_BOT_TOKEN"] = "1:ENVTOK"
+        os.environ["PG_TELEGRAM_CHAT_ID"] = "77"
+        try:
+            cfg = ptn.resolve_config("/repos/x")
+            assert cfg["chat_id"] == "explicit"
+        finally:
+            _state(d)
+
+
+# ---- v4.12.0: dispatch category (hook-free direct notify) ----
+
+def test_should_send_dispatch_toggle():
+    cfg = _cfg(events={"errors": True, "waiting": True,
+                       "completions": True, "dispatch": True})
+    ok, _ = ptn.should_send(cfg, "dispatch", {"cwd": "/x"})
+    assert ok
+    cfg["events"]["dispatch"] = False
+    ok, _ = ptn.should_send(cfg, "dispatch", {"cwd": "/x"})
+    assert not ok
+
+
+def test_compose_dispatch_includes_report_and_repo():
+    msg = ptn.compose_message("dispatch",
+                              {"cwd": "/repos/myapp",
+                               "report": "[dispatch] 6/8 done · blocked: 1 · needs-you: goal 004"})
+    assert "6/8 done" in msg and "myapp" in msg and "flywheel" in msg
+
+
+def test_main_dispatch_accepts_plaintext_stdin():
+    # dispatch pipes the raw report line — no JSON quoting hazards
+    with tempfile.TemporaryDirectory() as d:
+        cfg = _cfg(events={"errors": True, "waiting": True,
+                           "completions": True, "dispatch": True})
+        p = os.path.join(d, "config.json"); json.dump(cfg, open(p, "w"))
+        rc, out = _run_main("[dispatch] 3/5 done · ready: 1 · blocked: 1",
+                            "dispatch", p)
+        assert rc == 0 and "3/5 done" in out
+
+
 if __name__ == "__main__":
     fns = [g for n, g in sorted(globals().items()) if n.startswith("test_")]
     for fn in fns:

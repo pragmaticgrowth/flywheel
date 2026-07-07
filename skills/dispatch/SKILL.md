@@ -419,6 +419,19 @@ also feeds the drained-queue terminal stop (Phase 0). `factory-doctor`'s queue-l
 reports the same staleness from the queue side (stale `in_progress` claims), and its
 limit-resilience probe warns when this loop has no way to survive a usage-limit stop.
 
+**Telegram ping (optional, hook-free) — every fire.** After the report line and
+heartbeat, resolve `$PGNOTIFY` once per session with the same fallback chain as
+`$PGVALIDATE` (swap the path:
+`skills/telegram-message/scripts/pg_telegram_notify.py`), then pipe the report
+line to it:
+`printf '%s' "<the Phase 4 report line>" | python3 "$PGNOTIFY" dispatch`.
+The notifier no-ops instantly unless the owner ran `/telegram-message` for this
+project/machine (or set the cloud env vars), always exits 0 so it can never fail
+a fire, and works identically in Claude Code, Droid, and cloud runs because it
+is a plain script call, not a hook — on Droid, where hooks don't fire under
+`droid exec`, this IS the notification path. Skip silently if the script can't
+be resolved.
+
 ## Hygiene
 
 When `completed` entries crowd the index (~20+), move their files to `docs/goals/done/`

@@ -13,7 +13,7 @@ Env:
 import json, os, sys, time, urllib.request, urllib.parse
 
 DEFAULT_TIMEOUT = 8
-CATEGORIES = ("errors", "waiting", "completions")
+CATEGORIES = ("errors", "waiting", "completions", "dispatch")
 
 
 def state_dir():
@@ -37,13 +37,65 @@ def load_config(path=None):
         return None
 
 
-def read_stdin_json():
+def projects_dir():
+    return os.path.join(state_dir(), "projects")
+
+
+def resolve_config(cwd):
+    """Personal-settings resolution, first match wins:
+    1. PG_TELEGRAM_CONFIG — explicit file override (tests/debug).
+    2. PG_TELEGRAM_BOT_TOKEN + PG_TELEGRAM_CHAT_ID env vars — for cloud runs
+       (routines / Droid automations) where no state file persists; enables all
+       categories (narrow with PG_TELEGRAM_EVENTS=errors,dispatch,...).
+    3. Per-project config: ~/.local/state/pg-telegram/projects/*.json whose
+       project_root is the longest prefix of cwd. An enabled:false project
+       config is an explicit opt-out — it does NOT fall through to global.
+    4. Global ~/.local/state/pg-telegram/config.json.
+    Returns None when nothing is configured. All project configs live OUTSIDE
+    any repo, so they can never be committed or pushed."""
+    explicit = os.environ.get("PG_TELEGRAM_CONFIG")
+    if explicit:
+        return load_config(explicit)
+    tok = os.environ.get("PG_TELEGRAM_BOT_TOKEN")
+    chat = os.environ.get("PG_TELEGRAM_CHAT_ID")
+    if tok and chat:
+        names = (os.environ.get("PG_TELEGRAM_EVENTS") or ",".join(CATEGORIES))
+        return {"enabled": True, "bot_token": tok, "chat_id": chat,
+                "events": {n.strip(): True for n in names.split(",") if n.strip()},
+                "only_cwd": None, "min_interval_seconds": 0}
+    best = None
+    try:
+        import glob as _glob
+        for f in _glob.glob(os.path.join(projects_dir(), "*.json")):
+            cfg = load_config(f)
+            root = (cfg or {}).get("project_root")
+            if not root:
+                continue
+            root = root.rstrip("/")
+            if cwd == root or cwd.startswith(root + "/"):
+                if best is None or len(root) > len(best["project_root"].rstrip("/")):
+                    best = cfg
+    except OSError:
+        pass
+    if best is not None:
+        return best
+    return load_config()
+
+
+def read_stdin_payload():
+    """Hook events pipe JSON; dispatch pipes its raw report line (no JSON
+    quoting hazards) — non-JSON stdin becomes {'report': <text>}."""
     try:
         raw = sys.stdin.read()
-        obj = json.loads(raw) if raw.strip() else {}
-        return obj if isinstance(obj, dict) else {}
-    except (ValueError, OSError):
+    except OSError:
         return {}
+    if not raw.strip():
+        return {}
+    try:
+        obj = json.loads(raw)
+        return obj if isinstance(obj, dict) else {}
+    except ValueError:
+        return {"report": raw.strip()}
 
 
 def should_send(cfg, category, payload):
@@ -83,8 +135,12 @@ def _throttled(cfg, category):
     return False
 
 
+def _cwd(payload):
+    return payload.get("cwd") or os.getcwd()
+
+
 def _repo(payload):
-    cwd = payload.get("cwd") or ""
+    cwd = _cwd(payload)
     return os.path.basename(cwd.rstrip("/")) or cwd or "?"
 
 
@@ -128,6 +184,9 @@ def compose_message(category, payload):
         body = f"✅ flywheel · run ended\nrepo: {repo}\n{reason}"
         hb = _heartbeat_tail(payload)
         return body + (f"\n{hb}" if hb else "")
+    if category == "dispatch":
+        report = _clip(payload.get("report"), 500) or "dispatch fired"
+        return f"🏭 flywheel · dispatch\nrepo: {repo}\n{report}"
     return f"flywheel · {category}\nrepo: {repo}"
 
 
@@ -164,9 +223,9 @@ def _log(line):
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     category = argv[0] if argv else ""
-    payload = read_stdin_json()
+    payload = read_stdin_payload()
     try:
-        cfg = load_config()
+        cfg = resolve_config(_cwd(payload))
         ok, _why = should_send(cfg, category, payload)
         if not ok:
             return 0
