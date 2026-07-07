@@ -13,6 +13,44 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [4.10.0] — 2026-07-07
+
+**Minor: the factory now survives account usage-limit stops.** A subscription
+usage limit (the 5-hour rolling window, or the weekly window) blocks every
+turn until reset: an in-session `/loop /dispatch` silently dies, no Claude
+Code hook fires on the limit banner (source-verified on CLI 2.1.202 —
+SessionEnd/Notification carry no limit event; `StopFailure` with the
+`rate_limit` matcher is the one informational signal), and the CLI ships no
+wait-until-reset auto-resume. Before this release a quota pause was
+indistinguishable from a dead implementer, so dispatch's cross-fire brake
+would wrongly block a healthy goal as `repeated transient death`.
+
+- **loop-architect:** new primitive-table row + Step 5 "Usage-limit proofing"
+  rail. The limit-proof shape is an OS scheduler (cron/launchd) firing fresh
+  `claude -p "/dispatch"` sessions (Droid: `CronCreate new_session` already
+  is this shape); an optional refinement reads the reset clock from the
+  statusline `rate_limits.five_hour/seven_day.resets_at` epoch fields or a
+  `StopFailure` (rate_limit) hook marker, and stands down until a weekly
+  reset instead of retrying hourly. Step 4 notes the heartbeat alone cannot
+  tell a limit pause from silent death.
+- **dispatch:** the cross-fire brake is now measured in FIRES OBSERVED, never
+  wall-clock — it counts heartbeat lines after the stale claim's date and
+  blocks only at ≥3 fires with zero work commits; an old-but-untried claim
+  (a quota/outage gap) resumes. The Phase 4 heartbeat becomes an append log
+  (newest ~50 lines) so any fresh fire can count attempts; wall-clock age
+  survives only as the fallback when no heartbeat log exists.
+- **factory-doctor:** new read-only `limit-resilience` probe in
+  `doctor_checks.py` (+5 tests, 35 total): WARNs when a dispatch loop
+  demonstrably fires on the repo (heartbeat lines exist) but neither an
+  external scheduler (crontab / LaunchAgents / systemd user timers referencing
+  `claude -p`, `droid exec`, or `/dispatch`) nor a configured `StopFailure`
+  hook is present; INFO otherwise. Status line `health:` gains
+  `⚠ limit-exposed`.
+
+Dry-run tested on 11 scenario questions with cited answers; all three flagged
+ambiguities closed before shipping. Skill change:
+[`cd06faa`](https://github.com/pragmaticgrowth/flywheel/commit/cd06faa).
+
 ## [4.9.0] — 2026-07-07
 
 **Minor: dispatch's local gate now verifies review evidence** — closing the

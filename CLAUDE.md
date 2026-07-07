@@ -4,7 +4,7 @@
 
 Skills-only Claude Code and Droid (Factory CLI) marketplace from Pragmatic Growth.
 The repo now publishes four plugins from one `pragmatic-growth` marketplace:
-`flywheel` v4.8.0, `html-artifacts` v1.0.0, `autoresearch` v1.0.0, and
+`flywheel` v4.10.0, `html-artifacts` v1.0.0, `autoresearch` v1.0.0, and
 `human-writing` v1.0.0. No MCP
 servers, no commands, no
 agents, no hooks, no build step. `flywheel` has four skills under root
@@ -57,12 +57,25 @@ appropriate paths, commands, and scheduling primitives.
   bar, then labeled `ready`/`blocked` counts that sum to `total`
   (lead with done, never `ready/total`, which reads as "nothing done");
   `needs-you` holds human-blocked goals plus any non-blocking CI failures.
+  Each fire APPENDS a heartbeat line (`~/.local/state/pg-dispatch/<SLUG>/heartbeat`,
+  newest ~50 kept); the cross-fire brake counts heartbeat lines after a stale
+  claim's date (≥3 fires with zero work commits → `blocked: repeated transient
+  death`) instead of wall-clock age, so an account usage-limit pause (no fires
+  → no lines) resumes a claim rather than mislabeling it dead.
 - **loop-architect** — designs loop contracts (prompt + verification +
   stop conditions) for autonomous /goal, /loop, routine, or remote runs;
-  names `docs/goals/index.yaml` the canonical factory ledger.
+  names `docs/goals/index.yaml` the canonical factory ledger. Includes
+  usage-limit proofing (Step 5): subscription 5-hour/weekly limits kill
+  in-session loops with no hook fired, so unattended drains schedule OUTSIDE
+  the session (cron/launchd firing fresh `claude -p "/dispatch"`; Droid
+  `CronCreate new_session`), optionally reading the reset clock from statusline
+  `rate_limits.*.resets_at` or a `StopFailure` (rate_limit) hook marker.
 - **factory-doctor** — one-pass preflight/doctor for a repo + machine:
-  checks software, gh auth + scopes, the git working tree, CI, and queue
-  state; aggressively auto-fixes everything local (scaffolds the queue,
+  checks software, gh auth + scopes, the git working tree, CI, queue
+  state, and loop health (stale claims, underspecified goals, and
+  `limit-resilience` — WARN when a repo's loop demonstrably fires but has no
+  usage-limit rail: no external scheduler, no `StopFailure` hook);
+  aggressively auto-fixes everything local (scaffolds the queue,
   strips deprecated v3 config keys — `merge`/`wip`/`execution`/`autonomy` —
   from a stale `index.yaml` so v3-era projects stop silently running dead
   config under the v4 model) and

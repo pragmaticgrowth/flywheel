@@ -5,7 +5,7 @@ A skills-only plugin marketplace for [Claude Code](https://claude.com/claude-cod
 and [Droid](https://factory.ai) (Factory CLI), from Pragmatic Growth.
 
 [![Website](https://img.shields.io/badge/site-plugin.pragmaticgrowth.com-6366f1)](https://plugin.pragmaticgrowth.com)
-[![Version](https://img.shields.io/badge/version-4.9.0-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-4.10.0-8b5cf6)](CHANGELOG.md)
 [![CLIs](https://img.shields.io/badge/runs%20in-Claude%20Code%20%2B%20Droid-0ea66e)](#works-in-both-clis)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
@@ -159,14 +159,23 @@ conditions** — and maps the right primitives for your CLI (`/loop` vs
 `CronCreate`, `/goal` vs `droid exec`). Use it whenever you want something to
 run unattended, on a schedule, or remotely. If the cadence, gate, budget, or
 stop condition is unclear, it asks a short calibration round before writing the
-copy-pasteable setup.
+copy-pasteable setup. For unattended runs on subscription plans it also designs
+**usage-limit proofing**: a 5-hour/weekly limit blocks every turn until reset
+and kills an in-session `/loop` with no hook fired, so the limit-proof shape is
+an OS scheduler (cron/launchd) firing fresh `claude -p "/dispatch"` sessions —
+optionally reading the reset clock from the statusline `rate_limits.*.resets_at`
+fields or a `StopFailure` hook marker (Droid: `CronCreate new_session` already
+has this shape).
 
 ### factory-doctor — get the environment ready
 
 Run this **before your first `/dispatch`**, or any time the factory behaves
 like the environment isn’t ready. It checks software, `gh` auth + scopes, the
 local gate (`config.verify` present and runnable), a clean working tree, the
-working branch, CI, and the queue itself — **auto-fixing everything local**
+working branch, CI, the queue itself, and loop health — stale claims,
+underspecified goals, and **usage-limit exposure** (a repo whose dispatch loop
+demonstrably fires but has no rail that survives an account limit stop) —
+**auto-fixing everything local**
 (scaffolding the queue, stripping deprecated v3 config keys —
 `merge`/`wip`/`execution`/`autonomy` — from a stale `index.yaml`, and checking
 both `.claude/` and `.factory/` settings) and
@@ -406,6 +415,16 @@ burnstop — an external ceiling the loop **cannot edit itself**, so a flaky que
 can’t burn indefinitely. When the budget is hit (or the queue drains), dispatch
 stops and surfaces the reason. Let **loop-architect** design the loop contract
 (verification + stop conditions) rather than firing a bare prompt.
+
+One caveat for overnight runs on subscription plans: a **usage limit** (5-hour
+or weekly window) blocks every turn until reset and silently kills an
+in-session `/loop` — no hook fires, and the CLI has no built-in auto-resume.
+The limit-proof shape is scheduling *outside* the session (cron/launchd firing
+fresh `claude -p "/dispatch"` runs; Droid: `CronCreate new_session`) — each
+fire is idempotent, so the first fire after reset just continues the queue.
+Dispatch’s heartbeat log and fires-observed brake keep a quota pause from being
+misread as a dead goal, and `/factory-doctor` warns when a looping repo has no
+limit rail.
 
 ---
 
