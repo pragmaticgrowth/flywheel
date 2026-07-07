@@ -94,8 +94,9 @@ never write it into any repo file):
    (`project_root` only in project-scope files.) Preserve an existing file's
    `events`/`only_cwd`/`min_interval_seconds` on an update; only overwrite
    token/chat_id/enabled.
-5. **Send a test message:**
-   `curl -sS "https://api.telegram.org/bot<token>/sendMessage" -d chat_id=<id> --data-urlencode "text=✅ flywheel notifications are wired to this chat."`
+5. **Send a test message** — lead with the PROJECT name (several projects may
+   share one chat; the project is always the headline of every notification):
+   `curl -sS "https://api.telegram.org/bot<token>/sendMessage" -d chat_id=<id> --data-urlencode "text=✅ <project-dir-name> · notifications wired to this chat"`
    Confirm the user sees it. If the send fails, surface the Telegram error.
 6. **Ensure the hooks are live** for the runtime (below).
 7. **Report:** which events are on, where the config lives, how to disable, and

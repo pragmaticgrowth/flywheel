@@ -78,30 +78,35 @@ def test_only_cwd_filter_suppresses_offscope():
 
 
 # ---- message composition per category ----
+# Multi-project chats: the PROJECT name must lead every message (first line),
+# no plugin brand on line 1, no redundant repo: line.
 
-def test_compose_errors_includes_error_and_repo():
+def _first(msg):
+    return msg.splitlines()[0]
+
+
+def test_compose_errors_leads_with_project():
     payload = {"cwd": "/repos/myapp", "error": "rate_limit",
                "error_details": "429 Too Many Requests",
                "last_assistant_message": "API Error: Rate limit reached"}
     msg = ptn.compose_message("errors", payload)
-    assert "rate_limit" in msg
-    assert "myapp" in msg
-    assert "429" in msg
-    assert "flywheel" in msg
+    assert "myapp" in _first(msg)
+    assert "rate_limit" in msg and "429" in msg
+    assert "repo:" not in msg  # project is the headline, not a footnote
 
 
-def test_compose_waiting_includes_message_text():
+def test_compose_waiting_leads_with_project():
     payload = {"cwd": "/repos/myapp", "message": "Claude needs your permission",
                "notification_type": "permission_prompt"}
     msg = ptn.compose_message("waiting", payload)
+    assert "myapp" in _first(msg)
     assert "Claude needs your permission" in msg
-    assert "myapp" in msg
 
 
-def test_compose_completions_includes_reason_and_repo():
+def test_compose_completions_leads_with_project():
     payload = {"cwd": "/repos/myapp", "reason": "prompt_input_exit"}
     msg = ptn.compose_message("completions", payload)
-    assert "myapp" in msg
+    assert "myapp" in _first(msg)
     assert "prompt_input_exit" in msg
 
 
@@ -278,11 +283,12 @@ def test_should_send_dispatch_toggle():
     assert not ok
 
 
-def test_compose_dispatch_includes_report_and_repo():
+def test_compose_dispatch_leads_with_project():
     msg = ptn.compose_message("dispatch",
                               {"cwd": "/repos/myapp",
                                "report": "[dispatch] 6/8 done · blocked: 1 · needs-you: goal 004"})
-    assert "6/8 done" in msg and "myapp" in msg and "flywheel" in msg
+    assert "myapp" in _first(msg)
+    assert "6/8 done" in msg
 
 
 def test_main_dispatch_accepts_plaintext_stdin():

@@ -1,0 +1,9 @@
+config:
+  base: main
+  model: inherit
+  skills: []
+  verify:
+    - python3 -m pytest -q
+  # budget:           # optional — uncomment to cap repeated dispatch fires
+  #   max_goals_per_session: 1
+goals: {}

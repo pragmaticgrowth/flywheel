@@ -162,32 +162,28 @@ def _heartbeat_tail(payload):
 
 
 def compose_message(category, payload):
-    """Plain-text Telegram body for a category. Never raises."""
+    """Plain-text Telegram body. The PROJECT name leads every message (first
+    line) — several projects share one chat, so the project is the headline,
+    never a footnote. Never raises."""
     repo = _repo(payload)
     if category == "errors":
         err = payload.get("error") or "error"
         det = payload.get("error_details") or ""
-        head = f"🛑 flywheel · turn failed\nerror: {err}"
-        if det:
-            head += f" ({_clip(det, 120)})"
+        line2 = f"error: {err}" + (f" ({_clip(det, 120)})" if det else "")
         tail = _clip(payload.get("last_assistant_message"), 300)
-        return f"{head}\nrepo: {repo}" + (f"\n{tail}" if tail else "")
+        return f"🛑 {repo} · turn failed\n{line2}" + (f"\n{tail}" if tail else "")
     if category == "waiting":
         msg = _clip(payload.get("message"), 300) or "agent is waiting for you"
         ntype = payload.get("notification_type")
-        line = f"🔔 flywheel · needs you\n{msg}"
-        if ntype:
-            line += f"\n[{ntype}]"
-        return f"{line}\nrepo: {repo}"
+        return f"🔔 {repo} · needs you\n{msg}" + (f"\n[{ntype}]" if ntype else "")
     if category == "completions":
         reason = payload.get("reason") or "session ended"
-        body = f"✅ flywheel · run ended\nrepo: {repo}\n{reason}"
         hb = _heartbeat_tail(payload)
-        return body + (f"\n{hb}" if hb else "")
+        return f"✅ {repo} · run ended\n{reason}" + (f"\n{hb}" if hb else "")
     if category == "dispatch":
         report = _clip(payload.get("report"), 500) or "dispatch fired"
-        return f"🏭 flywheel · dispatch\nrepo: {repo}\n{report}"
-    return f"flywheel · {category}\nrepo: {repo}"
+        return f"🏭 {repo} · dispatch\n{report}"
+    return f"{repo} · {category}"
 
 
 def build_request(cfg, text):

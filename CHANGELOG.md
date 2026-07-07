@@ -13,6 +13,17 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [4.12.1] — 2026-07-07
+
+**Patch: notification messages lead with the PROJECT name.** With several
+projects feeding one Telegram chat, the project must be the headline, not a
+`repo:` footnote — and the old `flywheel ·` prefix on line 1 was brand noise
+(ambiguous for this very repo). Every category now formats as
+`<emoji> <project> · <event>` on the first line (`🛑 myapp · turn failed`,
+`🔔 myapp · needs you`, `✅ myapp · run ended`, `🏭 myapp · dispatch`), body
+below, `repo:` line dropped. The skill's setup test message follows the same
+rule. Tests updated to pin the first-line contract (30 passing).
+
 ## [4.12.0] — 2026-07-07
 
 **Minor: telegram-message goes project-scoped, and Droid + cloud get pings.**
