@@ -5,7 +5,7 @@ A skills-only plugin marketplace for [Claude Code](https://claude.com/claude-cod
 and [Droid](https://factory.ai) (Factory CLI), from Pragmatic Growth.
 
 [![Website](https://img.shields.io/badge/site-plugin.pragmaticgrowth.com-6366f1)](https://plugin.pragmaticgrowth.com)
-[![Version](https://img.shields.io/badge/version-4.8.0-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-4.9.0-8b5cf6)](CHANGELOG.md)
 [![CLIs](https://img.shields.io/badge/runs%20in-Claude%20Code%20%2B%20Droid-0ea66e)](#works-in-both-clis)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
@@ -65,7 +65,7 @@ want a review surface — flywheel just doesn't require one.)
 | Skill | One line | Invoke with |
 |---|---|---|
 | **define-goal** | Plain-language want → a measurable goal contract (or a whole document of them). Never writes code. | `/define-goal …` · or just say *“I want…”* |
-| **dispatch** | The factory orchestrator: works one ready goal per run — claim, implement with TDD + fresh checks, local gate, keep or roll back. | `/dispatch` · *”work goal 005”* |
+| **dispatch** | The factory orchestrator: works one ready goal per run — claim, implement with TDD + fresh checks, review-evidence-verified local gate, keep or roll back. | `/dispatch` · *”work goal 005”* |
 | **loop-architect** | Designs the *loop contract* (prompt + verification + stop conditions) for autonomous, scheduled, or remote runs. | *“keep working on X”* · setting up a `/loop`, routine, or cron |
 | **factory-doctor** | One-pass preflight/doctor for the repo + machine. Auto-fixes everything local; reports the rest with exact fixes. | `/factory-doctor` |
 

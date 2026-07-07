@@ -13,6 +13,29 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [4.9.0] — 2026-07-07
+
+**Minor: dispatch's local gate now verifies review evidence** — closing the
+one gap a transcript-forensics audit of every real dispatch run found. The
+Jul-1 brief hardening took implementer nesting from 0/7 to ~100%, but
+compliance stayed prompt-enforced: one audited goal ran its explores, skipped
+its review lenses, and still gate-PASSED. The gate now checks, and self-heals.
+
+- **dispatch:** the implementer's Finish report must end with a labeled
+  `Fresh-check:` block — the lens verdicts when the fresh-window panel
+  applied, or the literal `Fresh-check: not required (one-file mechanical
+  edit)` line when it didn't. Working-a-goal step 3 opens with a
+  review-evidence check before the gate commands: a missing block, or a
+  not-required claim on plainly multi-file work, makes the orchestrator spawn
+  the 2–3 read-only lenses itself over `gate_base..HEAD` (fresh windows,
+  concurrent; findings are hypotheses to verify). Verified Critical/Important
+  findings enter the existing `FAIL_FIXABLE` repair path; the miss itself
+  never blocks a goal. Recurring misses surface once via Hygiene's
+  lesson-encoding rule (session memory only — no persisted counter, per
+  status-only-in-index). Dry-run tested on 7 scenarios with cited answers;
+  all flagged ambiguities closed before shipping. Skill change:
+  [`210703b`](https://github.com/pragmaticgrowth/flywheel/commit/210703b).
+
 ## [4.8.0] — 2026-07-07
 
 **Minor: alignment pass with Anthropic's official loops guidance** — the

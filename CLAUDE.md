@@ -41,7 +41,11 @@ appropriate paths, commands, and scheduling primitives.
   `gate_base`, spawns ONE foreground implementer that commits its work
   directly on the branch, using a lightweight subagent-driven quality loop
   (plan/checklist, TDD, fresh verifier/reviewer subagent for non-trivial work),
-  then runs the LOCAL gate authoritatively: the deterministic `pg_validate.py`
+  then runs the LOCAL gate authoritatively: a review-evidence check (the
+  implementer's report must carry its `Fresh-check:` lens verdicts or an
+  explicit not-required line — missing ⇒ the orchestrator runs the 2–3
+  read-only review lenses itself, feeding verified findings into the repair
+  path), then the deterministic `pg_validate.py`
   over the `gate_base..HEAD` diff plus the repo's `config.verify` build+test
   commands. PASS → squash the goal's commits to one `feat(goal NNN)` commit
   and mark it `completed`; FAIL → `git reset --hard gate_base` and mark it
