@@ -13,6 +13,20 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [4.13.0] — 2026-07-07
+
+**Minor: telegram-message identifies the SESSION, drops timestamp noise.**
+Several sessions on one project were indistinguishable in the chat. Message
+headlines are now `<emoji> <project> · <session> · <event>`, where the session
+label is the session's name — a `/rename` or Claude Code's derived name,
+resolved by `session_id` from the live-session registry at
+`~/.claude/sessions/<pid>.json` — falling back to the session id's first
+8 chars. Dispatch pings (plaintext pipe, no session id) keep the plain
+`<project> · dispatch` headline. Completion messages also stop echoing the
+heartbeat's UTC timestamp — Telegram already shows arrival time. Registry
+lookup is best-effort and never-crash like the rest of the notifier; +6 tests
+(36 total).
+
 ## [4.12.1] — 2026-07-07
 
 **Patch: notification messages lead with the PROJECT name.** With several

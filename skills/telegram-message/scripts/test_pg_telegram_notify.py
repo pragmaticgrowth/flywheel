@@ -193,6 +193,63 @@ def test_main_dryrun_noop_when_toggle_off():
         assert rc == 0 and out.strip() == ""
 
 
+# ---- v4.13.0: session label (rename > short id) + timestamp-free heartbeat ----
+
+def _sessions(d, *entries):
+    sd = os.path.join(d, "sessions"); os.makedirs(sd, exist_ok=True)
+    for i, e in enumerate(entries):
+        json.dump(e, open(os.path.join(sd, f"{i}.json"), "w"))
+    os.environ["PG_TELEGRAM_SESSIONS_DIR"] = sd
+    return sd
+
+
+def test_session_label_uses_rename():
+    with tempfile.TemporaryDirectory() as d:
+        _sessions(d, {"sessionId": "abc-123-def", "name": "pricing-fix"})
+        try:
+            assert ptn._session_label({"session_id": "abc-123-def"}) == "pricing-fix"
+        finally:
+            os.environ.pop("PG_TELEGRAM_SESSIONS_DIR", None)
+
+
+def test_session_label_falls_back_to_short_id():
+    with tempfile.TemporaryDirectory() as d:
+        _sessions(d, {"sessionId": "other", "name": "nope"})
+        try:
+            assert ptn._session_label({"session_id": "7cf6766a-1f89-4462"}) == "7cf6766a"
+        finally:
+            os.environ.pop("PG_TELEGRAM_SESSIONS_DIR", None)
+
+
+def test_session_label_empty_without_session_id():
+    assert ptn._session_label({}) == ""
+
+
+def test_compose_first_line_carries_session_label():
+    with tempfile.TemporaryDirectory() as d:
+        _sessions(d, {"sessionId": "s-1", "name": "romy-ee"})
+        try:
+            msg = ptn.compose_message("waiting",
+                                      {"cwd": "/repos/myapp", "session_id": "s-1",
+                                       "message": "Claude needs your permission"})
+            assert "myapp" in _first(msg) and "romy-ee" in _first(msg)
+        finally:
+            os.environ.pop("PG_TELEGRAM_SESSIONS_DIR", None)
+
+
+def test_compose_first_line_clean_without_session():
+    msg = ptn.compose_message("dispatch", {"cwd": "/repos/myapp", "report": "x"})
+    assert _first(msg).count("·") == 1  # project · event, no dangling separator
+
+
+def test_heartbeat_timestamp_stripped():
+    # the arrival time is visible in Telegram; the heartbeat's own timestamp is noise
+    assert ptn._strip_hb_timestamp(
+        "2026-07-07T20:09:53Z · 16/83 · current none · drained no"
+    ) == "16/83 · current none · drained no"
+    assert ptn._strip_hb_timestamp("16/83 · current none") == "16/83 · current none"
+
+
 # ---- v4.12.0: config resolution chain (env > project > global) ----
 
 def _write(path, obj):

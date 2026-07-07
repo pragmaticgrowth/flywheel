@@ -10,7 +10,7 @@ Env:
   PG_TELEGRAM_CONFIG  override config path (default ~/.local/state/pg-telegram/config.json)
   PG_TELEGRAM_DRYRUN  =1 → print the composed message + redacted request instead of POSTing
 """
-import json, os, sys, time, urllib.request, urllib.parse
+import glob, json, os, re, sys, time, urllib.request, urllib.parse
 
 DEFAULT_TIMEOUT = 8
 CATEGORIES = ("errors", "waiting", "completions", "dispatch")
@@ -135,6 +135,33 @@ def _throttled(cfg, category):
     return False
 
 
+def sessions_dir():
+    # Claude Code's live-session registry: <pid>.json files carrying
+    # {"sessionId": ..., "name": <//rename or derived name>, ...}
+    return os.environ.get("PG_TELEGRAM_SESSIONS_DIR") or os.path.join(
+        os.path.expanduser("~"), ".claude", "sessions")
+
+
+def _session_label(payload):
+    """The session's human name (/rename or derived) when resolvable from the
+    sessions registry, else the session id's first 8 chars, else ''. Several
+    sessions share one project — this is how the reader tells pings apart."""
+    sid = payload.get("session_id") or ""
+    if not sid:
+        return ""
+    try:
+        for f in glob.glob(os.path.join(sessions_dir(), "*.json")):
+            try:
+                d = json.load(open(f))
+            except (OSError, ValueError):
+                continue
+            if d.get("sessionId") == sid and d.get("name"):
+                return str(d["name"])
+    except OSError:
+        pass
+    return sid[:8]
+
+
 def _cwd(payload):
     return payload.get("cwd") or os.getcwd()
 
@@ -149,6 +176,15 @@ def _clip(text, n):
     return text if len(text) <= n else text[: n - 1].rstrip() + "…"
 
 
+def _strip_hb_timestamp(line):
+    """Drop the heartbeat's leading UTC timestamp — Telegram already shows
+    arrival time, so it's noise in the message body."""
+    parts = line.split(" · ", 1)
+    if len(parts) == 2 and re.match(r"^\d{4}-\d{2}-\d{2}T", parts[0].strip()):
+        return parts[1]
+    return line
+
+
 def _heartbeat_tail(payload):
     """Best-effort newest dispatch heartbeat line for this repo (completions)."""
     slug = _repo(payload)
@@ -156,34 +192,37 @@ def _heartbeat_tail(payload):
                         slug, "heartbeat")
     try:
         lines = [ln for ln in open(path) if ln.strip()]
-        return lines[-1].strip() if lines else ""
+        return _strip_hb_timestamp(lines[-1].strip()) if lines else ""
     except OSError:
         return ""
 
 
 def compose_message(category, payload):
-    """Plain-text Telegram body. The PROJECT name leads every message (first
-    line) — several projects share one chat, so the project is the headline,
-    never a footnote. Never raises."""
-    repo = _repo(payload)
+    """Plain-text Telegram body. First line = <emoji> <project>[ · <session>]
+    · <event> — several projects (and several sessions per project) share one
+    chat, so both identities lead the message. Never raises."""
+    who = _repo(payload)
+    label = _session_label(payload)
+    if label:
+        who = f"{who} · {label}"
     if category == "errors":
         err = payload.get("error") or "error"
         det = payload.get("error_details") or ""
         line2 = f"error: {err}" + (f" ({_clip(det, 120)})" if det else "")
         tail = _clip(payload.get("last_assistant_message"), 300)
-        return f"🛑 {repo} · turn failed\n{line2}" + (f"\n{tail}" if tail else "")
+        return f"🛑 {who} · turn failed\n{line2}" + (f"\n{tail}" if tail else "")
     if category == "waiting":
         msg = _clip(payload.get("message"), 300) or "agent is waiting for you"
         ntype = payload.get("notification_type")
-        return f"🔔 {repo} · needs you\n{msg}" + (f"\n[{ntype}]" if ntype else "")
+        return f"🔔 {who} · needs you\n{msg}" + (f"\n[{ntype}]" if ntype else "")
     if category == "completions":
         reason = payload.get("reason") or "session ended"
         hb = _heartbeat_tail(payload)
-        return f"✅ {repo} · run ended\n{reason}" + (f"\n{hb}" if hb else "")
+        return f"✅ {who} · run ended\n{reason}" + (f"\n{hb}" if hb else "")
     if category == "dispatch":
         report = _clip(payload.get("report"), 500) or "dispatch fired"
-        return f"🏭 {repo} · dispatch\n{report}"
-    return f"{repo} · {category}"
+        return f"🏭 {who} · dispatch\n{report}"
+    return f"{who} · {category}"
 
 
 def build_request(cfg, text):

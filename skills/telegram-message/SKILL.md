@@ -114,6 +114,14 @@ plugin runs the hook.)
 
 ## What fires when (set expectations)
 
+Every message headline reads `<emoji> <project> · <session> · <event>` — the
+session label is the session's name (a `/rename`, or Claude Code's derived
+name, resolved from the live-session registry at `~/.claude/sessions/`), else
+the session id's first 8 chars. That's how several sessions on one project stay
+distinguishable in one chat. Dispatch pings carry no session id (plaintext
+pipe), so their headline is just `<project> · dispatch`. Heartbeat lines are
+shown without their timestamp — Telegram already shows arrival time.
+
 - **errors** → `StopFailure` (rate_limit, billing_error, authentication_failed,
   overloaded, server_error, …). **Verified firing in unattended `claude -p`
   runs** — the usage-limit / API-error signal that matters for `/loop /dispatch`:
