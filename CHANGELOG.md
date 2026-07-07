@@ -13,6 +13,43 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [4.12.0] — 2026-07-07
+
+**Minor: telegram-message goes project-scoped, and Droid + cloud get pings.**
+Telegram credentials are personal settings, so setup is now **per-project by
+default and always stored OUTSIDE the repo** — structurally impossible to
+commit or push, whatever scope the plugin is installed at. And the deferred
+Droid path shipped: dispatch pings directly, hook-free.
+
+- **Project scope (new default):** `/telegram-message <token> [chat_id]` writes
+  `~/.local/state/pg-telegram/projects/<slug>.json` (chmod 600) carrying
+  `project_root`; the notifier resolves by longest-`project_root`-prefix match
+  on the event's `cwd`. Different repos → different bots/chats/toggles;
+  `"enabled": false` in a project file silences ONLY that project (explicit
+  opt-out, no fallthrough). `--global` writes the machine-wide fallback
+  (the v4.11 config, still honored).
+- **Cloud/env scope:** `PG_TELEGRAM_BOT_TOKEN` + `PG_TELEGRAM_CHAT_ID` env vars
+  beat both files — for routines/automations where `~/.local/state` doesn't
+  persist; narrow categories with `PG_TELEGRAM_EVENTS=errors,dispatch`.
+  Resolution chain: explicit override → env → project → global.
+- **New `dispatch` category — the hook-free path that covers Droid and cloud:**
+  dispatch Phase 4 now pipes its report line to the notifier every fire
+  (`printf '%s' "<report>" | python3 "$PGNOTIFY" dispatch`; non-JSON stdin is
+  treated as the report text, so no quoting hazards). Works in both CLIs and
+  cloud because it's a plain script call — on Droid, where hooks don't fire
+  under `droid exec` (v4.11 finding), this IS the notification path. The skill
+  now sets up on Droid too, with plain expectations: dispatch pings only there.
+  Configs written by v4.11.0 lack the `dispatch` toggle — re-run setup or add
+  `"dispatch": true` to `events` to enable it.
+- Notifier: +9 tests (precedence, longest-prefix, opt-out, env override,
+  dispatch compose/toggle/plaintext stdin) → 30 total, still pure stdlib and
+  never-crash. README/site/CLAUDE.md updated (incl. correcting the stale
+  "skills-only / no hooks / four skills" intro copy v4.11.0 had missed).
+
+Dry-run tested on 8 scenario questions with cited answers; zero ambiguities.
+Skill change:
+[`13d6ac5`](https://github.com/pragmaticgrowth/flywheel/commit/13d6ac5).
+
 ## [4.11.0] — 2026-07-07
 
 **Minor: new `telegram-message` skill — get a Telegram DM when an autonomous run

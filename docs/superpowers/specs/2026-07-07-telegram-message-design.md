@@ -202,3 +202,33 @@ plugin.json 4.10.0 → **4.11.0**; CHANGELOG entry; README + site skill card +
 version pill/title; CLAUDE.md (skills-only → skills+hooks owner decision, new
 skill in list + structure); tag `v4.11.0`; GitHub release; `wrangler deploy`;
 push; note `/plugin marketplace update pragmatic-growth`.
+
+---
+
+## Addendum — v4.12.0: project scope, Droid & cloud delivery (owner ask 2026-07-07)
+
+Owner requirement: the Telegram setup is PERSONAL — per-project even when the
+plugin is installed user-scope, never pushable to GitHub, and working on Droid
+and cloud. Design:
+
+- **Project-scoped config OUTSIDE the repo** (default scope):
+  `~/.local/state/pg-telegram/projects/<slug>.json` (`<slug>` = project root
+  path, `/`→`-`), carrying `project_root`; the notifier resolves by longest
+  `project_root` prefix of the event's `cwd`. No file ever exists inside the
+  repo → structurally unpushable (safer than in-repo local files +
+  gitignore/`.git/info/exclude`, which can be leaked by mistake).
+  `enabled:false` in a project file is an explicit per-project opt-out (no
+  fallthrough to global). `--global` writes the old machine-wide config.
+- **Resolution chain** in `pg_telegram_notify.py::resolve_config`:
+  `PG_TELEGRAM_CONFIG` (explicit override) → `PG_TELEGRAM_BOT_TOKEN` +
+  `PG_TELEGRAM_CHAT_ID` env vars (cloud: routines/automations; categories via
+  `PG_TELEGRAM_EVENTS`, default all) → project file → global file → None.
+- **Droid delivery = dispatch direct-notify** (the deferred hook-free path,
+  now built): dispatch Phase 4 pipes its report line to
+  `pg_telegram_notify.py dispatch` every fire. Plain script call — works in
+  both CLIs and cloud. New `dispatch` category + `events.dispatch` toggle;
+  non-JSON stdin is treated as `{"report": <text>}` so dispatch needs no JSON
+  quoting. Pre-4.12 configs lack the toggle → no dispatch pings until re-setup
+  (documented).
+- Tests: +9 (resolution precedence, longest-prefix, opt-out, env override,
+  dispatch compose/toggle/plaintext stdin) → 30 total.

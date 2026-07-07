@@ -4,7 +4,7 @@
 
 Skills-only Claude Code and Droid (Factory CLI) marketplace from Pragmatic Growth.
 The repo now publishes four plugins from one `pragmatic-growth` marketplace:
-`flywheel` v4.11.0, `html-artifacts` v1.0.0, `autoresearch` v1.0.0, and
+`flywheel` v4.12.0, `html-artifacts` v1.0.0, `autoresearch` v1.0.0, and
 `human-writing` v1.0.0. No MCP
 servers, no commands, no
 agents, no build step, and — as of v4.11.0 — ONE hook bundle
@@ -87,18 +87,23 @@ appropriate paths, commands, and scheduling primitives.
   model commits directly on the local branch, so there is no merge allow-rule
   to provision — the gate is local. The probe checks settings in both
   `.claude/` and `.factory/` (Droid) paths.
-- **telegram-message** (v4.11.0) — `/telegram-message <bot_token> [chat_id]`
-  wires a Telegram bot to DM the owner when an autonomous run needs a human: an
-  API/usage-limit error killed a turn (`StopFailure`), the agent is waiting on a
-  permission/idle prompt (`Notification`), or a run finished (`SessionEnd`). The
-  plugin ships `hooks/hooks.json` dormant; the skill writes a chmod-600 config at
-  `~/.local/state/pg-telegram/config.json` (bot token OUT of the repo) and the
-  stdlib notifier `scripts/pg_telegram_notify.py` (never-crash, no-ops until
-  configured) POSTs to the Telegram API. **Claude Code only** — verified incl.
-  headless `claude -p` (StopFailure + SessionEnd fire). **Droid deferred**: it
-  has no error hook AND its hooks don't fire under `droid exec`/`CronCreate`
-  (empirically tested 2026-07-07); a hook-free dispatch-Phase-4 notify is the
-  deferred Droid path. Sets up notifications only; never implements goals.
+- **telegram-message** (v4.11.0, scopes + Droid/cloud in v4.12.0) —
+  `/telegram-message <bot_token> [chat_id]` wires a Telegram bot to DM the owner
+  when an autonomous run needs a human: an API/usage-limit error killed a turn
+  (`StopFailure`), the agent is waiting on a permission/idle prompt
+  (`Notification`), a run finished (`SessionEnd`), or a dispatch fire reported
+  (hook-free `dispatch` category — dispatch Phase 4 pipes its report line to the
+  notifier). Personal settings are PROJECT-SCOPED by default and always OUTSIDE
+  the repo (structurally unpushable): chmod-600
+  `~/.local/state/pg-telegram/projects/<slug>.json` (longest-`project_root`-
+  prefix match on cwd; `enabled:false` = per-project opt-out), `--global` for
+  the machine-wide fallback, `PG_TELEGRAM_BOT_TOKEN`/`PG_TELEGRAM_CHAT_ID`(/
+  `PG_TELEGRAM_EVENTS`) env vars for cloud runs — resolution env > project >
+  global. Hook events verified on Claude Code incl. headless `claude -p`;
+  **Droid gets dispatch-category pings only** (no error hook exists AND hooks
+  don't fire under `droid exec`/`CronCreate` — empirically tested 2026-07-07).
+  Stdlib notifier `scripts/pg_telegram_notify.py` never crashes a session and
+  no-ops until configured. Sets up notifications only; never implements goals.
 
 Separate marketplace plugins:
 
