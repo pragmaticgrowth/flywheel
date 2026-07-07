@@ -4,11 +4,14 @@
 
 Skills-only Claude Code and Droid (Factory CLI) marketplace from Pragmatic Growth.
 The repo now publishes four plugins from one `pragmatic-growth` marketplace:
-`flywheel` v4.10.0, `html-artifacts` v1.0.0, `autoresearch` v1.0.0, and
+`flywheel` v4.11.0, `html-artifacts` v1.0.0, `autoresearch` v1.0.0, and
 `human-writing` v1.0.0. No MCP
 servers, no commands, no
-agents, no hooks, no build step. `flywheel` has four skills under root
-`skills/` (two ship deterministic Python helpers in `scripts/`), forming a
+agents, no build step, and — as of v4.11.0 — ONE hook bundle
+(`hooks/hooks.json`, the `telegram-message` notifier; added by explicit owner
+decision 2026-07-07, the first exception to the former skills-only rule).
+`flywheel` has five skills under root
+`skills/` (three ship deterministic Python helpers in `scripts/`), forming a
 plain-language → autonomous-execution pipeline around a file-based goal queue
 (`docs/goals/` in target repos). `html-artifacts` lives under
 `plugins/html-artifacts/` as a separate plugin for rich
@@ -84,6 +87,18 @@ appropriate paths, commands, and scheduling primitives.
   model commits directly on the local branch, so there is no merge allow-rule
   to provision — the gate is local. The probe checks settings in both
   `.claude/` and `.factory/` (Droid) paths.
+- **telegram-message** (v4.11.0) — `/telegram-message <bot_token> [chat_id]`
+  wires a Telegram bot to DM the owner when an autonomous run needs a human: an
+  API/usage-limit error killed a turn (`StopFailure`), the agent is waiting on a
+  permission/idle prompt (`Notification`), or a run finished (`SessionEnd`). The
+  plugin ships `hooks/hooks.json` dormant; the skill writes a chmod-600 config at
+  `~/.local/state/pg-telegram/config.json` (bot token OUT of the repo) and the
+  stdlib notifier `scripts/pg_telegram_notify.py` (never-crash, no-ops until
+  configured) POSTs to the Telegram API. **Claude Code only** — verified incl.
+  headless `claude -p` (StopFailure + SessionEnd fire). **Droid deferred**: it
+  has no error hook AND its hooks don't fire under `droid exec`/`CronCreate`
+  (empirically tested 2026-07-07); a hook-free dispatch-Phase-4 notify is the
+  deferred Droid path. Sets up notifications only; never implements goals.
 
 Separate marketplace plugins:
 
@@ -212,7 +227,8 @@ a local gate. Git history has every prior model if ever needed.
 ```
 .claude-plugin/plugin.json        # root flywheel plugin manifest
 .claude-plugin/marketplace.json   # marketplace — name: pragmatic-growth, lists flywheel + html-artifacts + autoresearch + human-writing
-skills/<name>/SKILL.md            # four flywheel skills (define-goal, dispatch, loop-architect, factory-doctor)
+hooks/hooks.json                  # flywheel plugin hooks — telegram-message notifier (v4.11.0; Claude Code)
+skills/<name>/SKILL.md            # five flywheel skills (define-goal, dispatch, loop-architect, factory-doctor, telegram-message)
 plugins/html-artifacts/.claude-plugin/plugin.json
 plugins/html-artifacts/skills/html-artifacts/SKILL.md
 plugins/html-artifacts/skills/html-artifacts/references/ # HTML artifact recipes and foundation rules
@@ -221,7 +237,7 @@ plugins/autoresearch/skills/autoresearch/SKILL.md
 plugins/autoresearch/skills/autoresearch/scripts/autoresearch_helper.py # stdlib JSONL/MAD-confidence helper
 plugins/human-writing/.claude-plugin/plugin.json
 plugins/human-writing/skills/human-writing/SKILL.md # AI-writing cleanup (no scripts)
-skills/<name>/scripts/*.py        # dispatch/pg_validate.py (local gate), factory-doctor/doctor_checks.py
+skills/<name>/scripts/*.py        # dispatch/pg_validate.py (local gate), factory-doctor/doctor_checks.py, telegram-message/pg_telegram_notify.py
 CHANGELOG.md                      # canonical, git-tracked version history (site carries no on-page changelog)
 public/index.html                 # the public site (plugin.pragmaticgrowth.com) — self-contained, themed
 public/Logo*Black.svg             # Pragmatic Growth brand marks (icon + wordmark)
@@ -231,8 +247,15 @@ AGENTS.md                         # symlink → CLAUDE.md (one source, no drift)
 
 ## Rules
 
-- **Skills-only.** Don't add MCP servers, commands, agents, or hooks here
-  without an explicit ask.
+- **Skills-first (formerly skills-only).** Don't add MCP servers, commands,
+  agents, or hooks here without an explicit ask. The sole hook exception to date
+  is `hooks/hooks.json` (the `telegram-message` notifier, explicit owner decision
+  2026-07-07). Keep it minimal: hooks must no-op safely when unconfigured and
+  never disrupt a session; a new hook needs the same explicit ask.
+- **Portability applies to the notifier too.** The `telegram-message` config and
+  state live under `~/.local/state/pg-telegram/`; the bot token NEVER enters the
+  repo, `hooks/hooks.json`, or any tracked file (the pre-push secret hook is the
+  backstop). Notifier resolves its own path at runtime via `${CLAUDE_PLUGIN_ROOT}`.
 - **Portability.** Skills must not contain user-specific absolute paths
   (`/Users/...`, `~/.claude/...`, `~/.factory/...`). They run in arbitrary repos.
 - **This repo is the single source of truth.** The plugins are installed

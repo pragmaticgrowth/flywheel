@@ -19,7 +19,9 @@ and no per-repo wiring.
   the code.
 - **Notify on:** errors + agent-waiting + completions (not just hard errors).
 - **Permission pings:** ping on all actionable prompts, interactive included.
-- **CLIs:** both Claude Code and Droid.
+- **CLIs:** Claude Code only. (Originally "both"; changed after the empirical
+  finding below — Droid hooks don't fire unattended. Droid deferred by owner
+  decision 2026-07-07.)
 
 ## Confirmed mechanics (research 2026-07-07; CLI 2.1.202)
 
@@ -55,18 +57,20 @@ and no per-repo wiring.
 - A native `type:"http"` hook exists but can't shape Telegram's `chat_id`/`text`
   body, so we use `type:"command"` → our script.
 
-### Droid — partial, two unknowns to verify empirically
+### Droid — NOT viable for the unattended use case (empirically settled)
 - Hooks live in `~/.factory/hooks.json` (user) / `.factory/hooks.json` (project),
-  same JSON schema. `${CLAUDE_PLUGIN_ROOT}` is a **documented alias** for
-  `${DROID_PLUGIN_ROOT}` — our dual-resolution is correct.
-- 9 events incl. `Notification` (permission-needed + 60s idle → `message`),
-  `Stop`, `SessionEnd` (`reason`). **No error/rate-limit event exists** — Droid
-  error/limit pings are **impossible via hooks**; documented as a platform gap,
-  not coded around.
-- **Unknown A:** does a `.claude-plugin`-format plugin's `hooks/hooks.json`
-  survive Droid's translation and fire? **Unknown B:** do hooks fire under
-  `droid exec` / cron. Both cheap to test; verify in build. Fallback if A fails:
-  the setup skill merges hook entries into `~/.factory/hooks.json`.
+  same JSON schema; `${CLAUDE_PLUGIN_ROOT}` is a documented alias for
+  `${DROID_PLUGIN_ROOT}`. 9 events, **no error/rate-limit event** (a platform gap).
+- **Empirical finding (2026-07-07, Droid 0.164.1):** hooks **do not fire under
+  `droid exec`.** Tested trivial `SessionStart`/`Stop`/`SessionEnd` echo hooks at
+  BOTH project (`.factory/hooks.json`) and user (`~/.factory/hooks.json`) scope;
+  `droid exec --auto low` completed normally and **none fired** (no `hooksDisabled`
+  set, no trust flag involved). Since the flywheel factory runs on Droid via
+  `droid exec` / `CronCreate`, hook-based Telegram alerts cannot serve it.
+- **Decision:** ship **Claude Code only**; defer Droid. A future hook-free path —
+  `dispatch` Phase 4 calling `pg_telegram_notify.py` directly (CLI-agnostic, works
+  because it's just a script) — is the deferred way to cover Droid; not built in
+  v1. The plugin's `hooks/hooks.json` stays a harmless no-op on Droid.
 
 ## Architecture — 4 new files under flywheel
 
@@ -186,10 +190,10 @@ Agent-driven setup (CLI-aware per flywheel convention). Verbs: bare setup,
 
 ## Verification plan (build)
 - Notifier unit tests green (dry-run).
-- Empirical: register the real hooks locally, force a `StopFailure`
-  (`claude -p` with a bogus model) → confirm a Telegram test send fires; confirm
-  `SessionEnd` fires in `-p`. Droid: install and test unknowns A/B if the `droid`
-  CLI is available; otherwise document as verify-on-Droid.
+- Empirical (DONE): registered the real hooks locally, forced a `StopFailure`
+  (`claude -p` with a bogus model) → notifier composed the error DM (dry-run);
+  `SessionEnd` also fired in `-p` → completion DM. Droid: tested `droid exec`
+  with trivial hooks at both scopes → none fired (finding above); Droid deferred.
 - Local gate: `python3 test_pg_telegram_notify.py`, manifest JSON valid, AGENTS.md
   symlink intact.
 

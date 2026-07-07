@@ -5,7 +5,7 @@ A skills-only plugin marketplace for [Claude Code](https://claude.com/claude-cod
 and [Droid](https://factory.ai) (Factory CLI), from Pragmatic Growth.
 
 [![Website](https://img.shields.io/badge/site-plugin.pragmaticgrowth.com-6366f1)](https://plugin.pragmaticgrowth.com)
-[![Version](https://img.shields.io/badge/version-4.10.0-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-4.11.0-8b5cf6)](CHANGELOG.md)
 [![CLIs](https://img.shields.io/badge/runs%20in-Claude%20Code%20%2B%20Droid-0ea66e)](#works-in-both-clis)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
@@ -68,6 +68,7 @@ want a review surface — flywheel just doesn't require one.)
 | **dispatch** | The factory orchestrator: works one ready goal per run — claim, implement with TDD + fresh checks, review-evidence-verified local gate, keep or roll back. | `/dispatch` · *”work goal 005”* |
 | **loop-architect** | Designs the *loop contract* (prompt + verification + stop conditions) for autonomous, scheduled, or remote runs. | *“keep working on X”* · setting up a `/loop`, routine, or cron |
 | **factory-doctor** | One-pass preflight/doctor for the repo + machine. Auto-fixes everything local; reports the rest with exact fixes. | `/factory-doctor` |
+| **telegram-message** | Wires a Telegram bot to DM you when an autonomous run errors, hits a usage limit, waits on you, or finishes. Claude Code only. | `/telegram-message <bot_token> [chat_id]` |
 
 In Claude Code the workflow skills are namespaced — `flywheel:define-goal`,
 etc. `html-artifacts` installs as its own plugin and exposes
@@ -181,6 +182,27 @@ demonstrably fires but has no rail that survives an account limit stop) —
 both `.claude/` and `.factory/` settings) and
 reporting remote/CI issues with the exact fix. It diagnoses and fixes setup; it
 never implements goals.
+
+### telegram-message — get pinged when a run needs you
+
+An overnight `/loop /dispatch` can stall for reasons you want to hear about
+immediately: it hit a usage limit, an API/billing/auth error killed a turn, the
+agent is waiting on a permission prompt, or the queue drained. **telegram-message**
+wires a Telegram bot so those become a DM. Set it up once —
+`/telegram-message <bot_token> [chat_id]` — and the plugin's hooks
+(`StopFailure` → errors/limits, `Notification` → agent-waiting, `SessionEnd` →
+run finished) call a tiny stdlib notifier that POSTs to your bot.
+
+- **Verified where it counts.** `StopFailure` and `SessionEnd` fire in headless
+  `claude -p` runs, so an unattended external-scheduler drain (see loop-architect
+  Step 5) pings you on the exact usage-limit stop the v4.10 work made survivable.
+- **Secret-safe.** Your bot token lives in a chmod-600 file at
+  `~/.local/state/pg-telegram/config.json`, **outside this public repo** — never
+  committed, never in a hook definition. The hooks ship dormant and no-op until
+  you run the command.
+- **Claude Code only, for now.** Droid's hooks have no error event and don't fire
+  under `droid exec`/`CronCreate` (tested), so Droid alerts are deferred — the
+  skill tells you rather than silently doing nothing.
 
 ### autoresearch plugin — optimize by experiment
 
@@ -463,6 +485,7 @@ flywheel/
 ├── .claude-plugin/
 │   ├── plugin.json        # flywheel plugin manifest
 │   └── marketplace.json   # the pragmatic-growth marketplace, listing all four plugins
+├── hooks/hooks.json       # telegram-message notifier hooks (Claude Code; dormant until set up)
 ├── skills/
 │   ├── define-goal/SKILL.md
 │   ├── dispatch/
@@ -472,7 +495,10 @@ flywheel/
 │   ├── factory-doctor/
 │   │   ├── SKILL.md
 │   │   └── scripts/doctor_checks.py   # read-only readiness probe
-│   └── loop-architect/SKILL.md
+│   ├── loop-architect/SKILL.md
+│   └── telegram-message/
+│       ├── SKILL.md
+│       └── scripts/pg_telegram_notify.py  # stdlib Telegram notifier (never-crash, no-op until configured)
 ├── plugins/
 │   ├── html-artifacts/
 │   │   ├── .claude-plugin/plugin.json

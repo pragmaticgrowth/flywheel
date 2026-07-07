@@ -13,6 +13,47 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [4.11.0] — 2026-07-07
+
+**Minor: new `telegram-message` skill — get a Telegram DM when an autonomous run
+needs you.** Wires a bot to ping the owner the moment a `/dispatch` or `/loop`
+run hits an error/usage limit, waits on a permission prompt, or finishes —
+closing the "I didn't know it stalled until morning" gap that the v4.10
+usage-limit work made survivable but not *observable*. This is flywheel's first
+hook bundle: an explicit owner decision that ends the former "skills-only"
+invariant (now "skills-first" — hooks need the same explicit ask, must no-op
+safely, and must never disrupt a session).
+
+- **New skill `telegram-message`:** `/telegram-message <bot_token> [chat_id]`
+  validates the token (`getMe`), helps find the chat id (`getUpdates`), writes a
+  **chmod-600 config at `~/.local/state/pg-telegram/config.json` — the bot token
+  never enters the repo, `hooks.json`, or any tracked file** — and sends a test
+  message. Verbs: `off`/`on`/`test`/`status`.
+- **`hooks/hooks.json`** (ships dormant, no-ops until set up): `StopFailure` →
+  error/usage-limit pings, `Notification` → agent-waiting (permission/idle),
+  `SessionEnd` → run finished. Auto-registers when the plugin is enabled via
+  `${CLAUDE_PLUGIN_ROOT}`; no user settings edit.
+- **`scripts/pg_telegram_notify.py`** — pure-stdlib notifier (no pip deps), 21
+  tests. Never crashes a session (every path exits 0), no-ops when unconfigured,
+  8s network timeout, token redacted in logs, best-effort enrichment of
+  completion pings with the newest dispatch heartbeat line.
+- **Verified end to end on Claude Code**, including a live `claude -p` run:
+  `StopFailure` (forced via a bogus model) and `SessionEnd` both fire in headless
+  mode — so an unattended external-scheduler drain (loop-architect Step 5) pings
+  on the exact usage-limit stop v4.10 made survivable.
+- **Claude Code only; Droid deferred (honest, not silent).** Empirically settled
+  2026-07-07 (Droid 0.164.1): Droid has no error-hook event AND its hooks don't
+  fire under `droid exec`/`CronCreate` (tested `SessionStart`/`Stop`/`SessionEnd`
+  echo hooks at both project and user scope — none fired). The skill detects
+  Droid and says so rather than writing config that can't fire; a hook-free
+  dispatch-Phase-4 notify is the deferred Droid path. Design +
+  finding recorded in
+  `docs/superpowers/specs/2026-07-07-telegram-message-design.md`.
+
+Dry-run tested on 8 scenario questions with cited answers; both flagged
+ambiguities closed before shipping. Skill change:
+[`4545084`](https://github.com/pragmaticgrowth/flywheel/commit/4545084).
+
 ## [4.10.0] — 2026-07-07
 
 **Minor: the factory now survives account usage-limit stops.** A subscription
