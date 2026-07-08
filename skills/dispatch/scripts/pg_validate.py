@@ -190,7 +190,7 @@ def queue_untouched(changed_paths):
             "evidence": "implementer left docs/goals/ untouched"}
 
 
-import argparse, json, os, subprocess, tempfile
+import argparse, json, ntpath, os, posixpath, shutil, subprocess, tempfile
 EXIT = {"PASS": 0, "FAIL_FIXABLE": 3, "FAIL_CONTRACT": 3, "INCONCLUSIVE": 4}
 
 
@@ -301,9 +301,74 @@ def _resolve_cmds(goal_file, repo_root):
     return gtype, touches, ([det] if det else []), ac
 
 
+def _resolve_shell(environ=None, which=None, isfile=None, windows=None):
+    """Full path to the POSIX shell that runs acceptance commands, or None.
+
+    A bare-name ["bash", ...] argv is resolved by CreateProcess on Windows, which
+    searches System32 BEFORE PATH — so with the WSL feature enabled, the distro-less
+    launcher stub %SystemRoot%\\System32\\bash.exe shadows Git Bash and every command
+    exits nonzero (execvpe(/bin/bash) failure), false-FAILing the gate. A full path
+    bypasses that precedence. Order: $PG_BASH override > which('bash') > which('sh')
+    (both rejected when they live under %SystemRoot%) > standard Git-for-Windows
+    install locations built from env vars. None -> caller uses the platform shell.
+    The keyword args exist for cross-platform tests; production callers pass none.
+    """
+    env = os.environ if environ is None else environ
+    look = shutil.which if which is None else which
+    isf = os.path.isfile if isfile is None else isfile
+    win = (os.name == "nt") if windows is None else windows
+    p_ = ntpath if win else posixpath
+
+    override = env.get("PG_BASH")
+    if override:
+        return override
+
+    sysroot = p_.normcase(p_.normpath(env.get("SystemRoot") or "C:\\Windows")) if win else None
+
+    def under_sysroot(path):
+        return win and p_.normcase(p_.normpath(path)).startswith(sysroot + p_.sep)
+
+    for name in ("bash", "sh"):
+        found = look(name)
+        if found and not under_sysroot(found):
+            return found
+
+    if win:
+        bases = [env.get(k) for k in ("ProgramFiles", "ProgramW6432", "ProgramFiles(x86)")]
+        if env.get("LocalAppData"):
+            bases.append(p_.join(env["LocalAppData"], "Programs"))
+        for base in bases:
+            if not base:
+                continue
+            for rel in (("Git", "usr", "bin", "bash.exe"), ("Git", "bin", "bash.exe")):
+                cand = p_.join(base, *rel)
+                if isf(cand):
+                    return cand
+    return None
+
+
+_SHELL_MEMO = []  # resolved once per process; [None] means "no POSIX shell found"
+
+
 def _run_cmds(cmds, cwd):
-    return [subprocess.run(["bash", "-lc", c], capture_output=True, text=True, cwd=cwd).returncode
-            for c in cmds]
+    if not _SHELL_MEMO:
+        _SHELL_MEMO.append(_resolve_shell())
+    shell = _SHELL_MEMO[0]
+    # Bounded so a hung suite reds the gate instead of locking it forever.
+    timeout = float(os.environ.get("PG_VALIDATE_TIMEOUT", "1800"))
+    exits = []
+    for c in cmds:
+        try:
+            if shell:
+                r = subprocess.run([shell, "-lc", c], capture_output=True, text=True,
+                                   cwd=cwd, timeout=timeout)
+            else:
+                r = subprocess.run(c, shell=True, capture_output=True, text=True,
+                                   cwd=cwd, timeout=timeout)
+            exits.append(r.returncode)
+        except subprocess.TimeoutExpired:
+            exits.append(124)
+    return exits
 
 
 def _self_test():

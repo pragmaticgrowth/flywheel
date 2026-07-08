@@ -301,6 +301,75 @@ def test_run_validation_bug_inconclusive_when_base_worktree_fails(monkeypatch=No
     # never a PASS when the base worktree can't be populated
     assert res["verdict"] != "PASS"
 
+def test_resolve_shell_pg_bash_override_wins():
+    # Operator override beats every probe — even on Windows, even if which() disagrees.
+    p = pgv._resolve_shell(environ={"PG_BASH": "/custom/bin/bash"},
+                           which=lambda n: "/usr/bin/bash",
+                           isfile=lambda q: True, windows=False)
+    assert p == "/custom/bin/bash"
+
+def test_resolve_shell_posix_returns_which_full_path():
+    p = pgv._resolve_shell(environ={}, which=lambda n: "/bin/bash" if n == "bash" else None,
+                           isfile=lambda q: True, windows=False)
+    assert p == "/bin/bash"
+
+def test_resolve_shell_windows_keeps_git_bash_from_path():
+    # PATH holds Git Bash (shutil.which honors PATH order); the resolver must return it
+    # as a FULL path — a bare-name argv would let CreateProcess pick System32's WSL stub.
+    env = {"SystemRoot": "C:\\Windows"}
+    p = pgv._resolve_shell(environ=env,
+                           which=lambda n: "C:\\Program Files\\Git\\usr\\bin\\bash.exe" if n == "bash" else None,
+                           isfile=lambda q: True, windows=True)
+    assert p == "C:\\Program Files\\Git\\usr\\bin\\bash.exe"
+
+def test_resolve_shell_windows_rejects_system32_wsl_stub():
+    # When PATH itself resolves bash to the WSL launcher under SystemRoot, skip it and
+    # probe the standard Git-for-Windows install locations (built from env vars).
+    git_bash = "C:\\Program Files\\Git\\usr\\bin\\bash.exe"
+    env = {"SystemRoot": "C:\\Windows", "ProgramFiles": "C:\\Program Files"}
+    p = pgv._resolve_shell(environ=env,
+                           which=lambda n: "C:\\Windows\\System32\\bash.exe" if n == "bash" else None,
+                           isfile=lambda q: q == git_bash, windows=True)
+    assert p == git_bash
+
+def test_resolve_shell_windows_system_root_case_insensitive():
+    # Windows paths are case-insensitive; c:\windows\system32 must still be rejected.
+    git_bash = "C:\\Program Files\\Git\\bin\\bash.exe"
+    env = {"SystemRoot": "C:\\Windows", "ProgramFiles": "C:\\Program Files"}
+    p = pgv._resolve_shell(environ=env,
+                           which=lambda n: "c:\\windows\\system32\\bash.exe" if n == "bash" else None,
+                           isfile=lambda q: q == git_bash, windows=True)
+    assert p == git_bash
+
+def test_resolve_shell_windows_falls_back_to_sh():
+    # No usable bash anywhere, but an MSYS sh outside SystemRoot is on PATH -> use it.
+    env = {"SystemRoot": "C:\\Windows"}
+    p = pgv._resolve_shell(environ=env,
+                           which=lambda n: "C:\\msys64\\usr\\bin\\sh.exe" if n == "sh" else None,
+                           isfile=lambda q: False, windows=True)
+    assert p == "C:\\msys64\\usr\\bin\\sh.exe"
+
+def test_resolve_shell_none_when_no_posix_shell():
+    # Nothing found -> None; _run_cmds then uses the platform default shell.
+    p = pgv._resolve_shell(environ={"SystemRoot": "C:\\Windows"},
+                           which=lambda n: None, isfile=lambda q: False, windows=True)
+    assert p is None
+
+def test_local_run_cmds_timeout_reds_instead_of_hanging():
+    # A hung acceptance command must red the gate (exit 124) within the bounded
+    # timeout, never lock it indefinitely.
+    import os as _o, tempfile as _t, time as _time
+    d = _t.mkdtemp()
+    _o.environ["PG_VALIDATE_TIMEOUT"] = "1"
+    try:
+        t0 = _time.monotonic()
+        exits = pgv._run_cmds(["sleep 30"], d)
+        elapsed = _time.monotonic() - t0
+    finally:
+        del _o.environ["PG_VALIDATE_TIMEOUT"]
+    assert exits == [124], exits
+    assert elapsed < 15, f"timeout did not bound the run ({elapsed:.1f}s)"
+
 import subprocess, sys
 def test_self_test_exits_zero_and_announces():
     r = subprocess.run([sys.executable, os.path.join(_here, "pg_validate.py"), "--self-test"],

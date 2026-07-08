@@ -13,6 +13,27 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [4.14.1] — 2026-07-08
+
+**Patch: the dispatch gate works on Windows — bash resolves by full path, and
+acceptance runs are time-bounded.** First Windows field report: on any machine
+with the WSL optional feature enabled, `pg_validate.py`'s
+`subprocess.run(["bash", "-lc", …])` let CreateProcess resolve the bare name
+through System32 BEFORE PATH, hitting the distro-less WSL launcher stub
+(`System32\bash.exe`) instead of Git Bash — every acceptance command exited 1
+(`execvpe(/bin/bash) failed`) and every goal false-FAILed `FAIL_FIXABLE` even
+with the suite fully green. The gate now resolves its POSIX shell to a FULL
+path once per run: `PG_BASH` env override → `which(bash)` → `which(sh)` (both
+rejected when they live under `%SystemRoot%`) → standard Git-for-Windows
+install locations built from `ProgramFiles`/`ProgramW6432`/
+`ProgramFiles(x86)`/`LocalAppData` env vars → platform default shell
+(`shell=True`) as the last resort, so no machine-specific path is ever
+hardcoded. Acceptance commands also gain a bounded timeout (default 1800 s,
+`PG_VALIDATE_TIMEOUT` override; expiry reds the command as exit 124), so a
+hung test suite reds the gate instead of locking it forever. +8 tests
+(73 total), including cross-platform simulations of the exact WSL-stub
+shadowing reported.
+
 ## [4.14.0] — 2026-07-08
 
 **Minor: hook pings are dispatch-gated — interactive sessions stop flooding
