@@ -222,7 +222,10 @@ For each claimed goal, in order:
    and stop without claiming another goal.
    FAIL_FIXABLE → one repair agent, re-gate; still failing → `git reset --hard <gate_base>`,
    `chore(goals): block <id> — <reason>`. FAIL_CONTRACT → reset + block (needs-you contract
-   amendment). INCONCLUSIVE → reset + block "no runnable local gate".
+   amendment). INCONCLUSIVE → reset + block "no runnable local gate: <the failing check's
+   `evidence` from the JSON>" — the evidence names the exact cause and operator fix (e.g.
+   the Windows symlink privilege below), so it must reach the block reason, not die in the
+   gate output.
 
 `anchor`/`gate_base` matter: the claim's `index.yaml` edit lands BEFORE `gate_base` is set,
 so the validated diff (`gate_base..HEAD`) is exactly the implementer's work — never the queue
@@ -234,6 +237,17 @@ FAIL_FIXABLE/FAIL_CONTRACT=exit 3 — read the JSON to split them, INCONCLUSIVE=
 the `config.verify` commands (any non-zero exit = the gate fails as FAIL_FIXABLE for that
 command's failure). You run the gate — the implementer's verification summary is evidence,
 not the verdict.
+
+**Windows note.** `type: bug` goals prove repro-direction in a temporary base worktree whose
+dep dirs (root `node_modules`/`.venv` & co plus per-workspace-package `node_modules`) are
+symlinked from the live checkout. Creating those links needs the Windows symlink privilege —
+Developer Mode (Settings → Privacy & security → For developers) or an elevated session;
+without it the gate returns an actionable INCONCLUSIVE naming that fix (never a false PASS),
+so every bug goal blocks until it's enabled (chore/feature goals never build a base
+worktree and are unaffected). `factory-doctor` preflights this
+(`symlink-privilege` WARN). The gate's command runner is tunable via `PG_BASH` (full path to
+the POSIX shell; auto-resolution already skips the WSL launcher stub) and
+`PG_VALIDATE_TIMEOUT` (seconds per acceptance command, default 1800).
 
 ## Phase 1 — finish in-flight goals
 
@@ -259,7 +273,8 @@ branch after that claim commit:
    gate (Working a goal, step 3) against it. PASS → squash + `chore(goals): complete <id>`.
    FAIL_FIXABLE → one repair agent, re-gate; still failing → `git reset --hard <gate_base>` +
    `chore(goals): block <id> — <reason>`. FAIL_CONTRACT → reset + block (needs-you contract
-   amendment). INCONCLUSIVE → reset + block "no runnable local gate".
+   amendment). INCONCLUSIVE → reset + block "no runnable local gate: <evidence>" (same
+   evidence-in-reason rule as step 4).
 2. **No work commits after the claim commit and no active agent** (stale claim — the
    implementer died) → `gate_base` is the current HEAD (no work landed). Apply the stale-claim
    rule from Re-entrancy: re-spawn the implementer from current HEAD, or `blocked` per its final

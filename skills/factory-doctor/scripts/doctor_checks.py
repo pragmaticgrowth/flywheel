@@ -44,7 +44,7 @@ def validate_queue(index_obj):
     return (len(problems) == 0, problems)
 
 
-import argparse, glob, json, os, subprocess, sys
+import argparse, glob, json, os, subprocess, sys, tempfile
 try:
     import yaml
 except ImportError:
@@ -288,6 +288,35 @@ def working_branch_check(current, base):
             "fix": f"git checkout {base} before running /dispatch"}
 
 
+def _probe_symlink():
+    # Can this process create a directory symlink? On Windows that needs
+    # SeCreateSymbolicLinkPrivilege — Developer Mode or elevation; off by default.
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            target = os.path.join(d, "t"); os.mkdir(target)
+            os.symlink(target, os.path.join(d, "l"), target_is_directory=True)
+        return True
+    except OSError:
+        return False
+
+
+def symlink_capability_check(can_symlink, windows):
+    # Windows-only: dispatch's gate proves type: bug goals by running acceptance in a
+    # base worktree whose dep dirs are SYMLINKED from the live checkout. Without the
+    # privilege every bug goal gates INCONCLUSIVE (safe, but the whole class blocks).
+    if not windows:
+        return None
+    if can_symlink:
+        return {"check": "symlink-privilege", "level": "INFO",
+                "detail": "symlinks available — bug-goal base worktrees can link deps",
+                "fix": ""}
+    return {"check": "symlink-privilege", "level": "WARN",
+            "detail": "no symlink privilege (WinError 1314) — every type: bug goal will gate "
+                      "INCONCLUSIVE because the base worktree cannot link deps",
+            "fix": "enable Windows Developer Mode (Settings → Privacy & security → "
+                   "For developers) or run elevated"}
+
+
 def run_checks(base):
     C = []
 
@@ -315,6 +344,10 @@ def run_checks(base):
     add("git", "INFO" if rc == 0 and version_ge(out, "2.20") else "BLOCKER", out.strip() or "git missing")
 
     add("python3", "INFO", sys.version.split()[0])
+    sl = symlink_capability_check(_probe_symlink() if os.name == "nt" else True,
+                                  os.name == "nt")
+    if sl:
+        C.append(sl)
     if yaml is None:
         add("pyyaml", "BLOCKER", "pyyaml not importable (dispatch + this probe parse the queue with it)",
             "FIX: python3 -m pip install --user pyyaml  (if PEP-668 externally-managed, add --break-system-packages — still user-scope)")

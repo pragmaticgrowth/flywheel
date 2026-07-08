@@ -301,6 +301,131 @@ def test_run_validation_bug_inconclusive_when_base_worktree_fails(monkeypatch=No
     # never a PASS when the base worktree can't be populated
     assert res["verdict"] != "PASS"
 
+def test_dep_link_pairs_covers_workspace_node_modules():
+    # pnpm/yarn/npm-workspace packages resolve their runner bins from their OWN
+    # node_modules/.bin — linking only the root leaves 'jest' unresolvable on base.
+    import os as _o, tempfile as _t
+    live = _t.mkdtemp(); base = _t.mkdtemp()
+    for d in ("node_modules", ".venv",
+              _o.path.join("apps", "web", "node_modules"),
+              _o.path.join("packages", "core", "node_modules"),
+              _o.path.join("node_modules", "@scope", "pkg", "node_modules"),  # inside root deps
+              _o.path.join("a", "b", "c", "node_modules")):                   # 3 deep, out of scan
+        _o.makedirs(_o.path.join(live, d))
+    _o.makedirs(_o.path.join(base, "apps", "web"))  # package exists on base
+    # packages/core does NOT exist on base -> pair must be skipped
+    pairs = pgv._dep_link_pairs(live, base)
+    dsts = {_o.path.relpath(dst, base) for _src, dst in pairs}
+    assert "node_modules" in dsts, dsts
+    assert ".venv" in dsts, dsts
+    assert _o.path.join("apps", "web", "node_modules") in dsts, dsts
+    assert _o.path.join("packages", "core", "node_modules") not in dsts, dsts
+    assert not any("@scope" in p for p in dsts), dsts
+    assert not any(p.startswith(_o.path.join("a", "b")) for p in dsts), dsts
+
+def test_remove_link_removes_link_never_target():
+    import os as _o, tempfile as _t
+    d = _t.mkdtemp()
+    target = _o.path.join(d, "real"); _o.makedirs(target)
+    open(_o.path.join(target, "file"), "w").write("x")
+    link = _o.path.join(d, "lnk"); _o.symlink(target, link)
+    pgv._remove_link(link)
+    assert not _o.path.lexists(link)
+    assert _o.path.exists(_o.path.join(target, "file"))
+
+def _bug_repo_with_deps(marker_acceptance=True):
+    # Live repo with an UNTRACKED node_modules (as gitignored deps are): base worktree
+    # only sees it through the dep link. Acceptance needs it when marker_acceptance.
+    import os as _o, subprocess as _sp, tempfile as _t
+    def g(d, *a): return _sp.run(["git", "-C", d, *a], capture_output=True, text=True)
+    d = _t.mkdtemp(); g(d, "init", "-q"); g(d, "config", "user.email", "t@t"); g(d, "config", "user.name", "t")
+    _o.mkdir(_o.path.join(d, "node_modules"))
+    open(_o.path.join(d, "node_modules", "marker"), "w").write("dep\n")
+    cmd = "test -f node_modules/marker" if marker_acceptance else "grep -q FIXED f.txt"
+    open(_o.path.join(d, "f.txt"), "w").write("FIXED\n" if not marker_acceptance else "BUG\n")
+    gf = _o.path.join(d, "goal.md")
+    open(gf, "w").write(f'---\ntype: bug\nacceptance:\n  - "{cmd}"\n---\nbody\n')
+    g(d, "add", "f.txt"); g(d, "commit", "-qm", "base")
+    base = g(d, "rev-parse", "HEAD").stdout.strip()
+    open(_o.path.join(d, "other.txt"), "w").write("work\n")
+    g(d, "add", "other.txt"); g(d, "commit", "-qm", "work")
+    head = g(d, "rev-parse", "HEAD").stdout.strip()
+    return d, gf, base, head
+
+def test_run_validation_bug_link_failure_base_red_actionable_inconclusive():
+    # Windows without Developer Mode: os.symlink raises WinError 1314, the silent
+    # swallow left the base worktree dep-less, and a dep-needing acceptance reds on
+    # base for ENVIRONMENT reasons. On the direct-probe path (no overlaid test) that
+    # base-red would forge a false repro PASS — it must be INCONCLUSIVE, and the
+    # evidence must name the cause and the fix (Developer Mode / elevation).
+    import os as _o
+    d, gf, base, head = _bug_repo_with_deps(marker_acceptance=True)
+    real = pgv._make_link
+    def denied(src, dst):
+        e = OSError(1314, "A required privilege is not held by the client")
+        e.winerror = 1314
+        raise e
+    pgv._make_link = denied
+    try:
+        cwd0 = _o.getcwd(); _o.chdir(d)
+        try:
+            res = pgv.run_validation(head, "020", base, gf, d)
+        finally:
+            _o.chdir(cwd0)
+    finally:
+        pgv._make_link = real
+    assert res["verdict"] == "INCONCLUSIVE", res
+    assert "Developer Mode" in res["summary"], res
+
+def test_run_validation_bug_link_failure_base_green_keeps_normal_verdict():
+    # Link failure alone must not blanket-INCONCLUSIVE: with base green the normal
+    # repro-direction verdict stands (here FAIL_CONTRACT — nothing red to fix).
+    import os as _o
+    d, gf, base, head = _bug_repo_with_deps(marker_acceptance=False)
+    real = pgv._make_link
+    def denied(src, dst):
+        e = OSError(1314, "A required privilege is not held by the client")
+        e.winerror = 1314
+        raise e
+    pgv._make_link = denied
+    try:
+        cwd0 = _o.getcwd(); _o.chdir(d)
+        try:
+            res = pgv.run_validation(head, "021", base, gf, d)
+        finally:
+            _o.chdir(cwd0)
+    finally:
+        pgv._make_link = real
+    assert res["verdict"] == "FAIL_CONTRACT", res
+
+def test_run_validation_no_recursive_worktree_remove_while_link_lives():
+    # Data-loss guard (field report: 41 tracked files destroyed): `git worktree
+    # remove --force` recursively deletes THROUGH a live dir link (junction/symlink
+    # traversal on Windows) into the real dep store and the workspace sources its
+    # inner links point at. If any created link survives removal, the gate must
+    # SKIP worktree remove (tempdir rmtree removes links without following) and
+    # only prune the stale registration.
+    import os as _o
+    d, gf, base, head = _bug_repo_with_deps(marker_acceptance=True)
+    calls = []
+    real_git, real_rm = pgv._git, pgv._remove_link
+    def spy_git(args, **kw):
+        calls.append(list(args))
+        return real_git(args, **kw)
+    pgv._git = spy_git
+    pgv._remove_link = lambda path: None  # simulate an irremovable link
+    try:
+        cwd0 = _o.getcwd(); _o.chdir(d)
+        try:
+            res = pgv.run_validation(head, "022", base, gf, d)
+        finally:
+            _o.chdir(cwd0)
+    finally:
+        pgv._git, pgv._remove_link = real_git, real_rm
+    assert res["verdict"] in pgv.VERDICTS, res
+    assert not any(c[:2] == ["worktree", "remove"] for c in calls), calls
+    assert any(c[:2] == ["worktree", "prune"] for c in calls), calls
+
 def test_resolve_shell_pg_bash_override_wins():
     # Operator override beats every probe — even on Windows, even if which() disagrees.
     p = pgv._resolve_shell(environ={"PG_BASH": "/custom/bin/bash"},

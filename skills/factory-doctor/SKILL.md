@@ -101,7 +101,11 @@ text IS the exact command or guidance for the human (the `gh auth refresh …` l
 install command for a missing system tool). The probe checks `browser-verify`: if the repo has
 frontend/UI work (a UI framework in package.json, or any goal referencing `agent-browser`)
 but `agent-browser` isn't installed, it WARNs with the install command — REPORT-only (a global
-npm install + Chromium is a system-level change, never auto-run). The probe also emits three
+npm install + Chromium is a system-level change, never auto-run). On Windows the probe also
+checks `symlink-privilege`: without Developer Mode or elevation, dispatch's bug-goal gate
+cannot link dep dirs into its base worktree and every `type: bug` goal returns INCONCLUSIVE —
+WARN carrying the enable-Developer-Mode fix (REPORT-only; an OS settings change is never
+auto-run). The probe also emits three
 REPORT-only loop-health checks (all read-only — never auto-fixed): `queue-liveness` (WARN naming
 any `in_progress` goal with no work commits on the branch after its claim commit — a stale claim /
 silent-death candidate dispatch will respawn or that needs unblocking), `goal-contracts`

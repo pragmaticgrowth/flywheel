@@ -13,6 +13,37 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [4.14.2] — 2026-07-08
+
+**Patch: Windows `type: bug` goals are gateable — workspace-aware dep links,
+actionable INCONCLUSIVE, and a junction-traversal data-loss guard.** Follow-up
+field report from the same Windows user: with the shell fixed (4.14.1),
+chore/feature goals gated fine but every bug goal returned INCONCLUSIVE.
+Root cause was two-layered: (1) `os.symlink` needs
+`SeCreateSymbolicLinkPrivilege` (Developer Mode or elevation — off on a stock
+box), and the gate's `except OSError: pass` silently swallowed WinError 1314,
+leaving the repro-direction base worktree dep-less; (2) even with symlinks
+available, only top-level `DEP_DIRS` were linked — pnpm/yarn/npm-workspace
+packages resolve runner bins from their OWN `node_modules/.bin`, so `jest`
+stayed unresolvable. Fixes: link failures are now RECORDED and, when a base
+run is red, the gate returns an INCONCLUSIVE whose evidence names the cause
+and the operator fix (enable Developer Mode / run elevated) — this also closes
+a latent FALSE-PASS on the direct-probe path (no overlaid test → no bare-base
+control), where a dep-less base red could previously be mistaken for a bug
+reproduction; `_dep_link_pairs` now links per-workspace-package
+`node_modules` (`*/node_modules`, `*/*/node_modules`) alongside the root dep
+dirs. Cleanup is hardened per the reporter's data-loss warning (a naive
+junction fallback destroyed 41 tracked files in his checkout — recursive
+deletes traverse live dir links into real workspace sources): links are
+removed link-only (`unlink` then `rmdir` for Windows dir symlinks) BEFORE
+`git worktree remove --force`, and if any link survives, the worktree remove
+is SKIPPED (rmtree handles links safely; the stale registration is pruned).
+Junctions are explicitly rejected in code comments. factory-doctor gains a
+Windows-only `symlink-privilege` WARN with the Developer Mode fix text;
+dispatch SKILL.md documents the Windows requirement and now requires the
+gate's `evidence` to reach INCONCLUSIVE block reasons. +5 gate tests
+(78 total), +3 doctor tests (38 total).
+
 ## [4.14.1] — 2026-07-08
 
 **Patch: the dispatch gate works on Windows — bash resolves by full path, and

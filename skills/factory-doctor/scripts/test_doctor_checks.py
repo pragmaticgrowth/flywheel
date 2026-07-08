@@ -193,6 +193,22 @@ def test_limit_resilience_ok_with_external_scheduler():
 def test_limit_resilience_ok_with_stopfailure_hook():
     assert dc.limit_resilience_check(2, 3, True, False)["level"] == "INFO"
 
+def test_symlink_capability_warn_on_windows_without_privilege():
+    # Windows default (Developer Mode off, non-elevated): os.symlink raises
+    # WinError 1314, so bug-goal base worktrees can't link deps and every type: bug
+    # goal gates INCONCLUSIVE. The doctor must surface it with the actionable fix.
+    r = dc.symlink_capability_check(can_symlink=False, windows=True)
+    assert r["level"] == "WARN"
+    assert "bug" in r["detail"]
+    assert "Developer Mode" in r["fix"]
+
+def test_symlink_capability_info_when_available_on_windows():
+    r = dc.symlink_capability_check(can_symlink=True, windows=True)
+    assert r["level"] == "INFO"
+
+def test_symlink_capability_not_reported_on_posix():
+    assert dc.symlink_capability_check(can_symlink=True, windows=False) is None
+
 if __name__ == "__main__":
     fns = [g for n, g in sorted(globals().items()) if n.startswith("test_")]
     for fn in fns: fn(); print("ok ", fn.__name__)

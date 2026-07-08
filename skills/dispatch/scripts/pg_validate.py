@@ -190,8 +190,53 @@ def queue_untouched(changed_paths):
             "evidence": "implementer left docs/goals/ untouched"}
 
 
-import argparse, json, ntpath, os, posixpath, shutil, subprocess, tempfile
+import argparse, glob, json, ntpath, os, posixpath, shutil, subprocess, tempfile
 EXIT = {"PASS": 0, "FAIL_FIXABLE": 3, "FAIL_CONTRACT": 3, "INCONCLUSIVE": 4}
+
+
+def _make_link(src, dst):
+    """Create a dep-share link into the base worktree. Real symlink only — a directory
+    junction is deliberately NOT a fallback (see the cleanup in run_validation for the
+    data-loss chain). On Windows this needs Developer Mode or elevation (else
+    WinError 1314), which the caller reports actionably instead of swallowing."""
+    os.symlink(src, dst, target_is_directory=True)
+
+
+def _remove_link(path):
+    """Remove a link we created — the link/reparse point itself, never the target.
+    Windows refuses unlink on directory symlinks; rmdir there removes just the link
+    (and on a real non-empty dir it fails loudly instead of deleting content)."""
+    try:
+        os.unlink(path)
+    except OSError:
+        try:
+            os.rmdir(path)
+        except OSError:
+            pass
+
+
+def _dep_link_pairs(repo_root, basewt):
+    """(src, dst) dep dirs to share with a base worktree: the top-level DEP_DIRS plus
+    each workspace package's node_modules one or two levels deep (apps/*/node_modules,
+    packages/*/node_modules). Workspace packages (pnpm/yarn/npm workspaces) resolve
+    their runner bins from their OWN node_modules/.bin, so root-only linking leaves
+    'jest' & co unresolvable on base. Skips node_modules nested inside another
+    node_modules and packages that don't exist at the base SHA."""
+    pairs = []
+    for d in DEP_DIRS:
+        src = os.path.join(repo_root, d)
+        if os.path.isdir(src):
+            pairs.append((src, os.path.join(basewt, d)))
+    for pat in ("*", os.path.join("*", "*")):
+        for src in glob.glob(os.path.join(repo_root, pat, "node_modules")):
+            rel = os.path.relpath(src, repo_root)
+            parts = rel.split(os.sep)
+            if "node_modules" in parts[:-1] or parts[0] == ".git" or not os.path.isdir(src):
+                continue
+            dst = os.path.join(basewt, rel)
+            if os.path.isdir(os.path.dirname(dst)):
+                pairs.append((src, dst))
+    return pairs
 
 
 def _run(cmd, **kw):
@@ -450,19 +495,23 @@ def run_validation(head, goal_id, base, goal_file, repo_root):
                                          "kind": "inconclusive", "evidence": evidence}],
                     "summary": f"INCONCLUSIVE: {evidence}",
                 }
-            links = []
+            links, link_errors = [], []
+            worktree_removed = False
             try:
-                # (a) best-effort: share the live checkout's installed dep dirs. We only ever
-                # create/remove the symlink itself — never touch the real target dirs.
-                for d in DEP_DIRS:
-                    src = os.path.join(repo_root, d)
-                    dst = os.path.join(basewt, d)
-                    if os.path.isdir(src) and not os.path.exists(dst):
-                        try:
-                            os.symlink(src, dst)
-                            links.append(dst)
-                        except OSError:
-                            pass
+                # (a) best-effort: share the live checkout's installed dep dirs (root +
+                # per-workspace-package). We only ever create/remove the link itself —
+                # never touch the real target dirs. Failures are RECORDED, not swallowed:
+                # on Windows without Developer Mode/elevation os.symlink raises
+                # WinError 1314, and a dep-less base run must never be mistaken for a
+                # bug reproduction (see the link_errors guard below).
+                for src, dst in _dep_link_pairs(repo_root, basewt):
+                    if os.path.lexists(dst):
+                        continue
+                    try:
+                        _make_link(src, dst)
+                        links.append(dst)
+                    except OSError as e:
+                        link_errors.append(e)
                 # (b) control: bare base (only meaningful when a separate proving test is
                 # overlaid — otherwise base_exits IS the bare run).
                 if test_files:
@@ -470,12 +519,43 @@ def run_validation(head, goal_id, base, goal_file, repo_root):
                     _git(["-C", basewt, "checkout", sha_head, "--", *test_files])
                 base_exits = _run_cmds(cmds, basewt) if cmds else []
             finally:
+                # NO junction fallback here, ever: a recursive delete that runs while a
+                # dir link is live traverses it on Windows (junction — and cleanup-order
+                # bugs make real symlinks just as dangerous) into the live dep store and
+                # the workspace sources its inner links point at; a field report lost 41
+                # tracked files this way. So: remove every link we created FIRST (the
+                # link only), and if any survives, SKIP `git worktree remove --force`
+                # entirely — TemporaryDirectory's rmtree removes links without following
+                # them (Python >=3.8), and the stale registration is pruned after.
                 for link in links:
-                    try:
-                        os.unlink(link)  # remove the symlink, never the target
-                    except OSError:
-                        pass
-                _git(["worktree", "remove", basewt, "--force"])
+                    _remove_link(link)
+                if not any(os.path.lexists(l) for l in links):
+                    _git(["worktree", "remove", basewt, "--force"])
+                    worktree_removed = True
+        if not worktree_removed:
+            _git(["worktree", "prune"])
+        # Dep links could not be created AND a base run is red: missing-deps noise is
+        # indistinguishable from a bug reproduction — and on the direct-probe path (no
+        # overlaid test, control skipped) it would forge a false repro PASS. INCONCLUSIVE,
+        # with the cause and the operator fix named instead of a generic base-red message.
+        if cmds and link_errors and (any(x != 0 for x in bare_base_exits)
+                                     or any(x != 0 for x in base_exits)):
+            e = link_errors[0]
+            hint = (" — enable Windows Developer Mode (Settings → Privacy & security → "
+                    "For developers) or run elevated so the gate can link deps into the "
+                    "base worktree" if getattr(e, "winerror", None) == 1314 else "")
+            evidence = (f"dependency dir(s) could not be linked into the base worktree "
+                        f"({e}){hint}; the base run is red, which cannot be distinguished "
+                        "from missing-deps noise — never counted as a bug reproduction. "
+                        "Verify the fix manually.")
+            return {
+                "verdict": "INCONCLUSIVE",
+                "sha_head": sha_head,
+                "sha_base": sha_base,
+                "checks": checks + [{"name": "repro-direction", "pass": False,
+                                     "kind": "inconclusive", "evidence": evidence}],
+                "summary": f"INCONCLUSIVE: {evidence}",
+            }
         # If the bare base (pre-overlay) couldn't run the acceptance clean, the base "red" is
         # environment/setup noise or a pre-existing failure, not a bug reproduction — never
         # let that forge a PASS.
