@@ -13,6 +13,28 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [4.14.0] — 2026-07-08
+
+**Minor: hook pings are dispatch-gated — interactive sessions stop flooding
+the chat.** A real day of parallel interactive sessions produced a stream of
+idle/permission/error DMs with zero dispatch relevance (transcript forensics:
+8 of 8 hook pings that day came from ordinary interactive work; the one useful
+ping was a dispatch report). The notifier now gates its three hook categories
+on per-repo dispatch context, read from `~/.local/state/pg-dispatch/<slug>/`:
+`waiting` requires a LIVE fire — the new `active` marker dispatch writes as
+the first act of every fire and removes as the last — so loop sessions idling
+between fires, elicitation dialogs, and teammate blips in ordinary work never
+ping; `errors`/`completions` accept the marker OR a heartbeat younger than
+4 h, so a wakeup turn dying to a usage limit before its fire starts still
+pings and the run-ended ping still lands after the last fire cleaned up. The
+`dispatch` report category is never gated. Default ON with no config change
+(existing configs gain the gate on refresh); `"gate_on_dispatch": false` per
+scope restores fire-always hooks, and the env-var cloud scope stays ungated
+(`PG_TELEGRAM_EVENTS` is its narrowing knob). dispatch SKILL.md gains the
+fire-marker write/cleanup; the gate is per-repo, not per-session (skills
+can't see their session id) — documented in the skill. +11 notifier tests
+(47 total).
+
 ## [4.13.0] — 2026-07-07
 
 **Minor: telegram-message identifies the SESSION, drops timestamp noise.**

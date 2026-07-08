@@ -18,7 +18,10 @@ Wire a Telegram bot so an autonomous `/dispatch` or `/loop` run tells the owner
 the moment it needs a human — an API/usage-limit error killed a turn, the agent
 is waiting on a permission prompt, or the queue drained. One-time setup writes a
 local, chmod-600 credentials file; the plugin's hooks (shipped dormant) then
-call the notifier on the right events. **This skill only sets up notifications —
+call the notifier on the right events. Hook pings are **dispatch-gated by
+default** (v4.14): they fire only around a live dispatch run in that repo, so
+ordinary interactive sessions — idle prompts, plan questions, teammate blips —
+never spam the chat (see "What fires when"). **This skill only sets up notifications —
 it never claims goals or implements work.**
 
 ## Invocation
@@ -92,8 +95,8 @@ never write it into any repo file):
    ```
 
    (`project_root` only in project-scope files.) Preserve an existing file's
-   `events`/`only_cwd`/`min_interval_seconds` on an update; only overwrite
-   token/chat_id/enabled.
+   `events`/`only_cwd`/`min_interval_seconds`/`gate_on_dispatch` on an update;
+   only overwrite token/chat_id/enabled.
 5. **Send a test message** — lead with the PROJECT name (several projects may
    share one chat; the project is always the headline of every notification):
    `curl -sS "https://api.telegram.org/bot<token>/sendMessage" -d chat_id=<id> --data-urlencode "text=✅ <project-dir-name> · notifications wired to this chat"`
@@ -122,6 +125,24 @@ distinguishable in one chat. Dispatch pings carry no session id (plaintext
 pipe), so their headline is just `<project> · dispatch`. Heartbeat lines are
 shown without their timestamp — Telegram already shows arrival time.
 
+**Dispatch-context gate (default since v4.14).** The three hook categories fire
+only in dispatch context; the `dispatch` category itself is never gated. The
+notifier reads two per-repo signals from `~/.local/state/pg-dispatch/<slug>/`:
+- **waiting** needs a LIVE fire — the `active` marker dispatch writes at fire
+  start and removes at fire end. A loop session idling between fires, an
+  interactive session waiting on your answer, or an elicitation dialog in
+  ordinary work never pings; a permission prompt stalling a live fire does.
+- **errors** and **completions** accept the marker OR a heartbeat younger than
+  4 h — so a wakeup turn dying to a usage limit *before* the fire writes its
+  marker still pings, and the run-ended ping still lands after the last fire
+  cleaned up. Anything older than 4 h counts as no context.
+The gate is per-REPO, not per-session (skills can't see their session id): an
+interactive session in a repo whose factory is mid-fire can still ping — rare,
+and it concerns the repo being watched anyway. Set `"gate_on_dispatch": false`
+on a scope to restore fire-always hooks (e.g. for generic non-dispatch
+unattended loops); the env-var cloud scope is always ungated —
+`PG_TELEGRAM_EVENTS` is its narrowing knob.
+
 - **errors** → `StopFailure` (rate_limit, billing_error, authentication_failed,
   overloaded, server_error, …). **Verified firing in unattended `claude -p`
   runs** — the usage-limit / API-error signal that matters for `/loop /dispatch`:
@@ -133,7 +154,7 @@ shown without their timestamp — Telegram already shows arrival time.
   fires when the prompt APPEARS — i.e. while the agent waits on you, one per
   prompt, not on your approval action. Interactive sessions only; a headless `-p`
   run aborts rather than prompting, so don't expect waiting pings from unattended
-  runs.
+  runs. Gated: pings only while a dispatch fire is live in that repo (above).
 - **completions** → `SessionEnd` (a run/session ended; verified firing in `-p`).
   For the limit-proof external-scheduler model (`loop-architect` Step 5: fresh
   `claude -p "/dispatch"` per fire) this pings once per fire; for an in-session
@@ -168,6 +189,11 @@ longest-`project_root`-prefix project file → global; `enabled:false` in a
 project file silences that project outright. Fields:
 - `enabled` — the scope's switch (`/telegram-message off|on`).
 - `events.{errors,waiting,completions,dispatch}` — per-category toggles.
+- `gate_on_dispatch` — default `true` (key absent = on): hook categories fire
+  only in dispatch context (see "What fires when"). `false` restores
+  fire-always hooks for that scope. Per-SCOPE, and a project file beats global:
+  to ungate a whole machine, set it in the global config AND in every project
+  file that exists.
 - `project_root` — project files only; the prefix the notifier matches on.
 - `only_cwd` — global-config-era repo filter (project scope supersedes it).
 - `min_interval_seconds` — anti-flood throttle per category (default 0 = off).

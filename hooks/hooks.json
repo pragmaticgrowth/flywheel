@@ -1,5 +1,5 @@
 {
-  "description": "flywheel Telegram notifications — DMs a bot on errors/limits, agent-waiting, and run completion. Dormant until you run /telegram-message; no-ops with no config. StopFailure is Claude Code-only (Droid has no error hook); Notification + SessionEnd work on both CLIs.",
+  "description": "flywheel Telegram notifications — DMs a bot on errors/limits, agent-waiting, and run completion. Dormant until you run /telegram-message; no-ops with no config. Pings are dispatch-gated by default: they fire only around a live /dispatch run in that repo. StopFailure is Claude Code-only (Droid has no error hook); Notification + SessionEnd work on both CLIs.",
   "hooks": {
     "StopFailure": [
       {

@@ -14,9 +14,12 @@ ptn = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(ptn)
 # ---- config loading / no-op contract ----
 
 def _cfg(**over):
+    # gate_on_dispatch=False: these tests exercise toggles/resolution/composition,
+    # not the v4.14 dispatch-context gate (tested in its own block below).
     base = {"enabled": True, "bot_token": "123:ABCDEF", "chat_id": "9",
             "events": {"errors": True, "waiting": True, "completions": True},
-            "only_cwd": None, "min_interval_seconds": 0}
+            "only_cwd": None, "min_interval_seconds": 0,
+            "gate_on_dispatch": False}
     base.update(over); return base
 
 
@@ -357,6 +360,146 @@ def test_main_dispatch_accepts_plaintext_stdin():
         rc, out = _run_main("[dispatch] 3/5 done · ready: 1 · blocked: 1",
                             "dispatch", p)
         assert rc == 0 and "3/5 done" in out
+
+
+# ---- v4.14.0: dispatch-aware gating ----
+# Hook categories (errors/waiting/completions) only fire in dispatch context:
+# waiting needs a live fire (fresh `active` marker); errors/completions accept
+# marker OR fresh heartbeat. The dispatch category is never gated. Default ON
+# (no config key needed); gate_on_dispatch:false opts a scope back out.
+
+_H = 3600
+
+
+def _gate_cfg(**over):
+    # deliberately NO gate_on_dispatch key — gating must default ON
+    base = {"enabled": True, "bot_token": "123:ABCDEF", "chat_id": "9",
+            "events": {"errors": True, "waiting": True,
+                       "completions": True, "dispatch": True},
+            "only_cwd": None, "min_interval_seconds": 0}
+    base.update(over); return base
+
+
+def _dispatch_state(d, slug, marker_age=None, heartbeat_age=None):
+    import time as _t
+    sd = os.path.join(d, "pg-dispatch", slug)
+    os.makedirs(sd, exist_ok=True)
+    now = _t.time()
+    if marker_age is not None:
+        p = os.path.join(sd, "active")
+        open(p, "w").write("2026-07-08T00:00:00Z\n")
+        os.utime(p, (now - marker_age, now - marker_age))
+    if heartbeat_age is not None:
+        p = os.path.join(sd, "heartbeat")
+        open(p, "w").write("2026-07-08T00:00:00Z · 3/5 · current none · drained no\n")
+        os.utime(p, (now - heartbeat_age, now - heartbeat_age))
+    return sd
+
+
+def test_gate_waiting_suppressed_without_dispatch_context():
+    with tempfile.TemporaryDirectory() as d:
+        _state(d)
+        ok, why = ptn.should_send(_gate_cfg(), "waiting", {"cwd": "/repos/myapp"})
+        assert not ok and "dispatch" in why
+
+
+def test_gate_waiting_allowed_during_active_fire():
+    with tempfile.TemporaryDirectory() as d:
+        _state(d)
+        _dispatch_state(d, "myapp", marker_age=60)
+        ok, why = ptn.should_send(_gate_cfg(), "waiting", {"cwd": "/repos/myapp"})
+        assert ok, why
+
+
+def test_gate_waiting_suppressed_when_marker_stale():
+    # a fire that crashed without cleanup must not keep the gate open forever
+    with tempfile.TemporaryDirectory() as d:
+        _state(d)
+        _dispatch_state(d, "myapp", marker_age=5 * _H)
+        ok, _ = ptn.should_send(_gate_cfg(), "waiting", {"cwd": "/repos/myapp"})
+        assert not ok
+
+
+def test_gate_waiting_ignores_heartbeat_between_fires():
+    # between loop fires the marker is gone but the heartbeat is fresh —
+    # idle_prompt pings between fires are exactly the noise being killed
+    with tempfile.TemporaryDirectory() as d:
+        _state(d)
+        _dispatch_state(d, "myapp", heartbeat_age=60)
+        ok, _ = ptn.should_send(_gate_cfg(), "waiting", {"cwd": "/repos/myapp"})
+        assert not ok
+
+
+def test_gate_errors_allowed_with_fresh_heartbeat():
+    # a wakeup turn can die (rate_limit) BEFORE the fire writes its marker —
+    # a recent heartbeat is the loop-liveness signal that lets the ping out
+    with tempfile.TemporaryDirectory() as d:
+        _state(d)
+        _dispatch_state(d, "myapp", heartbeat_age=600)
+        ok, why = ptn.should_send(_gate_cfg(), "errors", {"cwd": "/repos/myapp"})
+        assert ok, why
+
+
+def test_gate_errors_suppressed_without_context():
+    with tempfile.TemporaryDirectory() as d:
+        _state(d)
+        ok, _ = ptn.should_send(_gate_cfg(), "errors", {"cwd": "/repos/myapp"})
+        assert not ok
+
+
+def test_gate_completions_follow_heartbeat_freshness():
+    with tempfile.TemporaryDirectory() as d:
+        _state(d)
+        _dispatch_state(d, "myapp", heartbeat_age=600)
+        ok, why = ptn.should_send(_gate_cfg(), "completions",
+                                  {"cwd": "/repos/myapp"})
+        assert ok, why
+    with tempfile.TemporaryDirectory() as d:
+        _state(d)
+        _dispatch_state(d, "myapp", heartbeat_age=5 * _H)
+        ok, _ = ptn.should_send(_gate_cfg(), "completions",
+                                {"cwd": "/repos/myapp"})
+        assert not ok
+
+
+def test_gate_dispatch_category_never_gated():
+    with tempfile.TemporaryDirectory() as d:
+        _state(d)
+        ok, why = ptn.should_send(_gate_cfg(), "dispatch", {"cwd": "/repos/myapp"})
+        assert ok, why
+
+
+def test_gate_optout_restores_fire_always():
+    with tempfile.TemporaryDirectory() as d:
+        _state(d)
+        cfg = _gate_cfg(gate_on_dispatch=False)
+        ok, why = ptn.should_send(cfg, "waiting", {"cwd": "/repos/myapp"})
+        assert ok, why
+
+
+def test_gate_env_creds_path_is_ungated():
+    # explicit per-run env config (cloud routines) states its own categories —
+    # gating there would surprise; PG_TELEGRAM_EVENTS is the narrowing knob
+    with tempfile.TemporaryDirectory() as d:
+        _state(d)
+        os.environ["PG_TELEGRAM_BOT_TOKEN"] = "1:ENVTOK"
+        os.environ["PG_TELEGRAM_CHAT_ID"] = "77"
+        try:
+            cfg = ptn.resolve_config("/repos/anything")
+            ok, why = ptn.should_send(cfg, "waiting", {"cwd": "/repos/anything"})
+            assert ok, why
+        finally:
+            _state(d)
+
+
+def test_main_gated_waiting_noop_end_to_end():
+    with tempfile.TemporaryDirectory() as d:
+        _state(d)  # XDG points pg-dispatch lookups at empty temp state
+        p = os.path.join(d, "config.json")
+        json.dump(_gate_cfg(), open(p, "w"))
+        rc, out = _run_main('{"cwd":"/repos/myapp","message":"needs input"}',
+                            "waiting", p)
+        assert rc == 0 and out.strip() == ""
 
 
 if __name__ == "__main__":

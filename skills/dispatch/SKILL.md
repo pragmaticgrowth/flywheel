@@ -125,6 +125,15 @@ where it left off:
 
 ## Phase 0 — read the queue
 
+**Fire marker — first act of every fire.** `mkdir -p ~/.local/state/pg-dispatch/<SLUG>`
+then `date -u +%FT%TZ > ~/.local/state/pg-dispatch/<SLUG>/active` (`<SLUG>` = the repo dir
+name, same as the Phase 4 heartbeat). The `telegram-message` notifier gates its hook pings
+on this marker's freshness: a permission/idle prompt or API error pings only while a fire
+is live. Phase 4 removes it as the fire's last act; every reader treats a marker older
+than 4 h as dead, so a crashed fire can't hold the gate open. A fire that legitimately
+runs long rewrites the marker at each phase transition (claim, spawn, gate) so it never
+ages past the window mid-fire.
+
 Confirm the working tree is clean (dirty or diverged → stop and report rather than stash
 silently). If `docs/goals/index.yaml` is missing, report "no goals queue — create goals with
 /define-goal" and end the iteration.
@@ -135,7 +144,9 @@ mismatch handling in Phase 2 — never silently work on the wrong branch).
 
 **Drained-queue terminal stop.** Dispatch stops when there is nothing left to do: when Phase 2
 finds no ready goals AND needs-you is empty, emit `factory drained — <done>/<total> done` and
-stop. A later `/dispatch` (or `/loop`) re-run picks up newly-added goals — a `/define-goal` +
+stop. A terminal stop still runs Phase 4 first — the drained fire reports, heartbeats, pings,
+and removes the fire marker before stopping; skipping Phase 4 would leave the marker holding
+the notifier's gate open for a factory that is actually done. A later `/dispatch` (or `/loop`) re-run picks up newly-added goals — a `/define-goal` +
 `/dispatch` resumes from wherever the queue now stands.
 
 At end-of-drain only (NOT per-goal — no polling), if the working branch has a remote AND `gh`
@@ -431,6 +442,11 @@ a fire, and works identically in Claude Code, Droid, and cloud runs because it
 is a plain script call, not a hook — on Droid, where hooks don't fire under
 `droid exec`, this IS the notification path. Skip silently if the script can't
 be resolved.
+
+**Fire-marker cleanup — last act of every fire.** After the report, heartbeat, and ping:
+`rm -f ~/.local/state/pg-dispatch/<SLUG>/active`. Between loop fires the marker must be
+absent — that is what lets a dispatch-gated notifier stay quiet about the loop session's
+between-fire idling while still pinging a prompt that stalls a live fire.
 
 ## Hygiene
 

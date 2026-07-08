@@ -4,7 +4,7 @@
 
 Skills-only Claude Code and Droid (Factory CLI) marketplace from Pragmatic Growth.
 The repo now publishes four plugins from one `pragmatic-growth` marketplace:
-`flywheel` v4.12.0, `html-artifacts` v1.0.0, `autoresearch` v1.0.0, and
+`flywheel` v4.14.0, `html-artifacts` v1.0.0, `autoresearch` v1.0.0, and
 `human-writing` v1.0.0. No MCP
 servers, no commands, no
 agents, no build step, and — as of v4.11.0 — ONE hook bundle
@@ -87,13 +87,21 @@ appropriate paths, commands, and scheduling primitives.
   model commits directly on the local branch, so there is no merge allow-rule
   to provision — the gate is local. The probe checks settings in both
   `.claude/` and `.factory/` (Droid) paths.
-- **telegram-message** (v4.11.0, scopes + Droid/cloud in v4.12.0) —
+- **telegram-message** (v4.11.0, scopes + Droid/cloud in v4.12.0,
+  dispatch-gated hooks in v4.14.0) —
   `/telegram-message <bot_token> [chat_id]` wires a Telegram bot to DM the owner
   when an autonomous run needs a human: an API/usage-limit error killed a turn
   (`StopFailure`), the agent is waiting on a permission/idle prompt
   (`Notification`), a run finished (`SessionEnd`), or a dispatch fire reported
   (hook-free `dispatch` category — dispatch Phase 4 pipes its report line to the
-  notifier). Personal settings are PROJECT-SCOPED by default and always OUTSIDE
+  notifier). Hook pings are DISPATCH-GATED by default (v4.14.0, owner decision
+  after a real ping flood: 8/8 hook pings in one day came from ordinary
+  interactive sessions): `waiting` needs a live fire — the `active` marker
+  dispatch writes at fire start and removes at fire end — while
+  `errors`/`completions` accept the marker or a ≤4 h heartbeat; the `dispatch`
+  category is never gated; `gate_on_dispatch:false` opts a scope out (env-var
+  cloud scope is always ungated). Personal settings are PROJECT-SCOPED by
+  default and always OUTSIDE
   the repo (structurally unpushable): chmod-600
   `~/.local/state/pg-telegram/projects/<slug>.json` (longest-`project_root`-
   prefix match on cwd; `enabled:false` = per-project opt-out), `--global` for

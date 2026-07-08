@@ -5,7 +5,7 @@ A skills-only plugin marketplace for [Claude Code](https://claude.com/claude-cod
 and [Droid](https://factory.ai) (Factory CLI), from Pragmatic Growth.
 
 [![Website](https://img.shields.io/badge/site-plugin.pragmaticgrowth.com-6366f1)](https://plugin.pragmaticgrowth.com)
-[![Version](https://img.shields.io/badge/version-4.13.0-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-4.14.0-8b5cf6)](CHANGELOG.md)
 [![CLIs](https://img.shields.io/badge/runs%20in-Claude%20Code%20%2B%20Droid-0ea66e)](#works-in-both-clis)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
@@ -69,7 +69,7 @@ want a review surface — flywheel just doesn't require one.)
 | **dispatch** | The factory orchestrator: works one ready goal per run — claim, implement with TDD + fresh checks, review-evidence-verified local gate, keep or roll back. | `/dispatch` · *”work goal 005”* |
 | **loop-architect** | Designs the *loop contract* (prompt + verification + stop conditions) for autonomous, scheduled, or remote runs. | *“keep working on X”* · setting up a `/loop`, routine, or cron |
 | **factory-doctor** | One-pass preflight/doctor for the repo + machine. Auto-fixes everything local; reports the rest with exact fixes. | `/factory-doctor` |
-| **telegram-message** | Wires a Telegram bot to DM you when an autonomous run errors, hits a usage limit, waits on you, finishes, or a dispatch fire reports. Project-scoped personal settings, stored outside the repo. | `/telegram-message <bot_token> [chat_id]` |
+| **telegram-message** | Wires a Telegram bot to DM you when an autonomous run errors, hits a usage limit, waits on you, finishes, or a dispatch fire reports. Hook pings are dispatch-gated by default — interactive sessions never flood the chat. Project-scoped personal settings, stored outside the repo. | `/telegram-message <bot_token> [chat_id]` |
 
 In Claude Code the workflow skills are namespaced — `flywheel:define-goal`,
 etc. `html-artifacts` installs as its own plugin and exposes
@@ -194,6 +194,12 @@ wires a Telegram bot so those become a DM. Set it up once —
 (`StopFailure` → errors/limits, `Notification` → agent-waiting, `SessionEnd` →
 run finished) call a tiny stdlib notifier that POSTs to your bot.
 
+- **Dispatch-gated by default (v4.14).** Hook pings fire only around a live
+  dispatch run in that repo — the notifier checks dispatch's per-fire `active`
+  marker and heartbeat freshness (≤ 4 h) — so parallel interactive sessions
+  (idle prompts, plan questions, teammate blips) never flood the chat. The
+  dispatch report category is never gated; `"gate_on_dispatch": false` restores
+  fire-always hooks for a scope.
 - **Verified where it counts.** `StopFailure` and `SessionEnd` fire in headless
   `claude -p` runs, so an unattended external-scheduler drain (see loop-architect
   Step 5) pings you on the exact usage-limit stop the v4.10 work made survivable.

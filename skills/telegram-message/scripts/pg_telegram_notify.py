@@ -14,6 +14,9 @@ import glob, json, os, re, sys, time, urllib.request, urllib.parse
 
 DEFAULT_TIMEOUT = 8
 CATEGORIES = ("errors", "waiting", "completions", "dispatch")
+# v4.14 dispatch-context gate: a fire marker / heartbeat older than this is
+# treated as absent, so a crashed fire can't hold the gate open forever.
+DISPATCH_CONTEXT_WINDOW = 4 * 3600
 
 
 def state_dir():
@@ -60,9 +63,12 @@ def resolve_config(cwd):
     chat = os.environ.get("PG_TELEGRAM_CHAT_ID")
     if tok and chat:
         names = (os.environ.get("PG_TELEGRAM_EVENTS") or ",".join(CATEGORIES))
+        # per-run env config states its own categories — no dispatch gate;
+        # PG_TELEGRAM_EVENTS is the narrowing knob in cloud runs
         return {"enabled": True, "bot_token": tok, "chat_id": chat,
                 "events": {n.strip(): True for n in names.split(",") if n.strip()},
-                "only_cwd": None, "min_interval_seconds": 0}
+                "only_cwd": None, "min_interval_seconds": 0,
+                "gate_on_dispatch": False}
     best = None
     try:
         import glob as _glob
@@ -98,8 +104,36 @@ def read_stdin_payload():
         return {"report": raw.strip()}
 
 
+def _dispatch_dir(payload):
+    """This repo's pg-dispatch state dir (fire marker + heartbeat live here)."""
+    return os.path.join(state_dir().replace("pg-telegram", "pg-dispatch"),
+                        _repo(payload))
+
+
+def _fresh(path, window=DISPATCH_CONTEXT_WINDOW):
+    try:
+        return (time.time() - os.stat(path).st_mtime) <= window
+    except OSError:
+        return False
+
+
+def _dispatch_context(category, payload):
+    """Is this repo in dispatch context for this category? waiting needs a live
+    fire (`active` marker, written at fire start / removed at fire end) — a
+    loop session idling BETWEEN fires is by design, not a needs-you. errors and
+    completions also accept a fresh heartbeat: a wakeup turn can die to a
+    rate limit before the fire writes its marker, and SessionEnd lands after
+    the last fire cleaned up."""
+    d = _dispatch_dir(payload)
+    marker = _fresh(os.path.join(d, "active"))
+    if category == "waiting":
+        return marker
+    return marker or _fresh(os.path.join(d, "heartbeat"))
+
+
 def should_send(cfg, category, payload):
-    """(bool, reason). Gate on enabled, credentials, category toggle, only_cwd."""
+    """(bool, reason). Gate on enabled, credentials, category toggle,
+    dispatch context (default on; gate_on_dispatch:false opts out), only_cwd."""
     if not cfg or not cfg.get("enabled"):
         return False, "disabled"
     if not cfg.get("bot_token") or not cfg.get("chat_id"):
@@ -108,6 +142,9 @@ def should_send(cfg, category, payload):
         return False, "unknown category"
     if not (cfg.get("events") or {}).get(category):
         return False, "category toggle off"
+    if (category != "dispatch" and cfg.get("gate_on_dispatch", True)
+            and not _dispatch_context(category, payload)):
+        return False, "no dispatch context"
     only = cfg.get("only_cwd")
     if only and not (payload.get("cwd") or "").startswith(only):
         return False, "cwd out of scope"
@@ -187,9 +224,7 @@ def _strip_hb_timestamp(line):
 
 def _heartbeat_tail(payload):
     """Best-effort newest dispatch heartbeat line for this repo (completions)."""
-    slug = _repo(payload)
-    path = os.path.join(state_dir().replace("pg-telegram", "pg-dispatch"),
-                        slug, "heartbeat")
+    path = os.path.join(_dispatch_dir(payload), "heartbeat")
     try:
         lines = [ln for ln in open(path) if ln.strip()]
         return _strip_hb_timestamp(lines[-1].strip()) if lines else ""
