@@ -1,11 +1,19 @@
 {
   "name": "flywheel",
-  "version": "4.15.0",
-  "description": "Pragmatic Growth workflow skills for Claude Code and Droid (Factory CLI) — define-goal (plain-language wants → measurable goal contracts), dispatch (one-goal-per-run orchestrator on the current branch with TDD-backed checks and a local build+test gate), loop-architect (autonomous loop contracts), factory-doctor (one-pass preflight/doctor), and telegram-message (dispatch-gated Telegram DMs when a run errors, waits, or finishes).",
+  "version": "4.16.0",
+  "description": "Pragmatic Growth workflow skills for Claude Code and Droid (Factory CLI) \u2014 define-goal (plain-language wants \u2192 measurable goal contracts), dispatch (one-goal-per-run orchestrator on the current branch with TDD-backed checks and a local build+test gate), loop-architect (autonomous loop contracts), factory-doctor (one-pass preflight/doctor), and telegram-message (dispatch-gated Telegram DMs when a run errors, waits, or finishes).",
   "author": {
     "name": "pragmaticgrowth"
   },
   "repository": "https://github.com/pragmaticgrowth/flywheel",
   "license": "MIT",
-  "keywords": ["skills", "workflow", "automation", "goals", "loops", "factory", "droid"]
+  "keywords": [
+    "skills",
+    "workflow",
+    "automation",
+    "goals",
+    "loops",
+    "factory",
+    "droid"
+  ]
 }

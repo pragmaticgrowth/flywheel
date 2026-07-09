@@ -13,6 +13,48 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [4.16.0] — 2026-07-09
+
+**Droid coverage audit — every Factory-CLI claim verified against the current
+docs and a live Droid 0.168.2, plus owner-decided Droid model mapping.** A
+full sweep (Factory docs deep-read + repo claim inventory + empirical
+`droid exec --list-tools` / `--help` / `droid plugin marketplace list` checks)
+confirmed the big claims — `CronCreate`/`CreateAutomation`/`Task`/`Skill` are
+real session tools despite docs silence, the GitHub marketplace registers as
+`flywheel` so every `X@flywheel` install command stands, there is no
+PushNotification tool, and Droid's hook event set has no `StopFailure` — and
+caught four stale ones. Changes:
+
+- **Droid model mapping — `config.droid_models` + a factory-doctor interview
+  (owner decision 2026-07-09).** Droid has no `opus|sonnet|haiku` alias
+  namespace and an owner can run many custom models (`custom:<name>`), so
+  stamped aliases silently downgraded to `inherit` on Droid. Now the queue can
+  carry an owner-authored map: the probe gains a `droid-models` check (new
+  `--runtime claude|droid` flag; WARN on Droid when an alias in use —
+  `config.model` or a goal's frontmatter — has no mapping, INFO-only in
+  Claude Code) and the doctor ASKS which concrete Droid model each alias
+  means — presenting the real choices from `droid exec --help` (built-ins
+  plus the owner's `custom:` entries), never guessing — then writes
+  `config.droid_models` in one atomic edit. dispatch resolves aliases through
+  the map and passes the mapped ID to code-writing spawns (absent/rejected →
+  `inherit`, noted in the report line); define-goal documents that a stamped
+  alias is honored on Droid via the map. The doctor status line gains
+  `models: <mapped|⚠ unmapped|n/a>`. +8 probe tests (46 total).
+- **define-goal:** dropped the stale claim that headless Droid accepts only
+  built-in model IDs — `droid exec -m custom:<name>` is officially supported;
+  model-ID examples refreshed. Removed "AskUser in Droid" at its three sites:
+  Droid exposes no question tool at any autonomy level (verified via
+  `--list-tools`) — ask directly in chat.
+- **autoresearch 1.0.1:** `/enter-mission` doesn't exist — missions are
+  `droid exec --mission` headless, or the ProposeMission/StartMissionRun
+  tools in an interactive session.
+- **loop-architect:** project hook location corrected to
+  `.factory/hooks.json` (was `.factory/hooks/hooks.json`; user-level is
+  `~/.factory/hooks.json`).
+- **hooks/hooks.json** description no longer claims Notification/SessionEnd
+  "work on both CLIs": events are Claude Code-verified, and unattended Droid
+  runs get their pings from dispatch's hook-free `dispatch` category.
+
 ## [4.15.0] — 2026-07-09
 
 **Per-goal implementer model — goal contracts carry their own `model:`, so an

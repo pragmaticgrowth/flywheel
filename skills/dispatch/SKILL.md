@@ -46,9 +46,15 @@ runs your session model. This split is the token-efficiency lever: the orchestra
 the session's strong model for claim/gate/review judgment while well-specified goals run
 cheap implementers, and only the judgment-heavy goals get the expensive one. Neither field
 is yours to override, and neither ever applies to recon/review read-only agents — those
-always inherit the session model. In Droid there is no Anthropic alias namespace: a value
-the runtime cannot honor resolves to `inherit` — never translate an alias into a provider
-model ID yourself.
+always inherit the session model. In Droid there is no Anthropic alias namespace: resolve
+the alias through the queue's `config.droid_models` map (alias → concrete Droid model ID,
+e.g. `sonnet: claude-sonnet-4-6` or `opus: custom:<name>`; factory-doctor writes it by
+asking the owner) and pass the mapped ID as the spawn's model. No map, no entry for that
+alias, or the runtime rejects the mapped ID → resolve to `inherit` and surface it under
+needs-you ("model alias unmapped, ran inherit — run /factory-doctor to map models";
+informational, the goal still runs). Never invent the translation yourself —
+Droid owners can run many custom models, and only the owner's answer (the map) says which
+one an alias means.
 
 ## Hard rules (every iteration, before any action)
 
@@ -432,7 +438,10 @@ Anchor example: 19/21 → round(18.10) = 18 filled → `[███████�
 
 needs-you lists everything currently waiting on the human: every goal with explicit `blocked`
 status (with the dependents stuck behind it), `GOAL_UNREACHABLE`/`FAIL_CONTRACT` contract
-amendments, a `base:`-mismatched goal needing a branch switch, and `budget exhausted`. A
+amendments, a `base:`-mismatched goal needing a branch switch, `budget exhausted`, and — on
+Droid — `model alias unmapped, ran inherit (run /factory-doctor to map models)` whenever this
+fire's Implementer-model resolution fell back because the alias had no `config.droid_models`
+entry or the runtime rejected the mapped ID (informational, non-blocking: the goal still ran). A
 **dep-blocked** goal (not_started, waiting on another goal still running or not yet ready) is
 NOT human-blocked: it unblocks on its own, so it never appears here on its own — only as a
 "dependent stuck behind" a goal that is human-blocked. Every iteration, not only new ones.

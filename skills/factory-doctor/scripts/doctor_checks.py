@@ -167,6 +167,64 @@ def config_drift_check(config):
     return {"check": "config-drift", "level": "INFO", "detail": "no deprecated v3 config keys", "fix": ""}
 
 
+# Claude Code's short model aliases. Droid has no alias namespace — its models are
+# concrete IDs (built-ins like claude-sonnet-4-6, or the owner's custom:<name> BYOK
+# entries), and dispatch on Droid resolves an alias through config.droid_models or
+# silently downgrades the goal to inherit. Owners can run many custom models, so the
+# mapping is always the owner's answer: the doctor ASKS, never guesses.
+ANTHROPIC_ALIASES = ("opus", "sonnet", "haiku")
+
+
+def _frontmatter_model(md_text):
+    text = md_text or ""
+    if not text.startswith("---") or yaml is None:
+        return None
+    end = text.find("\n---", 3)
+    if end < 0:
+        return None
+    try:
+        fm = yaml.safe_load(text[3:end]) or {}
+    except yaml.YAMLError:
+        return None
+    v = fm.get("model") if isinstance(fm, dict) else None
+    return v if isinstance(v, str) else None
+
+
+def droid_models_check(config, goal_models, runtime):
+    aliases = set()
+    if (config or {}).get("model") in ANTHROPIC_ALIASES:
+        aliases.add(config["model"])
+    aliases.update(m for m in (goal_models or []) if m in ANTHROPIC_ALIASES)
+    if not aliases:
+        return {"check": "droid-models", "level": "INFO",
+                "detail": "no Anthropic model aliases in use; no Droid mapping needed", "fix": ""}
+    mapping = (config or {}).get("droid_models") or {}
+
+    def mapped(a):
+        v = mapping.get(a) if isinstance(mapping, dict) else None
+        return isinstance(v, str) and v.strip()
+
+    missing = sorted(a for a in aliases if not mapped(a))
+    if not missing:
+        return {"check": "droid-models", "level": "INFO",
+                "detail": "config.droid_models maps every alias in use: " + ", ".join(sorted(aliases)),
+                "fix": ""}
+    names = ", ".join(missing)
+    if runtime == "droid":
+        return {"check": "droid-models", "level": "WARN",
+                "detail": f"queue routes goals by Anthropic alias ({names}) but config.droid_models "
+                          "has no mapping for it — on Droid those goals silently run inherit",
+                "fix": "FIX: ask the owner which Droid model each alias maps to — list the real "
+                       "choices from `droid exec --help` (Available Models + their custom:<name> "
+                       "entries), never pick for them — then write config.droid_models in "
+                       "docs/goals/index.yaml"}
+    return {"check": "droid-models", "level": "INFO",
+            "detail": f"aliases in use ({names}) have no config.droid_models mapping — fine in "
+                      "Claude Code; if this queue is drained by Droid, run /factory-doctor there "
+                      "to map them",
+            "fix": ""}
+
+
 def verify_check(verify_cmds, active_goals):
     if not verify_cmds:
         if active_goals:
@@ -317,7 +375,7 @@ def symlink_capability_check(can_symlink, windows):
                    "For developers) or run elevated"}
 
 
-def run_checks(base):
+def run_checks(base, runtime="claude"):
     C = []
 
     def add(check, level, detail, fix=""):
@@ -424,6 +482,7 @@ def run_checks(base):
                 "dispatch will respawn or it needs unblocking" if stale else "")
             # goal contracts: active goals must carry a checkable done-condition
             gc = []
+            goal_models = []
             for gid, e in goals.items():
                 e = e or {}
                 if e.get("status") not in ("not_started", "in_progress"):
@@ -433,10 +492,14 @@ def run_checks(base):
                 except OSError:
                     continue  # a missing goal file is a different concern
                 gc.append({"id": gid, "status": e.get("status"), "checkable": _has_checkable_done(text)})
+                fm_model = _frontmatter_model(text)
+                if fm_model:
+                    goal_models.append(fm_model)
             cprobs = goal_contract_problems(gc)
             add("goal-contracts", "WARN" if cprobs else "INFO",
                 "; ".join(cprobs) if cprobs else "active goals carry a checkable done-condition",
                 "tighten via /define-goal before dispatch picks it up" if cprobs else "")
+            C.append(droid_models_check(config, goal_models, runtime))
         except yaml.YAMLError as e:
             add("queue", "BLOCKER", f"index.yaml parse error: {e}")
 
@@ -460,13 +523,20 @@ def main(argv=None):
     ap.add_argument("--base", default=None,
                     help="config.base if explicitly set; omit when the queue has no config.base "
                          "(dispatch then defaults base to the checked-out branch)")
+    ap.add_argument("--runtime", choices=("auto", "claude", "droid"), default="auto",
+                    help="which CLI the queue is being drained by; auto = droid when "
+                         "$DROID_PLUGIN_ROOT is set, else claude (the skill passes this "
+                         "explicitly from its own CLI detection)")
     ap.add_argument("--self-test", action="store_true", help="run the test suite and exit")
     a = ap.parse_args(argv)
     if a.self_test:
         test_file = os.path.join(os.path.dirname(__file__), "test_doctor_checks.py")
         rc = subprocess.run([sys.executable, "-m", "pytest", test_file, "-v"]).returncode
         return rc
-    checks, result = run_checks(a.base)
+    runtime = a.runtime
+    if runtime == "auto":
+        runtime = "droid" if os.environ.get("DROID_PLUGIN_ROOT") else "claude"
+    checks, result = run_checks(a.base, runtime)
     print(json.dumps({"checks": checks, "result": result}, indent=2))
     return {"READY": 0, "WARN": 1, "BLOCKER": 2}[result]
 

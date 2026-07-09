@@ -4,7 +4,7 @@
 
 Skills-only Claude Code and Droid (Factory CLI) marketplace from Pragmatic Growth.
 The repo now publishes four plugins from one `pragmatic-growth` marketplace:
-`flywheel` v4.15.0, `html-artifacts` v1.0.0, `autoresearch` v1.0.0, and
+`flywheel` v4.16.0, `html-artifacts` v1.0.0, `autoresearch` v1.0.1, and
 `human-writing` v1.0.0. No MCP
 servers, no commands, no
 agents, no build step, and — as of v4.11.0 — ONE hook bundle
@@ -47,7 +47,10 @@ appropriate paths, commands, and scheduling primitives.
   HEAD as `anchor`, commits the claim, records the post-claim HEAD as
   `gate_base`, spawns ONE foreground implementer that commits its work
   directly on the branch — on the goal's resolved implementer model
-  (goal frontmatter `model:` > `config.model` > inherit, v4.15.0; the
+  (goal frontmatter `model:` > `config.model` > inherit, v4.15.0; on Droid,
+  where no alias namespace exists, the alias resolves through
+  `config.droid_models` — alias → concrete Droid model ID, written by
+  factory-doctor's interview, v4.16.0 — else inherit; the
   orchestrator and recon/review agents always stay on the session
   model) — using a lightweight subagent-driven quality loop
   (plan/checklist, TDD, fresh verifier/reviewer subagent for non-trivial work),
@@ -89,8 +92,15 @@ appropriate paths, commands, and scheduling primitives.
   strips deprecated v3 config keys — `merge`/`wip`/`execution`/`autonomy` —
   from a stale `index.yaml` so v3-era projects stop silently running dead
   config under the v4 model) and
-  reports remote/CI issues with exact fixes. Ships `scripts/doctor_checks.py`
-  (read-only probe, `BLOCKER|WARN|FIXED|INFO`, exit 0/1/2). The v4 sequential
+  reports remote/CI issues with exact fixes. On Droid it also runs the
+  `droid-models` interview (v4.16.0, owner decision 2026-07-09): when the
+  queue routes goals by an Anthropic alias with no `config.droid_models`
+  mapping, it ASKS the owner which concrete Droid model each alias means
+  (owners can run many custom models — offering the `droid exec --help`
+  list, never guessing) and writes the map; in Claude Code the same
+  condition is INFO-only. Ships `scripts/doctor_checks.py`
+  (read-only probe, `BLOCKER|WARN|FIXED|INFO`, exit 0/1/2,
+  `--runtime claude|droid`). The v4 sequential
   model commits directly on the local branch, so there is no merge allow-rule
   to provision — the gate is local. The probe checks settings in both
   `.claude/` and `.factory/` (Droid) paths.
@@ -180,13 +190,18 @@ Separate marketplace plugins:
   the repo-wide DEFAULT for code agents dispatch spawns; each goal's
   frontmatter `model:` — stamped by define-goal from its contract-tightness
   rubric — overrides it per goal, and the orchestrator/recon/review agents
-  always stay on the session model; the depth-vs-limit trade), repo-wide
+  always stay on the session model; the depth-vs-limit trade),
+  `droid_models` (optional, Droid only, v4.16.0 — alias → concrete Droid
+  model ID, e.g. `sonnet: claude-sonnet-4-6` or `opus: custom:<name>`;
+  written by factory-doctor's interview because Droid owners can run many
+  custom models — the doctor ASKS, no skill ever guesses a translation;
+  unmapped aliases resolve to inherit on Droid), repo-wide
   `skills`, `verify` (the ordered local
   build+test commands the gate runs after each implementer), and `budget`
   (optional; `max_goals_per_session` + optional `max_iterations` — a simple
   cap on cumulative spend across repeated dispatch fires; absent = no loop cap).
-  Defaults: repo default branch, inherit, no extra skills, repo-detected
-  verify commands, no budget.
+  Defaults: repo default branch, inherit, no droid_models map, no extra skills,
+  repo-detected verify commands, no budget.
 - Goal frontmatter `type: bug|feature|chore` shapes the contract: bugs
   always lead with a failing-test-reproduces-root-cause criterion (all
   recon hypotheses recorded); features must fill Out of scope; chores

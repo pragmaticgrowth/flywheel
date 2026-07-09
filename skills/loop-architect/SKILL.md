@@ -67,7 +67,7 @@ a loop composes.)
 | React to external events (CI, chat) instead of polling | Channels (`--channels`) or Routine API trigger | Slack integration + `CronCreate` new_session; or `CreateAutomation` with event triggers |
 | Massively parallel / adversarial / unknown-size work | Dynamic workflow (pair with `/goal` for hard completion) | Mission mode (`droid exec --mission`; pair with `droid exec --auto high` for hard completion) |
 | A few collaborating peers that message each other (competing debug hypotheses, cross-layer feature) | Agent teams (own contexts + shared task list; markedly more tokens than subagents) | No equivalent — parallel subagents, or mission mode at scale |
-| Deterministic check on every turn, all sessions | Stop hook | Hook in `.factory/hooks/hooks.json` |
+| Deterministic check on every turn, all sessions | Stop hook | Hook in `.factory/hooks.json` (project) or `~/.factory/hooks.json` (user) |
 
 Combos are normal: workflow + `/goal` for hard completion; skill + `/loop`/`CronCreate` for
 cadence; routine/automation + channel for laptop-closed with phone telemetry.

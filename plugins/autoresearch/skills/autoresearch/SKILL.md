@@ -34,8 +34,10 @@ the last one stopped. For unattended cadence you don't have to babysit:
   e.g. `/loop 15m "resume autoresearch"` — so each fire reads the state files and runs
   more experiments.
 - **Droid:** schedule a same-session `CronCreate` on the same interval. Optionally run
-  inside a mission (`/enter-mission`) for milestone tracking and multi-session
-  validation — helpful, not required; the loop procedure is unchanged either way.
+  inside a mission (`droid exec --mission` headless, or the ProposeMission /
+  StartMissionRun tools in an interactive session) for milestone tracking and
+  multi-session validation — helpful, not required; the loop procedure is unchanged
+  either way.
 
 Pick the primitive matching your runtime once at setup; everything below is identical in
 both. When the termination condition is met, the loop runs Finalization once and then you

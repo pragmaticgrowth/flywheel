@@ -5,7 +5,7 @@ A skills-only plugin marketplace for [Claude Code](https://claude.com/claude-cod
 and [Droid](https://factory.ai) (Factory CLI), from Pragmatic Growth.
 
 [![Website](https://img.shields.io/badge/site-plugin.pragmaticgrowth.com-6366f1)](https://plugin.pragmaticgrowth.com)
-[![Version](https://img.shields.io/badge/version-4.15.0-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-4.16.0-8b5cf6)](CHANGELOG.md)
 [![CLIs](https://img.shields.io/badge/runs%20in-Claude%20Code%20%2B%20Droid-0ea66e)](#works-in-both-clis)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
@@ -359,6 +359,9 @@ config:
   model: inherit          # code-agent default: inherit | opus | sonnet | haiku
                           #   (a goal's own frontmatter model: overrides per goal)
   # --- optional ---
+  droid_models:           # Droid only — alias → concrete Droid model ID (Droid has no
+    sonnet: claude-sonnet-4-6      # alias namespace; factory-doctor asks you and writes
+    opus: custom:my-strong-model   # this; unmapped aliases run inherit)
   skills: []              # skills every implementer must invoke
   verify:                 # ordered local build + test gate (run before keeping a commit)
     - pnpm build
@@ -372,6 +375,7 @@ config:
 |---|---|---|
 | `base` | repo default branch | The branch dispatch works on — implementers commit here directly. Per-goal `base:` override allowed. |
 | `model` | `inherit` | Repo-wide **default** model for spawned **code** agents (`inherit`/`opus`/`sonnet`/`haiku`). Each goal's frontmatter `model:` — stamped by define-goal from a contract-tightness rubric — overrides it per goal. The depth-vs-quota trade. Recon subagents and the orchestrator always stay on the current session/runtime model. |
+| `droid_models` | none | Droid only: maps each alias to a concrete Droid model ID (built-in like `claude-sonnet-4-6` or your own `custom:<name>`). Droid has no `opus`/`sonnet`/`haiku` namespace and owners can run many custom models, so `/factory-doctor` **asks you** which model each alias means and writes the map — nothing ever guesses. Without a map, aliases resolve to `inherit` on Droid. |
 | `skills` | — | Repo-wide skills every implementer must use (e.g. your TDD or review skills). |
 | `verify` | — | Ordered list of local build + test commands. Run by the dispatch orchestrator after each implementation; PASS keeps the squash commit, FAIL rolls it back. |
 | `budget` | none | `max_goals_per_session` / `max_iterations` ceilings the loop can’t exceed — the external brake on a long run. Dispatch itself works one goal per run. |

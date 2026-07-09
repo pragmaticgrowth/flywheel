@@ -123,8 +123,9 @@ what should cause the agent to stop and ask?
   screenshots). Use a project browser/verify skill if one exists; else the Chrome extension
   only if it can assert, not just screenshot; else written manual steps that name the exact
   assertion. The implementer must start the project's dev server to drive it.
-- Interview with the interactive question tool (AskUserQuestion in Claude Code, AskUser
-  in Droid) only for user-owned gaps or technical targets the repo cannot reveal (which
+- Interview with the interactive question tool (AskUserQuestion in Claude Code; Droid has
+  no question tool — ask directly in chat) only for user-owned gaps or technical targets
+  the repo cannot reveal (which
   repo/environment, which user-visible outcome matters, what must not break, urgency, out
   of scope, acceptable risk) — max 4 questions per round. Derive code-level technical
   detail yourself by reading the codebase.
@@ -160,10 +161,12 @@ Recon details:
     incompatible model namespaces, honor the ask in the CLI's own terms — never translate one
     into the other: in **Claude Code** the subagent model is an Anthropic-only alias
     (`opus | sonnet | haiku`, or `inherit`) — pass it as the spawn's `model`; in **Droid**
-    there is no such short alias — `droid exec -m <full-model-id>` takes a concrete
-    provider ID (e.g. `claude-sonnet-4-5-…`, `gpt-5-codex`, a Gemini/GLM id), and headless
-    accepts only Droid's built-in IDs (not BYOK/config.json models). Treat any specific
-    model-ID string as version-dependent (re-check `droid exec --help` / the `/model` picker);
+    there is no such short alias — models are concrete IDs, either built-in
+    (e.g. `claude-sonnet-4-6`, `gpt-5.5`, a Gemini/GLM id) or the owner's own configured
+    models (`custom:<name>`), and BOTH forms work headless too (`droid exec -m
+    custom:<name>` is officially supported). `droid exec --help` lists both sets under
+    "Available Models" / "Custom Models". Treat any specific model-ID string as
+    version-dependent (re-check `droid exec --help` / the `/model` picker);
     the stable fact is the format, not the string.
 - **Angles, 2–4 per fan-out** — for a bug: symptom trace (error strings/log lines → the
   code that throws and handles them), data/control flow (entry point → failure area),
@@ -245,7 +248,7 @@ goals:
 On first queue creation, suggest the user run `/factory-doctor` — it preflights gh auth,
 the working branch, CI, and the local gate, and scaffolds the queue, so a queue born into a
 known-good environment never hits setup errors mid-run. Then ask the user once (the
-interactive question tool — AskUserQuestion in Claude Code, AskUser in Droid): which branch
+interactive question tool — AskUserQuestion in Claude Code; in Droid ask in chat): which branch
 is the integration base (main? staging? other?), and what the build+test gate commands are
 (`config.verify`).
 Defaults when unspecified: the repo's default branch, `model: inherit`, no repo skills,
@@ -487,9 +490,12 @@ on a stronger model is still a vague contract.
 
 Include the choice in the draft you confirm with the user (batch mode: the `model` column
 in the approval table). Resolution at dispatch time: goal `model:` > `config.model` >
-`inherit`; in Droid, where the alias namespace doesn't exist, an unmappable alias resolves
-to `inherit` — record the intent anyway, it is honored wherever the queue runs in Claude
-Code.
+`inherit`; in Droid, where the alias namespace doesn't exist, dispatch resolves the alias
+through the queue's `config.droid_models` map (alias → concrete Droid model ID —
+factory-doctor writes it by asking the owner, since Droid setups can carry many custom
+models and no skill ever guesses one). No map or no entry → the alias resolves to
+`inherit`. Record the intent either way — Claude Code honors it directly, Droid honors it
+via the map.
 
 ## Batch mode (documents → many goals)
 
@@ -503,8 +509,8 @@ When given a document (pasted text, file path, attachment):
 3. **Locate cheaply**: pin the likely area per item via Recon above — one fan-out can
    cover several items (give each subagent the full item list for its angle); the
    implementer does the heavy repro.
-4. One batched interactive-question round (AskUserQuestion in Claude Code, AskUser in
-   Droid) for genuinely ambiguous items only, then an approval
+4. One batched interactive-question round (AskUserQuestion in Claude Code; in Droid ask
+   the batch in chat) for genuinely ambiguous items only, then an approval
    table before writing anything:
    `id | proposed title | priority | model | dup-of | notes`.
 5. On approval, write one goal file + index entry per confirmed item, commit once, reply
