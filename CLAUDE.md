@@ -4,7 +4,7 @@
 
 Skills-only Claude Code and Droid (Factory CLI) marketplace from Pragmatic Growth.
 The repo now publishes four plugins from one `pragmatic-growth` marketplace:
-`flywheel` v4.14.0, `html-artifacts` v1.0.0, `autoresearch` v1.0.0, and
+`flywheel` v4.15.0, `html-artifacts` v1.0.0, `autoresearch` v1.0.0, and
 `human-writing` v1.0.0. No MCP
 servers, no commands, no
 agents, no build step, and — as of v4.11.0 — ONE hook bundle
@@ -31,7 +31,11 @@ appropriate paths, commands, and scheduling primitives.
   goal file (`docs/goals/NNN-slug.md` + `index.yaml` entry). Includes
   repo grounding (CLAUDE.md/AGENTS.md rules copied verbatim, real
   verification commands) and a batch mode for documents of items.
-  Produces goals only, never implements. Originally adapted from
+  Stamps each queued goal's frontmatter `model:` (inherit|opus|sonnet|haiku)
+  LAST, after the acceptance criteria are final, from a contract-tightness
+  rubric (v4.15.0): tight objective contracts → sonnet; flagship design
+  craft / wide blast radius / ambiguous root-cause → opus; unsure → the
+  stronger. Produces goals only, never implements. Originally adapted from
   OpenAI's curated `define-goal` skill (its `create_goal`/`get_goal`
   tools don't exist in either CLI; `/goal` is user-run, transcript-
   evaluated in Claude Code, self-verified by the agent in Droid,
@@ -42,7 +46,10 @@ appropriate paths, commands, and scheduling primitives.
   records the pre-claim clean
   HEAD as `anchor`, commits the claim, records the post-claim HEAD as
   `gate_base`, spawns ONE foreground implementer that commits its work
-  directly on the branch, using a lightweight subagent-driven quality loop
+  directly on the branch — on the goal's resolved implementer model
+  (goal frontmatter `model:` > `config.model` > inherit, v4.15.0; the
+  orchestrator and recon/review agents always stay on the session
+  model) — using a lightweight subagent-driven quality loop
   (plan/checklist, TDD, fresh verifier/reviewer subagent for non-trivial work),
   then runs the LOCAL gate authoritatively: a review-evidence check (the
   implementer's report must carry its `Fresh-check:` lens verdicts or an
@@ -169,9 +176,12 @@ Separate marketplace plugins:
   (with reason) is required to avoid re-dispatch livelock. `completed`
   only when the gate has PASSED and the goal's commit is on the branch.
 - `index.yaml` `config:` block: `base` (the branch goals are worked on;
-  per-goal `base:` override allowed), `model` (inherit|sonnet|haiku —
-  applied to every code agent dispatch spawns; the repo owner's
-  depth-vs-limit trade), repo-wide `skills`, `verify` (the ordered local
+  per-goal `base:` override allowed), `model` (inherit|opus|sonnet|haiku —
+  the repo-wide DEFAULT for code agents dispatch spawns; each goal's
+  frontmatter `model:` — stamped by define-goal from its contract-tightness
+  rubric — overrides it per goal, and the orchestrator/recon/review agents
+  always stay on the session model; the depth-vs-limit trade), repo-wide
+  `skills`, `verify` (the ordered local
   build+test commands the gate runs after each implementer), and `budget`
   (optional; `max_goals_per_session` + optional `max_iterations` — a simple
   cap on cumulative spend across repeated dispatch fires; absent = no loop cap).

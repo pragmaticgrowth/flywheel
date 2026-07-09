@@ -149,7 +149,8 @@ Recon details:
   not shallow grep. The synthesis/judgment step (when you split one out to weigh evidence
   and rank hypotheses) also inherits the current session/runtime model. Search agents report
   what the code shows (files, call paths, suspect commits), ranking what it means happens
-  there or in your own synthesis. The queue's `config.model` never applies here — it governs
+  there or in your own synthesis. The queue's `config.model` and the per-goal frontmatter
+  `model:` never apply here — they govern
   code-writing agents only, and there is NO persistent config knob for a recon model
   (a `config.research_model` would need per-CLI translation and re-invites the shallow-recon
   failure this rule guards against — deliberately not added).
@@ -229,7 +230,8 @@ within priority:
 # status: not_started | in_progress | completed | blocked
 config:
   base: main        # branch dispatch works on and commits to
-  model: inherit    # spawned code agents: inherit | sonnet | haiku
+  model: inherit    # DEFAULT for spawned code agents when a goal has no model: of its
+                    # own — inherit | opus | sonnet | haiku (per-goal frontmatter wins)
   skills: []        # repo-wide skills every implementer must invoke
   verify:           # ordered local build+test gate commands (dispatch runs these to validate)
     - npm ci
@@ -248,10 +250,12 @@ is the integration base (main? staging? other?), and what the build+test gate co
 (`config.verify`).
 Defaults when unspecified: the repo's default branch, `model: inherit`, no repo skills,
 no `verify` (dispatch auto-detects from Makefile / `go.mod` / `package.json`).
-Leave `model` at `inherit` unless the repo owner intentionally chooses a fixed alias for
-spawned code agents; fixed aliases are a depth-vs-weekly-limit trade and should not be
-applied to recon subagents. A per-goal `base:` field on an index entry overrides
-`config.base` (epic branches).
+`config.model` is only the repo-wide FALLBACK for spawned code agents — the primary model
+knob is the per-goal frontmatter `model:` field this skill stamps on every goal (see
+"Implementer model — decide it last" below); leave `config.model` at `inherit` unless the
+repo owner intentionally chooses a fixed repo-wide alias. Neither ever applies to recon
+subagents. A per-goal `base:` field on an index entry overrides `config.base` (epic
+branches).
 
 Rules that keep the queue safe:
 
@@ -299,6 +303,9 @@ title: Customers get a receipt email after payment
 created: 2026-06-12
 type: feature   # bug | feature | chore — shapes the contract, see below
 skills: []      # goal-specific skills the implementer must invoke, e.g. [agent-browser]
+model: sonnet   # implementer model for dispatch: inherit | opus | sonnet | haiku —
+                #   stamp it LAST, after the acceptance criteria are final (see
+                #   "Implementer model — decide it last")
 # size: M                    # optional: S|M|L rough effort — lets dispatch and any budget cap size a run
 # touches: [apps/orders/*]   # optional: declared surfaces (PRODUCT code) → local gate scope allowlist.
 #                            #   Do NOT enumerate test dirs — the gate auto-exempts test paths
@@ -448,6 +455,42 @@ destination: run-now `/goal` has the evaluator enforce the cap; in the queue des
 the implementer self-enforces it as its attempt/iteration budget (dispatch's no-progress
 rule and `config.budget` back it up).
 
+## Implementer model — decide it last
+
+Every queued goal carries a frontmatter `model:` — the model `dispatch` passes to that
+goal's code-writing agents (the implementer and any repair agent). The orchestrator itself
+always stays on the session model the user chose at session start (e.g. Opus/Fable), and
+recon/review agents always inherit the session model too — this field routes ONLY the
+goal's implementation work. It is the queue's token-efficiency lever: the judgment is
+front-loaded HERE, into the contract, which is what lets a cheaper model execute it at
+near-parity.
+
+Stamp it LAST, after the acceptance criteria are final — the tightness of the finished
+contract is the input. Rate the contract you actually wrote, not the topic:
+
+- **`sonnet` — the default for a well-specified queue goal.** Every acceptance criterion is
+  an exact command with objective pass/fail, scope is bounded (`touches:` filled), and the
+  work is a port with a source of truth, a scaffold, config, a test sweep, rote/mechanical
+  edits, or pages on an existing design system — strong tool use and spec-following is all
+  it needs.
+- **`opus` — the judgment-heavy tail.** Flagship visual/design craft, wide blast radius
+  (many call sites, API-preservation constraints), ambiguous root-cause work, changes
+  adjacent to security or data loss, or contracts where subjective
+  needs-independent-review criteria carry real weight.
+- **`inherit` — match the orchestrator's session model.** For the rare goal that must get
+  the strongest model available in the session, whichever the user selected.
+- **`haiku` — only a truly rote one-file mechanical chore.** When in doubt, don't.
+
+Genuinely unsure between two tiers → pick the stronger. And if the honest reason a goal
+needs `opus` is that its criteria are loose, tighten the contract first — a vague contract
+on a stronger model is still a vague contract.
+
+Include the choice in the draft you confirm with the user (batch mode: the `model` column
+in the approval table). Resolution at dispatch time: goal `model:` > `config.model` >
+`inherit`; in Droid, where the alias namespace doesn't exist, an unmappable alias resolves
+to `inherit` — record the intent anyway, it is honored wherever the queue runs in Claude
+Code.
+
 ## Batch mode (documents → many goals)
 
 When given a document (pasted text, file path, attachment):
@@ -462,7 +505,8 @@ When given a document (pasted text, file path, attachment):
    implementer does the heavy repro.
 4. One batched interactive-question round (AskUserQuestion in Claude Code, AskUser in
    Droid) for genuinely ambiguous items only, then an approval
-   table before writing anything: `id | proposed title | priority | dup-of | notes`.
+   table before writing anything:
+   `id | proposed title | priority | model | dup-of | notes`.
 5. On approval, write one goal file + index entry per confirmed item, commit once, reply
    with a one-line queue summary.
 

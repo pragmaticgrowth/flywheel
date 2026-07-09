@@ -28,16 +28,27 @@ cycle until the queue is drained.
 
 Read the queue's `config:` block first; defaults when absent:
 `base` = the branch dispatch works ON (the started branch — staging, main, or other;
-default = the currently checked-out branch), `model: inherit` (sonnet|haiku — applied to
-the implementer/fix agents), `skills: []` (repo-wide skill mandates), `verify: []` (the
+default = the currently checked-out branch), `model: inherit` (opus|sonnet|haiku — the
+repo-wide DEFAULT for implementer/fix agents; a goal file's own frontmatter `model:`
+overrides it per goal), `skills: []` (repo-wide skill mandates), `verify: []` (the
 ordered LOCAL gate — a list of shell commands run top-to-bottom, all must exit 0; e.g.
 [ "npm ci", "npm run build", "npm test" ]; empty = auto-detect a single test command, and
 if none is found the gate is INCONCLUSIVE, never a silent PASS), `budget` (default none;
 `max_goals_per_session` + optional `max_iterations` = the external burnstop).
 
-`config.model` (when not `inherit`) is passed as the `model` parameter on EVERY code-writing
-agent you spawn — the implementer and any fix/repair agent alike; it is the repo owner's
-depth-vs-weekly-limit trade, not yours to override.
+**Implementer-model resolution — per goal, before each spawn.** Resolve the model for a
+goal's code-writing agents in this order: the goal file's frontmatter `model:` field
+(`inherit | opus | sonnet | haiku` — stamped by define-goal at contract-writing time as the
+goal author's difficulty call), else `config.model`, else `inherit`. A non-`inherit` value is
+passed as the `model` parameter on EVERY code-writing agent you spawn for THAT goal — the
+implementer and any fix/repair agent alike; `inherit` means omit the parameter so the agent
+runs your session model. This split is the token-efficiency lever: the orchestrator stays on
+the session's strong model for claim/gate/review judgment while well-specified goals run
+cheap implementers, and only the judgment-heavy goals get the expensive one. Neither field
+is yours to override, and neither ever applies to recon/review read-only agents — those
+always inherit the session model. In Droid there is no Anthropic alias namespace: a value
+the runtime cannot honor resolves to `inherit` — never translate an alias into a provider
+model ID yourself.
 
 ## Hard rules (every iteration, before any action)
 
@@ -180,10 +191,11 @@ command, a queue the claim protocol can't write), stop the iteration and surface
 `/factory-doctor`" under needs-you — it diagnoses and fixes setup so the loop stops failing
 the same way every fire instead of burning quota on a wall it can't clear.
 
-**Implementer-cost awareness.** When `config.model: inherit` resolves to an expensive model
-and the queue is mostly `type: chore` (mechanical, no-behavior-change work), note once in the
-report that the implementer inherits your model and that the repo owner can intentionally set
-a fixed lower-cost alias if they want that trade. Do not name or apply a fixed alias yourself.
+**Implementer-cost awareness.** When goals resolve to an expensive session model (no per-goal
+`model:` fields and `config.model: inherit`) and the queue is mostly `type: chore`
+(mechanical, no-behavior-change work), note once in the report that the implementers inherit
+your model and that the repo owner can have define-goal stamp per-goal `model:` fields (or
+set `config.model`) if they want that trade. Do not name or apply a fixed alias yourself.
 
 `$PGVALIDATE` resolution (do this once, before the first gate): use the same fallback chain
 the surviving scripts use — `$CLAUDE_PLUGIN_ROOT/skills/dispatch/scripts/pg_validate.py`,
@@ -296,7 +308,9 @@ rules) and let the current goal finish. Never claim a second goal in the same di
 ## Phase 3 — spawn the implementer (depth 1, foreground)
 
 One Agent per claimed goal, `run_in_background: false`, NO worktree — it works in THIS
-checkout on the current branch. Brief (fill in `<id>` and the resolved skill lists):
+checkout on the current branch. Set the spawn's `model` parameter to the goal's resolved
+implementer model (Implementer-model resolution above; `inherit` = omit the parameter).
+Brief (fill in `<id>` and the resolved skill lists):
 
 ```
 Implement the goal in docs/goals/<id>.md exactly per its "Goal contract" section — read
@@ -385,7 +399,7 @@ routes that to a needs-you contract amendment.
 
 After the implementer returns, run the review-evidence check and the gate yourself
 (Working a goal, steps 3–4). A `FAIL_FIXABLE` verdict spawns ONE repair agent (same brief,
-`model: config.model`, fed the gate findings — including any verified Critical/Important
+same resolved implementer model, fed the gate findings — including any verified Critical/Important
 findings from an orchestrator-run review panel); a second identical FAIL → roll back + block.
 
 ## Solo mode — work one named goal in this session

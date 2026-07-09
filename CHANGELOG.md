@@ -13,7 +13,32 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
-## [4.14.2] — 2026-07-08
+## [4.15.0] — 2026-07-09
+
+**Per-goal implementer model — goal contracts carry their own `model:`, so an
+expensive orchestrator drives cheap implementers on well-specified goals.**
+Motivated by a real romy-repo session (astro-website-and-shadcn-ui): with 11
+tightly-contracted goals queued, the only routing knob was the repo-wide
+`config.model` toggle, which the owner would have had to flip back and forth
+between goals to give the two judgment-heavy goals a stronger implementer than
+the nine mechanical ones. Now the routing lives in the contract itself:
+
+- **define-goal** stamps a frontmatter `model:` (`inherit | opus | sonnet |
+  haiku`) on every queued goal — decided LAST, after the acceptance criteria
+  are final, via a new "Implementer model — decide it last" rubric: a tight,
+  objectively-checkable contract defaults to `sonnet` (the judgment was
+  front-loaded into the contract); flagship design craft, wide blast radius,
+  ambiguous root-cause, or security/data-loss-adjacent work gets `opus`;
+  `inherit` matches the session model; unsure between tiers → the stronger.
+  Batch mode's approval table gains a `model` column.
+- **dispatch** resolves each spawn as goal `model:` > `config.model` >
+  `inherit` and passes the result to the implementer AND any repair agent;
+  the orchestrator's own claim/gate/review judgment stays on the session
+  model, and recon/review read-only agents keep inheriting it too. In Droid
+  (no Anthropic alias namespace) an unmappable alias resolves to `inherit`.
+- `config.model` is now documented as the repo-wide DEFAULT (and accepts
+  `opus`); goal files without `model:` behave exactly as before — fully
+  backward compatible, and `pg_validate.py` ignores the new key by design.
 
 **Patch: Windows `type: bug` goals are gateable — workspace-aware dep links,
 actionable INCONCLUSIVE, and a junction-traversal data-loss guard.** Follow-up

@@ -5,7 +5,7 @@ A skills-only plugin marketplace for [Claude Code](https://claude.com/claude-cod
 and [Droid](https://factory.ai) (Factory CLI), from Pragmatic Growth.
 
 [![Website](https://img.shields.io/badge/site-plugin.pragmaticgrowth.com-6366f1)](https://plugin.pragmaticgrowth.com)
-[![Version](https://img.shields.io/badge/version-4.14.2-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-4.15.0-8b5cf6)](CHANGELOG.md)
 [![CLIs](https://img.shields.io/badge/runs%20in-Claude%20Code%20%2B%20Droid-0ea66e)](#works-in-both-clis)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
@@ -90,6 +90,13 @@ document, and it produces **goal contracts** — never implementation.
 - **Brief first, then a real artifact.** If outcome, environment, validator,
   scope, or risk is missing, it asks one concise question round, then finishes
   with either a run-now command or a queued goal file — not open-ended advice.
+- **Per-goal implementer model, stamped last.** Every queued goal's frontmatter
+  carries `model:` (`inherit | opus | sonnet | haiku`), chosen AFTER the
+  acceptance criteria are final: a tight, objectively-checkable contract
+  defaults to `sonnet` (the judgment was front-loaded into the contract), while
+  flagship design craft, wide-blast-radius refactors, and ambiguous root-cause
+  work get `opus`. Dispatch reads it per goal when spawning the implementer;
+  the orchestrator itself always stays on your session model.
 - **Two destinations.** It can hand you a copy-pasteable **run-now** line
   (`/goal …` in Claude Code, `droid exec --auto high "…"` in Droid), or **queue**
   a goal file (`docs/goals/NNN-slug.md` + an `index.yaml` entry) to be worked
@@ -349,7 +356,8 @@ panel. Everything has a sensible default — an unconfigured repo just works.
 ```yaml
 config:
   base: main              # branch dispatch works on and commits to
-  model: inherit          # inherit | sonnet | haiku (for spawned code agents)
+  model: inherit          # code-agent default: inherit | opus | sonnet | haiku
+                          #   (a goal's own frontmatter model: overrides per goal)
   # --- optional ---
   skills: []              # skills every implementer must invoke
   verify:                 # ordered local build + test gate (run before keeping a commit)
@@ -363,7 +371,7 @@ config:
 | Key | Default | What it does |
 |---|---|---|
 | `base` | repo default branch | The branch dispatch works on — implementers commit here directly. Per-goal `base:` override allowed. |
-| `model` | `inherit` | Model for spawned **code** agents (`inherit`/`sonnet`/`haiku`). The depth-vs-quota trade. Recon subagents inherit the current session/runtime model. |
+| `model` | `inherit` | Repo-wide **default** model for spawned **code** agents (`inherit`/`opus`/`sonnet`/`haiku`). Each goal's frontmatter `model:` — stamped by define-goal from a contract-tightness rubric — overrides it per goal. The depth-vs-quota trade. Recon subagents and the orchestrator always stay on the current session/runtime model. |
 | `skills` | — | Repo-wide skills every implementer must use (e.g. your TDD or review skills). |
 | `verify` | — | Ordered list of local build + test commands. Run by the dispatch orchestrator after each implementation; PASS keeps the squash commit, FAIL rolls it back. |
 | `budget` | none | `max_goals_per_session` / `max_iterations` ceilings the loop can’t exceed — the external brake on a long run. Dispatch itself works one goal per run. |
