@@ -36,7 +36,7 @@ Use this when maintaining or auditing the skill, not for every artifact generati
   disclosure.
 - No listener/server submit pipeline. The html-artifacts plugin remains skills-only: no MCP,
   hooks, commands, daemons, or background processes.
-- Clipboard/export is the universal round trip. It works in Claude Code, Droid, local
+- Clipboard/export is the universal round trip. It works in Claude Code, local
   browsers, and other agent shells.
 - Foundation rules are centralized in one reference instead of repeated in every topic file.
 - Topic files give recipes, not rigid templates. The agent should compose the artifact to the

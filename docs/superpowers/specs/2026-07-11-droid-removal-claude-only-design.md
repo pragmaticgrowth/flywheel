@@ -27,19 +27,19 @@ historical records (see "History policy").
   change), `html-artifacts 1.0.0 → 1.0.1` and `human-writing 1.0.0 → 1.0.1`
   (stray-ref doc edits).
 
-## Two open judgment calls (recommendations — confirm on spec review)
+## Two judgment calls — RESOLVED
 
-1. **Attribution lines — KEEP (recommended).** Five places credit
-   *"Adapted from Factory's `<x>` plugin (MIT)"*. These credit **Factory the
-   company** as the original author of MIT-licensed source, not Droid-CLI
-   runtime behavior. Removing them is a license/credit-hygiene risk, not a Droid
-   cleanup. Recommendation: keep every attribution line verbatim.
-2. **Target-repo grounding source — reduce to CLAUDE.md (recommended).**
-   define-goal / README say the skill "copies your CLAUDE.md / AGENTS.md rules
-   verbatim" from whatever repo it works in. AGENTS.md there is a general
-   cross-tool convention, not this repo's symlink. For a Claude-Code-only skill,
-   grounding on CLAUDE.md is the right convention. Recommendation: drop the
-   "/ AGENTS.md" from those two grounding mentions.
+1. **Attribution lines — PURGE (owner decision 2026-07-11).** Remove the five
+   *"Adapted from Factory's `<x>` plugin (MIT)"* credits and all references to
+   **Factory the company** (`Factory CLI`, `Factory app`, `Factory web app`,
+   `Droid Computers`, `factory.ai`). **Scope guard:** this means Factory the
+   *company* only — it does NOT rename the `factory-doctor` skill, the
+   "flywheel factory" metaphor, or any generic "factory" pipeline language, which
+   are flywheel's own naming. If a `LICENSE` file carries an upstream copyright
+   notice, that legal instrument is left intact (prose credits are what's purged).
+2. **Target-repo grounding source — CLAUDE.md only (owner decision 2026-07-11).**
+   Drop "/ AGENTS.md" from define-goal's and README's grounding mentions; the
+   Claude-Code-only skill grounds on the CLAUDE.md convention.
 
 ## Removal policy — three kinds of Droid content
 

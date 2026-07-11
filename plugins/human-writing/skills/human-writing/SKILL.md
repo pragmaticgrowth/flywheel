@@ -13,7 +13,7 @@ description: |
 
 This skill helps you write better and more readable text. You can do this by identifying and removing signs of AI-generated text so writing sounds like a person wrote it. This guide comes from Wikipedia's "Signs of AI writing" page, maintained by WikiProject AI Cleanup.
 
-*Works the same in Claude Code and Droid — it's pure writing guidance, no runtime-specific mechanics. Adapted from Factory's `droid-evolved` plugin.*
+*Pure writing guidance, no runtime-specific mechanics.*
 
 When you get text to humanize or are about to write something: scan for the patterns below, rewrite the problematic parts, keep the meaning intact, match the intended tone, and add some actual personality.
 

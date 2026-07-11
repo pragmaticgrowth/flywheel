@@ -1,7 +1,7 @@
 {
   "name": "autoresearch",
-  "version": "1.0.1",
-  "description": "Autonomous optimization loop for Claude Code and Droid \u2014 try an idea, measure it, keep what works, revert what doesn't, repeat. MAD-based confidence scoring, git branch isolation, and file-based experiment logging any fresh session can resume. Adapted from Factory's autoresearch pattern (MIT).",
+  "version": "1.1.0",
+  "description": "Autonomous optimization loop for Claude Code \u2014 try an idea, measure it, keep what works, revert what doesn't, repeat. MAD-based confidence scoring, git branch isolation, and file-based experiment logging any fresh session can resume.",
   "author": {
     "name": "pragmaticgrowth"
   },

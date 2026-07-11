@@ -23,8 +23,7 @@ blocking every merge, and stale `goal/*`/`worktree-agent-*` branch garbage (see 
 4.0.0). Do NOT reintroduce worktrees or cross-goal parallelism without re-reading why they
 were removed; the extra concurrency lives INSIDE one goal (read-only recon/review), never
 across goals.
-Use `/loop /dispatch` (Claude Code) or a same-session Droid cron to repeat this one-goal
-cycle until the queue is drained.
+Use `/loop /dispatch` to repeat this one-goal cycle until the queue is drained.
 
 Read the queue's `config:` block first; defaults when absent:
 `base` = the branch dispatch works ON (the started branch — staging, main, or other;
@@ -46,15 +45,7 @@ runs your session model. This split is the token-efficiency lever: the orchestra
 the session's strong model for claim/gate/review judgment while well-specified goals run
 cheap implementers, and only the judgment-heavy goals get the expensive one. Neither field
 is yours to override, and neither ever applies to recon/review read-only agents — those
-always inherit the session model. In Droid there is no Anthropic alias namespace: resolve
-the alias through the queue's `config.droid_models` map (alias → concrete Droid model ID,
-e.g. `sonnet: claude-sonnet-4-6` or `opus: custom:<name>`; factory-doctor writes it by
-asking the owner) and pass the mapped ID as the spawn's model. No map, no entry for that
-alias, or the runtime rejects the mapped ID → resolve to `inherit` and surface it under
-needs-you ("model alias unmapped, ran inherit — run /factory-doctor to map models";
-informational, the goal still runs). Never invent the translation yourself —
-Droid owners can run many custom models, and only the owner's answer (the map) says which
-one an alias means.
+always inherit the session model.
 
 ## Hard rules (every iteration, before any action)
 
@@ -63,7 +54,7 @@ one an alias means.
   its commit on the branch (squashed to one) and stop the run. A failed gate rolls the goal
   back to its `gate_base` so the branch never carries unverified work. Implementers never
   merge.
-- Read the repo's CLAUDE.md / AGENTS.md hard rules once per session and treat them as law
+- Read the repo's CLAUDE.md hard rules once per session and treat them as law
   (deploy rules, forbidden merges, migration rules). Repeat-check before any git/deploy action.
 - **Every queue write goes through the claim protocol below.** Implementers never touch
   `docs/goals/` — the orchestrator owns queue state.
@@ -78,9 +69,8 @@ one an alias means.
   a second goal in the same run, `max_goals_per_session: 1` is the natural default behavior;
   lower/zero or exhausted caps stop before claiming. Let any in-flight goal finish its gate
   cleanly, surface `budget exhausted (<n>/<cap> goals)` under needs-you, and send ONE
-  notification per Phase 4 (Claude Code PushNotification; Droid has no PushNotification, so
-  the report line carries it). The cap comes from config you cannot edit; that is what makes
-  it a real brake and not a soft self-limit.
+  notification per Phase 4 via the PushNotification tool. The cap comes from config you
+  cannot edit; that is what makes it a real brake and not a soft self-limit.
 
 ## Claim protocol — every status write
 
@@ -98,7 +88,7 @@ Every status transition uses the same convention — one entry, its own commit:
 ## Re-entrancy — idempotent iterations
 
 A direct `/dispatch` run settles in-flight work first, then claims at most one new ready
-goal, gates it, reports, and stops. `/loop /dispatch` or Droid same-session cron repeats the
+goal, gates it, reports, and stops. `/loop /dispatch` repeats the
 same one-goal cycle. Each run must be idempotent so a re-run after a transient death picks up
 where it left off:
 
@@ -206,9 +196,8 @@ set `config.model`) if they want that trade. Do not name or apply a fixed alias 
 `$PGVALIDATE` resolution (do this once, before the first gate): use the same fallback chain
 the surviving scripts use — `$CLAUDE_PLUGIN_ROOT/skills/dispatch/scripts/pg_validate.py`,
 else the newest match of
-`~/.claude/plugins/{cache,marketplaces}/*/flywheel/*/skills/dispatch/scripts/pg_validate.py`
-(also check `~/.factory/plugins/{cache,marketplaces}/*/...` for Droid). Hold the resolved
-absolute path in `$PGVALIDATE`.
+`~/.claude/plugins/{cache,marketplaces}/*/flywheel/*/skills/dispatch/scripts/pg_validate.py`.
+Hold the resolved absolute path in `$PGVALIDATE`.
 
 ## Working a goal — the canonical per-goal sequence
 
@@ -349,7 +338,7 @@ Quality loop — keep it lightweight, but do not skip it:
    are hypotheses, not facts.
 3. Implement on the current branch only. You may use read-only helper subagents for
    exploration and test-design; do not spawn parallel code-writing agents or agent-team
-   teammates (a teammate is a second implementer lane by another name). Workflow/mission
+   teammates (a teammate is a second implementer lane by another name). Workflow
    mode is allowed only for bounded read-only fan-out or review when there are ~5+ independent
    checks; never use it to implement across branches or survive the session.
 4. Verify: run the goal acceptance commands and any repo baseline command you touched.
@@ -438,10 +427,7 @@ Anchor example: 19/21 → round(18.10) = 18 filled → `[███████�
 
 needs-you lists everything currently waiting on the human: every goal with explicit `blocked`
 status (with the dependents stuck behind it), `GOAL_UNREACHABLE`/`FAIL_CONTRACT` contract
-amendments, a `base:`-mismatched goal needing a branch switch, `budget exhausted`, and — on
-Droid — `model alias unmapped, ran inherit (run /factory-doctor to map models)` whenever this
-fire's Implementer-model resolution fell back because the alias had no `config.droid_models`
-entry or the runtime rejected the mapped ID (informational, non-blocking: the goal still ran). A
+amendments, a `base:`-mismatched goal needing a branch switch, and `budget exhausted`. A
 **dep-blocked** goal (not_started, waiting on another goal still running or not yet ready) is
 NOT human-blocked: it unblocks on its own, so it never appears here on its own — only as a
 "dependent stuck behind" a goal that is human-blocked. Every iteration, not only new ones.
@@ -449,8 +435,7 @@ NOT human-blocked: it unblocks on its own, so it never appears here on its own �
 **Stalled factory → one real notification.** A report line in an unattended run has no reader.
 The fire that first finds the factory fully stalled — needs-you non-empty and nothing this
 iteration could do about it — sends the needs-you line via the PushNotification tool
-(ToolSearch loads it if deferred) in Claude Code. In Droid there is no PushNotification tool;
-surface the stalled state in the report line only. One notification per distinct blocker set;
+(ToolSearch loads it if deferred). One notification per distinct blocker set;
 identical no-op fires after it send no further notifications, though the report line still goes
 out every fire — new blocker content notifies again.
 
@@ -476,9 +461,8 @@ line to it:
 `printf '%s' "<the Phase 4 report line>" | python3 "$PGNOTIFY" dispatch`.
 The notifier no-ops instantly unless the owner ran `/telegram-message` for this
 project/machine (or set the cloud env vars), always exits 0 so it can never fail
-a fire, and works identically in Claude Code, Droid, and cloud runs because it
-is a plain script call, not a hook — on Droid, where hooks don't fire under
-`droid exec`, this IS the notification path. Skip silently if the script can't
+a fire, and works identically in Claude Code and cloud runs because it
+is a plain script call, not a hook. Skip silently if the script can't
 be resolved.
 
 **Fire-marker cleanup — last act of every fire.** After the report, heartbeat, and ping:

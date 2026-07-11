@@ -1,7 +1,7 @@
 {
   "name": "html-artifacts",
-  "version": "1.0.0",
-  "description": "Self-contained HTML deliverables for Claude Code and Droid — plans, specs, reports, research syntheses, diagrams, timelines, dashboards, decks, prototypes, and one-off editors when markdown would flatten the work.",
+  "version": "1.0.1",
+  "description": "Self-contained HTML deliverables for Claude Code — plans, specs, reports, research syntheses, diagrams, timelines, dashboards, decks, prototypes, and one-off editors when markdown would flatten the work.",
   "author": {
     "name": "pragmaticgrowth"
   },

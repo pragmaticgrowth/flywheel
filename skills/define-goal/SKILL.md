@@ -5,11 +5,6 @@ description: Use when the user states something they want — a goal, wish, feat
 
 # Define Goal
 
-**CLI detection**: this skill works in both Claude Code and Droid (Factory CLI). Detect
-your runtime: if Droid-specific tools (CronCreate, CreateAutomation) are available or
-`$DROID_PLUGIN_ROOT` is set, you are in Droid. Otherwise Claude Code. The goal contract
-format is the same in both; only the run command differs (see "Goal command facts" below).
-
 ## Overview
 
 Shape the user's intent into a goal contract an agent can pursue honestly: a measurable
@@ -40,7 +35,7 @@ or the queued goal file + `index.yaml` entry. If loop-architect is also needed f
 work, use it to design the repeat mechanism, then return here and emit or queue the goal
 contract the loop will run.
 
-## Goal command facts (CLI-specific)
+## Goal command facts
 
 **Claude Code** has a built-in `/goal` command (user-run only; no `create_goal` or
 `get_goal` tool). After each turn, a separate evaluator model — the configured small-fast
@@ -54,13 +49,6 @@ instead of spinning. Hand these with any run-now line: `/goal` with no arguments
 active goal's turns, token spend, and the evaluator's latest reason; and `/goal` needs a
 trusted workspace with hooks enabled — it is implemented as a session-scoped Stop hook, so
 `disableAllHooks` (or managed `allowManagedHooksOnly`) blocks it, and the command says why.
-
-**Droid** has no built-in `/goal` command. For headless runs use
-`droid exec --auto high "<condition>"`. In an interactive session, paste the goal
-condition as a prompt — the agent self-verifies by running the acceptance commands at
-the end (no separate evaluator model). The same 4,000-char discipline and
-transcript-verifiable phrasing apply: every clause must be checkable by output the
-agent prints, not by taste or file inspection at evaluation time.
 
 ## Shape the contract (both destinations)
 
@@ -109,7 +97,7 @@ what should cause the agent to stop and ask?
 
 ## Project grounding (resolve from the CURRENT repo, never hardcoded)
 
-- **Hard rules**: read CLAUDE.md / AGENTS.md (root + relevant subdirs). Copy rules that
+- **Hard rules**: read CLAUDE.md (root + relevant subdirs). Copy rules that
   constrain agents (protected branches, deploy/migration rules, TDD policy) verbatim into the
   Constraints section. Always add: "Never push protected branches."
 - **Verification commands**: prefer what the repo states — CLAUDE.md commands, package.json
@@ -123,9 +111,8 @@ what should cause the agent to stop and ask?
   screenshots). Use a project browser/verify skill if one exists; else the Chrome extension
   only if it can assert, not just screenshot; else written manual steps that name the exact
   assertion. The implementer must start the project's dev server to drive it.
-- Interview with the interactive question tool (AskUserQuestion in Claude Code; Droid has
-  no question tool — ask directly in chat) only for user-owned gaps or technical targets
-  the repo cannot reveal (which
+- Interview with the interactive question tool (AskUserQuestion) only for user-owned gaps
+  or technical targets the repo cannot reveal (which
   repo/environment, which user-visible outcome matters, what must not break, urgency, out
   of scope, acceptable risk) — max 4 questions per round. Derive code-level technical
   detail yourself by reading the codebase.
@@ -142,32 +129,23 @@ guessing is exactly what recon exists to replace. Skip recon ONLY when the want 
 greenfield (nothing existing to understand) or a one-liner you can already pin with certainty.
 Recon details:
 
-- **Model (mandatory)**: recon search subagents inherit the current session/runtime model.
-  In Claude Code, use the `general-purpose` type
+- **Model (mandatory)**: recon search subagents inherit the current session model.
+  Use the `general-purpose` type
   without a model override, strictly READ-ONLY (report only — never edit, fix, or run heavy
   repro). Do NOT use the built-in `Explore` type if it would force a cheaper model instead
   of inheriting the current one; recon's job is real understanding of the existing system,
   not shallow grep. The synthesis/judgment step (when you split one out to weigh evidence
-  and rank hypotheses) also inherits the current session/runtime model. Search agents report
+  and rank hypotheses) also inherits the current session model. Search agents report
   what the code shows (files, call paths, suspect commits), ranking what it means happens
   there or in your own synthesis. The queue's `config.model` and the per-goal frontmatter
   `model:` never apply here — they govern
   code-writing agents only, and there is NO persistent config knob for a recon model
-  (a `config.research_model` would need per-CLI translation and re-invites the shallow-recon
+  (a `config.research_model` re-invites the shallow-recon
   failure this rule guards against — deliberately not added).
-  - **Per-run override (the ONLY override, and it's CLI-aware).** Do NOT set a fixed model
+  - **Per-run override (the ONLY override).** Do NOT set a fixed model
     alias for recon unless the user explicitly asks for a model in THIS run; the ask applies
-    to this run only and is never persisted to `index.yaml`. Because the two runtimes have
-    incompatible model namespaces, honor the ask in the CLI's own terms — never translate one
-    into the other: in **Claude Code** the subagent model is an Anthropic-only alias
-    (`opus | sonnet | haiku`, or `inherit`) — pass it as the spawn's `model`; in **Droid**
-    there is no such short alias — models are concrete IDs, either built-in
-    (e.g. `claude-sonnet-4-6`, `gpt-5.5`, a Gemini/GLM id) or the owner's own configured
-    models (`custom:<name>`), and BOTH forms work headless too (`droid exec -m
-    custom:<name>` is officially supported). `droid exec --help` lists both sets under
-    "Available Models" / "Custom Models". Treat any specific model-ID string as
-    version-dependent (re-check `droid exec --help` / the `/model` picker);
-    the stable fact is the format, not the string.
+    to this run only and is never persisted to `index.yaml`. Pass the requested model
+    (`opus | sonnet | haiku`, or `inherit`) as the spawn's `model`.
 - **Angles, 2–4 per fan-out** — for a bug: symptom trace (error strings/log lines → the
   code that throws and handles them), data/control flow (entry point → failure area),
   recent-change scan (`git log`/`blame` on suspect areas), config/wiring (flags, env,
@@ -200,18 +178,16 @@ Recon details:
 
 - **Run now** when the user wants this pursued immediately in-session or headlessly.
   Present the goal line in a code block (built-in slash commands cannot be invoked by
-  the agent directly). In Claude Code, show the `/goal` line; for headless or scheduled
-  runs show `claude -p "/goal …"`. In Droid (no `/goal` command), show
-  `droid exec --auto high "<condition>"` for headless, or tell the user to paste the
-  condition as a prompt in an interactive session. If a goal is already active this
+  the agent directly). Show the `/goal` line; for headless or scheduled
+  runs show `claude -p "/goal …"`. If a goal is already active this
   session and matches, continue under it instead of duplicating.
 - **Queue** when the user wants it parked for the factory, hands over multiple items, or
   says to add it to the goals/backlog. After writing, point at the next step: run
   `/dispatch` (or *"work goal NNN"* for a single goal).
 
 Recurring/unattended requests are a combo, not an escape hatch: first define the measurable
-goal, then use loop-architect to choose how it repeats (`/loop /dispatch`, Droid same-session
-cron, routine/automation, etc.). The final answer still includes the real goal destination
+goal, then use loop-architect to choose how it repeats (`/loop /dispatch`,
+routine/automation, etc.). The final answer still includes the real goal destination
 above; never stop at generic loop advice when the user asked to create/add a goal.
 
 ## The docs/goals queue
@@ -248,7 +224,7 @@ goals:
 On first queue creation, suggest the user run `/factory-doctor` — it preflights gh auth,
 the working branch, CI, and the local gate, and scaffolds the queue, so a queue born into a
 known-good environment never hits setup errors mid-run. Then ask the user once (the
-interactive question tool — AskUserQuestion in Claude Code; in Droid ask in chat): which branch
+interactive question tool — AskUserQuestion): which branch
 is the integration base (main? staging? other?), and what the build+test gate commands are
 (`config.verify`).
 Defaults when unspecified: the repo's default branch, `model: inherit`, no repo skills,
@@ -272,9 +248,8 @@ Rules that keep the queue safe:
 - Confirm the draft (title + acceptance criteria) with the user before writing; batch mode
   uses its approval table instead.
 - Dispatch works one ready goal per run on the checked-out branch. If the user wants the
-  whole queue worked unattended, the contract should point them to `/loop /dispatch` (Claude
-  Code) or a same-session Droid cron; do not imply one `/dispatch` invocation drains every
-  ready goal.
+  whole queue worked unattended, the contract should point them to `/loop /dispatch`; do not
+  imply one `/dispatch` invocation drains every ready goal.
 - **Reserve the ID(s) BEFORE writing goal files** — the define-goal analog of dispatch's LOCAL
   claim: mint the slot and commit it before writing files, so a concurrent session can't force
   a rename + cross-ref rewrite of files you already wrote. The reservation is LOCAL, matching
@@ -337,10 +312,10 @@ model: sonnet   # implementer model for dispatch: inherit | opus | sonnet | haik
 
 Each criterion is proven by the command's actual final-run output appearing in the
 transcript — an assertion that "it passed" is a claim, not proof. This generalizes the
-screenshot rule to every check, and is the only guard under Droid self-verification.
+screenshot rule to every acceptance criterion.
 
 ## Constraints (hard rules)
-<repo hard rules from CLAUDE.md/AGENTS.md, verbatim>
+<repo hard rules from CLAUDE.md, verbatim>
 - Never push protected branches.
 - <if recon found an irreversible/externally-visible action: "Stop and confirm before
   <action>", and make stateful external writes idempotent>
@@ -367,11 +342,6 @@ or when blocked or a criterion proves unreachable (follow "If blocked", declarin
 GOAL_UNREACHABLE if a check can be neither satisfied nor measured) — never grind past a
 blocker. Stop after <N> turns.
 ```
-
-In Droid (no `/goal` command), the equivalent is:
-`droid exec --auto high "<same condition>"` for headless, or paste the condition as a
-prompt in an interactive session. The implementer self-verifies by running every
-acceptance command and showing output.
 
 Titles are plain language ("Customers get a receipt email after payment"), not jargon.
 One goal = one independently shippable change; split an ambitious want only when the parts
@@ -443,12 +413,10 @@ behavior criteria; a chore's full-suite check replaces the owning-package one):
   itself (dependency version, lint-rule count, migration applied).
 
 The Goal contract section is the implementer's completion condition — `dispatch` hands the
-whole file to its implementer, and the user can run it directly via `claude -p "/goal …"`
-(Claude Code) or `droid exec --auto high "…"` (Droid).
+whole file to its implementer, and the user can run it directly via `claude -p "/goal …"`.
 Keep the contract line under the 4,000-char cap (reference the file's sections instead of
 restating when long), and phrase UI evidence as transcript-visible output (the screenshot
-capture command's output), never as the attachment itself — the evaluator (Claude Code) or
-the agent's self-verification (Droid) only reads text.
+capture command's output), never as the attachment itself — the evaluator only reads text.
 The closing turn cap (`Stop after <N> turns`) is not optional — official guidance bounds
 every goal with a turn or time clause. Size `<N>` to the goal (roughly 10 for an `S`, 20
 for an `M`, 30 for an `L`): generous enough for setup + TDD + verification, small enough
@@ -490,12 +458,7 @@ on a stronger model is still a vague contract.
 
 Include the choice in the draft you confirm with the user (batch mode: the `model` column
 in the approval table). Resolution at dispatch time: goal `model:` > `config.model` >
-`inherit`; in Droid, where the alias namespace doesn't exist, dispatch resolves the alias
-through the queue's `config.droid_models` map (alias → concrete Droid model ID —
-factory-doctor writes it by asking the owner, since Droid setups can carry many custom
-models and no skill ever guesses one). No map or no entry → the alias resolves to
-`inherit`. Record the intent either way — Claude Code honors it directly, Droid honors it
-via the map.
+`inherit`.
 
 ## Batch mode (documents → many goals)
 
@@ -509,16 +472,15 @@ When given a document (pasted text, file path, attachment):
 3. **Locate cheaply**: pin the likely area per item via Recon above — one fan-out can
    cover several items (give each subagent the full item list for its angle); the
    implementer does the heavy repro.
-4. One batched interactive-question round (AskUserQuestion in Claude Code; in Droid ask
-   the batch in chat) for genuinely ambiguous items only, then an approval
+4. One batched interactive-question round (AskUserQuestion) for genuinely ambiguous items
+   only, then an approval
    table before writing anything:
    `id | proposed title | priority | model | dup-of | notes`.
 5. On approval, write one goal file + index entry per confirmed item, commit once, reply
    with a one-line queue summary.
 
 Sizing the orchestration: with ~5+ confirmed items and the Workflow tool available
-(Claude Code ≥2.1.154; in Droid the equivalent is mission mode via `droid exec --mission`;
-both can be disabled — never assume either), run the per-item work as one
+(Claude Code ≥2.1.154; can be disabled — never assume it), run the per-item work as one
 workflow — `pipeline(items, locate, draft)` with finder agents inheriting the current model —
 instead of repeated fan-outs; drafts land in script variables, never as files — the step-4
 approval table still gates every file write. The user also approves the workflow's phase

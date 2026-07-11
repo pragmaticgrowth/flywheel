@@ -48,7 +48,7 @@ def resolve_config(cwd):
     """Personal-settings resolution, first match wins:
     1. PG_TELEGRAM_CONFIG — explicit file override (tests/debug).
     2. PG_TELEGRAM_BOT_TOKEN + PG_TELEGRAM_CHAT_ID env vars — for cloud runs
-       (routines / Droid automations) where no state file persists; enables all
+       (routines and other environments) where no state file persists; enables all
        categories (narrow with PG_TELEGRAM_EVENTS=errors,dispatch,...).
     3. Per-project config: ~/.local/state/pg-telegram/projects/*.json whose
        project_root is the longest prefix of cwd. An enabled:false project

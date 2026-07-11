@@ -6,20 +6,12 @@ description: |
   - Run an automated research loop: try an idea, measure it, keep improvements, revert regressions, repeat
   - Set up autoresearch for any codebase with a measurable optimization target
   Implements the autoresearch pattern with MAD-based confidence scoring, git branch
-  isolation, and structured experiment logging. Works in Claude Code and Droid.
+  isolation, and structured experiment logging.
 ---
 
 # Autoresearch
 
 Autonomous experiment loop: try ideas, keep what works, discard what doesn't, never stop.
-
-**CLI detection**: this skill works in both Claude Code and Droid (Factory CLI). Detect
-your runtime: if Droid-specific tools (CronCreate, CreateAutomation) are available or
-`$DROID_PLUGIN_ROOT` is set, you are in Droid. Otherwise Claude Code. The loop procedure
-is identical in both; only the autonomous-cadence primitive and the helper path differ.
-
-*Adapted from Factory's `autoresearch` plugin (MIT), translated to be Claude-Code-first
-and CLI-aware for the Pragmatic Growth marketplace.*
 
 ## Overview
 
@@ -27,22 +19,14 @@ You are running an autonomous optimization loop. Your job is to systematically i
 
 **Running autonomously.** This loop runs *in-session* and resumes across sessions from
 its state files — a fresh session with no memory reads them and continues exactly where
-the last one stopped. For unattended cadence you don't have to babysit:
+the last one stopped. For unattended cadence you don't have to babysit: let the loop run in
+one session until the termination condition or context limit; for periodic re-entry, wrap
+the resume in `/loop` — e.g. `/loop 15m "resume autoresearch"` — so each fire reads the
+state files and runs more experiments.
 
-- **Claude Code:** let the loop run in one session until the termination condition or
-  context limit; for periodic re-entry, wrap the resume in `/loop` —
-  e.g. `/loop 15m "resume autoresearch"` — so each fire reads the state files and runs
-  more experiments.
-- **Droid:** schedule a same-session `CronCreate` on the same interval. Optionally run
-  inside a mission (`droid exec --mission` headless, or the ProposeMission /
-  StartMissionRun tools in an interactive session) for milestone tracking and
-  multi-session validation — helpful, not required; the loop procedure is unchanged
-  either way.
-
-Pick the primitive matching your runtime once at setup; everything below is identical in
-both. When the termination condition is met, the loop runs Finalization once and then you
-should **cancel the `/loop` or delete the `CronCreate`** — otherwise it keeps re-firing and
-re-reading already-completed state.
+When the termination condition is met, the loop runs Finalization once and then you
+should **cancel the `/loop`** — otherwise it keeps re-firing and re-reading
+already-completed state.
 
 ## Resolve the helper path
 
@@ -50,20 +34,16 @@ The experiment helper ships with this plugin. Set `$AR` to its path once, trying
 order and stopping at the first that exists:
 
 1. `$CLAUDE_PLUGIN_ROOT/skills/autoresearch/scripts/autoresearch_helper.py`
-2. `$DROID_PLUGIN_ROOT/skills/autoresearch/scripts/autoresearch_helper.py` (Droid)
-3. newest match of `~/.claude/plugins/{cache,marketplaces}/*/autoresearch/*/skills/autoresearch/scripts/autoresearch_helper.py`
-4. newest match of `~/.factory/plugins/{cache,marketplaces}/*/autoresearch/*/skills/autoresearch/scripts/autoresearch_helper.py`
+2. newest match of `~/.claude/plugins/{cache,marketplaces}/*/autoresearch/*/skills/autoresearch/scripts/autoresearch_helper.py`
 
 ```bash
 AR=""
 for c in \
-  "$CLAUDE_PLUGIN_ROOT/skills/autoresearch/scripts/autoresearch_helper.py" \
-  "$DROID_PLUGIN_ROOT/skills/autoresearch/scripts/autoresearch_helper.py"; do
+  "$CLAUDE_PLUGIN_ROOT/skills/autoresearch/scripts/autoresearch_helper.py"; do
   [ -n "$c" ] && [ -f "$c" ] && AR="$c" && break
 done
 if [ -z "$AR" ]; then
   AR=$(ls -t ~/.claude/plugins/{cache,marketplaces}/*/autoresearch/*/skills/autoresearch/scripts/autoresearch_helper.py \
-              ~/.factory/plugins/{cache,marketplaces}/*/autoresearch/*/skills/autoresearch/scripts/autoresearch_helper.py \
        2>/dev/null | head -1)
 fi
 ```
@@ -395,7 +375,7 @@ The score is advisory — it never auto-discards. If confidence is below 1.0x, c
 
 ## Context Management
 
-Every session has finite context (Claude Code and Droid alike). To handle this gracefully:
+Every session has finite context. To handle this gracefully:
 
 1. **Track experiment count** in the current session. After ~15 experiments, context is getting heavy.
 2. **Save state proactively** — all state lives in files (jsonl, md), so a new session can resume immediately.
@@ -518,8 +498,6 @@ The original experiment branch is always preserved — finalization creates new 
 ## Unattended / worker mode
 
 When the goal, termination condition, files in scope, and constraints are supplied up
-front — a Droid mission feature description, a `/loop` prompt, or a cron spec — read them
+front — a `/loop` prompt or a cron spec — read them
 carefully, follow the same loop procedure above, and respect the termination condition.
-When the condition is met, run finalization and report results in the handoff. In Droid
-mission-worker mode specifically, proceed with the best grouping in Finalization without
-waiting for user confirmation.
+When the condition is met, run finalization and report results in the handoff.

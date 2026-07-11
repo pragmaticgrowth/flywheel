@@ -5,12 +5,6 @@ description: Use when setting up or troubleshooting the flywheel factory in a re
 
 # Factory Doctor
 
-**CLI detection**: this skill works in both Claude Code and Droid (Factory CLI). Detect
-your runtime: if Droid-specific tools (CronCreate, CreateAutomation) are available or
-`$DROID_PLUGIN_ROOT` is set, you are in Droid. Otherwise Claude Code. The probe checks
-settings in both `.claude/` and `.factory/` paths; the fix instructions reference the
-appropriate path for your CLI.
-
 Make a repo + machine factory-ready in one idempotent pass. You READ everything via the
 shipped probe, AGGRESSIVELY auto-fix everything local and reversible, and REPORT (with the
 exact command) everything you physically can't do safely. Running this twice yields the same
@@ -20,20 +14,14 @@ green report.
 
 1. **Resolve paths.** `$DC` = `doctor_checks.py`, via the surviving scripts' resolution chain
    (the same fallback chain dispatch uses for `$PGVALIDATE`):
-   `$CLAUDE_PLUGIN_ROOT/skills/factory-doctor/scripts/doctor_checks.py`
-   (Claude Code), else
-   `$DROID_PLUGIN_ROOT/skills/factory-doctor/scripts/doctor_checks.py` (Droid), else newest
-   `~/.claude/plugins/{cache,marketplaces}/*/flywheel/*/skills/factory-doctor/scripts/doctor_checks.py`
-   (Claude Code) or
-   `~/.factory/plugins/{cache,marketplaces}/*/flywheel/*/skills/factory-doctor/scripts/doctor_checks.py`
-   (Droid).
+   `$CLAUDE_PLUGIN_ROOT/skills/factory-doctor/scripts/doctor_checks.py`, else newest
+   `~/.claude/plugins/{cache,marketplaces}/*/flywheel/*/skills/factory-doctor/scripts/doctor_checks.py`.
 2. **Read the queue config** (`docs/goals/index.yaml` `config:` if present) for `base`.
    Pass `--base <base>` ONLY when `config.base` is explicitly set. If it is absent, omit
    `--base` — dispatch defaults base to the checked-out branch, so there is no separate
    working branch to mismatch against (the probe reports INFO, not a spurious warning).
-3. **Run the read-only probe:** `python3 "$DC" [--base <config.base>] --runtime <claude|droid>`
-   — pass `--runtime` from your CLI detection above (omitted, it auto-detects via
-   `$DROID_PLUGIN_ROOT`). It emits JSON `{checks:[{check,level,detail,fix}], result}` and
+3. **Run the read-only probe:** `python3 "$DC" [--base <config.base>]`
+   — it emits JSON `{checks:[{check,level,detail,fix}], result}` and
    exits 0/1/2. Never edit it.
 
 ## Apply local fixes (aggressive — these and ONLY these)
@@ -81,29 +69,6 @@ For each check whose `fix` begins with `FIX:`:
   `key=value` (so any owner intent a dead key's value encoded is visible, not silently dropped).
   Mark FIXED. Drives the `queue: …drift` status token below.
 
-- **`droid-models` (Droid runs only — the one fix that ASKS before editing):** the probe
-  WARNs when the queue routes any goal by an Anthropic alias (`config.model` or a goal's
-  frontmatter `model:` of `opus|sonnet|haiku`) that `config.droid_models` doesn't map.
-  Droid has no alias namespace — without a map, dispatch silently downgrades those goals
-  to `inherit`. NEVER pick a model for the owner (Droid setups often carry many custom
-  models); ask them, one question covering every missing alias, offering the real
-  choices: run `droid exec --help` and present the "Available Models" IDs (e.g.
-  `claude-sonnet-4-6`) plus their own "Custom Models" (`custom:<name>`) entries. An alias
-  the owner declines to map is fine — it just runs `inherit`. Write the answers in one
-  atomic edit:
-
-  ```yaml
-  config:
-    droid_models:        # Droid only — alias → concrete Droid model ID
-      sonnet: claude-sonnet-4-6
-      opus: custom:CP-Opus-4.8
-  ```
-
-  Re-run the probe → FIXED. In an unattended run (headless/cron — no one to answer),
-  don't edit anything: surface the question under needs-you with the probe's `fix` text.
-  In Claude Code the same condition is INFO-only (the map matters only where the queue
-  is drained by Droid) — report the caveat, don't interview.
-
 Each fix is one atomic edit, named in the report. Like every factory-doctor local fix, leave
 the edit in the working tree — do NOT commit or push it (committing is dispatch's job, not the
 doctor's). The edits show up in the `working-tree` WARN as expected; the user reviews the
@@ -115,8 +80,8 @@ Push, open a PR, touch the remote, edit a CI workflow, run `gh auth login`/`refr
 (browser-blocking — report the exact command instead), run a SYSTEM/sudo/global install (`gh`,
 `git`, `brew`/`apt`, OR `npm i -g agent-browser` + its Chromium download — report those; the
 ONLY install you may run is the plugin's own python dep at `--user` scope, above), `git stash`,
-delete branches/worktrees, or write to user-scope `~/.claude/settings.json` (Claude Code) or
-`~/.factory/settings.json` (Droid). Anything not in the fix list above is REPORT-only.
+delete branches/worktrees, or write to user-scope `~/.claude/settings.json`. Anything not in
+the fix list above is REPORT-only.
 
 ## Report (always, last line is the status)
 
@@ -143,11 +108,7 @@ loop has fired here or a rail is detected). The `verify` check WARNs if `config.
 absent and there are active goals — copy its `fix` (add a `verify:` list to `index.yaml`). Then
 one status line:
 
-`[doctor] software: <ok|missing> · auth: <ok|n/a> · verify: <configured|⚠ missing|n/a> · models: <mapped|⚠ unmapped|n/a> · working-tree: <clean|⚠ dirty> · working-branch: <ok|⚠ off-base> · ci: <present|none> · queue: <valid|scaffolded|drift> · health: <live|⚠ stale claims|⚠ underspecified goals|⚠ limit-exposed> · result: READY|WARN|BLOCKER`
-
-(`models:` mirrors the `droid-models` check: `mapped` when every alias in use is mapped,
-`⚠ unmapped` on the Droid WARN, `n/a` when no aliases are in use or the run is Claude Code —
-the Claude Code caveat, if any, stays in the check detail.)
+`[doctor] software: <ok|missing> · auth: <ok|n/a> · verify: <configured|⚠ missing|n/a> · working-tree: <clean|⚠ dirty> · working-branch: <ok|⚠ off-base> · ci: <present|none> · queue: <valid|scaffolded|drift> · health: <live|⚠ stale claims|⚠ underspecified goals|⚠ limit-exposed> · result: READY|WARN|BLOCKER`
 
 ## Relationship to the other skills
 

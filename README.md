@@ -1,12 +1,11 @@
 # flywheel
 
 **Turn plain-language wants into autonomous execution.**
-A skills-only plugin marketplace for [Claude Code](https://claude.com/claude-code)
-and [Droid](https://factory.ai) (Factory CLI), from Pragmatic Growth.
+A skills-only plugin marketplace for [Claude Code](https://claude.com/claude-code),
+from Pragmatic Growth.
 
 [![Website](https://img.shields.io/badge/site-plugin.pragmaticgrowth.com-6366f1)](https://plugin.pragmaticgrowth.com)
-[![Version](https://img.shields.io/badge/version-4.16.0-8b5cf6)](CHANGELOG.md)
-[![CLIs](https://img.shields.io/badge/runs%20in-Claude%20Code%20%2B%20Droid-0ea66e)](#works-in-both-clis)
+[![Version](https://img.shields.io/badge/version-5.0.0-8b5cf6)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
 > 🌐 **Full docs:** **<https://plugin.pragmaticgrowth.com>**
@@ -98,10 +97,10 @@ document, and it produces **goal contracts** — never implementation.
   work get `opus`. Dispatch reads it per goal when spawning the implementer;
   the orchestrator itself always stays on your session model.
 - **Two destinations.** It can hand you a copy-pasteable **run-now** line
-  (`/goal …` in Claude Code, `droid exec --auto high "…"` in Droid), or **queue**
+  (`/goal …`), or **queue**
   a goal file (`docs/goals/NNN-slug.md` + an `index.yaml` entry) to be worked
   later by dispatch.
-- **Grounded in your repo.** It copies your `CLAUDE.md` / `AGENTS.md` rules
+- **Grounded in your repo.** It copies your `CLAUDE.md` rules
   verbatim into the contract, fills in *real* verification commands, and
   auto-populates the goal’s `touches:` / `acceptance:` fields from recon.
 - **Batch mode.** Hand it a list (feedback doc, meeting notes, a backlog) and
@@ -137,8 +136,7 @@ prototypes, and custom editors.
 
 The orchestrator. It works **one ready goal per run** on the currently
 checked-out branch — no PRs, no worktrees, no parallel implementers. Use
-`/loop /dispatch` (Claude Code) or a same-session Droid cron to repeat that
-cycle until the queue is drained.
+`/loop /dispatch` to repeat that cycle until the queue is drained.
 
 Per goal:
 
@@ -164,8 +162,7 @@ single goal in an interactive session: *”work goal 005.”*
 Automating work is easy to get wrong: a naive “keep doing X” loop never knows
 when it’s finished and can burn for hours. loop-architect designs the **loop
 contract** instead — the prompt, the verification step, and the **stop
-conditions** — and maps the right primitives for your CLI (`/loop` vs
-`CronCreate`, `/goal` vs `droid exec`). Use it whenever you want something to
+conditions**. Use it whenever you want something to
 run unattended, on a schedule, or remotely. If the cadence, gate, budget, or
 stop condition is unclear, it asks a short calibration round before writing the
 copy-pasteable setup. For unattended runs on subscription plans it also designs
@@ -173,8 +170,7 @@ copy-pasteable setup. For unattended runs on subscription plans it also designs
 and kills an in-session `/loop` with no hook fired, so the limit-proof shape is
 an OS scheduler (cron/launchd) firing fresh `claude -p "/dispatch"` sessions —
 optionally reading the reset clock from the statusline `rate_limits.*.resets_at`
-fields or a `StopFailure` hook marker (Droid: `CronCreate new_session` already
-has this shape).
+fields or a `StopFailure` hook marker.
 
 ### factory-doctor — get the environment ready
 
@@ -187,7 +183,7 @@ demonstrably fires but has no rail that survives an account limit stop) —
 **auto-fixing everything local**
 (scaffolding the queue, stripping deprecated v3 config keys —
 `merge`/`wip`/`execution`/`autonomy` — from a stale `index.yaml`, and checking
-both `.claude/` and `.factory/` settings) and
+`.claude/` settings) and
 reporting remote/CI issues with the exact fix. It diagnoses and fixes setup; it
 never implements goals.
 
@@ -216,12 +212,8 @@ run finished) call a tiny stdlib notifier that POSTs to your bot.
   chmod-600 file under `~/.local/state/pg-telegram/`, **outside the repo**, so
   your token can never be committed or pushed, whatever scope the plugin itself
   is installed at. The hooks ship dormant and no-op until you run the command.
-- **Droid and cloud covered, honestly.** Droid's hooks have no error event and
-  don't fire under `droid exec`/`CronCreate` (tested), so on Droid the dispatch
-  orchestrator pings directly instead — every fire pipes its report line
-  (`4/6 done · needs-you: …`) to the notifier, hook-free. Cloud runs (routines,
-  automations) use `PG_TELEGRAM_BOT_TOKEN`/`PG_TELEGRAM_CHAT_ID` env vars — no
-  state file needed.
+- **Cloud covered too.** Cloud runs (routines, automations) use
+  `PG_TELEGRAM_BOT_TOKEN`/`PG_TELEGRAM_CHAT_ID` env vars — no state file needed.
 
 ### autoresearch plugin — optimize by experiment
 
@@ -236,11 +228,10 @@ noise.
   branch; all state lives in files (`autoresearch.md`, `autoresearch.sh`,
   `autoresearch.jsonl`) so a fresh session with no memory reads them and
   continues exactly where the last one stopped.
-- **Runs unattended, both CLIs.** Let it loop in one session, or wrap the resume
-  in `/loop` (Claude Code) or a same-session `CronCreate` (Droid).
+- **Runs unattended.** Let it loop in one session, or wrap the resume in `/loop`.
 - **Clean output.** On termination it groups the kept experiments into
   independently-mergeable branches for review — the raw experiment branch is
-  always preserved. Adapted from Factory's `autoresearch` plugin (MIT).
+  always preserved.
 
 ### human-writing plugin — make text sound human
 
@@ -251,11 +242,10 @@ em-dash and rule-of-three overuse, AI vocabulary, vague attributions, and chatbo
 artifacts ("I hope this helps!") — rewrites them, and pushes for real voice
 (opinions, varied rhythm, specific detail) instead of clean-but-soulless prose.
 
-- **Pure guidance, no runtime.** One skill, no scripts or state — it works identically
-  in Claude Code and Droid. Use it when writing or reviewing markdown, docs, emails,
-  blog posts, or PRDs.
+- **Pure guidance, no runtime.** One skill, no scripts or state. Use it when writing
+  or reviewing markdown, docs, emails, blog posts, or PRDs.
 - **Sourced and attributed.** Based on Wikipedia's "Signs of AI writing" (WikiProject
-  AI Cleanup, CC BY-SA); adapted from Factory's `droid-evolved` plugin.
+  AI Cleanup, CC BY-SA).
 
 ---
 
@@ -359,9 +349,6 @@ config:
   model: inherit          # code-agent default: inherit | opus | sonnet | haiku
                           #   (a goal's own frontmatter model: overrides per goal)
   # --- optional ---
-  droid_models:           # Droid only — alias → concrete Droid model ID (Droid has no
-    sonnet: claude-sonnet-4-6      # alias namespace; factory-doctor asks you and writes
-    opus: custom:my-strong-model   # this; unmapped aliases run inherit)
   skills: []              # skills every implementer must invoke
   verify:                 # ordered local build + test gate (run before keeping a commit)
     - pnpm build
@@ -374,8 +361,7 @@ config:
 | Key | Default | What it does |
 |---|---|---|
 | `base` | repo default branch | The branch dispatch works on — implementers commit here directly. Per-goal `base:` override allowed. |
-| `model` | `inherit` | Repo-wide **default** model for spawned **code** agents (`inherit`/`opus`/`sonnet`/`haiku`). Each goal's frontmatter `model:` — stamped by define-goal from a contract-tightness rubric — overrides it per goal. The depth-vs-quota trade. Recon subagents and the orchestrator always stay on the current session/runtime model. |
-| `droid_models` | none | Droid only: maps each alias to a concrete Droid model ID (built-in like `claude-sonnet-4-6` or your own `custom:<name>`). Droid has no `opus`/`sonnet`/`haiku` namespace and owners can run many custom models, so `/factory-doctor` **asks you** which model each alias means and writes the map — nothing ever guesses. Without a map, aliases resolve to `inherit` on Droid. |
+| `model` | `inherit` | Repo-wide **default** model for spawned **code** agents (`inherit`/`opus`/`sonnet`/`haiku`). Each goal's frontmatter `model:` — stamped by define-goal from a contract-tightness rubric — overrides it per goal. The depth-vs-quota trade. Recon subagents and the orchestrator always stay on the current session model. |
 | `skills` | — | Repo-wide skills every implementer must use (e.g. your TDD or review skills). |
 | `verify` | — | Ordered list of local build + test commands. Run by the dispatch orchestrator after each implementation; PASS keeps the squash commit, FAIL rolls it back. |
 | `budget` | none | `max_goals_per_session` / `max_iterations` ceilings the loop can’t exceed — the external brake on a long run. Dispatch itself works one goal per run. |
@@ -383,8 +369,6 @@ config:
 ---
 
 ## Install
-
-**Claude Code:**
 
 ```bash
 /plugin marketplace add pragmaticgrowth/flywheel
@@ -394,20 +378,8 @@ config:
 /plugin install human-writing@pragmatic-growth
 ```
 
-**Droid (Factory CLI):**
-
-```bash
-droid plugin marketplace add https://github.com/pragmaticgrowth/flywheel
-droid plugin marketplace list   # confirms the marketplace name is flywheel
-droid plugin install flywheel@flywheel
-droid plugin install html-artifacts@flywheel
-droid plugin install autoresearch@flywheel
-droid plugin install human-writing@flywheel
-```
-
-Pull updates later with `/plugin marketplace update pragmatic-growth` (Claude
-Code) or `droid plugin marketplace update flywheel` (Droid), then update any
-installed plugin from the Installed tab or with the CLI's plugin update command.
+Pull updates later with `/plugin marketplace update pragmatic-growth`, then update
+any installed plugin from the Installed tab.
 
 ### Quick start
 
@@ -415,12 +387,6 @@ installed plugin from the Installed tab or with the CLI's plugin update command.
 /factory-doctor                              # 1. make sure the repo + machine are ready
 /define-goal I want the API p95 latency under 200ms   # 2. capture a want → queued contract
 /dispatch                                    # 3. work one ready goal
-```
-
-Droid headless equivalent for the first preflight:
-
-```bash
-droid exec --auto high "Run flywheel factory-doctor for this repo, apply safe local fixes, and report needs-you"
 ```
 
 That’s the whole arc: preflight, capture, work. Add more goals any time —
@@ -466,22 +432,11 @@ One caveat for overnight runs on subscription plans: a **usage limit** (5-hour
 or weekly window) blocks every turn until reset and silently kills an
 in-session `/loop` — no hook fires, and the CLI has no built-in auto-resume.
 The limit-proof shape is scheduling *outside* the session (cron/launchd firing
-fresh `claude -p "/dispatch"` runs; Droid: `CronCreate new_session`) — each
+fresh `claude -p "/dispatch"` runs) — each
 fire is idempotent, so the first fire after reset just continues the queue.
 Dispatch’s heartbeat log and fires-observed brake keep a quota pause from being
 misread as a dead goal, and `/factory-doctor` warns when a looping repo has no
 limit rail.
-
----
-
-## Works in both CLIs
-
-Four plugins, two runtimes. Droid auto-translates the `.claude-plugin/` manifest
-format, and the skills **detect the runtime** and use the right paths,
-commands, and scheduling primitives (`/goal` vs `droid exec`, `/loop` vs
-`CronCreate`, `.claude/` vs `.factory/` settings). Everything above works the
-same way in each; only the exact command surface differs, and the skills handle
-that for you.
 
 ---
 
@@ -540,7 +495,7 @@ flywheel/
 ├── public/                # the plugin.pragmaticgrowth.com site (index.html + brand SVGs)
 ├── wrangler.jsonc         # Cloudflare deploy config for the site
 ├── CHANGELOG.md           # canonical version history
-└── CLAUDE.md / AGENTS.md  # contributor guide (AGENTS.md is a symlink — one source)
+└── CLAUDE.md              # contributor guide
 ```
 
 ---

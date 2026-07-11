@@ -2,10 +2,10 @@
 
 ## Project Overview
 
-Skills-only Claude Code and Droid (Factory CLI) marketplace from Pragmatic Growth.
+Skills-only Claude Code marketplace from Pragmatic Growth.
 The repo now publishes four plugins from one `pragmatic-growth` marketplace:
-`flywheel` v4.16.0, `html-artifacts` v1.0.0, `autoresearch` v1.0.1, and
-`human-writing` v1.0.0. No MCP
+`flywheel` v5.0.0, `html-artifacts` v1.0.1, `autoresearch` v1.1.0, and
+`human-writing` v1.0.1. No MCP
 servers, no commands, no
 agents, no build step, and — as of v4.11.0 — ONE hook bundle
 (`hooks/hooks.json`, the `telegram-message` notifier; added by explicit owner
@@ -19,17 +19,12 @@ plans/reports/diagrams/editors. `autoresearch` lives under
 `plugins/autoresearch/` as a separate plugin for an autonomous try/measure/keep/
 revert optimization loop (ships one Python helper). `human-writing` lives under
 `plugins/human-writing/` as a separate single-skill plugin for AI-writing
-cleanup (pure guidance, no scripts). All four plugins work in
-both CLIs via Droid's
-Claude Code compatibility layer (Droid auto-translates the `.claude-plugin/`
-manifest format). Skills are CLI-aware — they detect the runtime and use
-appropriate paths, commands, and scheduling primitives.
+cleanup (pure guidance, no scripts).
 
 - **define-goal** — plain-language wants → measurable goal contracts.
-  Two destinations: a copy-pasteable `/goal` line (Claude Code) or
-  `droid exec --auto high "…"` (Droid) to run now, or a queued
+  Two destinations: a copy-pasteable `/goal` line to run now, or a queued
   goal file (`docs/goals/NNN-slug.md` + `index.yaml` entry). Includes
-  repo grounding (CLAUDE.md/AGENTS.md rules copied verbatim, real
+  repo grounding (CLAUDE.md rules copied verbatim, real
   verification commands) and a batch mode for documents of items.
   Stamps each queued goal's frontmatter `model:` (inherit|opus|sonnet|haiku)
   LAST, after the acceptance criteria are final, from a contract-tightness
@@ -37,9 +32,8 @@ appropriate paths, commands, and scheduling primitives.
   craft / wide blast radius / ambiguous root-cause → opus; unsure → the
   stronger. Produces goals only, never implements. Originally adapted from
   OpenAI's curated `define-goal` skill (its `create_goal`/`get_goal`
-  tools don't exist in either CLI; `/goal` is user-run, transcript-
-  evaluated in Claude Code, self-verified by the agent in Droid,
-  4,000-char condition cap).
+  tools don't exist here; `/goal` is user-run, transcript-
+  evaluated, 4,000-char condition cap).
 - **dispatch** — factory orchestrator for the docs/goals queue: works ONE
   ready goal per run on the branch that's currently checked out — no PRs, no
   worktrees, no `goal/<id>` branches, no parallel implementation. Per goal it
@@ -47,10 +41,7 @@ appropriate paths, commands, and scheduling primitives.
   HEAD as `anchor`, commits the claim, records the post-claim HEAD as
   `gate_base`, spawns ONE foreground implementer that commits its work
   directly on the branch — on the goal's resolved implementer model
-  (goal frontmatter `model:` > `config.model` > inherit, v4.15.0; on Droid,
-  where no alias namespace exists, the alias resolves through
-  `config.droid_models` — alias → concrete Droid model ID, written by
-  factory-doctor's interview, v4.16.0 — else inherit; the
+  (goal frontmatter `model:` > `config.model` > inherit, v4.15.0; the
   orchestrator and recon/review agents always stay on the session
   model) — using a lightweight subagent-driven quality loop
   (plan/checklist, TDD, fresh verifier/reviewer subagent for non-trivial work),
@@ -64,8 +55,7 @@ appropriate paths, commands, and scheduling primitives.
   and mark it `completed`; FAIL → `git reset --hard gate_base` and mark it
   `blocked` (with reason). CI, if the repo has it, is a NON-BLOCKING post-push
   observation surfaced under needs-you — never a merge gate. Built to repeat as
-  `/loop 15m /dispatch` (Claude Code) or `CronCreate` same_session every 15m
-  (Droid); each fire handles at most one new goal and is idempotent. Each fire emits one report
+  `/loop 15m /dispatch`; each fire handles at most one new goal and is idempotent. Each fire emits one report
   line leading with progress — `<done>/<total> done` plus a 20-cell fill
   bar, then labeled `ready`/`blocked` counts that sum to `total`
   (lead with done, never `ready/total`, which reads as "nothing done");
@@ -80,8 +70,8 @@ appropriate paths, commands, and scheduling primitives.
   names `docs/goals/index.yaml` the canonical factory ledger. Includes
   usage-limit proofing (Step 5): subscription 5-hour/weekly limits kill
   in-session loops with no hook fired, so unattended drains schedule OUTSIDE
-  the session (cron/launchd firing fresh `claude -p "/dispatch"`; Droid
-  `CronCreate new_session`), optionally reading the reset clock from statusline
+  the session (cron/launchd firing fresh `claude -p "/dispatch"`), optionally
+  reading the reset clock from statusline
   `rate_limits.*.resets_at` or a `StopFailure` (rate_limit) hook marker.
 - **factory-doctor** — one-pass preflight/doctor for a repo + machine:
   checks software, gh auth + scopes, the git working tree, CI, queue
@@ -92,19 +82,11 @@ appropriate paths, commands, and scheduling primitives.
   strips deprecated v3 config keys — `merge`/`wip`/`execution`/`autonomy` —
   from a stale `index.yaml` so v3-era projects stop silently running dead
   config under the v4 model) and
-  reports remote/CI issues with exact fixes. On Droid it also runs the
-  `droid-models` interview (v4.16.0, owner decision 2026-07-09): when the
-  queue routes goals by an Anthropic alias with no `config.droid_models`
-  mapping, it ASKS the owner which concrete Droid model each alias means
-  (owners can run many custom models — offering the `droid exec --help`
-  list, never guessing) and writes the map; in Claude Code the same
-  condition is INFO-only. Ships `scripts/doctor_checks.py`
-  (read-only probe, `BLOCKER|WARN|FIXED|INFO`, exit 0/1/2,
-  `--runtime claude|droid`). The v4 sequential
+  reports remote/CI issues with exact fixes. Ships `scripts/doctor_checks.py`
+  (read-only probe, `BLOCKER|WARN|FIXED|INFO`, exit 0/1/2). The v4 sequential
   model commits directly on the local branch, so there is no merge allow-rule
-  to provision — the gate is local. The probe checks settings in both
-  `.claude/` and `.factory/` (Droid) paths.
-- **telegram-message** (v4.11.0, scopes + Droid/cloud in v4.12.0,
+  to provision — the gate is local. The probe checks settings in `.claude/`.
+- **telegram-message** (v4.11.0, scopes + cloud in v4.12.0,
   dispatch-gated hooks in v4.14.0) —
   `/telegram-message <bot_token> [chat_id]` wires a Telegram bot to DM the owner
   when an autonomous run needs a human: an API/usage-limit error killed a turn
@@ -124,9 +106,7 @@ appropriate paths, commands, and scheduling primitives.
   prefix match on cwd; `enabled:false` = per-project opt-out), `--global` for
   the machine-wide fallback, `PG_TELEGRAM_BOT_TOKEN`/`PG_TELEGRAM_CHAT_ID`(/
   `PG_TELEGRAM_EVENTS`) env vars for cloud runs — resolution env > project >
-  global. Hook events verified on Claude Code incl. headless `claude -p`;
-  **Droid gets dispatch-category pings only** (no error hook exists AND hooks
-  don't fire under `droid exec`/`CronCreate` — empirically tested 2026-07-07).
+  global. Hook events verified on Claude Code incl. headless `claude -p`.
   Stdlib notifier `scripts/pg_telegram_notify.py` never crashes a session and
   no-ops until configured. Sets up notifications only; never implements goals.
 
@@ -151,19 +131,16 @@ Separate marketplace plugins:
   resumes exactly where the last stopped; on termination it groups kept
   experiments into independently-mergeable branches. Single skill +
   `scripts/autoresearch_helper.py` (stdlib-only JSONL/confidence helper,
-  resolved via `$CLAUDE_PLUGIN_ROOT`/`$DROID_PLUGIN_ROOT`) under
-  `plugins/autoresearch/skills/autoresearch/`. CLI-aware: `/loop` (Claude Code)
-  or same-session `CronCreate` (Droid) for unattended cadence. Adapted from
-  Factory's `autoresearch` plugin (MIT).
+  resolved via `$CLAUDE_PLUGIN_ROOT`) under
+  `plugins/autoresearch/skills/autoresearch/`. Unattended cadence via `/loop`.
 - **human-writing** — edits AI-sounding text into human prose: scans for the tells
   catalogued in Wikipedia's "Signs of AI writing" (inflated significance,
   promotional language, `-ing` filler, em-dash/rule-of-three overuse, AI
   vocabulary, vague attributions, chatbot artifacts), rewrites them, and pushes
-  for real voice. Deliberately CLI-neutral — pure writing guidance, one
-  `SKILL.md`, no scripts/state/references, so it needs no runtime translation.
+  for real voice. Pure writing guidance, one
+  `SKILL.md`, no scripts/state/references.
   Single skill under `plugins/human-writing/skills/human-writing/`. Based on
-  Wikipedia's guide (WikiProject AI Cleanup, CC BY-SA); adapted from Factory's
-  `droid-evolved` plugin.
+  Wikipedia's guide (WikiProject AI Cleanup, CC BY-SA).
 
 ## Queue design invariants (research-backed; v4.1.x one-goal dispatch model, 2026-06-28)
 
@@ -178,8 +155,7 @@ Separate marketplace plugins:
   goal's commits into one `feat(goal NNN)` commit + `completed`; FAIL →
   `git reset --hard gate_base` + `blocked`. CI, where the repo has it, is a
   NON-BLOCKING post-push observation surfaced under needs-you, never a gate.
-  `/loop /dispatch` or Droid same-session cron advances the queue by repeating the
-  same one-goal run.
+  `/loop /dispatch` advances the queue by repeating the same one-goal run.
 - Status lives ONLY in `index.yaml`, never in goal-file frontmatter —
   dual-write drifts. Goal files are immutable contracts.
 - Statuses: `not_started | in_progress | completed | blocked` — blocked
@@ -190,17 +166,12 @@ Separate marketplace plugins:
   the repo-wide DEFAULT for code agents dispatch spawns; each goal's
   frontmatter `model:` — stamped by define-goal from its contract-tightness
   rubric — overrides it per goal, and the orchestrator/recon/review agents
-  always stay on the session model; the depth-vs-limit trade),
-  `droid_models` (optional, Droid only, v4.16.0 — alias → concrete Droid
-  model ID, e.g. `sonnet: claude-sonnet-4-6` or `opus: custom:<name>`;
-  written by factory-doctor's interview because Droid owners can run many
-  custom models — the doctor ASKS, no skill ever guesses a translation;
-  unmapped aliases resolve to inherit on Droid), repo-wide
+  always stay on the session model; the depth-vs-limit trade), repo-wide
   `skills`, `verify` (the ordered local
   build+test commands the gate runs after each implementer), and `budget`
   (optional; `max_goals_per_session` + optional `max_iterations` — a simple
   cap on cumulative spend across repeated dispatch fires; absent = no loop cap).
-  Defaults: repo default branch, inherit, no droid_models map, no extra skills,
+  Defaults: repo default branch, inherit, no extra skills,
   repo-detected verify commands, no budget.
 - Goal frontmatter `type: bug|feature|chore` shapes the contract: bugs
   always lead with a failing-test-reproduces-root-cause criterion (all
@@ -224,26 +195,26 @@ Separate marketplace plugins:
   skip only for genuinely greenfield or one-liner wants. Reaches the system
   wherever it lives (local checkout, separate repo, a host you connect to, a
   service/DB), told to each subagent, never hardcoded. Recon search subagents
-  inherit the current session/runtime model; do not set a fixed model alias,
+  inherit the current session model; do not set a fixed model alias,
   including Sonnet, unless the user explicitly asks for it in that run.
-  In Claude Code, use the `general-purpose` type without a model override,
+  Use the `general-purpose` type without a model override,
   strictly read-only, and avoid the built-in Explore type if it would force a
   cheaper model instead of inheriting the current one. The optional synthesis
-  agent also inherits the current session/runtime model. `config.model`
+  agent also inherits the current session model. `config.model`
   governs only code-writing agents, never recon. (Recon stays plain parallel
   subagents, NOT a Workflow: 2–4 agents is below the workflow scale threshold
   and a workflow can be disabled on a user's machine — define-goal batch mode
   is the only place that conditionally uses Workflow.)
 - Workflow tool only where the docs' thresholds say it wins: define-goal
   batch mode at ~5+ items (drafts in script variables, approval table
-  gates file writes). Dispatch implementers may use workflow/mission mode only
+  gates file writes). Dispatch implementers may use workflow mode only
   for bounded read-only fan-out or review inside a single goal; they are NEVER
   workflows for parallel code-writing or cross-run state. The branch commits +
   the two-anchor rollback are the recovery path. The tool needs CLI ≥2.1.154 and
   can be disabled, so skills never assume it.
 
 History note: this repo was previously `mcp-do`, a stdio MCP server
-wrapping droid/opencode CLIs (removed in v1.0.0 at ac2bd7c). The
+wrapping external coding CLIs (removed in v1.0.0 at ac2bd7c). The
 **wish** skill (wants → GitHub issues) was retired in v2.0.0 on
 2026-06-12 — the docs/goals file queue replaced GitHub issues as the
 work queue (issue bodies cap at 65,536 chars; labels needed per-repo
@@ -280,7 +251,6 @@ CHANGELOG.md                      # canonical, git-tracked version history (site
 public/index.html                 # the public site (plugin.pragmaticgrowth.com) — self-contained, themed
 public/Logo*Black.svg             # Pragmatic Growth brand marks (icon + wordmark)
 wrangler.jsonc                    # Cloudflare Workers static-assets deploy config for the site
-AGENTS.md                         # symlink → CLAUDE.md (one source, no drift)
 ```
 
 ## Rules
@@ -295,25 +265,16 @@ AGENTS.md                         # symlink → CLAUDE.md (one source, no drift)
   repo, `hooks/hooks.json`, or any tracked file (the pre-push secret hook is the
   backstop). Notifier resolves its own path at runtime via `${CLAUDE_PLUGIN_ROOT}`.
 - **Portability.** Skills must not contain user-specific absolute paths
-  (`/Users/...`, `~/.claude/...`, `~/.factory/...`). They run in arbitrary repos.
+  (`/Users/...`, `~/.claude/...`). They run in arbitrary repos.
 - **This repo is the single source of truth.** The plugins are installed
   user-scoped from the `pragmatic-growth` marketplace; the former
   user-level copies in `~/.claude/skills/` were deleted on 2026-06-10.
   Root flywheel skill edits land here, bump the root `plugin.json` version,
   push, then
-  refresh with `/plugin marketplace update pragmatic-growth` (Claude Code)
-  or `droid plugin marketplace update flywheel` (Droid; Factory registers the
-  GitHub marketplace as `flywheel`). `html-artifacts`, `autoresearch`, and
-  `human-writing` edits
+  refresh with `/plugin marketplace update pragmatic-growth`. `html-artifacts`,
+  `autoresearch`, and `human-writing` edits
   bump their own `plugins/<name>/.claude-plugin/plugin.json`; if the root
   marketplace copy/docs also change, keep the root release metadata aligned too.
-- **Keep CLAUDE.md and AGENTS.md aligned.** `AGENTS.md` is a symlink to
-  `CLAUDE.md`; preserve that one-source setup. When Claude Code updates
-  `CLAUDE.md`, it must verify `AGENTS.md` reflects the same content. When Codex
-  or Droid updates `AGENTS.md`, it must update `CLAUDE.md` too (prefer editing
-  `CLAUDE.md` and keeping `AGENTS.md` as the symlink). If the symlink is missing
-  or broken, restore it or update both filenames in the same commit. Do not leave
-  either name stale.
 - **Push every time — on every completion.** Pushing to GitHub (`origin main`)
   after committing is pre-authorized — always push without asking. Whenever you
   complete a unit of work (a fix, a plugin, a doc change), commit AND push before
@@ -327,16 +288,7 @@ AGENTS.md                         # symlink → CLAUDE.md (one source, no drift)
   committed file, message, or history. (`CLAUDE.local.md` and
   `.claude/settings.json` remain gitignored local maintainer config.)
 - **Validation.** After changing plugin structure or manifests, run the
-  `plugin-dev:plugin-validator` agent before committing (Claude Code only;
-  Droid has no equivalent agent — validate manually: check skill frontmatter
-  has `name` + `description`, then test the published Claude-compatible
-  marketplace path with `droid plugin marketplace add https://github.com/pragmaticgrowth/flywheel`
-  (skip if already added), `droid plugin marketplace list`, and
-  `droid plugin install flywheel@flywheel` plus
-  `droid plugin install html-artifacts@flywheel` / `droid plugin install autoresearch@flywheel`
-  / `droid plugin install human-writing@flywheel` when those plugins change.
-  `droid plugin link .` is only for native
-  `.factory-plugin` plugins, not this `.claude-plugin` manifest).
+  `plugin-dev:plugin-validator` agent before committing.
 - **Skill edits are tested.** New or changed skill mechanics get a
   subagent dry-run (scenario + "cite the section that decides each
   answer") before shipping; close every flagged ambiguity.
@@ -355,8 +307,7 @@ deps) plus the brand SVGs in `public/`, with `wrangler.jsonc` at the root.
   The site and README both document the two marketplace plugins, the flywheel
   workflow skills, the html-artifacts plugin, the docs/goals pipeline, the
   config model, and install — drift in either is a
-  shipped-but-wrong doc, same severity as a stale SKILL.md. (`AGENTS.md` is a
-  symlink to this file; no separate edit.)
+  shipped-but-wrong doc, same severity as a stale SKILL.md.
 - **Versioned changelog (CHANGELOG.md is the single source).** `CHANGELOG.md`
   (repo root) is the canonical, git-tracked history. The public site carries NO
   on-page changelog timeline (removed in the site-simplify pass — canonical

@@ -1,5 +1,5 @@
 {
-  "description": "flywheel Telegram notifications — DMs a bot on errors/limits, agent-waiting, and run completion. Dormant until you run /telegram-message; no-ops with no config. Pings are dispatch-gated by default: they fire only around a live /dispatch run in that repo. All three events are Claude Code-verified; Droid has no StopFailure event and its hooks don't fire under droid exec/CronCreate, so unattended Droid runs get pings from dispatch's hook-free dispatch category instead.",
+  "description": "flywheel Telegram notifications — DMs a bot on errors/limits, agent-waiting, and run completion. Dormant until you run /telegram-message; no-ops with no config. Pings are dispatch-gated by default: they fire only around a live /dispatch run in that repo. All three events are Claude Code-verified.",
   "hooks": {
     "StopFailure": [
       {

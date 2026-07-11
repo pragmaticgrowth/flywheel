@@ -5,11 +5,6 @@ description: Use when the user wants to automate, schedule, or run work autonomo
 
 # Loop Architect
 
-**CLI detection**: this skill works in both Claude Code and Droid (Factory CLI). Detect
-your runtime: if Droid-specific tools (CronCreate, CreateAutomation) are available or
-`$DROID_PLUGIN_ROOT` is set, you are in Droid. Otherwise Claude Code. The primitive table
-in Step 2 maps each situation to both CLIs.
-
 Design loops and goals the way Boris Cherny does: "Turn workflows into skills, then loop them."
 Output of this skill = a concrete, copy-pasteable setup (goal contract, loop prompt, or routine
 prompt) with verification and hard stops — not a vague plan.
@@ -55,25 +50,25 @@ stream (bug reports, triage) usually wants the queue row or a routine, not just 
 (Workflows, agent teams, and Stop hooks below aren't loop types — they're building blocks
 a loop composes.)
 
-| Situation | Claude Code | Droid |
-|---|---|---|
-| Work until a verifiable end state is true | `/goal` (a separate small-fast-model evaluator — default Haiku — checks after every turn) | `droid exec --auto high "<condition>"` (agent self-verifies) or interactive paste |
-| Poll/babysit on a cadence while a session is open | `/loop <interval> <skill-or-prompt>` | `CronCreate` with `same_session: true`, `recurring: true` |
-| Recurring default maintenance for this repo | bare `/loop` + a `.claude/loop.md` | `CronCreate` same_session with the loop body as the job prompt (no loop.md equivalent) |
-| A backlog of shippable changes worked unattended | docs/goals queue — fill with `define-goal`, then repeat `/dispatch` (one ready goal per run on the checked-out branch; `/loop /dispatch` drains over repeated fires) | docs/goals queue — fill with `define-goal`, then repeat `/dispatch` (one ready goal per run on the checked-out branch; use `CronCreate` same_session to drain over repeated fires) |
-| Unattended loop must survive account usage-limit stops (subscription 5-hour/weekly windows) | OS scheduler (cron/launchd) firing fresh `claude -p "/dispatch"` sessions — the limit-proof wrapper around the backlog row's drain; in-session `/loop` dies at the limit (see Step 5 limit-proofing) | `CronCreate` with `new_session` — fresh session per fire is already the limit-proof shape |
-| Must run with the laptop closed | Routine (`/schedule`; cloud; schedule / API / GitHub triggers) | `CreateAutomation` (cloud; runs on a Droid Computer) or `CronCreate` with `new_session` |
-| Needs local files, machine on, no session open | Desktop scheduled task | `CronCreate` with `new_session` (starts a fresh local session) |
-| React to external events (CI, chat) instead of polling | Channels (`--channels`) or Routine API trigger | Slack integration + `CronCreate` new_session; or `CreateAutomation` with event triggers |
-| Massively parallel / adversarial / unknown-size work | Dynamic workflow (pair with `/goal` for hard completion) | Mission mode (`droid exec --mission`; pair with `droid exec --auto high` for hard completion) |
-| A few collaborating peers that message each other (competing debug hypotheses, cross-layer feature) | Agent teams (own contexts + shared task list; markedly more tokens than subagents) | No equivalent — parallel subagents, or mission mode at scale |
-| Deterministic check on every turn, all sessions | Stop hook | Hook in `.factory/hooks.json` (project) or `~/.factory/hooks.json` (user) |
+| Situation | Primitive |
+|---|---|
+| Work until a verifiable end state is true | `/goal` (a separate small-fast-model evaluator — default Haiku — checks after every turn) |
+| Poll/babysit on a cadence while a session is open | `/loop <interval> <skill-or-prompt>` |
+| Recurring default maintenance for this repo | bare `/loop` + a `.claude/loop.md` |
+| A backlog of shippable changes worked unattended | docs/goals queue — fill with `define-goal`, then repeat `/dispatch` (one ready goal per run on the checked-out branch; `/loop /dispatch` drains over repeated fires) |
+| Unattended loop must survive account usage-limit stops (subscription 5-hour/weekly windows) | OS scheduler (cron/launchd) firing fresh `claude -p "/dispatch"` sessions — the limit-proof wrapper around the backlog row's drain; in-session `/loop` dies at the limit (see Step 5 limit-proofing) |
+| Must run with the laptop closed | Routine (`/schedule`; cloud; schedule / API / GitHub triggers) |
+| Needs local files, machine on, no session open | Desktop scheduled task |
+| React to external events (CI, chat) instead of polling | Channels (`--channels`) or Routine API trigger |
+| Massively parallel / adversarial / unknown-size work | Dynamic workflow (pair with `/goal` for hard completion) |
+| A few collaborating peers that message each other (competing debug hypotheses, cross-layer feature) | Agent teams (own contexts + shared task list; markedly more tokens than subagents) |
+| Deterministic check on every turn, all sessions | Stop hook |
 
-Combos are normal: workflow + `/goal` for hard completion; skill + `/loop`/`CronCreate` for
+Combos are normal: workflow + `/goal` for hard completion; skill + `/loop` for
 cadence; routine/automation + channel for laptop-closed with phone telemetry.
 
 Workflow thresholds (per platform docs): >5 independent agents or a multi-stage
-find→verify→synthesize loop → workflow (Claude Code) or mission mode (Droid); 2–4 parallel
+find→verify→synthesize loop → workflow; 2–4 parallel
 lookups → plain subagents, cheaper and simpler; anything that must survive the session
 (cross-iteration implementers, multi-day queues) → the `docs/goals/index.yaml` ledger plus
 repeated one-goal dispatch runs, never workflow state — workflows are session-bound and don't
@@ -81,16 +76,15 @@ resume across sessions. Dispatch implementers may use workflows only for bounded
 fan-out or review inside that one goal, never as parallel code-writing lanes. Agent teams are
 interactive-session machinery, never a factory lane — dispatch implementers don't spawn
 teammates. The Workflow
-tool needs Claude Code ≥2.1.154 and can be disabled; Droid's mission mode
-(`droid exec --mission`) is the equivalent but also optional. Design a plain-subagent
-fallback for either CLI.
+tool needs Claude Code ≥2.1.154 and can be disabled; design a plain-subagent
+fallback for when it's unavailable.
 
 ## Step 3 — Write the contract
 
 ### For /goal — six elements, one cap (condition max 4,000 chars)
 
-CRITICAL CONSTRAINT: the evaluator (Claude Code's `/goal` evaluator — the configured
-small-fast model, default Haiku — or Droid's agent self-verification) only reads the
+CRITICAL CONSTRAINT: the `/goal` evaluator (the configured
+small-fast model, default Haiku) only reads the
 transcript. It cannot run commands or read
 files. Every clause must be demonstrable by output the agent prints (test results, exit
 codes, diffs, counts). Never write taste conditions ("clean", "better", "high quality").
@@ -107,12 +101,6 @@ state can neither be reached nor shown measurable (a flaky, non-deterministic, o
 contradictory check), declare GOAL_UNREACHABLE: <which clause, why unmeasurable, last
 measurement> and stop — never retry the identical failing approach. Stop after <N> turns.
 ```
-
-In Droid (no `/goal` command), the equivalent is:
-`droid exec --auto high "<same condition>"` for headless, or paste the condition as a
-prompt in an interactive session. The agent self-verifies by running every acceptance
-command and showing output — bake the verification commands into the prompt explicitly
-since there is no separate evaluator model to check them automatically.
 
 - Reachability pre-check: before drafting the condition, confirm the end state is one the
   agent can drive to TRUE and MEASURE — a binary or a threshold it can print — not an
@@ -136,18 +124,14 @@ since there is no separate evaluator model to check them automatically.
 1. Confirm the task ran manually at least once reliably. If not, do that first.
 2. Put the procedure in a skill (scope, exact checks, allowed actions, FORBIDDEN actions,
    state-file location, one-line status format per iteration). The loop body is then just
-   `/loop 10m /skill-name` (Claude Code) or `CronCreate` same_session every 10m running
-   `/skill-name` (Droid).
+   `/loop 10m /skill-name`.
 3. Fixed interval for predictable cadence — match it to how often the watched thing
    actually changes (don't poll a nightly job every 5 minutes); omit the interval to let
    the agent self-pace (1m–1h based on observed activity; it may switch to the Monitor
    tool and stream instead of polling); bare `/loop` uses `loop.md` if present — project
-   `.claude/loop.md` beats user `~/.claude/loop.md` (Claude Code only — Droid has no
-   loop.md equivalent; embed the loop body directly in the `CronCreate` job prompt).
+   `.claude/loop.md` beats user `~/.claude/loop.md`.
 4. Remember mechanics: fires between turns only, 7-day expiry, jitter up to 30m on
-   recurring tasks, Esc cancels a pending iteration, restored on `--resume` (Claude Code).
-   Droid's `CronCreate` same_session has analogous semantics (fires between turns in the
-   same session); `CronCreate` new_session starts a fresh session each fire.
+   recurring tasks, Esc cancels a pending iteration, restored on `--resume`.
 
 ### For routines (cloud) — fully autonomous, no permission prompts exist
 
@@ -165,7 +149,7 @@ Create conversationally with `/schedule` (recurring or one-off); manage with
 - **Gate**: name the exact command(s) that can fail the work, and require their output in
   the transcript / PR / summary.
 - **Maker/checker split**: for anything substantial, a separate verifier (subagent,
-  workflow verifier, /goal's evaluator, or the agent's own self-verification in Droid)
+  workflow verifier, or /goal's evaluator)
   judges the work — never the agent that wrote it.
 - **State file**: a markdown/board/ledger outside the conversation records done/next/blocked
   so the next run resumes instead of restarting. Name the file in the prompt. For factory
@@ -189,7 +173,7 @@ Create conversationally with `/schedule` (recurring or one-off); manage with
   it passes the local gate and its squashed commit lands on the branch.) Numerator data
   comes from the built-in usage surfaces: `/usage` (recent usage by skill/subagent/MCP),
   `/goal` with no arguments (the active goal's turns + token spend), `/workflows`
-  (per-agent tokens, stoppable mid-run); Droid surfaces usage in the Factory app.
+  (per-agent tokens, stoppable mid-run).
 
 ## Step 5 — Hard stops and safety rails
 
@@ -218,7 +202,7 @@ Always include, in the prompt itself (the soft layer, restated for the agent):
 ### Usage-limit proofing (unattended runs on subscription plans)
 
 A subscription usage limit (the 5-hour rolling window; a separate weekly window) blocks EVERY
-turn until its reset time. An in-session `/loop` (or Droid same_session cron) simply stops
+turn until its reset time. An in-session `/loop` simply stops
 firing, in one of two shapes — neither self-recovering: hit the limit BETWEEN turns and the
 banner just blocks new prompts (no hook fires, SessionEnd never reports it); hit it MID-turn
 and the turn dies on a rate-limit API error, the one case a `StopFailure` hook can observe.
@@ -226,10 +210,9 @@ Either way the CLI ships no wait-until-reset auto-resume. Treat the limit like a
 not an error the loop can handle from inside. Rails, in order of leverage:
 
 - **Schedule outside the session.** The limit-proof shape is an OS scheduler (cron / launchd /
-  Task Scheduler) firing a fresh `claude -p "/dispatch"` (or `droid exec …`) per cadence.
+  Task Scheduler) firing a fresh `claude -p "/dispatch"` per cadence.
   Fires during the limit window fail cheaply; the first fire after reset just works — dispatch
-  fires are idempotent and one-goal, so no state transfer is needed. Droid's `CronCreate
-  new_session` is already this shape.
+  fires are idempotent and one-goal, so no state transfer is needed.
 - **Detect instead of blind-firing (optional refinement).** Two supported surfaces expose the
   reset clock: the statusline stdin JSON carries `rate_limits.five_hour.resets_at` /
   `rate_limits.seven_day.resets_at` (Unix epoch seconds; subscription plans; present after the
@@ -246,18 +229,13 @@ not an error the loop can handle from inside. Rails, in order of leverage:
 
 ## Step 6 — Remote layer (offer when relevant)
 
-- Steer from phone: `claude --rc <name>` or `/remote-control` (Claude Code); server mode
-  `claude remote-control --spawn worktree` for multiple phone-spawned sessions. In Droid,
-  use Droid Computers (persistent cloud or BYOM Linux machines) for laptop-closed operation,
-  or the Factory web app to resume sessions from any browser.
-- Telemetry: `/config` → "Push when Claude decides" (Claude Code); or "notify me when X
+- Steer from phone: `claude --rc <name>` or `/remote-control`; server mode
+  `claude remote-control --spawn worktree` for multiple phone-spawned sessions.
+- Telemetry: `/config` → "Push when Claude decides"; or "notify me when X
   finishes" in the prompt; channels (Telegram/Discord/iMessage) for two-way chat into a live
-  session. In Droid, use `/settings` for notification config; the Factory app provides push
-  notifications and session monitoring.
-- Laptop closed: routines + Claude Code on the web (Claude Code); `CreateAutomation` running
-  on a Droid Computer (Droid); teleport (`&` / `--teleport`) to move sessions between local
-  and cloud (Claude Code). In Droid, use Droid Computers or session forking
-  (`droid exec --fork <session-id>`) to resume work across machines.
+  session.
+- Laptop closed: routines + Claude Code on the web; teleport (`&` / `--teleport`) to move
+  sessions between local and cloud.
 
 ## Output format
 

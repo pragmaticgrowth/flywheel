@@ -1,7 +1,7 @@
 {
   "name": "human-writing",
-  "version": "1.0.0",
-  "description": "Remove signs of AI-generated writing and add real human voice — strip inflated significance, promotional language, -ing filler, em-dash and rule-of-three overuse, AI vocabulary, and chatbot artifacts. Based on Wikipedia's 'Signs of AI writing' (WikiProject AI Cleanup); adapted from Factory's droid-evolved plugin.",
+  "version": "1.0.1",
+  "description": "Remove signs of AI-generated writing and add real human voice — strip inflated significance, promotional language, -ing filler, em-dash and rule-of-three overuse, AI vocabulary, and chatbot artifacts. Based on Wikipedia's 'Signs of AI writing' (WikiProject AI Cleanup).",
   "author": {
     "name": "pragmaticgrowth"
   },

@@ -209,47 +209,6 @@ def test_symlink_capability_info_when_available_on_windows():
 def test_symlink_capability_not_reported_on_posix():
     assert dc.symlink_capability_check(can_symlink=True, windows=False) is None
 
-def test_frontmatter_model_parses():
-    assert dc._frontmatter_model("---\ntype: bug\nmodel: sonnet\n---\n# G") == "sonnet"
-
-def test_frontmatter_model_absent_or_malformed():
-    assert dc._frontmatter_model("# no frontmatter") is None
-    assert dc._frontmatter_model("---\ntype: bug\n---\n# G") is None
-    assert dc._frontmatter_model("---\nmodel: [not, a, string]\n---\n") is None
-
-def test_droid_models_info_when_no_aliases():
-    r = dc.droid_models_check({"model": "inherit"}, [], "droid")
-    assert r["level"] == "INFO" and "no Anthropic model aliases" in r["detail"]
-
-def test_droid_models_warn_on_droid_when_unmapped():
-    # Owner decision 2026-07-09: Droid owners can run many custom models, so the
-    # doctor must ASK which model each alias maps to — never guess one.
-    r = dc.droid_models_check({"model": "sonnet"}, ["opus"], "droid")
-    assert r["level"] == "WARN"
-    assert "opus, sonnet" in r["detail"]
-    assert "ask the owner" in r["fix"] and "droid exec --help" in r["fix"]
-
-def test_droid_models_info_on_claude_when_unmapped():
-    r = dc.droid_models_check({"model": "sonnet"}, [], "claude")
-    assert r["level"] == "INFO" and "drained by Droid" in r["detail"]
-
-def test_droid_models_mapped_ok():
-    cfg = {"model": "sonnet",
-           "droid_models": {"sonnet": "claude-sonnet-4-6", "opus": "custom:CP-Opus"}}
-    r = dc.droid_models_check(cfg, ["opus"], "droid")
-    assert r["level"] == "INFO" and "maps every alias" in r["detail"]
-
-def test_droid_models_partial_mapping_warns_missing_only():
-    cfg = {"model": "sonnet", "droid_models": {"sonnet": "claude-sonnet-4-6"}}
-    r = dc.droid_models_check(cfg, ["opus", "haiku"], "droid")
-    assert r["level"] == "WARN"
-    assert "haiku, opus" in r["detail"] and "sonnet" not in r["detail"].split("(")[1].split(")")[0]
-
-def test_droid_models_blank_mapping_value_counts_as_missing():
-    cfg = {"model": "sonnet", "droid_models": {"sonnet": "  "}}
-    r = dc.droid_models_check(cfg, [], "droid")
-    assert r["level"] == "WARN" and "sonnet" in r["detail"]
-
 if __name__ == "__main__":
     fns = [g for n, g in sorted(globals().items()) if n.startswith("test_")]
     for fn in fns: fn(); print("ok ", fn.__name__)

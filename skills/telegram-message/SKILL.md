@@ -5,14 +5,8 @@ description: Use when the user runs "/telegram-message", gives a Telegram bot to
 
 # Telegram Message — flywheel notifications
 
-**CLI support**: both CLIs, with different delivery. **Claude Code** gets the
-full hook set (errors/waiting/completions) plus dispatch pings. **Droid** gets
-dispatch pings only — its hooks have no error event and don't fire under
-`droid exec`/`CronCreate` (verified 2026-07-07), so on Droid the dispatch
-orchestrator calls the notifier directly instead (hook-free; see "Droid &
-cloud"). Detect your runtime (Droid-specific tools like `CronCreate`, or
-`$DROID_PLUGIN_ROOT` set, mean Droid) and set expectations accordingly — setup
-itself is identical on both.
+It delivers the full hook set — errors, waiting, and completions — plus
+dispatch pings.
 
 Wire a Telegram bot so an autonomous `/dispatch` or `/loop` run tells the owner
 the moment it needs a human — an API/usage-limit error killed a turn, the agent
@@ -56,8 +50,8 @@ committed or pushed, even in a public repo.
 - **Global scope (`--global`):** `~/.local/state/pg-telegram/config.json` — the
   fallback for any project without its own config.
 - **Cloud/env scope:** `PG_TELEGRAM_BOT_TOKEN` + `PG_TELEGRAM_CHAT_ID` env vars
-  beat both files — for cloud runs (routines, Droid automations) where no state
-  file persists. See "Droid & cloud".
+  beat both files — for cloud runs (routines and other environments) where no
+  state file persists. See "Cloud".
 
 ## What the user needs first
 
@@ -105,7 +99,7 @@ never write it into any repo file):
 7. **Report:** which events are on, where the config lives, how to disable, and
    the security note. Do NOT print the token.
 
-## Hook wiring (Claude Code)
+## Hook wiring
 
 The hooks ship in the plugin's `hooks/hooks.json` and auto-register when flywheel
 is enabled — nothing to write. Confirm they're active by noting the user can run
@@ -162,24 +156,17 @@ unattended loops); the env-var cloud scope is always ungated —
   the newest dispatch heartbeat line (e.g. `8/8 · drained yes`) when present.
 - **dispatch** → not a hook: the dispatch orchestrator pipes its Phase 4 report
   line straight to the notifier every fire (`🏭` ping with the
-  `<done>/<total> · needs-you` line). Works in BOTH CLIs and in cloud runs,
-  because it's a plain script call. This is the only category that fires on
-  Droid. Configs written before v4.12.0 lack the `dispatch` toggle — re-run
-  setup (or add `"dispatch": true` to `events`) to enable it.
+  `<done>/<total> · needs-you` line). Works in Claude Code and in cloud runs,
+  because it's a plain script call. Configs written before v4.12.0 lack the
+  `dispatch` toggle — re-run setup (or add `"dispatch": true` to `events`) to
+  enable it.
 
-## Droid & cloud
+## Cloud
 
-- **Droid:** hook-based alerts don't work (no error event; hooks don't fire
-  under `droid exec`/`CronCreate` — verified 2026-07-07), so coverage comes from
-  the **dispatch** category above: every dispatch fire pings its report line,
-  which carries completions, blocked goals, and needs-you. Set up normally with
-  this skill; just say plainly that errors/waiting hook pings are Claude Code
-  only.
-- **Cloud (routines, Droid automations, any env where `~/.local/state` doesn't
-  persist):** set `PG_TELEGRAM_BOT_TOKEN` and `PG_TELEGRAM_CHAT_ID` in the
-  routine/automation environment config — the notifier prefers them over any
-  file, no setup file needed. Narrow categories with
-  `PG_TELEGRAM_EVENTS=errors,dispatch` (comma list; default all).
+- **Cloud (routines, or any env where `~/.local/state` doesn't persist):** set
+  `PG_TELEGRAM_BOT_TOKEN` and `PG_TELEGRAM_CHAT_ID` in the routine's environment
+  config — the notifier prefers them over any file, no setup file needed. Narrow
+  categories with `PG_TELEGRAM_EVENTS=errors,dispatch` (comma list; default all).
 
 ## Config & management
 

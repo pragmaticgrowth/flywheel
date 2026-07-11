@@ -13,6 +13,52 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [5.0.0] — 2026-07-11
+
+**Droid removed — the marketplace is now Claude Code only.** A whole-repo sweep
+stripped every Droid / Factory-CLI code path and dual-CLI framing across all
+four plugins, their scripts, the manifests, the README, and the public site, so
+`flywheel`, `html-artifacts`, `autoresearch`, and `human-writing` target Claude
+Code exclusively. How goals are worked on Claude Code is unchanged — dispatch,
+the local gate, and the queue behave identically; only the Droid-specific
+surfaces are gone. Major bump because a supported runtime is dropped. Changes:
+
+- **Skills.** All five flywheel skills lose their `CLI detection` blocks and
+  dual-CLI branches: `define-goal` (no `droid exec` run-now line, no Droid
+  self-verification, CLAUDE.md-only repo grounding), `dispatch` (no
+  `config.droid_models` resolution, no Droid PushNotification / `.factory`
+  fallbacks), `factory-doctor` (the entire `droid-models` interview and the
+  `.claude/`+`.factory/` dual-path prose gone), `loop-architect` (the 3-column
+  primitive table collapses to Claude Code only; no `CronCreate`, Droid
+  Computers, or Factory app), and `telegram-message` (the Droid "dispatch pings
+  only" section gone). `autoresearch` and `html-artifacts`/`human-writing` lose
+  their stray Droid refs too.
+- **`config.droid_models` removed.** The alias→Droid-model map and
+  factory-doctor's owner interview (added in 4.16.0) are deleted. A goal's
+  implementer model resolves `goal model:` > `config.model` > `inherit`, full
+  stop.
+- **`doctor_checks.py`.** Dropped the `--runtime claude|droid` flag,
+  `droid_models_check` (plus its six tests and the now-dead `ANTHROPIC_ALIASES`
+  / `_frontmatter_model` helpers), the `.factory/` settings probing, the
+  `droid exec` scheduler pattern, and the Droid clause in the limit-resilience
+  fix. The doctor's status line drops its `models:` field. 38 tests pass and
+  the probe emits valid JSON with no `droid-models` check.
+- **Manifests + version bumps.** Root `flywheel` 4.16.0 → **5.0.0** (drops the
+  `factory`/`droid` keywords and the "and Droid" descriptions);
+  `autoresearch` 1.0.1 → **1.1.0** (its `CronCreate` cadence branch removed);
+  `html-artifacts` 1.0.0 → **1.0.1** and `human-writing` 1.0.0 → **1.0.1**
+  (stray-ref doc edits). `marketplace.json` and `hooks/hooks.json` drop their
+  Droid text.
+- **Docs + site.** README loses the Droid install block, the CLIs badge, and
+  the "Works in both CLIs" section; the public site drops the Droid install tab
+  (the tab UI collapses to a single install block), the `droid_models` config
+  example, and the "2 CLIs" hero stat. `AGENTS.md` (the symlink to CLAUDE.md, a
+  Droid/Codex convention) is removed along with the alignment rule. The
+  "Adapted from Factory's … plugin (MIT)" attribution lines are purged (owner
+  decision; the repo's own MIT `LICENSE` is unchanged).
+- **History intact.** Prior CHANGELOG entries and `docs/superpowers/**` design
+  artifacts are left untouched — they record what shipped.
+
 ## [4.16.0] — 2026-07-09
 
 **Droid coverage audit — every Factory-CLI claim verified against the current
