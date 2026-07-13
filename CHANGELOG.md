@@ -13,6 +13,31 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [5.0.1] — 2026-07-13
+
+**dispatch: the local gate now parses multi-line YAML flow arrays in goal
+frontmatter.** `pg_validate.py`'s stdlib goal-file parser understood only two
+of the three YAML list shapes — inline flow (`acceptance: ["a", "b"]`) and
+block sequences (`- "a"` lines). Goal files whose `acceptance:`/`touches:`
+arrays a formatter had reflowed into the third shape (`[` on its own line, one
+quoted element per line, closing `]`) silently parsed as **empty**, so the gate
+fell back to a generic `npm test` and false-failed every goal in such repos
+(caught live in a real dispatch run: a fully green implementation gated
+`FAIL_FIXABLE` while all declared acceptance commands passed). Fixes:
+
+- **Multi-line flow arrays parse.** `_parse_goal` now accepts `[` opening on
+  the key line or its own line, elements across lines (with or without trailing
+  commas), YAML comments between elements, and the closing `]` — for both
+  `acceptance:` and `touches:`.
+- **Quote-aware splitting.** Flow elements are split on commas *outside*
+  quotes, so a command like `python -c 'print(1, 2)'` stays one command.
+- **Balanced unquoting.** Items lose one matched pair of surrounding quotes
+  instead of the old greedy character strip, which mangled commands ending in
+  a quote (`pnpm test -- --testPathPatterns '(a|b)'` lost its final `'`).
+- **Empty inline `[]` now yields `[]`**, not a latent one-empty-string list.
+- Eight new parser tests lock all three shapes plus the comma/quote edge cases
+  (85 total, plus the `--self-test` pure sweep).
+
 ## [5.0.0] — 2026-07-11
 
 **Droid removed — the marketplace is now Claude Code only.** A whole-repo sweep

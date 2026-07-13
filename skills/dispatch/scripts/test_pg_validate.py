@@ -269,6 +269,126 @@ def test_parse_goal_keeps_touches_after_inline_comment():
     gtype, touches, cmds, ac = pgv._parse_goal(gf)
     assert touches == ["apps/a/*", "apps/b/*"], touches
 
+def test_parse_goal_multiline_flow_acceptance():
+    # The shape real goal files carry after a YAML formatter reflows a long inline
+    # array: `acceptance:` then `[` on its own line, one quoted element per line,
+    # trailing commas, closing `]`. The parser must read all elements, not [].
+    d = _tf.mkdtemp()
+    gf = _os.path.join(d, "goal.md")
+    open(gf, "w").write(
+        "---\n"
+        "type: feature\n"
+        "acceptance:\n"
+        "  [\n"
+        "    \"pnpm --filter @nt/product typecheck\",\n"
+        "    \"pnpm --filter @nt/product lint\",\n"
+        "    \"pnpm --filter @nt/product test -- --testPathPattern stripe-admin\",\n"
+        "  ]\n"
+        "---\nbody\n")
+    gtype, touches, cmds, ac = pgv._parse_goal(gf)
+    assert cmds == [
+        "pnpm --filter @nt/product typecheck",
+        "pnpm --filter @nt/product lint",
+        "pnpm --filter @nt/product test -- --testPathPattern stripe-admin",
+    ], cmds
+
+def test_parse_goal_multiline_flow_touches():
+    d = _tf.mkdtemp()
+    gf = _os.path.join(d, "goal.md")
+    open(gf, "w").write(
+        "---\n"
+        "type: feature\n"
+        "touches:\n"
+        "  [\n"
+        "    \"apps/product/src/features/stripe-admin/**\",\n"
+        "    \"apps/product/src/pages/dev/**\",\n"
+        "  ]\n"
+        "acceptance:\n"
+        "  [\n"
+        "    \"cmd-after-touches\",\n"
+        "  ]\n"
+        "---\nbody\n")
+    gtype, touches, cmds, ac = pgv._parse_goal(gf)
+    assert touches == ["apps/product/src/features/stripe-admin/**",
+                       "apps/product/src/pages/dev/**"], touches
+    assert cmds == ["cmd-after-touches"], cmds
+
+def test_parse_goal_flow_opener_on_key_line():
+    # `acceptance: [` — bracket opens on the key line, elements and `]` follow.
+    d = _tf.mkdtemp()
+    gf = _os.path.join(d, "goal.md")
+    open(gf, "w").write(
+        "---\n"
+        "type: bug\n"
+        "acceptance: [\n"
+        "  \"cmd-one\",\n"
+        "  \"cmd-two\"\n"
+        "]\n"
+        "---\nbody\n")
+    gtype, touches, cmds, ac = pgv._parse_goal(gf)
+    assert cmds == ["cmd-one", "cmd-two"], cmds
+
+def test_parse_goal_flow_with_comment_inside():
+    d = _tf.mkdtemp()
+    gf = _os.path.join(d, "goal.md")
+    open(gf, "w").write(
+        "---\n"
+        "type: bug\n"
+        "acceptance:\n"
+        "  [\n"
+        "    \"cmd-one\",\n"
+        "    # comment between elements\n"
+        "    \"cmd-two\",\n"
+        "  ]\n"
+        "---\nbody\n")
+    gtype, touches, cmds, ac = pgv._parse_goal(gf)
+    assert cmds == ["cmd-one", "cmd-two"], cmds
+
+def test_parse_goal_inline_flow_still_parses():
+    # Regression lock: the single-line inline flow shape keeps working.
+    d = _tf.mkdtemp()
+    gf = _os.path.join(d, "goal.md")
+    open(gf, "w").write(
+        "---\n"
+        "type: feature\n"
+        "touches: [\"apps/a/*\", \"apps/b/*\"]\n"
+        "acceptance: [\"make test\", \"npm run lint\"]\n"
+        "---\nbody\n")
+    gtype, touches, cmds, ac = pgv._parse_goal(gf)
+    assert touches == ["apps/a/*", "apps/b/*"], touches
+    assert cmds == ["make test", "npm run lint"], cmds
+
+def test_parse_goal_flow_key_after_flow_list_not_swallowed():
+    # A scalar key following a closed flow array must terminate collection —
+    # `type:` after the `]` still parses.
+    d = _tf.mkdtemp()
+    gf = _os.path.join(d, "goal.md")
+    open(gf, "w").write(
+        "---\n"
+        "acceptance:\n"
+        "  [\n"
+        "    \"cmd-one\",\n"
+        "  ]\n"
+        "type: chore\n"
+        "---\nbody\n")
+    gtype, touches, cmds, ac = pgv._parse_goal(gf)
+    assert gtype == "chore", gtype
+    assert cmds == ["cmd-one"], cmds
+
+def test_parse_goal_block_item_with_comma_stays_one():
+    # Block-sequence items are NOT comma-split — a command with a literal comma
+    # stays a single command.
+    d = _tf.mkdtemp()
+    gf = _os.path.join(d, "goal.md")
+    open(gf, "w").write(
+        "---\n"
+        "type: bug\n"
+        "acceptance:\n"
+        "  - \"python -c 'print(1, 2)'\"\n"
+        "---\nbody\n")
+    gtype, touches, cmds, ac = pgv._parse_goal(gf)
+    assert cmds == ["python -c 'print(1, 2)'"], cmds
+
 def test_run_validation_bug_inconclusive_when_base_worktree_fails(monkeypatch=None):
     # FIX 1: if `git worktree add` for the repro-direction base checkout fails, the
     # bug path must return INCONCLUSIVE (never run acceptance, never default-PASS).

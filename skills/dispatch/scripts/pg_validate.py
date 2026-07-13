@@ -282,6 +282,55 @@ def _diff_text(base_ref, head_ref="HEAD"):
     return out if rc == 0 else ""
 
 
+def _unquote(tok):
+    """Strip ONE balanced pair of surrounding quotes — never a lone trailing quote
+    that belongs to the command itself (`pnpm test -- --testPathPatterns '(a|b)'`)."""
+    if len(tok) >= 2 and tok[0] == tok[-1] and tok[0] in "\"'":
+        return tok[1:-1]
+    return tok
+
+
+def _flow_closes(s):
+    """True if the line contains a `]` OUTSIDE quotes — the flow-array terminator."""
+    quote = None
+    for ch in s:
+        if quote:
+            if ch == quote:
+                quote = None
+        elif ch in "\"'":
+            quote = ch
+        elif ch == "]":
+            return True
+    return False
+
+
+def _split_flow_items(fragment):
+    """Split one YAML flow-array fragment (`["a", "b",` / `"c"]` / `[`) into cleaned
+    items. Commas inside quotes don't split — real acceptance commands carry them
+    (`python -c 'print(1, 2)'`). Bracket punctuation and comment tokens are dropped;
+    each item then loses one balanced pair of quotes."""
+    parts, buf, quote = [], [], None
+    for ch in fragment:
+        if quote:
+            buf.append(ch)
+            if ch == quote:
+                quote = None
+        elif ch in "\"'":
+            quote = ch
+            buf.append(ch)
+        elif ch == ",":
+            parts.append("".join(buf)); buf = []
+        else:
+            buf.append(ch)
+    parts.append("".join(buf))
+    out = []
+    for tok in parts:
+        t = _unquote(tok.strip().strip("[]").strip())
+        if t and not t.startswith("#"):
+            out.append(t)
+    return out
+
+
 def _parse_goal(path):
     """Return (type, touches, acceptance_cmds, already_correct).
 
@@ -289,6 +338,12 @@ def _parse_goal(path):
     (`already_correct: true`), never a substring scan of the body — a prose mention
     of the phrase (even negated, "was not already correct") must not flip an unproven
     bug fix into a PASS.
+
+    touches:/acceptance: lists are accepted in all three YAML shapes real goal files
+    carry: inline flow (`acceptance: ["a", "b"]`), block sequence (`- "a"` lines),
+    and multi-line flow — `[` opening on the key line or on its own line, one
+    element per line, closing `]` — the shape YAML formatters reflow long arrays
+    into. Missing the last shape silently parsed [] and false-failed the gate.
     """
     text = open(path).read() if os.path.exists(path) else ""
     gtype, touches, cmds, already_correct = "feature", [], [], False
@@ -296,35 +351,45 @@ def _parse_goal(path):
         parts = text.split("---", 2)
         fm = parts[1] if len(parts) >= 3 else ""
         _collecting = None  # tracks which list field we're accumulating into
+        _flow = False       # True while inside a multi-line [ … ] flow array
         for line in fm.splitlines():
             field = line.split(":", 1)[1].strip() if ":" in line else ""
             ls = line.strip()
-            if ls.startswith("type:") and field:
+            if _collecting and ls.startswith("#"):
+                continue  # YAML comment inside the list — skip, keep collecting
+            if _flow:
+                target = touches if _collecting == "touches" else cmds
+                target.extend(_split_flow_items(ls))
+                if _flow_closes(ls):
+                    _collecting, _flow = None, False
+            elif ls.startswith("type:") and field:
                 gtype = field.split()[0]
                 _collecting = None
             elif ls.startswith("already_correct:") and field:
                 already_correct = field.split()[0].strip().lower() in ("true", "yes", "1")
                 _collecting = None
-            elif ls.startswith("touches:"):
-                _collecting = None
-                if field:
-                    touches = [t.strip().strip("-\"'[] ") for t in field.split(",") if t.strip()]
+            elif ls.startswith("touches:") or ls.startswith("acceptance:"):
+                _collecting = "touches" if ls.startswith("touches:") else "acceptance"
+                items = _split_flow_items(field)
+                if _collecting == "touches":
+                    touches = items
                 else:
-                    touches = []; _collecting = "touches"
-            elif ls.startswith("acceptance:"):
-                _collecting = None
-                if field:
-                    cmds = [c.strip().strip("-\"'[] ") for c in field.split(",") if c.strip()]
-                else:
-                    cmds = []; _collecting = "acceptance"
-            elif _collecting and ls.startswith("#"):
-                continue  # YAML comment inside the block list — skip, keep collecting
+                    cmds = items
+                _flow = field.startswith("[") and not _flow_closes(field)
+                if field and not _flow:
+                    _collecting = None  # complete value on the key line
             elif _collecting and ls.startswith("-"):
-                item = ls.lstrip("- \t").strip("\"'")
+                item = _unquote(ls.lstrip("- \t"))
                 if _collecting == "acceptance":
                     cmds.append(item)
                 elif _collecting == "touches":
                     touches.append(item)
+            elif _collecting and ls.startswith("["):
+                _flow = True  # flow array opens on its own line below the key
+                target = touches if _collecting == "touches" else cmds
+                target.extend(_split_flow_items(ls))
+                if _flow_closes(ls):
+                    _collecting, _flow = None, False
             elif ls and not ls.startswith("-"):
                 _collecting = None  # non-list-item line ends collection
     return gtype, touches, cmds, already_correct
