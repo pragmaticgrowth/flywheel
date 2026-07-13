@@ -29,8 +29,9 @@ outcome, validator, scope, risk gate, or destination. If repo/context already an
 state the assumption and proceed; if the user cannot answer, choose the conservative binary
 validator available and include the uncertainty in the goal's If blocked/stop condition.
 
-Do not let the clarification loop replace the artifact. After the brief, recon, and any
-approval required for file writes, finish with a real destination: either the run-now command
+Do not let the clarification loop replace the artifact. After the brief, recon, the
+contract review (queue destination), and any approval required for file writes, finish
+with a real destination: either the run-now command
 or the queued goal file + `index.yaml` entry. If loop-architect is also needed for recurring
 work, use it to design the repeat mechanism, then return here and emit or queue the goal
 contract the loop will run.
@@ -246,7 +247,8 @@ Rules that keep the queue safe:
 - `priority` is optional (default normal) — set `high` only when the user signals urgency.
 - Keep each goal file well under 64 KB so it could mirror 1:1 into a GitHub issue.
 - Confirm the draft (title + acceptance criteria) with the user before writing; batch mode
-  uses its approval table instead.
+  uses its approval table instead. Queued drafts are confirmed after their contract review
+  (see "Contract review" below).
 - Dispatch works one ready goal per run on the checked-out branch. If the user wants the
   whole queue worked unattended, the contract should point them to `/loop /dispatch`; do not
   imply one `/dispatch` invocation drains every ready goal.
@@ -255,7 +257,9 @@ Rules that keep the queue safe:
   a rename + cross-ref rewrite of files you already wrote. The reservation is LOCAL, matching
   the v4 claim protocol — IDs/status live in `index.yaml` and the single session owns the
   branch; there is NO push arbitration and NO remote is required (the queue works fully locally,
-  exactly as dispatch does). Flow: re-read `index.yaml` and compute the next free `NNN`(s) = max
+  exactly as dispatch does). Flow: once the draft is confirmed (single-goal confirmation
+  or the batch approval table — never reserve for an unconfirmed draft), re-read
+  `index.yaml` and compute the next free `NNN`(s) = max
   existing + 1; append ONLY the minimal entry/entries (`NNN-slug: {status: not_started,
   priority: …}`) — for a multi-goal chain, reserve ALL its NNNs in ONE commit so the cross-refs
   are right the first time; commit `chore(goals): reserve <id>` locally on `<base>`. At this
@@ -426,6 +430,48 @@ destination: run-now `/goal` has the evaluator enforce the cap; in the queue des
 the implementer self-enforces it as its attempt/iteration budget (dispatch's no-progress
 rule and `config.budget` back it up).
 
+## Contract review — red-team the draft before it queues (queue destination only)
+
+A contract defect discovered at dispatch time costs a full implementer run plus a
+rollback (`FAIL_CONTRACT` / `GOAL_UNREACHABLE`); the same defect found now costs one
+read-only agent. So every QUEUED goal gets an independent contract review after its
+criteria are drafted — the second view on the contract itself, mirroring the independent
+review dispatch runs on the diff. Run-now `/goal` lines skip it: the user is present and
+the `/goal` evaluator model already provides a second view at run time.
+
+Spawn ONE fresh read-only subagent (`general-purpose`, no model override — it inherits
+the session model, same rule as recon) with the drafted goal file content. Its brief: try
+to BREAK the contract, not approve it —
+
+- **Gameability**: can any criterion be satisfied without the outcome being true — a
+  proxy metric, a vacuous/tautological test, a drive-to-zero criterion missing its
+  legitimate exceptions?
+- **Command reality**: does every command named in the acceptance criteria and
+  `acceptance:` actually exist and run in THIS repo (script present in
+  package.json/Makefile, test paths exist, right package manager)? Verify by reading the
+  repo — read-only, no heavy runs.
+- **Type shape**: bug → `acceptance:` executes the proving test and Context records ALL
+  recon hypotheses; feature → Out of scope non-empty, and UI work carries the scripted
+  browser check + `agent-browser` in `skills:`; chore → suite-green-before-and-after
+  plus the one mechanical check.
+- **Gate fit**: `touches:` globs cover the surfaces recon located without
+  over-constraining; nothing dev-server-dependent sits in `acceptance:` (headless-only).
+- **Termination**: the `/goal` line is transcript-provable and under the 4,000-char cap,
+  the turn cap is present and sized, and the If-blocked / GOAL_UNREACHABLE path exists.
+
+It returns findings with severity — **contract-blocking** vs **advisory** — each naming
+the draft line and what would fix it. Findings are hypotheses: verify each against the
+repo and the draft before rewriting, then fix the verified contract-blocking ones; a
+finding your verification disproves is dropped (note it in the draft confirmation). ONE
+round only — review → fix → proceed; never a review loop. Carry unresolved advisory
+findings into the draft you confirm with the user. Only then stamp `model:` (next
+section) — the review can change criteria, and the tightness rubric must rate the final
+contract.
+
+Batch mode: one reviewer covers ALL drafted goals in a single pass — it also catches
+cross-goal overlap and duplicated criteria that per-item drafting can't see — between
+drafting and the approval table.
+
 ## Implementer model — decide it last
 
 Every queued goal carries a frontmatter `model:` — the model `dispatch` passes to that
@@ -436,7 +482,8 @@ goal's implementation work. It is the queue's token-efficiency lever: the judgme
 front-loaded HERE, into the contract, which is what lets a cheaper model execute it at
 near-parity.
 
-Stamp it LAST, after the acceptance criteria are final — the tightness of the finished
+Stamp it LAST, after the acceptance criteria are final (for queued goals: after the
+contract review) — the tightness of the finished
 contract is the input. Rate the contract you actually wrote, not the topic:
 
 - **`sonnet` — the default for a well-specified queue goal.** Every acceptance criterion is
@@ -472,17 +519,20 @@ When given a document (pasted text, file path, attachment):
 3. **Locate cheaply**: pin the likely area per item via Recon above — one fan-out can
    cover several items (give each subagent the full item list for its angle); the
    implementer does the heavy repro.
-4. One batched interactive-question round (AskUserQuestion) for genuinely ambiguous items
+4. **Contract review**: one fresh read-only reviewer red-teams all drafts in a single
+   pass (see "Contract review" above); verify and fix contract-blocking findings.
+5. One batched interactive-question round (AskUserQuestion) for genuinely ambiguous items
    only, then an approval
    table before writing anything:
    `id | proposed title | priority | model | dup-of | notes`.
-5. On approval, write one goal file + index entry per confirmed item, commit once, reply
+6. On approval, write one goal file + index entry per confirmed item, commit once, reply
    with a one-line queue summary.
 
 Sizing the orchestration: with ~5+ confirmed items and the Workflow tool available
 (Claude Code ≥2.1.154; can be disabled — never assume it), run the per-item work as one
-workflow — `pipeline(items, locate, draft)` with finder agents inheriting the current model —
-instead of repeated fan-outs; drafts land in script variables, never as files — the step-4
+workflow — `pipeline(items, locate, draft)` with finder agents inheriting the current model,
+then ONE contract-review agent over all drafts (a genuine barrier — it needs every draft) —
+instead of repeated fan-outs; drafts land in script variables, never as files — the step-5
 approval table still gates every file write. The user also approves the workflow's phase
 plan before it runs. Below that size, or without the tool, the plain Recon fan-out is
 cheaper and simpler — the platform docs' own threshold.

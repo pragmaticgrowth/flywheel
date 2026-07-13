@@ -30,7 +30,12 @@ cleanup (pure guidance, no scripts).
   LAST, after the acceptance criteria are final, from a contract-tightness
   rubric (v4.15.0): tight objective contracts → sonnet; flagship design
   craft / wide blast radius / ambiguous root-cause → opus; unsure → the
-  stronger. Produces goals only, never implements. Originally adapted from
+  stronger. Every queued goal gets an adversarial contract review first
+  (v5.1.0): one fresh read-only subagent red-teams the drafted contract —
+  gameability, command reality, type shape, gate fit, termination — one
+  round, before the model stamp and the user confirmation (run-now `/goal`
+  lines skip it; the `/goal` evaluator is their second view). Produces goals
+  only, never implements. Originally adapted from
   OpenAI's curated `define-goal` skill (its `create_goal`/`get_goal`
   tools don't exist here; `/goal` is user-run, transcript-
   evaluated, 4,000-char condition cap).
@@ -45,11 +50,13 @@ cleanup (pure guidance, no scripts).
   orchestrator and recon/review agents always stay on the session
   model) — using a lightweight subagent-driven quality loop
   (plan/checklist, TDD, fresh verifier/reviewer subagent for non-trivial work),
-  then runs the LOCAL gate authoritatively: a review-evidence check (the
-  implementer's report must carry its `Fresh-check:` lens verdicts or an
-  explicit not-required line — missing ⇒ the orchestrator runs the 2–3
-  read-only review lenses itself, feeding verified findings into the repair
-  path), then the deterministic `pg_validate.py`
+  then runs the LOCAL gate authoritatively: an independent review (v5.1.0 —
+  for any non-trivial diff the orchestrator ALWAYS spawns one fresh read-only
+  adversarial reviewer over `gate_base..HEAD` + the goal file; the
+  implementer's `Fresh-check:` lens verdicts are corroborating evidence,
+  never the verdict; a missing block or a not-required claim the diff belies
+  escalates to the full 2–3-lens panel; verified Critical/Important findings
+  feed the repair path), then the deterministic `pg_validate.py`
   over the `gate_base..HEAD` diff plus the repo's `config.verify` build+test
   commands. PASS → squash the goal's commits to one `feat(goal NNN)` commit
   and mark it `completed`; FAIL → `git reset --hard gate_base` and mark it
@@ -150,7 +157,9 @@ Separate marketplace plugins:
   goal is bracketed by two anchors: `anchor` (the pre-claim clean HEAD) and
   `gate_base` (HEAD right after the claim commit). The implementer commits on
   the branch; then the orchestrator runs the LOCAL gate over the
-  `gate_base..HEAD` diff — `pg_validate.py` plus the repo's `config.verify`
+  `gate_base..HEAD` diff — an independent second-view review (one fresh
+  read-only adversarial reviewer for any non-trivial diff, v5.1.0) plus
+  `pg_validate.py` plus the repo's `config.verify`
   commands — and that local gate is the ONLY merge gate. PASS → squash the
   goal's commits into one `feat(goal NNN)` commit + `completed`; FAIL →
   `git reset --hard gate_base` + `blocked`. CI, where the repo has it, is a

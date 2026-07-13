@@ -1,6 +1,6 @@
 ---
 name: dispatch
-description: Factory dispatcher — use when the user says "/dispatch", "run the factory", wants the docs/goals queue worked, or wants to work one specific queued goal in this session ("work goal 005"). Works ONE ready goal per run, on the currently checked-out branch — no pull requests, no worktrees, no parallel implementers. The single foreground implementer follows TDD and a lightweight subagent-driven quality loop, then the orchestrator runs the LOCAL gate authoritatively. Works in any repo with a docs/goals/ queue. Orchestrates only — never implements in its own context.
+description: Factory dispatcher — use when the user says "/dispatch", "run the factory", wants the docs/goals queue worked, or wants to work one specific queued goal in this session ("work goal 005"). Works ONE ready goal per run, on the currently checked-out branch — no pull requests, no worktrees, no parallel implementers. The single foreground implementer follows TDD and a lightweight subagent-driven quality loop, then the orchestrator runs the LOCAL gate authoritatively — an independent second-view review (for non-trivial work) plus the deterministic checks. Works in any repo with a docs/goals/ queue. Orchestrates only — never implements in its own context.
 ---
 
 # Dispatch — the factory orchestrator
@@ -207,27 +207,45 @@ For each claimed goal, in order:
    checkout on the current branch under the method mandates (writing-plans, TDD,
    verification-before-completion) + config.skills + the goal's `skills:`. It uses the
    lightweight subagent-driven quality loop in Phase 3, commits its work on the branch, and
-   ends with verification evidence + a `Fresh-check:` block (step 3 checks for it). It never
-   merges, never opens a PR.
-3. Run the LOCAL gate authoritatively yourself — review evidence first, then commands:
-   **Review-evidence check.** For non-trivial work (more than a one-file mechanical edit)
-   the implementer's report must carry its `Fresh-check:` block — the lens verdicts, or the
-   literal `Fresh-check: not required (one-file mechanical edit)` for work that genuinely is.
-   Missing block, or a not-required claim on plainly multi-file work → don't block on the
-   miss, self-heal: spawn the 2–3 read-only lenses yourself over the `gate_base..HEAD` diff
-   (same lenses as the brief's Quality loop step 5, fresh windows, concurrent; findings are
-   hypotheses to verify, not orders). Their verified Critical/Important findings enter the
-   FAIL_FIXABLE repair path like any gate finding. A skipped panel is a compliance miss: when
-   the same miss recurs across goals in this session's fires (no persisted counter — session
-   memory only, per the status-only-in-index rule), surface it once via Hygiene's
-   lesson-encoding rule.
+   ends with verification evidence + a `Fresh-check:` block (step 3's independent review
+   challenges it). It never merges, never opens a PR.
+3. Run the LOCAL gate authoritatively yourself — independent review first, then commands:
+   **Independent review — maker–checker, ALWAYS for non-trivial work.** The implementer's
+   report must still carry its `Fresh-check:` block (the lens verdicts, or the literal
+   `Fresh-check: not required (one-file mechanical edit)` for work that genuinely is) — but
+   that block is corroborating evidence, never the verdict: the implementer graded its own
+   work. For any diff bigger than a one-file mechanical edit, spawn ONE fresh read-only
+   adversarial reviewer (`general-purpose`, no model override — review agents always
+   inherit the session model) over the `gate_base..HEAD` diff plus the goal file, and hand
+   it the `Fresh-check:` block to challenge — this reviewer runs even when the block looks
+   clean. Its brief: try to REFUTE the work, not confirm it — (a) contract conformance:
+   any acceptance criterion unmet or met vacuously; (b) test realness: proving tests assert
+   real behavior, not tautologies or mirrors of the implementation; (c) scope: changes
+   beyond the goal's surfaces, or criteria quietly narrowed. It returns a verdict per lens
+   plus findings with severity and `path:line` evidence. Findings are hypotheses you
+   verify yourself against the diff and the cited evidence — never orders; verified
+   Critical/Important findings enter the FAIL_FIXABLE repair
+   path like any gate finding. A genuinely one-file mechanical edit skips the reviewer —
+   judge that from the DIFF, not the implementer's claim; the
+   deterministic gate + `config.verify` suffice there; that carve-out is what keeps the
+   second view proportional.
+   **Escalation to the full panel.** A missing `Fresh-check:` block, or a not-required
+   claim the diff belies (multi-file work, or a single-file diff whose changes are plainly
+   substantive rather than mechanical), upgrades the single reviewer to the full 2–3 read-only
+   lenses (same lenses as the brief's Quality loop step 5, fresh windows, concurrent). A
+   skipped implementer panel is a compliance miss: when the same miss recurs across goals
+   in this session's fires (no persisted counter — session memory only, per the
+   status-only-in-index rule), surface it once via Hygiene's lesson-encoding rule.
    **Then the gate commands:**
    `python3 "$PGVALIDATE" --head HEAD --base <gate_base> --goal <id> --goal-file docs/goals/<id>.md`
    plus the repo `config.verify` commands (ordered, all must exit 0). Show output.
 4. PASS → `git reset --soft <gate_base> && git commit -m "feat(goal <id>): <slug>"` (squash to
    one), then `chore(goals): complete <id>`; push if a remote exists (non-blocking); report
    and stop without claiming another goal.
-   FAIL_FIXABLE → one repair agent, re-gate; still failing → `git reset --hard <gate_base>`,
+   FAIL_FIXABLE → one repair agent, re-gate (re-run the commands; when verified review
+   findings drove the repair, add a focused re-check by one fresh read-only agent — session
+   model, scoped to exactly those findings, not a new full panel); still failing →
+   `git reset --hard <gate_base>`,
    `chore(goals): block <id> — <reason>`. FAIL_CONTRACT → reset + block (needs-you contract
    amendment). INCONCLUSIVE → reset + block "no runnable local gate: <the failing check's
    `evidence` from the JSON>" — the evidence names the exact cause and operator fix (e.g.
@@ -278,7 +296,8 @@ branch after that claim commit:
 
 1. **Work commits present after the claim commit** → recover `gate_base` as above, then run the
    gate (Working a goal, step 3) against it. PASS → squash + `chore(goals): complete <id>`.
-   FAIL_FIXABLE → one repair agent, re-gate; still failing → `git reset --hard <gate_base>` +
+   FAIL_FIXABLE → one repair agent, re-gate (incl. the focused review re-check); still
+   failing → `git reset --hard <gate_base>` +
    `chore(goals): block <id> — <reason>`. FAIL_CONTRACT → reset + block (needs-you contract
    amendment). INCONCLUSIVE → reset + block "no runnable local gate: <evidence>" (same
    evidence-in-reason rule as step 4).
@@ -352,7 +371,9 @@ Quality loop — keep it lightweight, but do not skip it:
    independent-checks threshold from step 3. Treat every finding as something to verify, not
    an order to obey; fix Critical/Important issues or explain why they are false. These
    verdicts go into your final report's `Fresh-check:` block (see Finish) — the orchestrator
-   checks for it and runs the panel itself if it is missing.
+   ALWAYS runs its own independent reviewer over your diff; your block is corroborating
+   evidence for it, never the verdict, and a missing block escalates to a full
+   orchestrator-run panel.
 6. Self-review the final diff, stage only intended files, commit, and report evidence.
 
 Skills are mandatory — invoke each via the Skill tool:
@@ -376,10 +397,11 @@ to touch, that the toolchain introduced (never `git add -A` blind). Commit your 
 files on the current branch and end with verification evidence (the commands you ran and
 their output), plus a labeled `Fresh-check:` block: the lens verdicts when Quality loop
 step 5 applied, or the literal line `Fresh-check: not required (one-file mechanical edit)`
-when it did not. This block is not optional — the orchestrator checks for it and runs the
-review panel itself when it is missing OR when a not-required claim doesn't match the diff
-(multi-file work claiming a one-file edit). Do NOT merge anything, do NOT push, do NOT open a
-PR — the orchestrator runs the gate and integrates.
+when it did not. This block is not optional — the orchestrator independently reviews your
+diff regardless (your verdicts are corroborating evidence, not the verdict), and a missing
+block or a not-required claim the diff belies (multi-file or substantive work claiming a
+mechanical one-file edit) escalates to a full orchestrator-run panel. Do NOT merge anything, do NOT
+push, do NOT open a PR — the orchestrator runs the gate and integrates.
 
 Constraints: the goal file's "Constraints" section verbatim, plus: never merge, never push,
 never open a PR, and NEVER edit docs/goals/ — the orchestrator owns queue state. If blocked:
@@ -392,10 +414,10 @@ of churning your whole window — never retry the identical failing approach; th
 routes that to a needs-you contract amendment.
 ```
 
-After the implementer returns, run the review-evidence check and the gate yourself
+After the implementer returns, run the independent review and the gate yourself
 (Working a goal, steps 3–4). A `FAIL_FIXABLE` verdict spawns ONE repair agent (same brief,
 same resolved implementer model, fed the gate findings — including any verified Critical/Important
-findings from an orchestrator-run review panel); a second identical FAIL → roll back + block.
+findings from the independent review); a second identical FAIL → roll back + block.
 
 ## Solo mode — work one named goal in this session
 

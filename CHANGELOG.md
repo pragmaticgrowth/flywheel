@@ -13,6 +13,56 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [5.1.0] — 2026-07-13
+
+**Maker–checker validation: an independent second-view review at the dispatch
+gate, and an adversarial contract review in define-goal.** Born from a
+structural comparison against Factory's Automations / Software Factory
+pipeline (reverse-engineered desktop app + public docs): the one idea that
+survived adversarial evaluation is *validation as a separate principal* —
+their Validate stage never lets the implementation worker grade itself. Two
+flywheel trust boundaries had exactly that self-grading shape; both are now
+closed with one read-only agent each, no new state, statuses, or schedulers:
+
+- **dispatch: the gate's independent review is now unconditional.** Previously
+  the orchestrator ran the review panel itself only when the implementer's
+  `Fresh-check:` block was missing or implausible — a present, clean-looking
+  block was trusted as written (the party being graded wrote the grade
+  report). Now, for any diff bigger than a genuinely one-file mechanical edit
+  (judged from the DIFF, not the implementer's claim), the orchestrator ALWAYS
+  spawns one fresh read-only adversarial reviewer (session model) over
+  `gate_base..HEAD` plus the goal file — refute contract conformance, test
+  realness, and scope; the implementer's block is corroborating evidence,
+  never the verdict. A missing block, or a not-required claim the diff belies
+  (multi-file, or single-file-but-substantive), still escalates to the full
+  2–3-lens panel. Verified Critical/Important findings enter the FAIL_FIXABLE
+  repair path; the re-gate adds a focused fresh re-check scoped to exactly
+  those findings. This also restores second-model parity: run-now `/goal`
+  always had an independent transcript evaluator — the queue path now has its
+  equivalent at the gate.
+- **define-goal: every queued goal is red-teamed before it lands.** After the
+  criteria are drafted and before the model stamp and user confirmation, one
+  fresh read-only subagent (session model) tries to BREAK the contract:
+  gameable criteria (proxy metrics, vacuous tests, drive-to-zero without
+  exceptions), commands that don't exist in the repo, a bug goal whose
+  `acceptance:` never runs the proving test, `touches:` globs missing recon's
+  surfaces, dev-server-dependent commands in the headless gate, and missing
+  termination (turn cap, GOAL_UNREACHABLE path). One round only — review →
+  verify findings → fix contract-blocking ones → proceed; disproved findings
+  are dropped and noted. Batch mode runs ONE reviewer over all drafts (also
+  catching cross-goal overlap). Rationale: a contract defect found here costs
+  one read-only agent; the same defect at dispatch time costs a full
+  implementer run plus a rollback (`FAIL_CONTRACT`/`GOAL_UNREACHABLE`).
+- Also nailed down while closing the review gaps: ID reservation now
+  explicitly happens only AFTER the draft is confirmed (never reserve for an
+  unconfirmed draft), and the deciding evidence for the one-file-mechanical
+  carve-out is the diff itself.
+- Evaluated from the Factory comparison and REJECTED, with reasons in
+  `docs/superpowers/plans/2026-07-13-maker-checker-v5.1.0.md`: parallel
+  workers/PRs (v3 scar tissue), signal-intake/triage automations, a per-change
+  approval inbox, dashboards, per-automation side-memory, post-completion
+  review sweeps, and wall-clock orphan detection.
+
 ## [5.0.2] — 2026-07-13
 
 **dispatch: gate robustness pass — PyYAML-primary frontmatter parsing, a

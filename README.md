@@ -5,7 +5,7 @@ A skills-only plugin marketplace for [Claude Code](https://claude.com/claude-cod
 from Pragmatic Growth.
 
 [![Website](https://img.shields.io/badge/site-plugin.pragmaticgrowth.com-6366f1)](https://plugin.pragmaticgrowth.com)
-[![Version](https://img.shields.io/badge/version-5.0.2-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-5.1.0-8b5cf6)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
 > 🌐 **Full docs:** **<https://plugin.pragmaticgrowth.com>**
@@ -23,7 +23,9 @@ investigates your codebase, turns that into a **measurable contract** (what
 “done” means, how to verify it), drops it into a **queue that lives in your
 repo**, and then — when you’re ready — works that queue **one goal per run**:
 a foreground implementer commits directly on your current branch using TDD and
-a lightweight subagent review loop (independent read-only lenses), the orchestrator runs a local
+a lightweight subagent review loop (independent read-only lenses), the orchestrator
+independently reviews the diff (a fresh adversarial second view — the implementer never
+grades its own work) and runs a local
 build + test gate, and only work that passes is kept (failures roll back).
 
 That shape is the **proactive loops** pattern from Anthropic's official
@@ -64,8 +66,8 @@ want a review surface — flywheel just doesn't require one.)
 
 | Skill | One line | Invoke with |
 |---|---|---|
-| **define-goal** | Plain-language want → a measurable goal contract (or a whole document of them). Never writes code. | `/define-goal …` · or just say *“I want…”* |
-| **dispatch** | The factory orchestrator: works one ready goal per run — claim, implement with TDD + fresh checks, review-evidence-verified local gate, keep or roll back. | `/dispatch` · *”work goal 005”* |
+| **define-goal** | Plain-language want → a measurable, red-teamed goal contract (or a whole document of them). Never writes code. | `/define-goal …` · or just say *“I want…”* |
+| **dispatch** | The factory orchestrator: works one ready goal per run — claim, implement with TDD + fresh checks, independent-review-backed local gate, keep or roll back. | `/dispatch` · *”work goal 005”* |
 | **loop-architect** | Designs the *loop contract* (prompt + verification + stop conditions) for autonomous, scheduled, or remote runs. | *“keep working on X”* · setting up a `/loop`, routine, or cron |
 | **factory-doctor** | One-pass preflight/doctor for the repo + machine. Auto-fixes everything local; reports the rest with exact fixes. | `/factory-doctor` |
 | **telegram-message** | Wires a Telegram bot to DM you when an autonomous run errors, hits a usage limit, waits on you, finishes, or a dispatch fire reports. Hook pings are dispatch-gated by default — interactive sessions never flood the chat. Project-scoped personal settings, stored outside the repo. | `/telegram-message <bot_token> [chat_id]` |
@@ -89,6 +91,13 @@ document, and it produces **goal contracts** — never implementation.
 - **Brief first, then a real artifact.** If outcome, environment, validator,
   scope, or risk is missing, it asks one concise question round, then finishes
   with either a run-now command or a queued goal file — not open-ended advice.
+- **Red-teamed before it queues.** Every queued goal gets a **contract
+  review**: one fresh read-only agent tries to break the drafted contract —
+  gameable criteria, commands that don't exist in your repo, a bug goal whose
+  gate never runs the proving test, missing scope or termination — before the
+  model stamp and your confirmation. A contract defect caught here costs one
+  read-only agent; the same defect at dispatch time costs a full implementer
+  run plus a rollback.
 - **Per-goal implementer model, stamped last.** Every queued goal's frontmatter
   carries `model:` (`inherit | opus | sonnet | haiku`), chosen AFTER the
   acceptance criteria are final: a tight, objectively-checkable contract
@@ -108,7 +117,7 @@ document, and it produces **goal contracts** — never implementation.
 
 ```text
 > I want signups to send a welcome email within 30 seconds
-  define-goal ▸ recon (3 read-only agents) ▸ contract
+  define-goal ▸ recon (3 read-only agents) ▸ contract ▸ contract review
   ✓ queued  docs/goals/021-welcome-email.md   type: feature
 ```
 
@@ -145,7 +154,9 @@ Per goal:
 2. **Implement** — a foreground implementer commits work directly on `<base>`,
    using a short plan/checklist, TDD for code changes, and a fresh multi-lens
    review (a small panel of independent read-only lenses) for non-trivial work.
-3. **Local gate** — the dispatch orchestrator runs the repo’s `config.verify`
+3. **Local gate** — the orchestrator first spawns a fresh read-only reviewer
+   to adversarially check the diff against the contract (the implementer’s
+   self-review is evidence, not the verdict), then runs the repo’s `config.verify`
    commands (build + tests), and `pg_validate.py` runs the per-goal acceptance +
    structural checks on the `gate_base..HEAD` diff.  
    - **PASS** → the implementer’s commits are squashed into one
@@ -397,7 +408,11 @@ them up. Set `config.budget` in `index.yaml` before long unattended runs.
 
 ## The local gate
 
-After each implementation, the dispatch orchestrator runs the repo’s
+After each implementation, the dispatch orchestrator first runs an
+**independent review**: for any non-trivial diff it spawns one fresh read-only
+adversarial reviewer over `gate_base..HEAD` plus the goal contract — refute
+conformance, test realness, and scope; the implementer’s own fresh-check
+verdicts are corroborating evidence, never the verdict. Then it runs the repo’s
 `config.verify` commands (build + tests), and `pg_validate.py` runs the
 per-goal acceptance + structural checks on the local `gate_base..HEAD` diff:
 
