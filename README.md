@@ -5,7 +5,7 @@ A skills-only plugin marketplace for [Claude Code](https://claude.com/claude-cod
 from Pragmatic Growth.
 
 [![Website](https://img.shields.io/badge/site-plugin.pragmaticgrowth.com-6366f1)](https://plugin.pragmaticgrowth.com)
-[![Version](https://img.shields.io/badge/version-5.1.0-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-5.2.0-8b5cf6)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
 > 🌐 **Full docs:** **<https://plugin.pragmaticgrowth.com>**
@@ -36,7 +36,7 @@ stop conditions, deterministic gate scripts, and fresh-context review.
 It is **skills-first**: no MCP servers, no slash commands of its own, no
 background daemons, no build step — and exactly one hook bundle (the
 `telegram-message` notifier, dormant until you set it up). The marketplace
-exposes four plugins: `flywheel` with five workflow
+exposes four plugins: `flywheel` with six workflow
 [skills](https://docs.claude.com/en/docs/claude-code/skills),
 `html-artifacts` as a separate rich-deliverables plugin,
 `autoresearch` for autonomous optimization loops, and
@@ -57,7 +57,7 @@ want a review surface — flywheel just doesn't require one.)
 
 | Plugin | What it contains | Install |
 |---|---|---|
-| **flywheel** | `define-goal`, `dispatch`, `loop-architect`, `factory-doctor`, and `telegram-message` for the docs/goals execution pipeline. | `/plugin install flywheel@pragmatic-growth` |
+| **flywheel** | `define-goal`, `dispatch`, `goals-status`, `loop-architect`, `factory-doctor`, and `telegram-message` for the docs/goals execution pipeline. | `/plugin install flywheel@pragmatic-growth` |
 | **html-artifacts** | One `html-artifacts` skill with references for self-contained browser deliverables. | `/plugin install html-artifacts@pragmatic-growth` |
 | **autoresearch** | One `autoresearch` skill (+ a Python helper) for an autonomous try/measure/keep/revert optimization loop. | `/plugin install autoresearch@pragmatic-growth` |
 | **human-writing** | One `human-writing` skill that strips AI-writing tells and adds human voice. | `/plugin install human-writing@pragmatic-growth` |
@@ -68,6 +68,7 @@ want a review surface — flywheel just doesn't require one.)
 |---|---|---|
 | **define-goal** | Plain-language want → a measurable, red-teamed goal contract (or a whole document of them). Never writes code. | `/define-goal …` · or just say *“I want…”* |
 | **dispatch** | The factory orchestrator: works one ready goal per run — claim, implement with TDD + fresh checks, independent-review-backed local gate, keep or roll back. | `/dispatch` · *”work goal 005”* |
+| **goals-status** | Read-only view of the open queue: every `in_progress` / `blocked` / `not_started` goal with its title + brief (completed hidden). Detailed, `--compact`, or `--json`. | `/goals-status` |
 | **loop-architect** | Designs the *loop contract* (prompt + verification + stop conditions) for autonomous, scheduled, or remote runs. | *“keep working on X”* · setting up a `/loop`, routine, or cron |
 | **factory-doctor** | One-pass preflight/doctor for the repo + machine. Auto-fixes everything local; reports the rest with exact fixes. | `/factory-doctor` |
 | **telegram-message** | Wires a Telegram bot to DM you when an autonomous run errors, hits a usage limit, waits on you, finishes, or a dispatch fire reports. Hook pings are dispatch-gated by default — interactive sessions never flood the chat. Project-scoped personal settings, stored outside the repo. | `/telegram-message <bot_token> [chat_id]` |
@@ -167,6 +168,39 @@ Per goal:
 
 CI, if present, is a post-push observation — not a gate. You can also target a
 single goal in an interactive session: *”work goal 005.”*
+
+### goals-status — see what's open
+
+A read-only glance at the queue. `/goals-status` prints every goal that is
+**in_progress**, **blocked**, or **not_started** — each with its title and a
+one-line brief — grouped in that order. Completed goals are hidden (just
+counted). Blocked goals show their reason; a goal waiting on an unfinished
+dependency shows what it's waiting on.
+
+```text
+docs/goals — 3 open · 5 completed (hidden)
+
+▶ IN PROGRESS  (1)
+  002-rate-limit-api                       feature · sonnet
+  Rate-limit the public API
+  › Callers hitting /api/* more than 100×/min get a 429 instead of
+    silently degrading the service for everyone.
+
+⛔ BLOCKED  (1)
+  005-receipt-dupes                        bug · opus
+  Stop duplicate receipt emails
+  › Some customers receive two receipts for a single payment.
+  ✗ reason: gate FAIL — repro test still red after 3 attempts
+
+○ NOT STARTED  (1)
+  006-invoice-pdf                          feature · sonnet
+  Export invoices as a monthly PDF
+  › Finance can download one month of invoices as a single PDF.
+  ⏳ waiting on 002-rate-limit-api
+```
+
+`--compact` gives one line per goal; `--json` emits it for scripting. It never
+changes the queue or starts work — that's `/dispatch`.
 
 ### loop-architect — make it run itself, safely
 
@@ -486,6 +520,9 @@ flywheel/
 │   │   ├── SKILL.md
 │   │   └── scripts/
 │   │       └── pg_validate.py         # local gate: per-goal acceptance + structural checks, PASS/FAIL verdict
+│   ├── goals-status/
+│   │   ├── SKILL.md
+│   │   └── scripts/goals_status.py    # read-only view of the open queue (detailed/--compact/--json)
 │   ├── factory-doctor/
 │   │   ├── SKILL.md
 │   │   └── scripts/doctor_checks.py   # read-only readiness probe

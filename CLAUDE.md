@@ -4,14 +4,14 @@
 
 Skills-only Claude Code marketplace from Pragmatic Growth.
 The repo now publishes four plugins from one `pragmatic-growth` marketplace:
-`flywheel` v5.0.0, `html-artifacts` v1.0.1, `autoresearch` v1.1.0, and
+`flywheel` v5.2.0, `html-artifacts` v1.0.1, `autoresearch` v1.1.0, and
 `human-writing` v1.0.1. No MCP
 servers, no commands, no
 agents, no build step, and — as of v4.11.0 — ONE hook bundle
 (`hooks/hooks.json`, the `telegram-message` notifier; added by explicit owner
 decision 2026-07-07, the first exception to the former skills-only rule).
-`flywheel` has five skills under root
-`skills/` (three ship deterministic Python helpers in `scripts/`), forming a
+`flywheel` has six skills under root
+`skills/` (four ship deterministic Python helpers in `scripts/`), forming a
 plain-language → autonomous-execution pipeline around a file-based goal queue
 (`docs/goals/` in target repos). `html-artifacts` lives under
 `plugins/html-artifacts/` as a separate plugin for rich
@@ -72,6 +72,18 @@ cleanup (pure guidance, no scripts).
   claim's date (≥3 fires with zero work commits → `blocked: repeated transient
   death`) instead of wall-clock age, so an account usage-limit pause (no fires
   → no lines) resumes a claim rather than mislabeling it dead.
+- **goals-status** (v5.2.0) — read-only view of the docs/goals queue. Prints
+  every OPEN goal — `in_progress`, `blocked`, `not_started` — with its title and
+  a one-line brief (the goal file's `## Outcome (plain language)` paragraph),
+  grouped in that order and id-sorted within a group; `completed` goals are
+  hidden (only counted, including `archive.yaml`). Blocked goals show their
+  index `reason`; a `not_started` goal waiting on an unfinished dependency shows
+  what it waits on. Three modes — detailed (default), `--compact`, `--json`.
+  Ships a stdlib helper `scripts/goals_status.py` (PyYAML-primary, stdlib
+  fallback for the queue's inline-map format + goal-file frontmatter), resolved
+  via the same `$CLAUDE_PLUGIN_ROOT` fallback chain as the other scripts.
+  Strictly read-only — never claims, changes, or implements a goal (that's
+  `dispatch`) and never writes `index.yaml`.
 - **loop-architect** — designs loop contracts (prompt + verification +
   stop conditions) for autonomous /goal, /loop, routine, or remote runs;
   names `docs/goals/index.yaml` the canonical factory ledger. Includes
@@ -246,7 +258,7 @@ a local gate. Git history has every prior model if ever needed.
 .claude-plugin/plugin.json        # root flywheel plugin manifest
 .claude-plugin/marketplace.json   # marketplace — name: pragmatic-growth, lists flywheel + html-artifacts + autoresearch + human-writing
 hooks/hooks.json                  # flywheel plugin hooks — telegram-message notifier (v4.11.0; Claude Code)
-skills/<name>/SKILL.md            # five flywheel skills (define-goal, dispatch, loop-architect, factory-doctor, telegram-message)
+skills/<name>/SKILL.md            # six flywheel skills (define-goal, dispatch, goals-status, loop-architect, factory-doctor, telegram-message)
 plugins/html-artifacts/.claude-plugin/plugin.json
 plugins/html-artifacts/skills/html-artifacts/SKILL.md
 plugins/html-artifacts/skills/html-artifacts/references/ # HTML artifact recipes and foundation rules
@@ -255,7 +267,7 @@ plugins/autoresearch/skills/autoresearch/SKILL.md
 plugins/autoresearch/skills/autoresearch/scripts/autoresearch_helper.py # stdlib JSONL/MAD-confidence helper
 plugins/human-writing/.claude-plugin/plugin.json
 plugins/human-writing/skills/human-writing/SKILL.md # AI-writing cleanup (no scripts)
-skills/<name>/scripts/*.py        # dispatch/pg_validate.py (local gate), factory-doctor/doctor_checks.py, telegram-message/pg_telegram_notify.py
+skills/<name>/scripts/*.py        # dispatch/pg_validate.py (local gate), factory-doctor/doctor_checks.py, goals-status/goals_status.py (read-only queue view), telegram-message/pg_telegram_notify.py
 CHANGELOG.md                      # canonical, git-tracked version history (site carries no on-page changelog)
 public/index.html                 # the public site (plugin.pragmaticgrowth.com) — self-contained, themed
 public/Logo*Black.svg             # Pragmatic Growth brand marks (icon + wordmark)

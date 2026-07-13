@@ -13,6 +13,29 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [5.2.0] — 2026-07-13
+
+**New `goals-status` skill: a read-only view of the open docs/goals queue.**
+`/goals-status` prints every goal that is `in_progress`, `blocked`, or
+`not_started` — each with its title and a one-line brief (the goal file's
+`## Outcome (plain language)` paragraph) — grouped in that order, id-sorted
+within each group. Completed goals are hidden (only counted, archived ones
+included). Blocked goals show their `reason`; a not_started goal waiting on an
+unfinished dependency shows what it's waiting on. Three modes: detailed
+(default), `--compact` (one line per goal), and `--json` (for scripting).
+
+- It is strictly **read-only** — it never claims, changes, or implements a goal
+  (that's `/dispatch`); it only reads `index.yaml` + each goal file. Ships a
+  stdlib helper `skills/goals-status/scripts/goals_status.py` (PyYAML primary,
+  with a stdlib fallback for the queue's inline-map format and goal-file
+  frontmatter) plus co-located tests, following the factory-doctor pattern.
+- Fixes a stale invariant: `test_skill_inventory.py` asserted a four-skill root
+  inventory, but `telegram-message` (added v4.11.0) had never been added to it;
+  the assertion now lists the real six skills (define-goal, dispatch,
+  factory-doctor, goals-status, loop-architect, telegram-message).
+- flywheel is now a six-skill plugin; the README, the public site, and CLAUDE.md
+  are updated to match.
+
 ## [5.1.0] — 2026-07-13
 
 **Maker–checker validation: an independent second-view review at the dispatch

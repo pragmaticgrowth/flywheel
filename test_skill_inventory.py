@@ -19,7 +19,9 @@ def test_flywheel_root_skill_inventory_excludes_html_artifacts_plugin():
         "define-goal",
         "dispatch",
         "factory-doctor",
+        "goals-status",
         "loop-architect",
+        "telegram-message",
     ]
 
 
