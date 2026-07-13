@@ -308,11 +308,17 @@ wrangler.jsonc                    # Cloudflare Workers static-assets deploy conf
   `autoresearch`, and `human-writing` edits
   bump their own `plugins/<name>/.claude-plugin/plugin.json`; if the root
   marketplace copy/docs also change, keep the root release metadata aligned too.
-- **Push every time — on every completion.** Pushing to GitHub (`origin main`)
-  after committing is pre-authorized — always push without asking. Whenever you
-  complete a unit of work (a fix, a plugin, a doc change), commit AND push before
-  treating it as done; keep everything in the remote. The installed plugin
-  refreshes from GitHub, so an unpushed commit is an unshipped skill.
+- **Push every time — on every completion, the FULL tree (owner decision
+  2026-07-14).** Pushing to GitHub (`origin main`) after committing is
+  pre-authorized — always push without asking. Whenever you complete a unit of
+  work (a fix, a plugin, a doc change), commit AND push before treating it as
+  done; keep everything in the remote. End every turn with a fully-pushed tree:
+  no modified or untracked files left dangling (commit them, or say why one
+  can't be), no unpushed commits, no unpushed tags — `git status` clean and
+  `main` in sync with `origin/main`. The only files that stay local are the
+  gitignored maintainer config (`CLAUDE.local.md`, `.claude/settings.json`) and
+  tool caches — never force-add those. The installed plugin refreshes from
+  GitHub, so an unpushed commit is an unshipped skill.
 - **Internal docs are tracked and pushed.** Planning/design artifacts under
   `docs/` (specs, plans, research) are a normal tracked directory as of
   2026-07-01 — commit and push them with the rest. The remote is **public and
