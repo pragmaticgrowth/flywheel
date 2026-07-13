@@ -25,7 +25,7 @@ def test_define_goal_recon_subagents_inherit_session_model():
     assert "never inherits the session model" not in recon_model_policy
     assert "sonnet earns its keep" not in recon_model_policy
     assert "inherit" in recon_model_policy
-    assert "session/runtime model" in recon_model_policy
+    assert "session model" in recon_model_policy
 
 
 def test_active_docs_do_not_claim_recon_always_runs_on_sonnet():
@@ -55,4 +55,4 @@ def test_active_docs_do_not_claim_recon_always_runs_on_sonnet():
 def test_config_model_alias_examples_match_public_docs():
     define_goal = read("skills/define-goal/SKILL.md").lower()
     assert "sonnet, haiku, opus" not in define_goal
-    assert "inherit | sonnet | haiku" in define_goal
+    assert "inherit | opus | sonnet | haiku" in define_goal
