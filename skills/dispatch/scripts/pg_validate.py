@@ -117,31 +117,50 @@ def in_scope(goal_type, changed_paths, mode):
 
 
 def detect_gate_command(file_map):
-    # Preference order: Makefile > go.mod > package.json(with test script) > pytest.
-    if "Makefile" in file_map:
+    # Preference order: Makefile(test target) > go.mod > package.json(real test
+    # script, run with the lockfile's package manager) > pytest. Blind picks are
+    # guaranteed red gates: `make test` without a test target, `npm test` at a
+    # pnpm/yarn workspace root, or the npm-init placeholder script.
+    mk = file_map.get("Makefile")
+    if mk is not None and re.search(r"(?m)^test\s*:", mk):
         return "make test"
     if "go.mod" in file_map:
         return "go test ./..."
-    if "package.json" in file_map and '"test"' in (file_map.get("package.json") or ""):
-        return "npm test"
+    pj = file_map.get("package.json")
+    if pj is not None:
+        try:
+            script = ((json.loads(pj) or {}).get("scripts") or {}).get("test")
+        except (ValueError, AttributeError):
+            # unparseable package.json: the old substring heuristic is the best signal left
+            script = "test" if '"test"' in pj else None
+        if script and "no test specified" not in script:
+            pm = ("pnpm" if "pnpm-lock.yaml" in file_map else
+                  "yarn" if "yarn.lock" in file_map else
+                  "bun" if ("bun.lockb" in file_map or "bun.lock" in file_map) else
+                  "npm")
+            return f"{pm} test"
     if "pytest.ini" in file_map or "pyproject.toml" in file_map:
         return "pytest -q"
     return None
 
 
-def repro_direction(base_exits, head_exits, already_correct, overlaid_tests=None):
+def repro_direction(base_exits, head_exits, already_correct, overlaid_tests=None,
+                    cmds=None):
     # overlaid_tests: the PR head's changed test files that were copied onto the base
     # checkout before running acceptance. In standard TDD the proving test is ADDED by the
     # fix PR, so it does not exist on base — running the bare base suite can never go red
     # and every good TDD fix would FAIL_CONTRACT. Overlaying the head's tests onto base
     # product code is the canonical red-on-base proof: a real regression test fails there
     # (bug still present) and passes on head (bug fixed). None = no overlay performed.
+    # cmds: the acceptance commands (parallel to the exit lists) — lets the failure
+    # evidence name the red command instead of leaving the operator to dig for it.
     overlaid = list(overlaid_tests or [])
     head_all_green = all(x == 0 for x in head_exits)
     base_any_red = any(x != 0 for x in base_exits)
     if not head_all_green:
         return {"name": "repro-direction", "pass": False, "kind": "fixable",
-                "evidence": "an acceptance command is still red on the PR head"}
+                "evidence": "an acceptance command is still red on the PR head"
+                            + _name_red(head_exits, cmds)}
     if base_any_red:
         how = (f"with the PR's {len(overlaid)} test file(s) overlaid onto base, "
                if overlaid else "")
@@ -165,7 +184,17 @@ def repro_direction(base_exits, head_exits, already_correct, overlaid_tests=None
                         "'already correct' with a locking test."}
 
 
-def acceptance_green(head_exits):
+def _name_red(exits, cmds):
+    """': [i] <command> (exit N)' fragment for the red entries, '' when cmds unknown."""
+    if not cmds:
+        return ""
+    red = [i for i, x in enumerate(exits) if x != 0 and i < len(cmds)]
+    if not red:
+        return ""
+    return ": " + "; ".join(f"[{i}] {cmds[i]} (exit {exits[i]})" for i in red)
+
+
+def acceptance_green(head_exits, cmds=None):
     if not head_exits:
         return {"name": "acceptance-green", "pass": False, "kind": "inconclusive",
                 "evidence": "no acceptance command could be resolved for this goal"}
@@ -174,7 +203,8 @@ def acceptance_green(head_exits):
                 "evidence": f"all {len(head_exits)} acceptance command(s) green on a fresh head checkout"}
     red = [i for i, x in enumerate(head_exits) if x != 0]
     return {"name": "acceptance-green", "pass": False, "kind": "fixable",
-            "evidence": f"acceptance command(s) red on fresh head checkout: index {red}"}
+            "evidence": "acceptance command(s) red on fresh head checkout"
+                        + (_name_red(head_exits, cmds) or f": index {red}")}
 
 
 def queue_untouched(changed_paths):
@@ -191,6 +221,10 @@ def queue_untouched(changed_paths):
 
 
 import argparse, glob, json, ntpath, os, posixpath, shutil, subprocess, tempfile
+try:
+    import yaml  # PyYAML — primary frontmatter parser; the factory already requires it
+except ImportError:  # stdlib-only environment: the hand parser in _parse_goal takes over
+    yaml = None
 EXIT = {"PASS": 0, "FAIL_FIXABLE": 3, "FAIL_CONTRACT": 3, "INCONCLUSIVE": 4}
 
 
@@ -284,17 +318,38 @@ def _diff_text(base_ref, head_ref="HEAD"):
 
 def _unquote(tok):
     """Strip ONE balanced pair of surrounding quotes — never a lone trailing quote
-    that belongs to the command itself (`pnpm test -- --testPathPatterns '(a|b)'`)."""
-    if len(tok) >= 2 and tok[0] == tok[-1] and tok[0] in "\"'":
-        return tok[1:-1]
-    return tok
+    that belongs to the command itself (`pnpm test -- --testPathPatterns '(a|b)'`) —
+    then decode the quote style's own escapes: `\\"` / `\\\\` inside double quotes
+    (other backslash sequences pass through untouched), `''` inside single quotes."""
+    if not (len(tok) >= 2 and tok[0] == tok[-1] and tok[0] in "\"'"):
+        return tok
+    body, q = tok[1:-1], tok[0]
+    if q == "'":
+        return body.replace("''", "'")
+    out, esc = [], False
+    for ch in body:
+        if esc:
+            out.append(ch if ch in "\\\"" else "\\" + ch)
+            esc = False
+        elif ch == "\\":
+            esc = True
+        else:
+            out.append(ch)
+    if esc:
+        out.append("\\")
+    return "".join(out)
 
 
 def _flow_closes(s):
-    """True if the line contains a `]` OUTSIDE quotes — the flow-array terminator."""
-    quote = None
+    """True if the line contains a `]` OUTSIDE quotes — the flow-array terminator.
+    A backslash-escaped quote inside a double-quoted element doesn't close it."""
+    quote, esc = None, False
     for ch in s:
-        if quote:
+        if esc:
+            esc = False
+        elif quote == '"' and ch == "\\":
+            esc = True
+        elif quote:
             if ch == quote:
                 quote = None
         elif ch in "\"'":
@@ -307,11 +362,18 @@ def _flow_closes(s):
 def _split_flow_items(fragment):
     """Split one YAML flow-array fragment (`["a", "b",` / `"c"]` / `[`) into cleaned
     items. Commas inside quotes don't split — real acceptance commands carry them
-    (`python -c 'print(1, 2)'`). Bracket punctuation and comment tokens are dropped;
-    each item then loses one balanced pair of quotes."""
-    parts, buf, quote = [], [], None
+    (`python -c 'print(1, 2)'`) — and a `\\"` inside a double-quoted element doesn't
+    close it. Bracket punctuation and comment tokens are dropped; each item then
+    loses one balanced pair of quotes (with escape decoding, see _unquote)."""
+    parts, buf, quote, esc = [], [], None, False
     for ch in fragment:
-        if quote:
+        if esc:
+            buf.append(ch)
+            esc = False
+        elif quote == '"' and ch == "\\":
+            buf.append(ch)
+            esc = True
+        elif quote:
             buf.append(ch)
             if ch == quote:
                 quote = None
@@ -331,6 +393,16 @@ def _split_flow_items(fragment):
     return out
 
 
+def _as_str_list(v):
+    """Coerce a YAML-parsed value to a clean list of strings (scalar → 1-item list)."""
+    if v is None:
+        return []
+    if isinstance(v, (list, tuple)):
+        return [str(x).strip() for x in v if str(x).strip()]
+    s = str(v).strip()
+    return [s] if s else []
+
+
 def _parse_goal(path):
     """Return (type, touches, acceptance_cmds, already_correct).
 
@@ -339,17 +411,32 @@ def _parse_goal(path):
     of the phrase (even negated, "was not already correct") must not flip an unproven
     bug fix into a PASS.
 
-    touches:/acceptance: lists are accepted in all three YAML shapes real goal files
-    carry: inline flow (`acceptance: ["a", "b"]`), block sequence (`- "a"` lines),
-    and multi-line flow — `[` opening on the key line or on its own line, one
-    element per line, closing `]` — the shape YAML formatters reflow long arrays
-    into. Missing the last shape silently parsed [] and false-failed the gate.
+    Frontmatter is parsed with PyYAML when importable (the factory already requires
+    it) — full YAML, escapes included. The hand parser below is the fallback for
+    stdlib-only environments and for frontmatter PyYAML can't read; it accepts all
+    three list shapes real goal files carry: inline flow (`acceptance: ["a", "b"]`),
+    block sequence (`- "a"` lines), and multi-line flow — `[` opening on the key
+    line or on its own line, one element per line, closing `]` — the shape YAML
+    formatters reflow long arrays into. Missing the last shape silently parsed []
+    and false-failed the gate.
     """
     text = open(path).read() if os.path.exists(path) else ""
     gtype, touches, cmds, already_correct = "feature", [], [], False
     if text.startswith("---"):
         parts = text.split("---", 2)
         fm = parts[1] if len(parts) >= 3 else ""
+        if yaml is not None:
+            try:
+                data = yaml.safe_load(fm)
+            except Exception:  # any scan/parse error → hand parser below
+                data = None
+            if isinstance(data, dict):
+                gtype = str(data.get("type") or "feature").split()[0]
+                ac = data.get("already_correct")
+                already_correct = (ac is True or
+                                   str(ac or "").strip().lower() in ("true", "yes", "1"))
+                return (gtype, _as_str_list(data.get("touches")),
+                        _as_str_list(data.get("acceptance")), already_correct)
         _collecting = None  # tracks which list field we're accumulating into
         _flow = False       # True while inside a multi-line [ … ] flow array
         for line in fm.splitlines():
@@ -407,6 +494,11 @@ def _resolve_cmds(goal_file, repo_root):
                 fm[name] = open(p).read()
             except OSError:
                 pass
+    # Lockfiles pick the package manager; existence is the signal — never read a
+    # potentially multi-MB lockfile.
+    for name in ("pnpm-lock.yaml", "yarn.lock", "bun.lockb", "bun.lock"):
+        if os.path.exists(os.path.join(repo_root, name)):
+            fm[name] = ""
     det = detect_gate_command(fm)
     return gtype, touches, ([det] if det else []), ac
 
@@ -640,10 +732,11 @@ def run_validation(head, goal_id, base, goal_file, repo_root):
                 "summary": f"INCONCLUSIVE: {evidence}",
             }
         head_exits = _run_cmds(cmds, repo_root) if cmds else []
-        checks.append(repro_direction(base_exits, head_exits, already_correct, test_files))
+        checks.append(repro_direction(base_exits, head_exits, already_correct,
+                                      test_files, cmds=cmds))
     else:
         head_exits = _run_cmds(cmds, repo_root) if cmds else []
-        checks.append(acceptance_green(head_exits))
+        checks.append(acceptance_green(head_exits, cmds=cmds))
 
     verdict = aggregate(checks)
     return {

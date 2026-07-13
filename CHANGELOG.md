@@ -13,6 +13,33 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [5.0.2] — 2026-07-13
+
+**dispatch: gate robustness pass — PyYAML-primary frontmatter parsing, a
+package-manager-aware fallback, and failure evidence that names the command.**
+Follow-up hardening after the v5.0.1 parser fix, closing the rest of that bug
+class instead of waiting for the next YAML shape to false-fail a goal:
+
+- **PyYAML is now the primary frontmatter parser.** `_parse_goal` uses
+  `yaml.safe_load` when PyYAML is importable (the factory already requires it —
+  factory-doctor BLOCKERs on it missing), so every YAML shape and escape is
+  read correctly — e.g. a double-quoted `"…\\.render…"` acceptance pattern now
+  decodes to the `\.` the author meant. The hand parser remains as the fallback
+  for stdlib-only environments and unparseable frontmatter, and now also
+  decodes `\"`/`\\` in double-quoted flow elements and `''` in single-quoted
+  ones. Verified: primary and fallback parse **byte-identical** results on all
+  real goal files of the repo that hit the v5.0.1 bug.
+- **`detect_gate_command` no longer guesses wrong.** The no-`acceptance:`
+  fallback now (a) requires a real `test:` target before picking `make test`,
+  (b) JSON-parses `package.json` and rejects the npm-init `"no test specified"`
+  placeholder plus `"test"` strings that aren't a script, and (c) names the
+  package manager from the lockfile — `pnpm test` / `yarn test` / `bun test`
+  instead of a blind `npm test` that fails at any pnpm/yarn workspace root.
+- **Red evidence names the command.** `acceptance-green` and `repro-direction`
+  failures now report `[i] <command> (exit N)` instead of a bare index, so an
+  operator (or the repair loop) sees what actually failed without digging.
+- 13 new tests (98 total green, plus the `--self-test` pure sweep at 90).
+
 ## [5.0.1] — 2026-07-13
 
 **dispatch: the local gate now parses multi-line YAML flow arrays in goal

@@ -121,8 +121,14 @@ def test_in_scope_required_all_types():
     assert pgv.in_scope("chore", ["x.go"], "required") is True
 
 def test_detect_makefile():
-    fm = {"Makefile": "build:\n\tgo build ./...\n"}
+    fm = {"Makefile": "build:\n\tgo build ./...\ntest:\n\tgo test ./...\n"}
     assert pgv.detect_gate_command(fm) == "make test"
+
+def test_detect_makefile_without_test_target_falls_through():
+    # A Makefile with no test target must not win — blind `make test` is a
+    # guaranteed red gate there.
+    fm = {"Makefile": "build:\n\tgo build ./...\n", "go.mod": "module x\n"}
+    assert pgv.detect_gate_command(fm) == "go test ./..."
 
 def test_detect_go_mod():
     assert pgv.detect_gate_command({"go.mod": "module x\n"}) == "go test ./..."
@@ -130,6 +136,27 @@ def test_detect_go_mod():
 def test_detect_package_json_test():
     fm = {"package.json": '{"scripts":{"test":"vitest"}}'}
     assert pgv.detect_gate_command(fm) == "npm test"
+
+def test_detect_package_json_pnpm_lockfile():
+    # The lockfile names the package manager — `npm test` at a pnpm workspace
+    # root fails regardless of code state.
+    fm = {"package.json": '{"scripts":{"test":"jest"}}', "pnpm-lock.yaml": ""}
+    assert pgv.detect_gate_command(fm) == "pnpm test"
+
+def test_detect_package_json_yarn_lockfile():
+    fm = {"package.json": '{"scripts":{"test":"jest"}}', "yarn.lock": ""}
+    assert pgv.detect_gate_command(fm) == "yarn test"
+
+def test_detect_package_json_placeholder_test_rejected():
+    # The npm-init default placeholder is not a real suite — treat as no test script.
+    fm = {"package.json":
+          '{"scripts":{"test":"echo \\"Error: no test specified\\" && exit 1"}}'}
+    assert pgv.detect_gate_command(fm) is None
+
+def test_detect_package_json_dep_named_test_not_script():
+    # "test" appearing outside scripts (a dependency name) is not a test script.
+    fm = {"package.json": '{"dependencies":{"test":"^1.0.0"}}'}
+    assert pgv.detect_gate_command(fm) is None
 
 def test_detect_pytest():
     fm = {"pytest.ini": "[pytest]\n"}
@@ -139,7 +166,7 @@ def test_detect_none():
     assert pgv.detect_gate_command({"README.md": "hi"}) is None
 
 def test_detect_makefile_beats_others():
-    fm = {"Makefile": "x:\n", "go.mod": "module x"}
+    fm = {"Makefile": "test:\n\tpytest\n", "go.mod": "module x"}
     assert pgv.detect_gate_command(fm) == "make test"
 
 def test_repro_red_on_base_green_on_head():
@@ -388,6 +415,127 @@ def test_parse_goal_block_item_with_comma_stays_one():
         "---\nbody\n")
     gtype, touches, cmds, ac = pgv._parse_goal(gf)
     assert cmds == ["python -c 'print(1, 2)'"], cmds
+
+def test_parse_goal_yaml_decodes_double_quote_escapes():
+    # YAML double-quoted scalars process escapes: the author of "a\\.render" meant
+    # the command to carry `\.`, not a literal `\\.` (which a regex engine reads as
+    # an escaped backslash and silently never matches).
+    if pgv.yaml is None:
+        return  # stdlib-only environment: the primary path isn't loadable
+    d = _tf.mkdtemp()
+    gf = _os.path.join(d, "goal.md")
+    open(gf, "w").write(
+        "---\n"
+        "type: feature\n"
+        "acceptance:\n"
+        "  [\n"
+        "    \"pnpm test -- --testPathPatterns '(a\\\\.render|b)'\",\n"
+        "  ]\n"
+        "---\nbody\n")
+    _g, _t, cmds, _ac = pgv._parse_goal(gf)
+    assert cmds == ["pnpm test -- --testPathPatterns '(a\\.render|b)'"], cmds
+
+def test_parse_goal_stdlib_fallback_parity_on_all_shapes():
+    # Without pyyaml the hand parser takes over — it must read the same values the
+    # primary parser does for every escape-free shape goal files actually carry.
+    d = _tf.mkdtemp()
+    gf = _os.path.join(d, "goal.md")
+    open(gf, "w").write(
+        "---\n"
+        "type: bug\n"
+        "already_correct: true\n"
+        "touches: [\"apps/a/*\", \"apps/b/*\"]\n"
+        "acceptance:\n"
+        "  [\n"
+        "    \"cmd-flow-one\",\n"
+        "    # comment between elements\n"
+        "    \"cmd-flow-two\",\n"
+        "  ]\n"
+        "---\nbody\n")
+    primary = pgv._parse_goal(gf)
+    saved = pgv.yaml
+    pgv.yaml = None
+    try:
+        fallback = pgv._parse_goal(gf)
+    finally:
+        pgv.yaml = saved
+    assert fallback == ("bug", ["apps/a/*", "apps/b/*"],
+                        ["cmd-flow-one", "cmd-flow-two"], True), fallback
+    if saved is not None:
+        assert primary == fallback, (primary, fallback)
+
+def test_parse_goal_falls_back_when_frontmatter_is_not_yaml():
+    # Un-parseable frontmatter (tab indentation is a YAML scanner error) must fall
+    # back to the hand parser instead of crashing or returning nothing.
+    d = _tf.mkdtemp()
+    gf = _os.path.join(d, "goal.md")
+    open(gf, "w").write(
+        "---\n"
+        "type: chore\n"
+        "\tbad: yaml tab\n"
+        "acceptance:\n"
+        "  - \"cmd-one\"\n"
+        "---\nbody\n")
+    gtype, _t, cmds, _ac = pgv._parse_goal(gf)
+    assert gtype == "chore" and cmds == ["cmd-one"], (gtype, cmds)
+
+def test_parse_goal_fallback_escaped_quote_in_flow_item():
+    # Stdlib fallback: a \" inside a double-quoted flow element must not close the
+    # quote — the embedded comma stays inside one command, and \" / \\ decode.
+    saved = pgv.yaml
+    pgv.yaml = None
+    try:
+        d = _tf.mkdtemp()
+        gf = _os.path.join(d, "goal.md")
+        open(gf, "w").write(
+            "---\n"
+            "type: bug\n"
+            "acceptance:\n"
+            "  [\n"
+            "    \"echo \\\"hi, there\\\"\",\n"
+            "  ]\n"
+            "---\nbody\n")
+        _g, _t, cmds, _ac = pgv._parse_goal(gf)
+    finally:
+        pgv.yaml = saved
+    assert cmds == ['echo "hi, there"'], cmds
+
+def test_parse_goal_fallback_single_quote_pair_decodes():
+    # YAML single-quoted scalars escape a quote as '' — the fallback decodes it and
+    # keeps the embedded comma inside one command.
+    saved = pgv.yaml
+    pgv.yaml = None
+    try:
+        d = _tf.mkdtemp()
+        gf = _os.path.join(d, "goal.md")
+        open(gf, "w").write(
+            "---\n"
+            "type: bug\n"
+            "acceptance: ['it''s fine, ok']\n"
+            "---\nbody\n")
+        _g, _t, cmds, _ac = pgv._parse_goal(gf)
+    finally:
+        pgv.yaml = saved
+    assert cmds == ["it's fine, ok"], cmds
+
+def test_resolve_cmds_pnpm_monorepo_fallback():
+    # No acceptance in the goal → the fallback names the real package manager from
+    # the lockfile instead of blindly running `npm test`.
+    d = _tf.mkdtemp()
+    open(_os.path.join(d, "package.json"), "w").write('{"scripts":{"test":"jest"}}')
+    open(_os.path.join(d, "pnpm-lock.yaml"), "w").write("lockfileVersion: 9\n")
+    gf = _os.path.join(d, "goal.md")
+    open(gf, "w").write("---\ntype: feature\n---\nbody\n")
+    _g, _t, cmds, _ac = pgv._resolve_cmds(gf, d)
+    assert cmds == ["pnpm test"], cmds
+
+def test_acceptance_green_red_evidence_names_command():
+    r = pgv.acceptance_green([0, 1], cmds=["make lint", "make test"])
+    assert r["pass"] is False and "make test" in r["evidence"], r
+
+def test_repro_red_on_head_evidence_names_command():
+    r = pgv.repro_direction([1], [1], already_correct=False, cmds=["make test"])
+    assert r["pass"] is False and "make test" in r["evidence"], r
 
 def test_run_validation_bug_inconclusive_when_base_worktree_fails(monkeypatch=None):
     # FIX 1: if `git worktree add` for the repro-direction base checkout fails, the
