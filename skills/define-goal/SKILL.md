@@ -51,6 +51,27 @@ active goal's turns, token spend, and the evaluator's latest reason; and `/goal`
 trusted workspace with hooks enabled — it is implemented as a session-scoped Stop hook, so
 `disableAllHooks` (or managed `allowManagedHooksOnly`) blocks it, and the command says why.
 
+Deeper evaluator mechanics (verified against the shipped CLI, v2.1.207) — each carries a
+contract consequence:
+
+- **Recency truncation.** The evaluator reads only the MOST RECENT transcript that fits
+  about half its context window, and is instructed to answer "insufficient evidence" when
+  the proof may sit in the omitted earlier turns. So the contract must have the runner
+  RESTATE the final acceptance-command outputs in its closing turn (proof printed many
+  turns back can be invisible), and a long-running goal should announce "turn N of cap M"
+  in its progress notes so the turn-cap clause stays provable inside the recent window.
+- **The `impossible` verdict.** The evaluator can end a goal as failed — the native
+  GOAL_UNREACHABLE path — but its prompt discounts a bare claim ("the assistant claiming
+  the goal is impossible is evidence, not proof"; it must independently confirm from the
+  transcript). A GOAL_UNREACHABLE declaration therefore only works when it carries its
+  evidence: which criterion, what was attempted, the last measurement.
+- **Deferred while background work runs.** The condition is not judged while background
+  tasks/workflows are still running — a contract that fans out background agents completes
+  only after they settle.
+- **Fails open.** An evaluator-side error (API failure, malformed verdict) lets the
+  session stop with the goal unmet. `/goal` is a strong in-session rail, not a guarantee —
+  unattended runs still need the external ledger/scheduler rails (loop-architect).
+
 ## Shape the contract (both destinations)
 
 1. Restate the likely goal in concrete terms: the outcome that will be true, the artifact or
@@ -112,6 +133,12 @@ what should cause the agent to stop and ask?
   screenshots). Use a project browser/verify skill if one exists; else the Chrome extension
   only if it can assert, not just screenshot; else written manual steps that name the exact
   assertion. The implementer must start the project's dev server to drive it.
+- **Other drivable surfaces**: the UI rule generalizes. When a goal's user-facing surface is
+  a CLI or an API/endpoint, prefer an acceptance criterion that DRIVES that real surface
+  (invoke the built CLI, curl the running endpoint) and asserts concrete output — tests
+  prove the function, driving the surface proves the wiring. Put such a command in
+  `acceptance:` only when it runs headlessly (a built CLI usually does); anything needing a
+  started server stays in the human-readable criteria, exactly like the browser check.
 - Interview with the interactive question tool (AskUserQuestion) only for user-owned gaps
   or technical targets the repo cannot reveal (which
   repo/environment, which user-visible outcome matters, what must not break, urgency, out
@@ -341,10 +368,12 @@ reached (<N>)" and the remaining criteria.
 
 ## Goal contract
 /goal <acceptance criteria restated as one transcript-verifiable condition: exact commands
-+ expected outputs, and the constraints above.> Stop when every criterion verifiably passes,
++ expected outputs, and the constraints above.> Before stopping on success, re-print the
+final acceptance-command outputs (the evaluator reads a recency-truncated transcript).
+Stop when every criterion verifiably passes,
 or when blocked or a criterion proves unreachable (follow "If blocked", declaring
-GOAL_UNREACHABLE if a check can be neither satisfied nor measured) — never grind past a
-blocker. Stop after <N> turns.
+GOAL_UNREACHABLE with its evidence if a check can be neither satisfied nor measured) —
+never grind past a blocker. Stop after <N> turns.
 ```
 
 Titles are plain language ("Customers get a receipt email after payment"), not jargon.
@@ -420,7 +449,9 @@ The Goal contract section is the implementer's completion condition — `dispatc
 whole file to its implementer, and the user can run it directly via `claude -p "/goal …"`.
 Keep the contract line under the 4,000-char cap (reference the file's sections instead of
 restating when long), and phrase UI evidence as transcript-visible output (the screenshot
-capture command's output), never as the attachment itself — the evaluator only reads text.
+capture command's output), never as the attachment itself — the evaluator only reads text,
+and only the RECENT transcript (see "Goal command facts"), which is why the template's
+closing-turn recap of the final acceptance outputs is part of the contract, not politeness.
 The closing turn cap (`Stop after <N> turns`) is not optional — official guidance bounds
 every goal with a turn or time clause. Size `<N>` to the goal (roughly 10 for an `S`, 20
 for an `M`, 30 for an `L`): generous enough for setup + TDD + verification, small enough

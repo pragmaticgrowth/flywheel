@@ -99,8 +99,19 @@ blocker, and what would unlock progress.
 If the same check fails the same way twice in a row, or after ~3 honest attempts the end
 state can neither be reached nor shown measurable (a flaky, non-deterministic, or
 contradictory check), declare GOAL_UNREACHABLE: <which clause, why unmeasurable, last
-measurement> and stop — never retry the identical failing approach. Stop after <N> turns.
+measurement> and stop — never retry the identical failing approach. Before stopping on
+success, re-print the final check outputs. Stop after <N> turns.
 ```
+
+- Evaluator mechanics that shape the condition (verified against the shipped CLI): the
+  evaluator reads a RECENCY-truncated transcript (roughly the newest half of its context
+  window) and answers "insufficient evidence" when proof may sit in the omitted prefix —
+  hence the template's closing-turn recap of the final check outputs; long runs should
+  also announce "turn N of cap M" so the turn cap stays provable. Its built-in
+  `impossible` verdict is what honors GOAL_UNREACHABLE — but only with evidence attached
+  (its prompt treats a bare "can't be done" as evidence, not proof). Evaluation is
+  deferred while background tasks/workflows run — the workflow + `/goal` combo judges
+  only after the fan-out settles.
 
 - Reachability pre-check: before drafting the condition, confirm the end state is one the
   agent can drive to TRUE and MEASURE — a binary or a threshold it can print — not an
@@ -183,6 +194,9 @@ hard token/dollar/iteration ceiling AND the pass/fail gate) must be enforced by 
 agent CANNOT edit: a Stop hook, an external cron/budget process ("burnstop"), the CI gate,
 /goal's separate evaluator, or dispatch's `config.budget`. "Install the brakes before the
 horsepower" — and never let the loop grade itself against a criterion it can rewrite.
+(One caveat on `/goal` as a brake: its evaluator FAILS OPEN on its own errors — an
+evaluator API failure lets the session stop with the goal unmet — so on an unattended run
+it is never the ONLY rail; the external scheduler + ledger stay the hard layer.)
 
 Always include, in the prompt itself (the soft layer, restated for the agent):
 - Max iterations / turn cap ("stop after 25 turns", "max 3 retries on the same finding")

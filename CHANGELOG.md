@@ -13,6 +13,48 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [5.3.0] — 2026-07-13
+
+**Native-command grounding pass: skills refined against Claude Code's shipped
+`/goal`, `verify`, and `code-review` internals (CLI v2.1.207).** The built-in
+commands' actual prompts and mechanics were read at the source; everything
+flywheel already claimed about `/goal` checked out, and the newly confirmed
+mechanics land as contract rules rather than trivia.
+
+- **define-goal** — "Goal command facts" now carries the verified evaluator
+  mechanics, each with its contract consequence: the evaluator reads a
+  RECENCY-truncated transcript (newest ~half of its context; told to answer
+  "insufficient evidence" for omitted history) → goal contracts must re-print
+  the final acceptance outputs in the closing turn (template updated) and long
+  runs announce "turn N of cap M"; the evaluator's `impossible` verdict is the
+  native GOAL_UNREACHABLE path but discounts bare claims ("evidence, not
+  proof") → declarations must carry evidence; evaluation defers while
+  background tasks run; and the evaluator FAILS OPEN on its own errors →
+  `/goal` is never the only rail for unattended runs. Also: the UI
+  scripted-check rule generalizes to other drivable surfaces — CLI/API goals
+  get a drive-the-real-surface criterion (headless-only ones may enter
+  `acceptance:`).
+- **dispatch** — the independent gate reviewer's brief gains two calibration
+  rules borrowed from the built-in code-review pipeline: surface half-believed
+  findings marked uncertain instead of silently dropping them (the orchestrator
+  is the verifier; finder self-censorship is the dominant source of misses),
+  and Critical findings must name the triggering inputs/state plus the wrong
+  outcome, quoting the line. The reviewer also gets an explicit non-findings
+  list (pre-existing baseline failures, auto-exempted test paths). The
+  implementer brief's verify step now requires at least one off-happy-path
+  probe at a drivable surface (borrowed from the built-in `verify` skill's
+  probe rule — acceptance commands alone replay the happy path).
+- **loop-architect** — the `/goal` contract template re-prints final check
+  outputs before stopping, with a new evaluator-mechanics bullet (recency
+  truncation, evidence-backed `impossible`, deferral during background work);
+  Step 5 notes `/goal`'s evaluator fails open, so it is never the sole brake
+  on an unattended run.
+- Deliberately NOT adopted: re-implementing or wrapping any native command
+  (drift risk; they're user-run and always current), code-review's 8-finder
+  fan-out for dispatch's gate (the v4 one-reviewer + escalation shape is
+  deliberate proportionality), and security-review's precedent machinery
+  (kept as reference if a security lens is ever added).
+
 ## [5.2.0] — 2026-07-13
 
 **New `goals-status` skill: a read-only view of the open docs/goals queue.**

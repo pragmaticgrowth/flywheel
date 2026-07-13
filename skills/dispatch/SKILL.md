@@ -221,7 +221,17 @@ For each claimed goal, in order:
    clean. Its brief: try to REFUTE the work, not confirm it — (a) contract conformance:
    any acceptance criterion unmet or met vacuously; (b) test realness: proving tests assert
    real behavior, not tautologies or mirrors of the implementation; (c) scope: changes
-   beyond the goal's surfaces, or criteria quietly narrowed. It returns a verdict per lens
+   beyond the goal's surfaces, or criteria quietly narrowed. Two calibration rules go in
+   the brief: report half-believed findings too, marked uncertain, instead of silently
+   dropping them — the orchestrator is the verifier, and a finder that self-censors
+   uncertain candidates is the dominant source of missed defects; and a Critical finding
+   must name the inputs/state that trigger it plus the wrong outcome, quoting the offending
+   line. Non-findings (tell the reviewer up front): failures already red on the pre-goal
+   baseline per the implementer's report, and the gate's auto-exempted test paths — but
+   the baseline claim is itself a hypothesis: a reviewer that doubts it reports the doubt
+   as an uncertain finding, and you verify it cheaply (does the same failure reproduce at
+   `gate_base`?) rather than taking either side's word.
+   It returns a verdict per lens
    plus findings with severity and `path:line` evidence. Findings are hypotheses you
    verify yourself against the diff and the cited evidence — never orders; verified
    Critical/Important findings enter the FAIL_FIXABLE repair
@@ -232,7 +242,9 @@ For each claimed goal, in order:
    **Escalation to the full panel.** A missing `Fresh-check:` block, or a not-required
    claim the diff belies (multi-file work, or a single-file diff whose changes are plainly
    substantive rather than mechanical), upgrades the single reviewer to the full 2–3 read-only
-   lenses (same lenses as the brief's Quality loop step 5, fresh windows, concurrent). A
+   lenses (same lenses as the brief's Quality loop step 5, fresh windows, concurrent).
+   Decide this BEFORE spawning any reviewer — the implementer's report and the diff are
+   already in hand — and run the panel INSTEAD of the single reviewer, never after it. A
    skipped implementer panel is a compliance miss: when the same miss recurs across goals
    in this session's fires (no persisted counter — session memory only, per the
    status-only-in-index rule), surface it once via Hygiene's lesson-encoding rule.
@@ -361,6 +373,9 @@ Quality loop — keep it lightweight, but do not skip it:
    mode is allowed only for bounded read-only fan-out or review when there are ~5+ independent
    checks; never use it to implement across branches or survive the session.
 4. Verify: run the goal acceptance commands and any repo baseline command you touched.
+   For a behavior change with a drivable surface (CLI, endpoint, UI), also run at least one
+   off-happy-path probe at that surface — malformed input, empty value, double-run — and
+   record what it showed; acceptance commands alone replay the happy path.
 5. Fresh check: for non-trivial work (more than a one-file mechanical edit), review the diff
    against the goal contract in fresh read-only windows — not one generalist reviewer but a
    small panel of independent lenses

@@ -4,7 +4,7 @@
 
 Skills-only Claude Code marketplace from Pragmatic Growth.
 The repo now publishes four plugins from one `pragmatic-growth` marketplace:
-`flywheel` v5.2.0, `html-artifacts` v1.0.1, `autoresearch` v1.1.0, and
+`flywheel` v5.3.0, `html-artifacts` v1.0.1, `autoresearch` v1.1.0, and
 `human-writing` v1.0.1. No MCP
 servers, no commands, no
 agents, no build step, and — as of v4.11.0 — ONE hook bundle
@@ -38,7 +38,14 @@ cleanup (pure guidance, no scripts).
   only, never implements. Originally adapted from
   OpenAI's curated `define-goal` skill (its `create_goal`/`get_goal`
   tools don't exist here; `/goal` is user-run, transcript-
-  evaluated, 4,000-char condition cap).
+  evaluated, 4,000-char condition cap). The `/goal` facts were verified
+  against the shipped CLI internals (v5.3.0): the evaluator reads a
+  recency-truncated transcript (→ contracts re-print final acceptance outputs
+  in the closing turn; long runs announce "turn N of cap M"), its `impossible`
+  verdict honors GOAL_UNREACHABLE only with evidence attached, it defers while
+  background work runs, and it fails open on its own errors (never the only
+  unattended rail). The UI scripted-check rule also generalizes to other
+  drivable surfaces (CLI/API → drive-the-real-surface criterion).
 - **dispatch** — factory orchestrator for the docs/goals queue: works ONE
   ready goal per run on the branch that's currently checked out — no PRs, no
   worktrees, no `goal/<id>` branches, no parallel implementation. Per goal it
@@ -56,7 +63,12 @@ cleanup (pure guidance, no scripts).
   implementer's `Fresh-check:` lens verdicts are corroborating evidence,
   never the verdict; a missing block or a not-required claim the diff belies
   escalates to the full 2–3-lens panel; verified Critical/Important findings
-  feed the repair path), then the deterministic `pg_validate.py`
+  feed the repair path; v5.3.0 calibrates the reviewer — surface half-believed
+  findings marked uncertain rather than silently dropping them, Critical
+  findings quote the triggering line, pre-existing baseline failures and
+  exempted test paths are named non-findings — and the implementer's verify
+  step adds one off-happy-path probe at any drivable surface), then the
+  deterministic `pg_validate.py`
   over the `gate_base..HEAD` diff plus the repo's `config.verify` build+test
   commands. PASS → squash the goal's commits to one `feat(goal NNN)` commit
   and mark it `completed`; FAIL → `git reset --hard gate_base` and mark it

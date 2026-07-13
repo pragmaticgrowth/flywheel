@@ -5,7 +5,7 @@ A skills-only plugin marketplace for [Claude Code](https://claude.com/claude-cod
 from Pragmatic Growth.
 
 [![Website](https://img.shields.io/badge/site-plugin.pragmaticgrowth.com-6366f1)](https://plugin.pragmaticgrowth.com)
-[![Version](https://img.shields.io/badge/version-5.2.0-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-5.3.0-8b5cf6)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
 > 🌐 **Full docs:** **<https://plugin.pragmaticgrowth.com>**
