@@ -2,14 +2,23 @@
 
 ## Project Overview
 
-Skills-only Claude Code marketplace from Pragmatic Growth.
+Skills-first Claude Code marketplace from Pragmatic Growth.
 The repo now publishes four plugins from one `pragmatic-growth` marketplace:
-`flywheel` v5.3.0, `html-artifacts` v1.0.1, `autoresearch` v1.1.0, and
+`flywheel` v5.4.0, `html-artifacts` v1.0.1, `autoresearch` v1.1.0, and
 `human-writing` v1.0.1. No MCP
-servers, no commands, no
-agents, no build step, and — as of v4.11.0 — ONE hook bundle
+servers, no commands, no build step. Two scoped exceptions to the former
+skills-only rule: ONE hook bundle
 (`hooks/hooks.json`, the `telegram-message` notifier; added by explicit owner
-decision 2026-07-07, the first exception to the former skills-only rule).
+decision 2026-07-07) and, as of v5.4.0, THREE plugin agent definitions
+(root `agents/` — the factory's read-only review roles `gate-reviewer`,
+`fresh-check`, `contract-red-team`; added by owner-delegated decision
+2026-07-16 after transcript forensics on real dispatch runs showed
+hand-composed review briefs drifting across fires. Each carries the role
+brief + output contract as its system prompt and a tool allowlist with no
+Edit/Write/Agent, pins no `model:`, and has a deliberately narrow
+description so Claude never auto-delegates to it outside flywheel skills;
+the skills always keep a `general-purpose`-with-inline-brief fallback, and
+the built-in Explore type is banned for review roles).
 `flywheel` has six skills under root
 `skills/` (four ship deterministic Python helpers in `scripts/`), forming a
 plain-language → autonomous-execution pipeline around a file-based goal queue
@@ -34,7 +43,9 @@ cleanup (pure guidance, no scripts).
   (v5.1.0): one fresh read-only subagent red-teams the drafted contract —
   gameability, command reality, type shape, gate fit, termination — one
   round, before the model stamp and the user confirmation (run-now `/goal`
-  lines skip it; the `/goal` evaluator is their second view). Produces goals
+  lines skip it; the `/goal` evaluator is their second view). As of v5.4.0
+  that reviewer spawns as the plugin agent `flywheel:contract-red-team`
+  when available (`general-purpose` + inline rubric fallback). Produces goals
   only, never implements. Originally adapted from
   OpenAI's curated `define-goal` skill (its `create_goal`/`get_goal`
   tools don't exist here; `/goal` is user-run, transcript-
@@ -56,10 +67,14 @@ cleanup (pure guidance, no scripts).
   (goal frontmatter `model:` > `config.model` > inherit, v4.15.0; the
   orchestrator and recon/review agents always stay on the session
   model) — using a lightweight subagent-driven quality loop
-  (plan/checklist, TDD, fresh verifier/reviewer subagent for non-trivial work),
+  (plan/checklist, TDD, fresh verifier/reviewer subagent for non-trivial work;
+  v5.4.0: the fresh-check panel spawns FOREGROUND as `flywheel:fresh-check`
+  lenses — never background-then-poll, never Explore — after real runs showed
+  sleep-loop waits discarding completed lens verdicts),
   then runs the LOCAL gate authoritatively: an independent review (v5.1.0 —
   for any non-trivial diff the orchestrator ALWAYS spawns one fresh read-only
-  adversarial reviewer over `gate_base..HEAD` + the goal file; the
+  adversarial reviewer — v5.4.0: `flywheel:gate-reviewer` when available,
+  `general-purpose` + inline brief fallback — over `gate_base..HEAD` + the goal file; the
   implementer's `Fresh-check:` lens verdicts are corroborating evidence,
   never the verdict; a missing block or a not-required claim the diff belies
   escalates to the full 2–3-lens panel; verified Critical/Important findings
@@ -270,6 +285,7 @@ a local gate. Git history has every prior model if ever needed.
 .claude-plugin/plugin.json        # root flywheel plugin manifest
 .claude-plugin/marketplace.json   # marketplace — name: pragmatic-growth, lists flywheel + html-artifacts + autoresearch + human-writing
 hooks/hooks.json                  # flywheel plugin hooks — telegram-message notifier (v4.11.0; Claude Code)
+agents/<name>.md                  # three flywheel plugin agents — read-only factory review roles: gate-reviewer, fresh-check, contract-red-team (v5.4.0)
 skills/<name>/SKILL.md            # six flywheel skills (define-goal, dispatch, goals-status, loop-architect, factory-doctor, telegram-message)
 plugins/html-artifacts/.claude-plugin/plugin.json
 plugins/html-artifacts/skills/html-artifacts/SKILL.md
@@ -289,10 +305,15 @@ wrangler.jsonc                    # Cloudflare Workers static-assets deploy conf
 ## Rules
 
 - **Skills-first (formerly skills-only).** Don't add MCP servers, commands,
-  agents, or hooks here without an explicit ask. The sole hook exception to date
-  is `hooks/hooks.json` (the `telegram-message` notifier, explicit owner decision
-  2026-07-07). Keep it minimal: hooks must no-op safely when unconfigured and
-  never disrupt a session; a new hook needs the same explicit ask.
+  agents, or hooks here without an explicit ask. Two exceptions to date:
+  `hooks/hooks.json` (the `telegram-message` notifier, explicit owner decision
+  2026-07-07) and the three root `agents/` definitions (the factory's read-only
+  review roles, owner-delegated decision 2026-07-16). Keep both minimal: hooks
+  must no-op safely when unconfigured and never disrupt a session; plugin agents
+  must stay read-only-by-tools (no Edit/Write/Agent), pin no `model:`, carry
+  narrow non-auto-triggering descriptions, and every skill that spawns one keeps
+  a `general-purpose` inline-brief fallback so nothing breaks where plugin
+  agents are unavailable. A new hook or agent needs the same explicit ask.
 - **Portability applies to the notifier too.** The `telegram-message` config and
   state live under `~/.local/state/pg-telegram/`; the bot token NEVER enters the
   repo, `hooks/hooks.json`, or any tracked file (the pre-push secret hook is the

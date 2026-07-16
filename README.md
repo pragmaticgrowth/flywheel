@@ -1,11 +1,11 @@
 # flywheel
 
 **Turn plain-language wants into autonomous execution.**
-A skills-only plugin marketplace for [Claude Code](https://claude.com/claude-code),
+A skills-first plugin marketplace for [Claude Code](https://claude.com/claude-code),
 from Pragmatic Growth.
 
 [![Website](https://img.shields.io/badge/site-plugin.pragmaticgrowth.com-6366f1)](https://plugin.pragmaticgrowth.com)
-[![Version](https://img.shields.io/badge/version-5.3.0-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-5.4.0-8b5cf6)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
 > 🌐 **Full docs:** **<https://plugin.pragmaticgrowth.com>**
@@ -34,8 +34,13 @@ guidance: scheduled dispatch over a work queue, goal contracts with verifiable
 stop conditions, deterministic gate scripts, and fresh-context review.
 
 It is **skills-first**: no MCP servers, no slash commands of its own, no
-background daemons, no build step — and exactly one hook bundle (the
-`telegram-message` notifier, dormant until you set it up). The marketplace
+background daemons, no build step — plus one hook bundle (the
+`telegram-message` notifier, dormant until you set it up) and three
+read-only [subagent](https://code.claude.com/docs/en/sub-agents) definitions
+(`flywheel:gate-reviewer`, `flywheel:fresh-check`,
+`flywheel:contract-red-team` — the factory's review roles, tool-restricted so
+they can never edit files, and only used when a flywheel skill spawns them).
+The marketplace
 exposes four plugins: `flywheel` with six workflow
 [skills](https://docs.claude.com/en/docs/claude-code/skills),
 `html-artifacts` as a separate rich-deliverables plugin,
@@ -444,7 +449,9 @@ them up. Set `config.budget` in `index.yaml` before long unattended runs.
 
 After each implementation, the dispatch orchestrator first runs an
 **independent review**: for any non-trivial diff it spawns one fresh read-only
-adversarial reviewer over `gate_base..HEAD` plus the goal contract — refute
+adversarial reviewer (the plugin's tool-restricted `flywheel:gate-reviewer`
+agent where available, a `general-purpose` agent with the same brief
+otherwise) over `gate_base..HEAD` plus the goal contract — refute
 conformance, test realness, and scope; the implementer’s own fresh-check
 verdicts are corroborating evidence, never the verdict. Then it runs the repo’s
 `config.verify` commands (build + tests), and `pg_validate.py` runs the

@@ -13,6 +13,52 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [5.4.0] — 2026-07-16
+
+**Named review agents + fresh-check panel protocol fix.** The factory's three
+recurring review roles now ship as plugin agent definitions under root
+`agents/` — the first agents in the marketplace (second scoped exception to
+the former skills-only rule, owner-delegated decision 2026-07-16):
+
+- **`flywheel:gate-reviewer`** — dispatch's independent second view over a
+  goal's `gate_base..HEAD` diff (also the focused re-check after a repair).
+  REFUTE-the-work brief, three lenses (contract conformance / test realness /
+  scope), fixed `VERDICTS:`/`FINDINGS:` output contract.
+- **`flywheel:fresh-check`** — ONE lens of the implementer's pre-commit
+  fresh-check panel (contract-conformance | tests-overbuild |
+  stray-regressions), named per spawn.
+- **`flywheel:contract-red-team`** — define-goal's draft-contract red team
+  with the six-category rubric (gameability, command reality, headless gate
+  fit, type shape, termination, cross-goal) baked in.
+
+Design rules, motivated by transcript forensics on four real nonresidenttax
+sessions (a dispatch fire, a 10-fire `/loop 45m /dispatch` run with 21 spawns,
+and two interactive sessions): each definition carries the role brief so spawn
+prompts shrink to per-goal specifics; the `tools:` allowlist has **no
+Edit/Write/Agent** (read-only enforced by the runtime, and no re-delegation
+chains); **no `model:` pin** (inherit; the per-invocation `model` parameter
+still wins when a caller must pin); descriptions are deliberately narrow so
+Claude never auto-delegates to them outside flywheel skills; and every skill
+keeps a `general-purpose`-with-inline-brief **fallback** for installs where
+plugin agents are unavailable. The forensics found hand-composed review briefs
+drifting mid-loop (early reviewers ran without the maker-checker framing and
+reporting instructions later ones got) — a fixed definition ends that class of
+inconsistency.
+
+**Dispatch protocol fix (the bigger correctness win):** the implementer's
+fresh-check panel must now be spawned FOREGROUND (`run_in_background: false`,
+all lenses in one message, concurrent + synchronous), never as background
+agents polled with sleep loops, and never via the built-in Explore type (a
+search agent). On a real run, background lenses answered within seconds but
+the implementer's sleep-loop wait never collected them — a genuine
+contract-gap finding was discarded and the goal shipped with a false
+"no findings" claim. Foreground spawning removes that failure mode
+structurally.
+
+Docs aligned in the same change: README + site now say **skills-first** (one
+hook bundle + three read-only review agents), CLAUDE.md records the exception
+and its guardrails.
+
 ## [5.3.0] — 2026-07-13
 
 **Native-command grounding pass: skills refined against Claude Code's shipped

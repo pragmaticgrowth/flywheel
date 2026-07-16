@@ -47,6 +47,25 @@ cheap implementers, and only the judgment-heavy goals get the expensive one. Nei
 is yours to override, and neither ever applies to recon/review read-only agents — those
 always inherit the session model.
 
+**Named review agents (plugin-shipped).** The plugin ships three read-only agent
+definitions for the factory's review roles: `flywheel:gate-reviewer` (the orchestrator's
+independent second view, also used for focused re-checks), `flywheel:fresh-check` (one
+lens of the implementer's panel), and `flywheel:contract-red-team` (define-goal's draft
+review). Each definition carries the role brief, the output contract, and a tool
+allowlist with no Edit/Write/Agent — read-only enforced by the runtime, not by prompt
+discipline — so a spawn prompt carries only the per-goal specifics (repo/branch, diff
+range, goal file, checklist, evidence to challenge). None pins a `model:` in its
+definition, so each resolves by the runtime's normal inheritance: an orchestrator-spawned
+`gate-reviewer` or `contract-red-team` inherits the session model — never pass them a
+`model` parameter (the review-agents rule above) — and an implementer-spawned
+`fresh-check` lens inherits the implementer's own resolved model, which is fine: the
+definitions leave model choice entirely to the spawn context. Fallback is mandatory,
+never a stop: when the runtime doesn't
+list the type (plugin agents disabled, older CLI, a failed spawn naming the type),
+spawn `general-purpose` and state the role inline exactly as the relevant step describes.
+Never use the built-in Explore type for any review role — it is a search agent and its
+own description forbids review use.
+
 ## Hard rules (every iteration, before any action)
 
 - One goal per run, in this session, on the current branch. There are NO pull requests,
@@ -215,8 +234,10 @@ For each claimed goal, in order:
    `Fresh-check: not required (one-file mechanical edit)` for work that genuinely is) — but
    that block is corroborating evidence, never the verdict: the implementer graded its own
    work. For any diff bigger than a one-file mechanical edit, spawn ONE fresh read-only
-   adversarial reviewer (`general-purpose`, no model override — review agents always
-   inherit the session model) over the `gate_base..HEAD` diff plus the goal file, and hand
+   adversarial reviewer — `flywheel:gate-reviewer` when the runtime lists it, else
+   `general-purpose` with the role stated inline (Named review agents above); no model
+   override either way, review agents always inherit the session model — over the
+   `gate_base..HEAD` diff plus the goal file, and hand
    it the `Fresh-check:` block to challenge — this reviewer runs even when the block looks
    clean. Its brief: try to REFUTE the work, not confirm it — (a) contract conformance:
    any acceptance criterion unmet or met vacuously; (b) test realness: proving tests assert
@@ -242,7 +263,9 @@ For each claimed goal, in order:
    **Escalation to the full panel.** A missing `Fresh-check:` block, or a not-required
    claim the diff belies (multi-file work, or a single-file diff whose changes are plainly
    substantive rather than mechanical), upgrades the single reviewer to the full 2–3 read-only
-   lenses (same lenses as the brief's Quality loop step 5, fresh windows, concurrent).
+   lenses (same lenses as the brief's Quality loop step 5, fresh windows, concurrent —
+   spawned foreground as `flywheel:fresh-check` when the runtime lists it, else
+   `general-purpose`).
    Decide this BEFORE spawning any reviewer — the implementer's report and the diff are
    already in hand — and run the panel INSTEAD of the single reviewer, never after it. A
    skipped implementer panel is a compliance miss: when the same miss recurs across goals
@@ -255,8 +278,9 @@ For each claimed goal, in order:
    one), then `chore(goals): complete <id>`; push if a remote exists (non-blocking); report
    and stop without claiming another goal.
    FAIL_FIXABLE → one repair agent, re-gate (re-run the commands; when verified review
-   findings drove the repair, add a focused re-check by one fresh read-only agent — session
-   model, scoped to exactly those findings, not a new full panel); still failing →
+   findings drove the repair, add a focused re-check by one fresh read-only agent —
+   `flywheel:gate-reviewer` else `general-purpose`, session model, scoped to exactly
+   those findings, not a new full panel); still failing →
    `git reset --hard <gate_base>`,
    `chore(goals): block <id> — <reason>`. FAIL_CONTRACT → reset + block (needs-you contract
    amendment). INCONCLUSIVE → reset + block "no runnable local gate: <the failing check's
@@ -381,7 +405,15 @@ Quality loop — keep it lightweight, but do not skip it:
    small panel of independent lenses
    run concurrently: (a) contract-conformance (every acceptance criterion met, nothing
    missing), (b) tests + overbuild (proving tests are real, no scope creep), (c) stray files
-   + regressions (only intended files touched, baseline still green). Two or three lenses is
+   + regressions (only intended files touched, baseline still green). Spawn each lens as a
+   FOREGROUND subagent (`run_in_background: false`), all in ONE message so they run
+   concurrently and return synchronously. Never spawn lenses as background agents you must
+   poll — background children end your turn the moment you stop calling tools, and
+   sleep-loop waiting has produced discarded verdicts and false "no findings" claims on
+   real runs. Never use the built-in Explore type for review (it is a search agent). Use
+   the plugin's `flywheel:fresh-check` agent type when the runtime lists it (read-only
+   enforced; name the lens in each spawn prompt), else `general-purpose` with the lens
+   brief inline. Two or three lenses is
    the norm and stays lightweight; escalate to a read-only review Workflow only at the ~5+
    independent-checks threshold from step 3. Treat every finding as something to verify, not
    an order to obey; fix Critical/Important issues or explain why they are false. These

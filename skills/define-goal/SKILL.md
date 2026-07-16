@@ -470,9 +470,12 @@ criteria are drafted — the second view on the contract itself, mirroring the i
 review dispatch runs on the diff. Run-now `/goal` lines skip it: the user is present and
 the `/goal` evaluator model already provides a second view at run time.
 
-Spawn ONE fresh read-only subagent (`general-purpose`, no model override — it inherits
-the session model, same rule as recon) with the drafted goal file content. Its brief: try
-to BREAK the contract, not approve it —
+Spawn ONE fresh read-only subagent — the plugin's `flywheel:contract-red-team` agent
+type when the runtime lists it (the rubric below plus a no-Edit/Write tool allowlist are
+baked into its definition, so the spawn prompt carries only the drafts and repo
+specifics), else `general-purpose` with the rubric stated inline; no model override
+either way — it inherits the session model, same rule as recon — with the drafted goal
+file content. Its brief: try to BREAK the contract, not approve it —
 
 - **Gameability**: can any criterion be satisfied without the outcome being true — a
   proxy metric, a vacuous/tautological test, a drive-to-zero criterion missing its
