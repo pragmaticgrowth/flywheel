@@ -1,6 +1,6 @@
 ---
 name: dispatch
-description: Factory dispatcher — use when the user says "/dispatch", "run the factory", wants the docs/goals queue worked, or wants to work one specific queued goal in this session ("work goal 005"). Works ONE ready goal per run, on the currently checked-out branch — no pull requests, no worktrees, no parallel implementers. The single foreground implementer follows TDD and a lightweight subagent-driven quality loop, then the orchestrator runs the LOCAL gate authoritatively — an independent second-view review (for non-trivial work) plus the deterministic checks. Works in any repo with a docs/goals/ queue. Orchestrates only — never implements in its own context.
+description: Factory dispatcher — use when the user says "/dispatch", "run the factory", wants the docs/goals queue worked, or wants to work one specific queued goal in this session ("work goal 005"). Works in any repo with a docs/goals/ queue. Works ONE ready goal per run, on the currently checked-out branch — no pull requests, no worktrees, no parallel implementers. Orchestrates only — never implements in its own context; the phase procedure lives in the skill body, never in this description.
 ---
 
 # Dispatch — the factory orchestrator
@@ -121,7 +121,8 @@ where it left off:
    after honest attempts) is a contract defect, not a work failure: set `blocked` with reason
    `contract defect: <criterion> unreachable` and surface it under needs-you as a contract
    amendment (the human re-specifies via `define-goal`) — do NOT respawn it, a re-run hits the
-   same unmeasurable check. Otherwise respawn — but distinguish a transient infrastructure
+   same unmeasurable check. A final report declaring `CONTRACT_AMBIGUOUS` routes identically
+   (reason `contract defect: <criterion> ambiguous`) — a respawn guesses at the same fork. Otherwise respawn — but distinguish a transient infrastructure
    death (connection closed mid-response, parse error, 529 overloaded: NOT a work failure)
    from a logic blocker. A transient death is not a "fail" toward the no-progress rule; don't
    let it burn the respawn budget — retry it, up to ~3 transient respawns per goal per session,
@@ -225,9 +226,10 @@ For each claimed goal, in order:
 2. Spawn ONE foreground implementer (Agent, run_in_background: false) that works in this
    checkout on the current branch under the method mandates (writing-plans, TDD,
    verification-before-completion) + config.skills + the goal's `skills:`. It uses the
-   lightweight subagent-driven quality loop in Phase 3, commits its work on the branch, and
-   ends with verification evidence + a `Fresh-check:` block (step 3's independent review
-   challenges it). It never merges, never opens a PR.
+   lightweight subagent-driven quality loop in Phase 3, commits its work on the branch,
+   writes its full evidence to a report file, and ends with a terse fixed-format `STATUS:`
+   report + a one-line `Fresh-check:` verdict (step 3's independent review challenges
+   both). It never merges, never opens a PR.
 3. Run the LOCAL gate authoritatively yourself — independent review first, then commands:
    **Independent review — maker–checker, ALWAYS for non-trivial work.** The implementer's
    report must still carry its `Fresh-check:` block (the lens verdicts, or the literal
@@ -238,7 +240,8 @@ For each claimed goal, in order:
    `general-purpose` with the role stated inline (Named review agents above); no model
    override either way, review agents always inherit the session model — over the
    `gate_base..HEAD` diff plus the goal file, and hand
-   it the `Fresh-check:` block to challenge — this reviewer runs even when the block looks
+   it the `Fresh-check:` line and the implementer's report-file path to challenge — this
+   reviewer runs even when they look
    clean. Its brief: try to REFUTE the work, not confirm it — (a) contract conformance:
    any acceptance criterion unmet or met vacuously; (b) test realness: proving tests assert
    real behavior, not tautologies or mirrors of the implementation; (c) scope: changes
@@ -247,7 +250,16 @@ For each claimed goal, in order:
    dropping them — the orchestrator is the verifier, and a finder that self-censors
    uncertain candidates is the dominant source of missed defects; and a Critical finding
    must name the inputs/state that trigger it plus the wrong outcome, quoting the offending
-   line. Non-findings (tell the reviewer up front): failures already red on the pre-goal
+   line. A scope-of-reading rule goes in the brief too: read the diff once (with its
+   context lines it is the complete view of the changed files) and step outside it only
+   for a concrete risk the reviewer
+   can NAME — one focused check per named risk, named in the report; what can't be
+   verified that way is an uncertain finding, never a license to sweep the repo (unscoped
+   reviewers cost 4–8× on the same diff and find no more). And two anti-laundering rules:
+   a stated rationale in the implementer's report never downgrades a finding's severity
+   (the maker grading its own work), and a defect the goal contract itself mandates is
+   still a finding, labeled contract-mandated — the contract's authorship does not grade
+   its own work. Non-findings (tell the reviewer up front): failures already red on the pre-goal
    baseline per the implementer's report, and the gate's auto-exempted test paths — but
    the baseline claim is itself a hypothesis: a reviewer that doubts it reports the doubt
    as an uncertain finding, and you verify it cheaply (does the same failure reproduce at
@@ -256,7 +268,9 @@ For each claimed goal, in order:
    plus findings with severity and `path:line` evidence. Findings are hypotheses you
    verify yourself against the diff and the cited evidence — never orders; verified
    Critical/Important findings enter the FAIL_FIXABLE repair
-   path like any gate finding. A genuinely one-file mechanical edit skips the reviewer —
+   path like any gate finding — EXCEPT a verified contract-mandated finding, which is a
+   contract defect: route it FAIL_CONTRACT (reset + block, needs-you contract amendment) —
+   a repair agent cannot fix code into a defective contract. A genuinely one-file mechanical edit skips the reviewer —
    judge that from the DIFF, not the implementer's claim; the
    deterministic gate + `config.verify` suffice there; that carve-out is what keeps the
    second view proportional.
@@ -277,12 +291,15 @@ For each claimed goal, in order:
 4. PASS → `git reset --soft <gate_base> && git commit -m "feat(goal <id>): <slug>"` (squash to
    one), then `chore(goals): complete <id>`; push if a remote exists (non-blocking); report
    and stop without claiming another goal.
-   FAIL_FIXABLE → one repair agent, re-gate (re-run the commands; when verified review
+   FAIL_FIXABLE → one repair agent (fed the COMPLETE verified findings list in one spawn —
+   never one repair agent per finding), re-gate (re-run the commands; when verified review
    findings drove the repair, add a focused re-check by one fresh read-only agent —
    `flywheel:gate-reviewer` else `general-purpose`, session model, scoped to exactly
-   those findings, not a new full panel); still failing →
+   those findings PLUS a one-pass collateral scan of the repair diff itself — a fix can
+   break a neighbor — not a new full panel); still failing →
    `git reset --hard <gate_base>`,
-   `chore(goals): block <id> — <reason>`. FAIL_CONTRACT → reset + block (needs-you contract
+   `chore(goals): block <id> — <reason>`. FAIL_CONTRACT → reset + block, reason
+   `contract defect: <the verified finding>` (needs-you contract
    amendment). INCONCLUSIVE → reset + block "no runnable local gate: <the failing check's
    `evidence` from the JSON>" — the evidence names the exact cause and operator fix (e.g.
    the Windows symlink privilege below), so it must reach the block reason, not die in the
@@ -331,7 +348,10 @@ SHA of the goal's claim commit on the current branch,
 branch after that claim commit:
 
 1. **Work commits present after the claim commit** → recover `gate_base` as above, then run the
-   gate (Working a goal, step 3) against it. PASS → squash + `chore(goals): complete <id>`.
+   gate (Working a goal, step 3) against it (if the dead session's implementer report file
+   exists at `~/.local/state/pg-dispatch/<SLUG>/reports/<id>-report.md`, hand it to the
+   reviewer as usual; absent is fine — the diff and goal file suffice). PASS → squash +
+   `chore(goals): complete <id>`.
    FAIL_FIXABLE → one repair agent, re-gate (incl. the focused review re-check); still
    failing → `git reset --hard <gate_base>` +
    `chore(goals): block <id> — <reason>`. FAIL_CONTRACT → reset + block (needs-you contract
@@ -360,11 +380,25 @@ rules) and let the current goal finish. Never claim a second goal in the same di
 One Agent per claimed goal, `run_in_background: false`, NO worktree — it works in THIS
 checkout on the current branch. Set the spawn's `model` parameter to the goal's resolved
 implementer model (Implementer-model resolution above; `inherit` = omit the parameter).
-Brief (fill in `<id>` and the resolved skill lists):
+Brief (fill in `<id>`, `<SLUG>` = the repo dir name — same as the Phase 4 heartbeat —
+and the resolved skill lists):
 
 ```
 Implement the goal in docs/goals/<id>.md exactly per its "Goal contract" section — read
 that file first.
+
+Read the contract like a skeptic before you touch anything: if any acceptance criterion
+has two materially different readings and the goal file + latest context + a quick read
+of the code cannot settle which, STOP before implementing — end your turn with
+`STATUS: CONTRACT_AMBIGUOUS` plus the criterion, the readings, and what would
+disambiguate. Never guess between materially different readings: a wrong guess costs a
+full gate run plus a rollback; this stop costs nothing. The same honesty applies
+mid-work — stopping to report is never penalized, and bad work is worse than no work.
+Concrete stop triggers: an architectural fork with multiple valid approaches the
+contract does not arbitrate (report it as `STATUS: CONTRACT_AMBIGUOUS` too — the fork,
+the candidate approaches, what would disambiguate), or you are reading file after file
+without progress (report that as `STATUS: BLOCKED`, with what you searched for and what
+is missing).
 
 Latest context from the dispatcher:
 <latest plan/progress/PR bullets, or "none">
@@ -417,10 +451,12 @@ Quality loop — keep it lightweight, but do not skip it:
    the norm and stays lightweight; escalate to a read-only review Workflow only at the ~5+
    independent-checks threshold from step 3. Treat every finding as something to verify, not
    an order to obey; fix Critical/Important issues or explain why they are false. These
-   verdicts go into your final report's `Fresh-check:` block (see Finish) — the orchestrator
-   ALWAYS runs its own independent reviewer over your diff; your block is corroborating
-   evidence for it, never the verdict, and a missing block escalates to a full
-   orchestrator-run panel.
+   verdicts go into your final report's `Fresh-check:` line (see Finish) — the orchestrator
+   ALWAYS runs its own independent reviewer over your diff; your verdicts are corroborating
+   evidence for it, never the verdict, and a missing line escalates to a full
+   orchestrator-run panel. "This change feels too simple for the panel" is the classic
+   miss — the one-file mechanical-edit carve-out is judged by the diff shape, never by
+   felt simplicity.
 6. Self-review the final diff, stage only intended files, commit, and report evidence.
 
 Skills are mandatory — invoke each via the Skill tool:
@@ -441,14 +477,36 @@ Skills are mandatory — invoke each via the Skill tool:
 Finish: before committing, review your diff and stage only the files you meant to change —
 revert stray lockfile / dependency-manager / formatter churn, or any file you didn't intend
 to touch, that the toolchain introduced (never `git add -A` blind). Commit your intended
-files on the current branch and end with verification evidence (the commands you ran and
-their output), plus a labeled `Fresh-check:` block: the lens verdicts when Quality loop
-step 5 applied, or the literal line `Fresh-check: not required (one-file mechanical edit)`
-when it did not. This block is not optional — the orchestrator independently reviews your
-diff regardless (your verdicts are corroborating evidence, not the verdict), and a missing
-block or a not-required claim the diff belies (multi-file or substantive work claiming a
-mechanical one-file edit) escalates to a full orchestrator-run panel. Do NOT merge anything, do NOT
-push, do NOT open a PR — the orchestrator runs the gate and integrates.
+files on the current branch. Then write your FULL report to
+~/.local/state/pg-dispatch/<SLUG>/reports/<id>-report.md (mkdir -p the directory first;
+overwrite any prior attempt's file): the acceptance commands you ran with their final-run
+output, the TDD red/green evidence, the off-happy-path probe result, and the complete
+fresh-check lens verdicts with their findings. End your turn with ONLY a terse report —
+15 lines max:
+
+STATUS: DONE | DONE_WITH_CONCERNS | BLOCKED | GOAL_UNREACHABLE | CONTRACT_AMBIGUOUS
+Commits: <short SHA + subject, one per line; if listing would breach the 15-line cap,
+  one line: `<N> commits, <first sha>..<last sha>`>
+Tests: <one-line summary of the final acceptance run>
+Fresh-check: <one line — contract-conformance|tests-overbuild|stray-regressions
+  PASS|FAIL (step 5's lenses), or the literal `not required (one-file mechanical edit)`>
+Report: <the report file path>
+Blocker: <only for BLOCKED | GOAL_UNREACHABLE | CONTRACT_AMBIGUOUS — the criterion and
+  readings, or the blocker with key evidence and what would unlock; more lines OK
+  within the cap>
+Concerns: <only when DONE_WITH_CONCERNS — one line each>
+
+For BLOCKED / GOAL_UNREACHABLE / CONTRACT_AMBIGUOUS, put the specifics (attempted paths,
+evidence, the blocker or the ambiguous criterion and its readings) directly in the
+message — the dispatcher acts on them immediately; the report file holds evidence, never
+the lede. Everything you print stays resident in the orchestrator's context for the whole
+fire — the report file is what keeps the factory lean, and a missing report file for
+non-trivial work is itself a gate finding. The Fresh-check line is not optional — the
+orchestrator independently reviews your diff regardless (your verdicts are corroborating
+evidence, not the verdict), and a missing line or a not-required claim the diff belies
+(multi-file or substantive work claiming a mechanical one-file edit) escalates to a full
+orchestrator-run panel. Do NOT merge anything, do NOT push, do NOT open a PR — the
+orchestrator runs the gate and integrates.
 
 Constraints: the goal file's "Constraints" section verbatim, plus: never merge, never push,
 never open a PR, and NEVER edit docs/goals/ — the orchestrator owns queue state. If blocked:
@@ -458,13 +516,26 @@ acceptance criteria cannot be made green AND you cannot show the target is even
 measurable/reachable (a flaky, non-deterministic, or contradictory check), end your turn
 declaring `GOAL_UNREACHABLE: <which criterion, why unmeasurable, last measurement>` instead
 of churning your whole window — never retry the identical failing approach; the dispatcher
-routes that to a needs-you contract amendment.
+routes that to a needs-you contract amendment (a `CONTRACT_AMBIGUOUS` stop — from your
+first skeptical read or a mid-work fork — routes the same way: a contract defect, never
+your failure).
 ```
 
 After the implementer returns, run the independent review and the gate yourself
 (Working a goal, steps 3–4). A `FAIL_FIXABLE` verdict spawns ONE repair agent (same brief,
-same resolved implementer model, fed the gate findings — including any verified Critical/Important
+same resolved implementer model, fed the COMPLETE gate findings in one spawn — including any
+verified Critical/Important
 findings from the independent review); a second identical FAIL → roll back + block.
+A `CONTRACT_AMBIGUOUS` return is a contract defect caught early, not a work failure: if any
+work commits landed before the stop, `git reset --hard <gate_base>`; set the goal
+`blocked — contract defect: <criterion> ambiguous` and surface it under needs-you as a
+contract amendment (the human re-specifies via `define-goal`) — never respawn it to "try a
+reading", the respawn guesses at the same fork. A live `BLOCKED` or `GOAL_UNREACHABLE`
+return likewise skips the gate — there is nothing to certify: roll back any work commits
+(`git reset --hard <gate_base>`), then block via the claim protocol with the implementer's
+stated reason (BLOCKED → its blocker; GOAL_UNREACHABLE → `contract defect: <criterion>
+unreachable`, a needs-you contract amendment — never a respawn; same routing as
+Re-entrancy).
 
 ## Solo mode — work one named goal in this session
 
@@ -484,7 +555,9 @@ as "nothing done" to a human. Every number carries its label. The counts come fr
 after this iteration's mutations:
 - `done` = completed · `ready` = not_started with all `depends_on` completed (claimable now) ·
   `blocked` = `blocked` status or not_started with an unmet dependency · `current` = the goal
-  being worked this fire (or none) · `last` = the most recently gated goal and its verdict.
+  being worked this fire (or none) · `last` = the most recently gated goal and its verdict
+  (a goal settled this fire WITHOUT a gate run — a live BLOCKED / GOAL_UNREACHABLE /
+  CONTRACT_AMBIGUOUS short-circuit — reports `<id> FAIL` here; needs-you carries the detail).
 - Any residual `in_progress` entry this fire could not settle (e.g. one claimed on a different
   `base:` branch) counts into `blocked` (as blocked-pending) so that `done + ready + blocked`
   always equals `total` — the reconciliation the report line promises a human never silently
@@ -495,7 +568,8 @@ empty = 20 − filled. Filled cells = █, empty = ░; omit the whole bar when 
 Anchor example: 19/21 → round(18.10) = 18 filled → `[██████████████████░░]`.
 
 needs-you lists everything currently waiting on the human: every goal with explicit `blocked`
-status (with the dependents stuck behind it), `GOAL_UNREACHABLE`/`FAIL_CONTRACT` contract
+status (with the dependents stuck behind it), `GOAL_UNREACHABLE`/`CONTRACT_AMBIGUOUS`/
+`FAIL_CONTRACT` contract
 amendments, a `base:`-mismatched goal needing a branch switch, and `budget exhausted`. A
 **dep-blocked** goal (not_started, waiting on another goal still running or not yet ready) is
 NOT human-blocked: it unblocks on its own, so it never appears here on its own — only as a

@@ -13,6 +13,67 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [5.5.0] — 2026-07-17
+
+**Gate economics + contract honesty — lessons adopted from a full deep-read of
+the superpowers plugin's measured eval evidence** (its 2026-06 SDD cost/quality
+experiments: unscoped reviewers cost 4–8× on the same diff, a 42k-char dispatch
+prompt was 99% pasted history, ambiguity was the top review-loop cost driver,
+and "cheap reviewers fail by advocating for defects" — which independently
+validates this factory's session-model review rule and contract-tightness
+model rubric). Five changes:
+
+- **Reviewer diff-scope discipline.** `gate-reviewer`, `fresh-check`, and the
+  dispatch inline fallback brief now scope the reviewer's reading: read the
+  diff once (its context lines ARE the changed code); step outside it only for
+  a concrete NAMED risk — one focused check per named risk, named in the
+  report; what can't be verified that way is an uncertain finding, never a
+  license to sweep the repo. `contract-red-team` gets the targeted-lookups
+  version (named script/path/flag, never repo-wide sweeps).
+- **Implementer report file + terse `STATUS:` return.** The dispatch
+  implementer now writes its full evidence (acceptance outputs, TDD red/green,
+  off-happy-path probe, complete fresh-check verdicts) to
+  `~/.local/state/pg-dispatch/<SLUG>/reports/<id>-report.md` and returns a
+  ≤15-line fixed-format report (`STATUS: DONE | DONE_WITH_CONCERNS | BLOCKED |
+  GOAL_UNREACHABLE | CONTRACT_AMBIGUOUS`, commits, one-line tests, one-line
+  Fresh-check verdicts, report path). Everything printed stays resident in the
+  orchestrator's context all fire — the file keeps the factory lean. The gate
+  reviewer receives the report path and treats its contents as claims; Phase 1
+  recovery reads it when present.
+- **Early `CONTRACT_AMBIGUOUS` stop.** The implementer brief opens with a
+  skeptic's read: a criterion with two materially different readings that the
+  goal file + context + a quick code read can't settle → STOP before
+  implementing and report the readings; never guess (a wrong guess costs a
+  full gate + rollback; the stop costs nothing). Orchestrator routes it like
+  GOAL_UNREACHABLE — reset any partial work, `blocked — contract defect:
+  <criterion> ambiguous`, needs-you contract amendment — never a
+  guess-a-reading respawn. Explicit mid-work escalation permission with
+  concrete stop triggers (unarbitrated architectural fork; reading file after
+  file without progress); define-goal's contract review names ambiguity a
+  contract defect in its own right.
+- **Anti-laundering rules in the gate.** A stated rationale in the
+  implementer's report never downgrades a finding's severity (the maker
+  grading its own work), and a defect the goal contract itself mandates is
+  still a finding — labeled `contract-mandated`, routed FAIL_CONTRACT (a
+  repair agent cannot fix code into a defective contract). The repair path is
+  explicitly omnibus (one repair agent fed the COMPLETE findings list), and
+  the post-repair focused re-check adds a one-pass collateral scan of the
+  repair diff itself.
+- **define-goal refinements.** Dependent goals in a `depends_on` chain get an
+  **Interfaces** note in Context (the exact names the dependency produces that
+  this goal consumes — the implementer sees only its own goal file);
+  the red-team rubric checks for it (advisory). The model rubric adds
+  turn-count-beats-token-price to the `haiku` caution. Dispatch's description
+  is trimmed to triggers + invariants (a workflow-summarizing description is a
+  shortcut agents take instead of reading the body — superpowers' measured
+  failure).
+
+Repo practice: CLAUDE.md's skill-testing rule now asks for a RED baseline on
+compliance-critical rules (prove the scenario fails against the pre-change
+text) alongside the existing cite-the-section dry-runs; this release's edits
+were shipped through exactly that (4 scenario dry-runs incl. old-vs-new
+deltas).
+
 ## [5.4.0] — 2026-07-16
 
 **Named review agents + fresh-check panel protocol fix.** The factory's three

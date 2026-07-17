@@ -4,7 +4,7 @@
 
 Skills-first Claude Code marketplace from Pragmatic Growth.
 The repo now publishes four plugins from one `pragmatic-growth` marketplace:
-`flywheel` v5.4.0, `html-artifacts` v1.0.1, `autoresearch` v1.1.0, and
+`flywheel` v5.5.0, `html-artifacts` v1.0.1, `autoresearch` v1.1.0, and
 `human-writing` v1.0.1. No MCP
 servers, no commands, no build step. Two scoped exceptions to the former
 skills-only rule: ONE hook bundle
@@ -45,7 +45,14 @@ cleanup (pure guidance, no scripts).
   round, before the model stamp and the user confirmation (run-now `/goal`
   lines skip it; the `/goal` evaluator is their second view). As of v5.4.0
   that reviewer spawns as the plugin agent `flywheel:contract-red-team`
-  when available (`general-purpose` + inline rubric fallback). Produces goals
+  when available (`general-purpose` + inline rubric fallback). v5.5.0 (from
+  the superpowers eval-evidence deep-read): dependent goals in a `depends_on`
+  chain carry an Interfaces note in Context (exact names the dependency
+  produces — the implementer sees only its own goal file; red-team checks it,
+  advisory), the model rubric adds turn-count-beats-token-price to the haiku
+  caution, and ambiguity is named a contract defect in its own right
+  (dispatch implementers STOP `CONTRACT_AMBIGUOUS` on a two-readable
+  criterion instead of guessing). Produces goals
   only, never implements. Originally adapted from
   OpenAI's curated `define-goal` skill (its `create_goal`/`get_goal`
   tools don't exist here; `/goal` is user-run, transcript-
@@ -82,7 +89,20 @@ cleanup (pure guidance, no scripts).
   findings marked uncertain rather than silently dropping them, Critical
   findings quote the triggering line, pre-existing baseline failures and
   exempted test paths are named non-findings — and the implementer's verify
-  step adds one off-happy-path probe at any drivable surface), then the
+  step adds one off-happy-path probe at any drivable surface; v5.5.0 tightens
+  gate economics + honesty from the superpowers eval-evidence deep-read:
+  reviewers are diff-scoped — read the diff once, step outside only for a
+  NAMED concrete risk, one focused check per named risk, else it's an
+  uncertain finding, never a repo sweep — with two anti-laundering rules (a
+  stated rationale never downgrades severity; a contract-mandated defect is
+  still a finding → FAIL_CONTRACT, never the repair path); the implementer
+  writes full evidence to `~/.local/state/pg-dispatch/<SLUG>/reports/
+  <id>-report.md` and returns a ≤15-line `STATUS:` report (DONE |
+  DONE_WITH_CONCERNS | BLOCKED | GOAL_UNREACHABLE | CONTRACT_AMBIGUOUS) so
+  orchestrator context stays lean; an early `CONTRACT_AMBIGUOUS` stop routes
+  two-readable criteria to a needs-you contract amendment before work is
+  burned; repair is omnibus (one agent, complete findings list) and the
+  focused re-check adds a collateral scan of the repair diff), then the
   deterministic `pg_validate.py`
   over the `gate_base..HEAD` diff plus the repo's `config.verify` build+test
   commands. PASS → squash the goal's commits to one `feat(goal NNN)` commit
@@ -351,7 +371,12 @@ wrangler.jsonc                    # Cloudflare Workers static-assets deploy conf
   `plugin-dev:plugin-validator` agent before committing.
 - **Skill edits are tested.** New or changed skill mechanics get a
   subagent dry-run (scenario + "cite the section that decides each
-  answer") before shipping; close every flagged ambiguity.
+  answer") before shipping; close every flagged ambiguity. For
+  compliance-critical rules, add a RED baseline — run the same scenario
+  against the pre-change text (`git show HEAD:<file>`) and confirm the old
+  text decided it differently or left it undecided, so the rule is proven to
+  change behavior, not just read well (adopted from superpowers'
+  RED-baseline doctrine, 2026-07-17).
 
 ## Public site, changelog & releases (plugin.pragmaticgrowth.com)
 

@@ -330,6 +330,9 @@ model: sonnet   # implementer model for dispatch: inherit | opus | sonnet | haik
 
 ## Context / why
 <source (request or report excerpt), plus code areas you located>
+<if this goal has a `depends_on` entry in index.yaml: an **Interfaces** note — the exact
+names the dependency produces that this goal consumes (functions, routes, schema, paths,
+commands)>
 
 ## Acceptance criteria
 - [ ] <observable behavior 1>
@@ -378,7 +381,11 @@ never grind past a blocker. Stop after <N> turns.
 
 Titles are plain language ("Customers get a receipt email after payment"), not jargon.
 One goal = one independently shippable change; split an ambitious want only when the parts
-ship and verify independently, ordering with `depends_on` for sequencing.
+ship and verify independently, ordering with `depends_on` for sequencing. Every dependent
+goal in a chain gets an **Interfaces** note in its Context: the exact names its dependency
+produces that this goal consumes (functions, routes, schema/table names, file paths,
+commands) — a dependent goal's implementer sees only its own goal file, and re-discovering
+a sibling's surface burns its window or, worse, gets guessed.
 Tight scoping is the cheapest brake: the optional `size:` hint (S|M|L) lets `dispatch`
 and any budget cap size a run — a goal whose acceptance is one mechanical check should
 read as `S`.
@@ -420,7 +427,10 @@ neither belongs in the gate's `acceptance:` field.
 **For `type: bug`, `acceptance:` MUST include a command that actually executes the
 regression test** — not just `typecheck`/`lint`/`build`. The local gate's repro-direction
 check runs these commands on the branch diff and expects at least one to go red without the
-fix and green with it. If none of them run the proving test (e.g. acceptance is only
+fix and green with it (the one exception: `already_correct: true` goals — recon showed the
+code already correct, the fix is a locking regression test, nothing goes red on base; the
+gate reads that frontmatter key and drops the red-without-the-fix expectation, though the
+locking test must still run and pass). If none of them run the proving test (e.g. acceptance is only
 typecheck/lint/build while the bug is a runtime mismatch), the regression test's behavior
 can't be confirmed and the gate can't verify the fix. Name the precise test command that runs
 the failing test — scoped to the owning package is fine (e.g.
@@ -433,7 +443,9 @@ behavior criteria; a chore's full-suite check replaces the owning-package one):
 - **bug** — Context carries the repro evidence and ALL of recon's root-cause hypotheses
   with their `path:line` evidence (including the losing ones — the implementer's failing
   test arbitrates). First acceptance criterion, always: "a failing test reproducing the
-  root cause, passing after the fix." The command that runs that test MUST appear in
+  root cause, passing after the fix" — unless `already_correct: true` applies (see the
+  template frontmatter), where it becomes "a locking regression test, green on base and
+  after". The command that runs that test MUST appear in
   `acceptance:` (see above) — the local gate checks repro-direction (red without the fix,
   green with it), so a test no acceptance command executes can't be verified.
 - **feature** — Outcome reads as what the user sees working; Context lists the surfaces
@@ -464,8 +476,11 @@ rule and `config.budget` back it up).
 ## Contract review — red-team the draft before it queues (queue destination only)
 
 A contract defect discovered at dispatch time costs a full implementer run plus a
-rollback (`FAIL_CONTRACT` / `GOAL_UNREACHABLE`); the same defect found now costs one
-read-only agent. So every QUEUED goal gets an independent contract review after its
+rollback (`FAIL_CONTRACT` / `GOAL_UNREACHABLE` / a `CONTRACT_AMBIGUOUS` stop); the same
+defect found now costs one
+read-only agent. Ambiguity is a defect in its own right: dispatch's implementers are
+briefed to STOP on a criterion with two materially different readings rather than guess —
+so a criterion this review leaves two-readable comes straight back as a blocked goal. So every QUEUED goal gets an independent contract review after its
 criteria are drafted — the second view on the contract itself, mirroring the independent
 review dispatch runs on the diff. Run-now `/goal` lines skip it: the user is present and
 the `/goal` evaluator model already provides a second view at run time.
@@ -492,6 +507,9 @@ file content. Its brief: try to BREAK the contract, not approve it —
   over-constraining; nothing dev-server-dependent sits in `acceptance:` (headless-only).
 - **Termination**: the `/goal` line is transcript-provable and under the 4,000-char cap,
   the turn cap is present and sized, and the If-blocked / GOAL_UNREACHABLE path exists.
+- **Cross-goal** (whenever reviewing more than one draft): overlaps, the same file
+  migrated twice, wrong or missing `depends_on` ordering, duplicated or conflicting
+  criteria, and a dependent goal missing its Interfaces note (advisory).
 
 It returns findings with severity — **contract-blocking** vs **advisory** — each naming
 the draft line and what would fix it. Findings are hypotheses: verify each against the
@@ -532,6 +550,9 @@ contract is the input. Rate the contract you actually wrote, not the topic:
 - **`inherit` — match the orchestrator's session model.** For the rare goal that must get
   the strongest model available in the session, whichever the user selected.
 - **`haiku` — only a truly rote one-file mechanical chore.** When in doubt, don't.
+  Turn count beats token price: a cheaper model takes 2–3× the turns on multi-step work,
+  so an under-modeled goal costs more, not less — the discount is real only when the
+  contract reads as pure transcription.
 
 Genuinely unsure between two tiers → pick the stronger. And if the honest reason a goal
 needs `opus` is that its criteria are loose, tighten the contract first — a vague contract

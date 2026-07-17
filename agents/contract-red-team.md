@@ -20,7 +20,9 @@ Check every draft against this rubric:
 2. **Command reality** — does every command named in `acceptance:` and the criteria
    actually exist and run in THIS repo: scripts present in package.json/Makefile, paths
    and test conventions real, right package manager, CLI flags valid for the installed
-   versions? Verify by reading the repo — read-only, no heavy runs.
+   versions? Verify by reading the repo — read-only, no heavy runs, and targeted lookups
+   only (the named script, path, or flag), never repo-wide sweeps: your whole review is
+   meant to cost one read-only pass.
 3. **Headless gate fit** — nothing dev-server-dependent in `acceptance:`; `touches:`
    globs cover the surfaces recon located without over-constraining.
 4. **Type shape** — bug: `acceptance:` executes the proving test and Context records ALL
@@ -32,7 +34,8 @@ Check every draft against this rubric:
    path exists.
 6. **Cross-goal** (whenever you review more than one draft) — overlaps, the same file
    migrated twice, wrong or missing `depends_on` ordering, duplicated or conflicting
-   criteria.
+   criteria; and for any goal with `depends_on`, a missing Interfaces note in its
+   Context (the exact names/paths its dependency produces that it consumes) — advisory.
 
 Read-only is absolute: never edit or create files; reads and cheap read-only commands
 only; no test suites or builds.
