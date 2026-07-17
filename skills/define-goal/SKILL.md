@@ -25,7 +25,20 @@ Start by extracting a short brief from the user's words and current repo context
 desired outcome, target repo/system/environment, success evidence, scope/out of scope,
 urgency, and any action that could be irreversible or externally visible. Ask one concise
 proactive question round (max 4 questions) only when missing information would change the
-outcome, validator, scope, risk gate, or destination. If repo/context already answers it,
+outcome, validator, scope, risk gate, or destination — each question with concrete options
+and a recommended default (AskUserQuestion renders them as choices; the user can always
+type their own). Order the round split-first: when the want might span multiple
+independently shippable pieces, the split question comes before any detail question — a
+round spent refining details of a want that then splits is a wasted interrupt. One round
+is the default, not a hard cap: when a round-1 answer (or a contract-review finding)
+materially changes the outcome, validator, or scope — a genuine fork between two
+readings — ask ONE more targeted round (1–2 questions) rather than stating an assumption;
+define time is the attended, cheapest place to resolve what would otherwise come back
+from dispatch as a `CONTRACT_AMBIGUOUS` blocked goal. Two rounds total is the hard cap,
+whichever trigger spends the second — never a third; past it, fall back to the
+assumption/conservative-validator rule below. A review-finding-triggered round feeds its
+answer into the review's fix step (the contract review itself still runs ONCE — never a
+review loop). If repo/context already answers it,
 state the assumption and proceed; if the user cannot answer, choose the conservative binary
 validator available and include the uncertainty in the goal's If blocked/stop condition.
 

@@ -13,6 +13,35 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [5.5.1] — 2026-07-17
+
+**Adaptive questioning at intake (brainstorming-informed, deliberately scoped).**
+define-goal's question round adopts the two virtues worth taking from
+superpowers' progressive one-at-a-time questioning without its dialogue cost:
+
+- **Split-first ordering** — when a want might span multiple independently
+  shippable pieces, the split question always precedes any detail question
+  (a round spent refining details of a want that then splits is a wasted
+  interrupt).
+- **One adaptive second round** — one round is now the default, not a hard
+  cap: when a round-1 answer (or a contract-review finding) materially
+  changes the outcome, validator, or scope, ONE more targeted round
+  (1–2 questions) is asked instead of stating an assumption. Two rounds
+  total is the hard cap whichever trigger spends the second; a
+  review-triggered round feeds the review's fix step (the review itself
+  still runs once, never a loop). Rationale: v5.5.0 made
+  ambiguity expensive and visible (a two-readable criterion comes back from
+  dispatch as a `CONTRACT_AMBIGUOUS` blocked goal), and define time is the
+  attended, cheapest place in the pipeline to resolve a fork.
+- Questions carry concrete options with a recommended default
+  (AskUserQuestion choice UI — superpowers' multiple-choice preference,
+  delivered in one interrupt instead of a message per question).
+
+NOT adopted, by decision: full progressive dialogue, section-by-section
+design approval, and 2–3-approaches-with-trade-offs — those belong to design
+work; a contract that starts specifying approach is scope creep into the
+implementer's job.
+
 ## [5.5.0] — 2026-07-17
 
 **Gate economics + contract honesty — lessons adopted from a full deep-read of

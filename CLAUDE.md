@@ -4,7 +4,7 @@
 
 Skills-first Claude Code marketplace from Pragmatic Growth.
 The repo now publishes four plugins from one `pragmatic-growth` marketplace:
-`flywheel` v5.5.0, `html-artifacts` v1.0.1, `autoresearch` v1.1.0, and
+`flywheel` v5.5.1, `html-artifacts` v1.0.1, `autoresearch` v1.1.0, and
 `human-writing` v1.0.1. No MCP
 servers, no commands, no build step. Two scoped exceptions to the former
 skills-only rule: ONE hook bundle
@@ -52,7 +52,12 @@ cleanup (pure guidance, no scripts).
   advisory), the model rubric adds turn-count-beats-token-price to the haiku
   caution, and ambiguity is named a contract defect in its own right
   (dispatch implementers STOP `CONTRACT_AMBIGUOUS` on a two-readable
-  criterion instead of guessing). Produces goals
+  criterion instead of guessing). v5.5.1: the question round is split-first
+  (split question before detail questions), option-based with a recommended
+  default, and adaptively two-round — ONE extra targeted round (1–2
+  questions) when a round-1 answer or review finding opens a genuine fork,
+  two rounds total the hard cap
+  (progressive one-at-a-time dialogue deliberately NOT adopted). Produces goals
   only, never implements. Originally adapted from
   OpenAI's curated `define-goal` skill (its `create_goal`/`get_goal`
   tools don't exist here; `/goal` is user-run, transcript-
