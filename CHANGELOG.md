@@ -62,7 +62,7 @@ that actually works.**
   the parse error and a `/factory-doctor` pointer, printing nothing — a partial
   queue read is worse than none. One unparseable **goal file** still degrades to
   an `(untitled)` row and never takes the view down.
-- `SKILL.md` 64 → 40 lines, `goals_status.py` 422 → 291, tests 309 → 241 with
+- `SKILL.md` 64 → 45 lines, `goals_status.py` 422 → 291, tests 309 → 241 with
   new coverage for both failure paths.
 
 ## [5.5.1] — 2026-07-17
