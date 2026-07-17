@@ -5,7 +5,7 @@ A skills-first plugin marketplace for [Claude Code](https://claude.com/claude-co
 from Pragmatic Growth.
 
 [![Website](https://img.shields.io/badge/site-plugin.pragmaticgrowth.com-6366f1)](https://plugin.pragmaticgrowth.com)
-[![Version](https://img.shields.io/badge/version-5.5.1-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-6.0.0-8b5cf6)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
 > 🌐 **Full docs:** **<https://plugin.pragmaticgrowth.com>**
@@ -34,14 +34,13 @@ guidance: scheduled dispatch over a work queue, goal contracts with verifiable
 stop conditions, deterministic gate scripts, and fresh-context review.
 
 It is **skills-first**: no MCP servers, no slash commands of its own, no
-background daemons, no build step — plus one hook bundle (the
-`telegram-message` notifier, dormant until you set it up) and three
+background daemons, no hooks, no build step — plus three
 read-only [subagent](https://code.claude.com/docs/en/sub-agents) definitions
 (`flywheel:gate-reviewer`, `flywheel:fresh-check`,
 `flywheel:contract-red-team` — the factory's review roles, tool-restricted so
 they can never edit files, and only used when a flywheel skill spawns them).
 The marketplace
-exposes four plugins: `flywheel` with six workflow
+exposes four plugins: `flywheel` with five workflow
 [skills](https://docs.claude.com/en/docs/claude-code/skills),
 `html-artifacts` as a separate rich-deliverables plugin,
 `autoresearch` for autonomous optimization loops, and
@@ -62,7 +61,7 @@ want a review surface — flywheel just doesn't require one.)
 
 | Plugin | What it contains | Install |
 |---|---|---|
-| **flywheel** | `define-goal`, `dispatch`, `goals-status`, `loop-architect`, `factory-doctor`, and `telegram-message` for the docs/goals execution pipeline. | `/plugin install flywheel@pragmatic-growth` |
+| **flywheel** | `define-goal`, `dispatch`, `goals-status`, `loop-architect`, and `factory-doctor` for the docs/goals execution pipeline. | `/plugin install flywheel@pragmatic-growth` |
 | **html-artifacts** | One `html-artifacts` skill with references for self-contained browser deliverables. | `/plugin install html-artifacts@pragmatic-growth` |
 | **autoresearch** | One `autoresearch` skill (+ a Python helper) for an autonomous try/measure/keep/revert optimization loop. | `/plugin install autoresearch@pragmatic-growth` |
 | **human-writing** | One `human-writing` skill that strips AI-writing tells and adds human voice. | `/plugin install human-writing@pragmatic-growth` |
@@ -73,10 +72,9 @@ want a review surface — flywheel just doesn't require one.)
 |---|---|---|
 | **define-goal** | Plain-language want → a measurable, red-teamed goal contract (or a whole document of them). Never writes code. | `/define-goal …` · or just say *“I want…”* |
 | **dispatch** | The factory orchestrator: works one ready goal per run — claim, implement with TDD + fresh checks, independent-review-backed local gate, keep or roll back. | `/dispatch` · *”work goal 005”* |
-| **goals-status** | Read-only view of the open queue: every `in_progress` / `blocked` / `not_started` goal with its title + brief (completed hidden). Detailed, `--compact`, or `--json`. | `/goals-status` |
+| **goals-status** | Read-only view of the open queue: every `in_progress` / `blocked` / `not_started` goal with its title + brief (completed hidden). | `/goals-status` |
 | **loop-architect** | Designs the *loop contract* (prompt + verification + stop conditions) for autonomous, scheduled, or remote runs. | *“keep working on X”* · setting up a `/loop`, routine, or cron |
 | **factory-doctor** | One-pass preflight/doctor for the repo + machine. Auto-fixes everything local; reports the rest with exact fixes. | `/factory-doctor` |
-| **telegram-message** | Wires a Telegram bot to DM you when an autonomous run errors, hits a usage limit, waits on you, finishes, or a dispatch fire reports. Hook pings are dispatch-gated by default — interactive sessions never flood the chat. Project-scoped personal settings, stored outside the repo. | `/telegram-message <bot_token> [chat_id]` |
 
 In Claude Code the workflow skills are namespaced — `flywheel:define-goal`,
 etc. `html-artifacts` installs as its own plugin and exposes
@@ -204,8 +202,7 @@ docs/goals — 3 open · 5 completed (hidden)
   ⏳ waiting on 002-rate-limit-api
 ```
 
-`--compact` gives one line per goal; `--json` emits it for scripting. It never
-changes the queue or starts work — that's `/dispatch`.
+It never changes the queue or starts work — that's `/dispatch`.
 
 ### loop-architect — make it run itself, safely
 
@@ -236,34 +233,6 @@ demonstrably fires but has no rail that survives an account limit stop) —
 `.claude/` settings) and
 reporting remote/CI issues with the exact fix. It diagnoses and fixes setup; it
 never implements goals.
-
-### telegram-message — get pinged when a run needs you
-
-An overnight `/loop /dispatch` can stall for reasons you want to hear about
-immediately: it hit a usage limit, an API/billing/auth error killed a turn, the
-agent is waiting on a permission prompt, or the queue drained. **telegram-message**
-wires a Telegram bot so those become a DM. Set it up once —
-`/telegram-message <bot_token> [chat_id]` — and the plugin's hooks
-(`StopFailure` → errors/limits, `Notification` → agent-waiting, `SessionEnd` →
-run finished) call a tiny stdlib notifier that POSTs to your bot.
-
-- **Dispatch-gated by default (v4.14).** Hook pings fire only around a live
-  dispatch run in that repo — the notifier checks dispatch's per-fire `active`
-  marker and heartbeat freshness (≤ 4 h) — so parallel interactive sessions
-  (idle prompts, plan questions, teammate blips) never flood the chat. The
-  dispatch report category is never gated; `"gate_on_dispatch": false` restores
-  fire-always hooks for a scope.
-- **Verified where it counts.** `StopFailure` and `SessionEnd` fire in headless
-  `claude -p` runs, so an unattended external-scheduler drain (see loop-architect
-  Step 5) pings you on the exact usage-limit stop the v4.10 work made survivable.
-- **Personal, project-scoped, unpushable.** Setup is **per-project by default**
-  (different bots/chats per repo, or `enabled:false` to silence one project),
-  with `--global` as the machine-wide fallback — and every config lives in a
-  chmod-600 file under `~/.local/state/pg-telegram/`, **outside the repo**, so
-  your token can never be committed or pushed, whatever scope the plugin itself
-  is installed at. The hooks ship dormant and no-op until you run the command.
-- **Cloud covered too.** Cloud runs (routines, automations) use
-  `PG_TELEGRAM_BOT_TOKEN`/`PG_TELEGRAM_CHAT_ID` env vars — no state file needed.
 
 ### autoresearch plugin — optimize by experiment
 
@@ -520,7 +489,6 @@ flywheel/
 ├── .claude-plugin/
 │   ├── plugin.json        # flywheel plugin manifest
 │   └── marketplace.json   # the pragmatic-growth marketplace, listing all four plugins
-├── hooks/hooks.json       # telegram-message notifier hooks (Claude Code; dormant until set up)
 ├── skills/
 │   ├── define-goal/SKILL.md
 │   ├── dispatch/
@@ -529,14 +497,11 @@ flywheel/
 │   │       └── pg_validate.py         # local gate: per-goal acceptance + structural checks, PASS/FAIL verdict
 │   ├── goals-status/
 │   │   ├── SKILL.md
-│   │   └── scripts/goals_status.py    # read-only view of the open queue (detailed/--compact/--json)
+│   │   └── scripts/goals_status.py    # read-only view of the open queue
 │   ├── factory-doctor/
 │   │   ├── SKILL.md
 │   │   └── scripts/doctor_checks.py   # read-only readiness probe
-│   ├── loop-architect/SKILL.md
-│   └── telegram-message/
-│       ├── SKILL.md
-│       └── scripts/pg_telegram_notify.py  # stdlib Telegram notifier (never-crash, no-op until configured)
+│   └── loop-architect/SKILL.md
 ├── plugins/
 │   ├── html-artifacts/
 │   │   ├── .claude-plugin/plugin.json

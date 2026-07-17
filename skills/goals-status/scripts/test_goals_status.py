@@ -1,9 +1,9 @@
 """Tests for goals_status.py. Run: python3 test_goals_status.py  (or pytest).
 
-Loads the target by path (no install needed), exercises the pure functions and
-the PyYAML-absent fallbacks, and runs the real CLI over a temp fixture queue.
+Loads the target by path (no install needed), exercises the pure functions, and
+runs the real CLI over a temp fixture queue.
 """
-import importlib.util, json, os, subprocess, sys, tempfile
+import importlib.util, os, subprocess, sys, tempfile
 
 _here = os.path.dirname(os.path.abspath(__file__))
 _spec = importlib.util.spec_from_file_location(
@@ -74,9 +74,9 @@ def _make_queue():
 
 # ---- index parsing -----------------------------------------------------------
 
-def test_parse_index_pyyaml():
+def test_load_index_reads_entries():
     d = _make_queue()
-    goals = gs.parse_index(os.path.join(d, "index.yaml"))
+    goals = gs.load_index(os.path.join(d, "index.yaml"))
     assert set(goals) == {"001-done", "002-rate-limit-api", "003-receipt-dupes",
                           "004-invoice-pdf", "005-export-csv", "006-missing"}
     assert goals["002-rate-limit-api"]["status"] == "in_progress"
@@ -84,42 +84,25 @@ def test_parse_index_pyyaml():
     assert "gate FAIL" in goals["003-receipt-dupes"]["reason"]
 
 
-def test_parse_index_empty_and_missing():
+def test_load_index_empty_and_missing():
     d = tempfile.mkdtemp(prefix="goals-status-empty-")
     with open(os.path.join(d, "index.yaml"), "w") as f:
         f.write("config:\n  base: main\ngoals: {}\n")
-    assert gs.parse_index(os.path.join(d, "index.yaml")) == {}
-    assert gs.parse_index(os.path.join(d, "nope.yaml")) == {}
+    assert gs.load_index(os.path.join(d, "index.yaml")) == {}
+    assert gs.load_index(os.path.join(d, "nope.yaml")) == {}
 
 
-def test_parse_index_stdlib_fallback():
-    d = _make_queue()
-    saved = gs.yaml
+def test_load_index_malformed_raises_queue_error():
+    """A broken index must be loud: a partial queue read is worse than none."""
+    d = tempfile.mkdtemp(prefix="goals-status-bad-")
+    with open(os.path.join(d, "index.yaml"), "w") as f:
+        f.write("goals:\n  001-x: {status: not_started\n  broken: [[[\n")
     try:
-        gs.yaml = None  # force the hand parser
-        goals = gs.parse_index(os.path.join(d, "index.yaml"))
-    finally:
-        gs.yaml = saved
-    assert goals["002-rate-limit-api"]["status"] == "in_progress"
-    assert goals["005-export-csv"]["depends_on"] == ["002-rate-limit-api"]
-    assert "gate FAIL" in goals["003-receipt-dupes"]["reason"]
-    # `goals: {}` empty must survive the fallback too
-    e = tempfile.mkdtemp(prefix="goals-status-empty2-")
-    with open(os.path.join(e, "index.yaml"), "w") as f:
-        f.write("config:\n  base: main\ngoals: {}\n")
-    try:
-        gs.yaml = None
-        assert gs.parse_index(os.path.join(e, "index.yaml")) == {}
-    finally:
-        gs.yaml = saved
-
-
-def test_split_top_level_bracket_and_quote_aware():
-    assert gs._split_top_level("a, b, c") == ["a", "b", "c"]
-    assert gs._split_top_level("status: x, depends_on: [a, b]") == \
-        ["status: x", "depends_on: [a, b]"]
-    assert gs._split_top_level('reason: "a, b", status: x') == \
-        ['reason: "a, b"', "status: x"]
+        gs.load_index(os.path.join(d, "index.yaml"))
+    except gs.QueueError as e:
+        assert "factory-doctor" in str(e)
+    else:
+        raise AssertionError("malformed index.yaml must raise QueueError")
 
 
 # ---- frontmatter + brief -----------------------------------------------------
@@ -128,7 +111,7 @@ def test_parse_goal_file_fields_and_brief():
     d = _make_queue()
     gf = gs.parse_goal_file(os.path.join(d, "002-rate-limit-api.md"))
     assert gf["title"] == "Rate-limit the public API"
-    assert gf["type"] == "feature"      # inline comment stripped
+    assert gf["type"] == "feature"      # inline comment stripped by YAML
     assert gf["model"] == "sonnet"
     assert gf["brief"].startswith("Callers hitting /api/*")
     assert "degrading the service" in gf["brief"]
@@ -142,18 +125,16 @@ def test_parse_goal_file_missing():
     assert gf["brief"] == ""
 
 
-def test_frontmatter_and_brief_stdlib_fallback():
-    d = _make_queue()
-    saved = gs.yaml
-    try:
-        gs.yaml = None
-        gf = gs.parse_goal_file(os.path.join(d, "003-receipt-dupes.md"))
-    finally:
-        gs.yaml = saved
-    assert gf["title"] == "Stop duplicate receipt emails"
-    assert gf["type"] == "bug"          # `# bug | feature | chore` comment stripped
-    assert gf["model"] == "opus"
-    assert gf["brief"].startswith("Some customers receive two receipts")
+def test_parse_goal_file_malformed_frontmatter_degrades_not_crashes():
+    """One unparseable goal file must not take the whole view down."""
+    d = tempfile.mkdtemp(prefix="goals-status-ugly-")
+    p = os.path.join(d, "002-ugly.md")
+    with open(p, "w") as f:
+        f.write('---\nid: 002-ugly\ntitle: "unterminated\ntype: [[[broken\n---\n\n'
+                "## Outcome (plain language)\nStill readable prose.\n")
+    gf = gs.parse_goal_file(p)
+    assert gf["title"] == "(untitled)"
+    assert gf["brief"] == "Still readable prose."   # body still parses
 
 
 def test_extract_brief_fallbacks():
@@ -213,37 +194,6 @@ def test_render_detailed_hides_completed_and_shows_title_brief():
     assert out.index("IN PROGRESS") < out.index("BLOCKED") < out.index("NOT STARTED")
 
 
-def test_render_compact_one_line_and_note():
-    d = _make_queue()
-    out = gs.render_compact(gs.build_report(d))
-    assert "5 open · 2 done" in out
-    assert "Rate-limit the public API" in out
-    assert "waiting on 002-rate-limit-api" in out
-    assert "001-done" not in out
-
-
-def test_render_compact_is_exactly_one_line_per_goal():
-    d = _make_queue()
-    out = gs.render_compact(gs.build_report(d))
-    body = [ln for ln in out.splitlines() if ln.strip() and "docs/goals" not in ln]
-    assert len(body) == 5, body                     # 5 open goals → 5 lines
-    ip = [ln for ln in body if ln.startswith("IN PROGRESS")]
-    assert len(ip) == 1
-    # status label + id + title all on the SAME line
-    assert "002-rate-limit-api" in ip[0] and "Rate-limit the public API" in ip[0]
-
-
-def test_render_json_shape():
-    d = _make_queue()
-    payload = json.loads(gs.render_json(gs.build_report(d)))
-    assert payload["open"] == 5 and payload["completed"] == 2
-    g = {x["id"]: x for x in payload["goals"]}
-    assert set(g["002-rate-limit-api"]) >= {
-        "id", "status", "title", "type", "model", "brief",
-        "reason", "waiting_on", "ready"}
-    assert g["005-export-csv"]["waiting_on"] == ["002-rate-limit-api"]
-
-
 def test_empty_and_all_completed_messages():
     d = tempfile.mkdtemp(prefix="goals-status-msg-")
     with open(os.path.join(d, "index.yaml"), "w") as f:
@@ -262,44 +212,26 @@ def _run_cli(*args):
     return r.returncode, r.stdout, r.stderr
 
 
-def test_malformed_index_warns_not_silent_empty():
-    if gs.yaml is None:
-        return  # the warning only fires when PyYAML is the primary parser
-    bad = "goals:\n\t001-x: {status: not_started}\n"  # tab indent → YAML error
-    try:
-        gs.yaml.safe_load(bad)
-        return  # this PyYAML tolerated it — not a malformed case, skip
-    except Exception:
-        pass
-    d = tempfile.mkdtemp(prefix="goals-status-bad-")
-    with open(os.path.join(d, "index.yaml"), "w") as f:
-        f.write(bad)
-    rep = gs.build_report(d)
-    assert rep is not None
-    assert rep.get("warning") and "best-effort" in rep["warning"]
-    _, out, err = _run_cli("--dir", d)          # text mode warns on stderr
-    assert "best-effort" in err
-    payload = json.loads(_run_cli("--dir", d, "--json")[1])  # json carries it
-    assert "warning" in payload
-
-
-def test_cli_default_json_compact_and_exit_codes():
+def test_cli_default_view_and_exit_codes():
     d = _make_queue()
     rc, out, _ = _run_cli("--dir", d)
     assert rc == 0 and "IN PROGRESS" in out and "Rate-limit the public API" in out
 
-    rc, out, _ = _run_cli("--dir", d, "--json")
-    assert rc == 0 and json.loads(out)["open"] == 5
-
-    rc, out, _ = _run_cli("--dir", d, "--compact")
-    assert rc == 0 and "5 open · 2 done" in out
-
-    # no queue → exit 2
+    # no queue → exit 2, pointing at the fix
     empty = tempfile.mkdtemp(prefix="goals-status-none-")
     rc, out, err = _run_cli("--dir", empty)
     assert rc == 2 and "factory-doctor" in err
-    rc, out, _ = _run_cli("--dir", empty, "--json")
-    assert rc == 2 and json.loads(out)["error"]
+
+
+def test_cli_malformed_index_exits_2_not_silently_empty():
+    d = tempfile.mkdtemp(prefix="goals-status-badcli-")
+    with open(os.path.join(d, "index.yaml"), "w") as f:
+        f.write("goals:\n  001-x: {status: not_started\n  broken: [[[\n")
+    rc, out, err = _run_cli("--dir", d)
+    assert rc == 2, (rc, out, err)
+    assert "factory-doctor" in err
+    assert "not valid YAML" in err
+    assert out == ""            # never print a half-view as if it were the queue
 
 
 if __name__ == "__main__":

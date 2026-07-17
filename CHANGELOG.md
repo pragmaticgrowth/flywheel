@@ -13,6 +13,58 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [6.0.0] — 2026-07-17
+
+**BREAKING: the `telegram-message` skill is sunset, and flywheel ships no hooks
+again.** The bot notifier (v4.11.0 → v4.14.0) is removed entirely — skill,
+`scripts/pg_telegram_notify.py`, its test suite, and `hooks/hooks.json`, which
+existed only to serve it. `flywheel` now has **five** skills, and the repo's
+skills-first rule is back to a single exception (the three read-only review
+agents in `agents/`). Upgrading removes `/telegram-message`; there is no
+replacement. To stop the DMs entirely, also delete
+`~/.local/state/pg-telegram/` (it holds the bot token config; nothing else
+reads it).
+
+- **dispatch loses the `active` fire marker too.** Every fire wrote
+  `~/.local/state/pg-dispatch/<SLUG>/active` at start and removed it at end,
+  purely so the notifier could gate its hook pings on a live fire. With the
+  notifier gone the marker had **zero readers**, so it went with it: ~14 lines
+  and two shell commands per fire. The **heartbeat** is untouched — it is a
+  different file, and both factory-doctor's queue-liveness probe and the
+  cross-fire transient-death brake still count its lines.
+- **factory-doctor is unchanged.** Its `limit-resilience` probe reads
+  `StopFailure` hooks from `.claude/settings.json` only, never the plugin's
+  own hook bundle, so external-scheduler/usage-limit advice still works.
+- Retained deliberately: the v4.11.0–v4.14.0 changelog entries above (history
+  is never deleted), and loop-architect's generic note that channels
+  (Telegram/Discord/iMessage) can carry two-way chat into a live session —
+  that is Claude Code advice, not this skill.
+
+**goals-status is simplified — one view, one command, and a resolution chain
+that actually works.**
+
+- **Fixed: the helper-path chain was broken under zsh.** SKILL.md told Claude
+  to resolve the script via a `~/.claude/plugins/{cache,marketplaces}/*/…`
+  brace glob. When `$CLAUDE_PLUGIN_ROOT` is unset, zsh aborts the command with
+  `no matches found` rather than passing the pattern through — the fallback
+  never ran. It is now one bash block (`$CLAUDE_PLUGIN_ROOT`, else a quoted
+  `find` over `~/.claude/plugins`, newest by `sort -V`), which also collapses
+  2–3 agent round trips into one.
+- **One view.** `--compact`, `--json`, and `--self-test` are removed (no
+  callers anywhere; pytest already runs the suite). The CLI is
+  `goals_status.py [--dir PATH]`. The default detailed view is **byte-identical**
+  to v5.5.1's.
+- **PyYAML-only.** The ~80-line hand-rolled YAML fallback is gone: factory-doctor
+  already reports a missing PyYAML *and* a malformed index as BLOCKERs, so the
+  fallback was unreachable in any supported environment and its best-effort read
+  duplicated a fix the doctor already prescribes.
+- **Failure is now split by blast radius.** An unreadable **index** exits 2 with
+  the parse error and a `/factory-doctor` pointer, printing nothing — a partial
+  queue read is worse than none. One unparseable **goal file** still degrades to
+  an `(untitled)` row and never takes the view down.
+- `SKILL.md` 64 → 40 lines, `goals_status.py` 422 → 291, tests 309 → 241 with
+  new coverage for both failure paths.
+
 ## [5.5.1] — 2026-07-17
 
 **Adaptive questioning at intake (brainstorming-informed, deliberately scoped).**

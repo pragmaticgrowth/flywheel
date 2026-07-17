@@ -4,12 +4,10 @@
 
 Skills-first Claude Code marketplace from Pragmatic Growth.
 The repo now publishes four plugins from one `pragmatic-growth` marketplace:
-`flywheel` v5.5.1, `html-artifacts` v1.0.1, `autoresearch` v1.1.0, and
+`flywheel` v6.0.0, `html-artifacts` v1.0.1, `autoresearch` v1.1.0, and
 `human-writing` v1.0.1. No MCP
-servers, no commands, no build step. Two scoped exceptions to the former
-skills-only rule: ONE hook bundle
-(`hooks/hooks.json`, the `telegram-message` notifier; added by explicit owner
-decision 2026-07-07) and, as of v5.4.0, THREE plugin agent definitions
+servers, no commands, no hooks, no build step. ONE scoped exception to the
+skills-only rule, as of v5.4.0: THREE plugin agent definitions
 (root `agents/` — the factory's read-only review roles `gate-reviewer`,
 `fresh-check`, `contract-red-team`; added by owner-delegated decision
 2026-07-16 after transcript forensics on real dispatch runs showed
@@ -19,8 +17,8 @@ Edit/Write/Agent, pins no `model:`, and has a deliberately narrow
 description so Claude never auto-delegates to it outside flywheel skills;
 the skills always keep a `general-purpose`-with-inline-brief fallback, and
 the built-in Explore type is banned for review roles).
-`flywheel` has six skills under root
-`skills/` (four ship deterministic Python helpers in `scripts/`), forming a
+`flywheel` has five skills under root
+`skills/` (three ship deterministic Python helpers in `scripts/`), forming a
 plain-language → autonomous-execution pipeline around a file-based goal queue
 (`docs/goals/` in target repos). `html-artifacts` lives under
 `plugins/html-artifacts/` as a separate plugin for rich
@@ -124,17 +122,25 @@ cleanup (pure guidance, no scripts).
   claim's date (≥3 fires with zero work commits → `blocked: repeated transient
   death`) instead of wall-clock age, so an account usage-limit pause (no fires
   → no lines) resumes a claim rather than mislabeling it dead.
-- **goals-status** (v5.2.0) — read-only view of the docs/goals queue. Prints
+- **goals-status** (v5.2.0; simplified in v6.0.0) — read-only view of the
+  docs/goals queue. Prints
   every OPEN goal — `in_progress`, `blocked`, `not_started` — with its title and
   a one-line brief (the goal file's `## Outcome (plain language)` paragraph),
   grouped in that order and id-sorted within a group; `completed` goals are
   hidden (only counted, including `archive.yaml`). Blocked goals show their
   index `reason`; a `not_started` goal waiting on an unfinished dependency shows
-  what it waits on. Three modes — detailed (default), `--compact`, `--json`.
-  Ships a stdlib helper `scripts/goals_status.py` (PyYAML-primary, stdlib
-  fallback for the queue's inline-map format + goal-file frontmatter), resolved
-  via the same `$CLAUDE_PLUGIN_ROOT` fallback chain as the other scripts.
-  Strictly read-only — never claims, changes, or implements a goal (that's
+  what it waits on. ONE view — the `--compact`/`--json` modes and the
+  `--self-test` flag were cut in v6.0.0 (zero callers; pytest already runs the
+  suite). Ships `scripts/goals_status.py`, PyYAML-only: factory-doctor already
+  treats a missing PyYAML and a malformed index as BLOCKERs, so v6.0.0 dropped
+  the ~80-line hand-rolled fallback rather than ship a second, weaker YAML
+  reader. Failure is split deliberately — an unreadable **index** exits 2 with a
+  `/factory-doctor` pointer and prints nothing (a partial queue read is worse
+  than none), while one unparseable **goal file** degrades to `(untitled)` and
+  never takes the view down. SKILL.md resolves the helper in ONE bash block
+  (`$CLAUDE_PLUGIN_ROOT`, else a `find` over `~/.claude/plugins`); the old
+  brace-glob chain aborted under zsh with `no matches found`. Strictly
+  read-only — never claims, changes, or implements a goal (that's
   `dispatch`) and never writes `index.yaml`.
 - **loop-architect** — designs loop contracts (prompt + verification +
   stop conditions) for autonomous /goal, /loop, routine, or remote runs;
@@ -157,30 +163,6 @@ cleanup (pure guidance, no scripts).
   (read-only probe, `BLOCKER|WARN|FIXED|INFO`, exit 0/1/2). The v4 sequential
   model commits directly on the local branch, so there is no merge allow-rule
   to provision — the gate is local. The probe checks settings in `.claude/`.
-- **telegram-message** (v4.11.0, scopes + cloud in v4.12.0,
-  dispatch-gated hooks in v4.14.0) —
-  `/telegram-message <bot_token> [chat_id]` wires a Telegram bot to DM the owner
-  when an autonomous run needs a human: an API/usage-limit error killed a turn
-  (`StopFailure`), the agent is waiting on a permission/idle prompt
-  (`Notification`), a run finished (`SessionEnd`), or a dispatch fire reported
-  (hook-free `dispatch` category — dispatch Phase 4 pipes its report line to the
-  notifier). Hook pings are DISPATCH-GATED by default (v4.14.0, owner decision
-  after a real ping flood: 8/8 hook pings in one day came from ordinary
-  interactive sessions): `waiting` needs a live fire — the `active` marker
-  dispatch writes at fire start and removes at fire end — while
-  `errors`/`completions` accept the marker or a ≤4 h heartbeat; the `dispatch`
-  category is never gated; `gate_on_dispatch:false` opts a scope out (env-var
-  cloud scope is always ungated). Personal settings are PROJECT-SCOPED by
-  default and always OUTSIDE
-  the repo (structurally unpushable): chmod-600
-  `~/.local/state/pg-telegram/projects/<slug>.json` (longest-`project_root`-
-  prefix match on cwd; `enabled:false` = per-project opt-out), `--global` for
-  the machine-wide fallback, `PG_TELEGRAM_BOT_TOKEN`/`PG_TELEGRAM_CHAT_ID`(/
-  `PG_TELEGRAM_EVENTS`) env vars for cloud runs — resolution env > project >
-  global. Hook events verified on Claude Code incl. headless `claude -p`.
-  Stdlib notifier `scripts/pg_telegram_notify.py` never crashes a session and
-  no-ops until configured. Sets up notifications only; never implements goals.
-
 Separate marketplace plugins:
 
 - **html-artifacts** — produces self-contained browser artifacts for
@@ -302,16 +284,21 @@ churn produced pile-ups of unmergeable PRs and orchestrator livelock —
 the loop burned tokens shepherding PRs that never merged. The v4 model
 deletes that machinery (worktrees, PRs, the merge wrapper, herdr, the
 multi-stage merge gate) in favor of working the branch in place behind
-a local gate. Git history has every prior model if ever needed.
+a local gate. The **telegram-message** skill (v4.11.0 → v4.14.0) — a bot
+DMing the owner on errors/limits/waiting/completion — was sunset in v6.0.0
+on 2026-07-17 along with `hooks/hooks.json`, the repo's only hook bundle,
+and dispatch's `active` fire marker (written every fire; the notifier was
+its only reader — the heartbeat, which factory-doctor and the cross-fire
+brake actually use, is a separate file and stays). Git history has every
+prior model if ever needed.
 
 ## Structure
 
 ```
 .claude-plugin/plugin.json        # root flywheel plugin manifest
 .claude-plugin/marketplace.json   # marketplace — name: pragmatic-growth, lists flywheel + html-artifacts + autoresearch + human-writing
-hooks/hooks.json                  # flywheel plugin hooks — telegram-message notifier (v4.11.0; Claude Code)
 agents/<name>.md                  # three flywheel plugin agents — read-only factory review roles: gate-reviewer, fresh-check, contract-red-team (v5.4.0)
-skills/<name>/SKILL.md            # six flywheel skills (define-goal, dispatch, goals-status, loop-architect, factory-doctor, telegram-message)
+skills/<name>/SKILL.md            # five flywheel skills (define-goal, dispatch, goals-status, loop-architect, factory-doctor)
 plugins/html-artifacts/.claude-plugin/plugin.json
 plugins/html-artifacts/skills/html-artifacts/SKILL.md
 plugins/html-artifacts/skills/html-artifacts/references/ # HTML artifact recipes and foundation rules
@@ -320,7 +307,7 @@ plugins/autoresearch/skills/autoresearch/SKILL.md
 plugins/autoresearch/skills/autoresearch/scripts/autoresearch_helper.py # stdlib JSONL/MAD-confidence helper
 plugins/human-writing/.claude-plugin/plugin.json
 plugins/human-writing/skills/human-writing/SKILL.md # AI-writing cleanup (no scripts)
-skills/<name>/scripts/*.py        # dispatch/pg_validate.py (local gate), factory-doctor/doctor_checks.py, goals-status/goals_status.py (read-only queue view), telegram-message/pg_telegram_notify.py
+skills/<name>/scripts/*.py        # dispatch/pg_validate.py (local gate), factory-doctor/doctor_checks.py, goals-status/goals_status.py (read-only queue view)
 CHANGELOG.md                      # canonical, git-tracked version history (site carries no on-page changelog)
 public/index.html                 # the public site (plugin.pragmaticgrowth.com) — self-contained, themed
 public/Logo*Black.svg             # Pragmatic Growth brand marks (icon + wordmark)
@@ -330,19 +317,17 @@ wrangler.jsonc                    # Cloudflare Workers static-assets deploy conf
 ## Rules
 
 - **Skills-first (formerly skills-only).** Don't add MCP servers, commands,
-  agents, or hooks here without an explicit ask. Two exceptions to date:
-  `hooks/hooks.json` (the `telegram-message` notifier, explicit owner decision
-  2026-07-07) and the three root `agents/` definitions (the factory's read-only
-  review roles, owner-delegated decision 2026-07-16). Keep both minimal: hooks
-  must no-op safely when unconfigured and never disrupt a session; plugin agents
+  agents, or hooks here without an explicit ask. ONE exception to date: the
+  three root `agents/` definitions (the factory's read-only review roles,
+  owner-delegated decision 2026-07-16). Keep it minimal: plugin agents
   must stay read-only-by-tools (no Edit/Write/Agent), pin no `model:`, carry
   narrow non-auto-triggering descriptions, and every skill that spawns one keeps
   a `general-purpose` inline-brief fallback so nothing breaks where plugin
   agents are unavailable. A new hook or agent needs the same explicit ask.
-- **Portability applies to the notifier too.** The `telegram-message` config and
-  state live under `~/.local/state/pg-telegram/`; the bot token NEVER enters the
-  repo, `hooks/hooks.json`, or any tracked file (the pre-push secret hook is the
-  backstop). Notifier resolves its own path at runtime via `${CLAUDE_PLUGIN_ROOT}`.
+  (The repo carried a second exception — `hooks/hooks.json` for the
+  `telegram-message` notifier, owner decision 2026-07-07 — from v4.11.0 until
+  the v6.0.0 sunset removed the skill and the hook bundle; flywheel ships no
+  hooks again.)
 - **Portability.** Skills must not contain user-specific absolute paths
   (`/Users/...`, `~/.claude/...`). They run in arbitrary repos.
 - **This repo is the single source of truth.** The plugins are installed
