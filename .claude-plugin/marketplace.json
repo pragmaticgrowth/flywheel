@@ -1,6 +1,6 @@
 {
   "name": "pragmatic-growth",
-  "description": "Skills-only Claude Code plugins from Pragmatic Growth: flywheel for autonomous goal queues, html-artifacts for rich browser deliverables, autoresearch for autonomous optimization loops, and human-writing for AI-writing cleanup.",
+  "description": "Skills-first Claude Code plugins from Pragmatic Growth: flywheel for autonomous goal queues, html-artifacts for rich browser deliverables, autoresearch for autonomous optimization loops, and human-writing for AI-writing cleanup.",
   "owner": {
     "name": "pragmaticgrowth",
     "url": "https://github.com/pragmaticgrowth"
