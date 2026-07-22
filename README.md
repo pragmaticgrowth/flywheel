@@ -4,11 +4,11 @@
 A skills-first plugin marketplace for [Claude Code](https://claude.com/claude-code),
 from Pragmatic Growth.
 
-[![Website](https://img.shields.io/badge/site-plugin.pragmaticgrowth.com-6366f1)](https://plugin.pragmaticgrowth.com)
+[![Website](https://img.shields.io/badge/site-flywheel.pragmaticgrowth.com-6366f1)](https://flywheel.pragmaticgrowth.com)
 [![Version](https://img.shields.io/badge/version-6.0.0-8b5cf6)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
-> 🌐 **Full docs:** **<https://plugin.pragmaticgrowth.com>**
+> 🌐 **Full docs:** **<https://flywheel.pragmaticgrowth.com>**
 
 ---
 
@@ -471,7 +471,7 @@ limit rail.
   every release, each entry linked to its commit.
 - **Git tags** — every release is tagged `vX.Y.Z` on its commit, so the version
   history is browsable on GitHub.
-- **The site** — <https://plugin.pragmaticgrowth.com> hosts the full docs and
+- **The site** — <https://flywheel.pragmaticgrowth.com> hosts the full docs and
   install (canonical version history lives in CHANGELOG.md and GitHub Releases).
 
 The `flywheel` plugin version lives in `.claude-plugin/plugin.json`; the
@@ -516,7 +516,7 @@ flywheel/
 │   └── human-writing/
 │       ├── .claude-plugin/plugin.json
 │       └── skills/human-writing/SKILL.md       # AI-writing cleanup guidance (no scripts)
-├── public/                # the plugin.pragmaticgrowth.com site (index.html + brand SVGs)
+├── public/                # the flywheel.pragmaticgrowth.com site (index.html + brand SVGs)
 ├── wrangler.jsonc         # Cloudflare deploy config for the site
 ├── CHANGELOG.md           # canonical version history
 └── CLAUDE.md              # contributor guide

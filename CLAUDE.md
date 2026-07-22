@@ -309,7 +309,7 @@ plugins/human-writing/.claude-plugin/plugin.json
 plugins/human-writing/skills/human-writing/SKILL.md # AI-writing cleanup (no scripts)
 skills/<name>/scripts/*.py        # dispatch/pg_validate.py (local gate), factory-doctor/doctor_checks.py, goals-status/goals_status.py (read-only queue view)
 CHANGELOG.md                      # canonical, git-tracked version history (site carries no on-page changelog)
-public/index.html                 # the public site (plugin.pragmaticgrowth.com) — self-contained, themed
+public/index.html                 # the public site (flywheel.pragmaticgrowth.com) — self-contained, themed
 public/Logo*Black.svg             # Pragmatic Growth brand marks (icon + wordmark)
 wrangler.jsonc                    # Cloudflare Workers static-assets deploy config for the site
 ```
@@ -368,9 +368,9 @@ wrangler.jsonc                    # Cloudflare Workers static-assets deploy conf
   change behavior, not just read well (adopted from superpowers'
   RED-baseline doctrine, 2026-07-17).
 
-## Public site, changelog & releases (plugin.pragmaticgrowth.com)
+## Public site, changelog & releases (flywheel.pragmaticgrowth.com)
 
-The marketplace has a public landing/docs site at **https://plugin.pragmaticgrowth.com**,
+The marketplace has a public landing/docs site at **https://flywheel.pragmaticgrowth.com**,
 served from Cloudflare (Workers static assets, Pragmatic Growth account). It is
 part of this repo — `public/index.html` (self-contained, light/dark, no external
 deps) plus the brand SVGs in `public/`, with `wrangler.jsonc` at the root.
@@ -403,7 +403,7 @@ deps) plus the brand SVGs in `public/`, with `wrangler.jsonc` at the root.
   The full backfill (v1.0.0 → current) already exists; on each new bump just add
   the one new release.
 - **Redeploy after changes.** From the repo root, with `CLOUDFLARE_API_TOKEN`
-  set: `wrangler deploy`. The custom domain `plugin.pragmaticgrowth.com` is bound
+  set: `wrangler deploy`. The custom domain `flywheel.pragmaticgrowth.com` is bound
   in `wrangler.jsonc` (the `pragmaticgrowth.com` zone is in the same account), so
   a deploy redeploys to the same URL. Push the repo too — the site source is
   tracked here, single source of truth.
