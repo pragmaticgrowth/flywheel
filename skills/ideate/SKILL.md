@@ -1,6 +1,7 @@
 ---
 name: ideate
 description: Use when the user has an idea or early want that isn't ready to define — "I have an idea", "what if we", "let's think through X", "/ideate" — or when goal definition stalls because the want needs design exploration first. Explores intent and design through dialogue; never implements and never writes goal files or queue entries (that's define-goal).
+argument-hint: "[the idea to explore]"
 ---
 
 # Ideate — explore an idea into an approved design

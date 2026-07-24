@@ -1,6 +1,7 @@
 ---
 name: dispatch
 description: Factory dispatcher — use when the user says "/dispatch" (optionally with a goal id, --count N, or --unlimited), "run the factory", wants the docs/goals queue worked, or wants to work one specific queued goal in this session ("work goal 005", "/dispatch 005"). Works in any repo with a docs/goals/ queue. Works ready goals ONE AT A TIME on the currently checked-out branch — the next goal by default, a named goal, or a bounded/unlimited sequential batch — no pull requests, no worktrees, no parallel implementers. Orchestrates only — never implements in its own context; the phase procedure lives in the skill body, never in this description.
+argument-hint: "[goal-id] [--count N | --unlimited]"
 ---
 
 # Dispatch — the factory orchestrator

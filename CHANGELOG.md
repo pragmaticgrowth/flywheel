@@ -13,6 +13,22 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [6.1.1] — 2026-07-24
+
+**Slash-menu argument hints.** The four argument-taking flywheel skills now
+carry `argument-hint:` frontmatter, so typing `/dispatch` (etc.) shows the
+argument reference text in Claude Code's slash menu — previously nothing
+signposted `--count` / `--unlimited` from the composer:
+
+- `dispatch` → `[goal-id] [--count N | --unlimited]`
+- `define-goal` → `[want in plain language — or a doc of items to convert]`
+- `ideate` → `[the idea to explore]`
+- `loop-architect` → `[what should run autonomously]`
+
+`goals-status` and `factory-doctor` take no arguments, so they intentionally
+keep description-only menu text (a hint there would imply arguments that
+don't exist). UI metadata only — no skill behavior changes.
+
 ## [6.1.0] — 2026-07-24
 
 **The ideate skill, dispatch batch flags, and quality-system adoptions from a

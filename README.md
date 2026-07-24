@@ -5,7 +5,7 @@ A skills-first plugin marketplace for [Claude Code](https://claude.com/claude-co
 from Pragmatic Growth.
 
 [![Website](https://img.shields.io/badge/site-flywheel.pragmaticgrowth.com-6366f1)](https://flywheel.pragmaticgrowth.com)
-[![Version](https://img.shields.io/badge/version-6.1.0-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-6.1.1-8b5cf6)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
 > 🌐 **Full docs:** **<https://flywheel.pragmaticgrowth.com>**

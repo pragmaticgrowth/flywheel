@@ -1,6 +1,7 @@
 ---
 name: loop-architect
 description: Use when the user wants to automate, schedule, or run work autonomously/remotely — setting up a /goal, /loop, routine, channel, or long unattended run, or asking "how do I keep the agent working on X". Designs the loop contract (prompt + verification + stop conditions) instead of just running the task.
+argument-hint: "[what should run autonomously]"
 ---
 
 # Loop Architect

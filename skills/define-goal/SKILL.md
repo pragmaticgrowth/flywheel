@@ -1,6 +1,7 @@
 ---
 name: define-goal
 description: Use when the user states something they want — a goal, wish, feature, fix, or annoyance ("I want…", "set a goal", "/define-goal"), asks to clarify success criteria or turn fuzzy intent into a measurable objective, OR hands over a document with multiple items (bug report doc, feedback list, meeting notes) to convert. Also use to add work to the docs/goals queue. Defines goals only; never starts the implementation work.
+argument-hint: "[want in plain language — or a doc of items to convert]"
 ---
 
 # Define Goal
