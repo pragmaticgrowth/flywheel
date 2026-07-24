@@ -1,6 +1,6 @@
 {
   "name": "flywheel",
-  "version": "6.1.1",
+  "version": "6.2.0",
   "description": "Pragmatic Growth workflow skills for Claude Code \u2014 ideate (fuzzy ideas \u2192 user-approved designs through open dialogue), define-goal (plain-language wants \u2192 measurable, red-teamed goal contracts), dispatch (one-goal-at-a-time orchestrator on the current branch \u2014 next goal, an exact goal, or a --count/--unlimited sequential batch \u2014 with TDD-backed checks and a local build+test gate behind an independent second-view review), goals-status (read-only view of the open docs/goals queue), loop-architect (autonomous loop contracts), and factory-doctor (one-pass preflight/doctor). Ships three tool-restricted read-only subagents for the factory's review roles: gate-reviewer, fresh-check, and contract-red-team.",
   "author": {
     "name": "pragmaticgrowth"

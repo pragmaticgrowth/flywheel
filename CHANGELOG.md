@@ -13,6 +13,43 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [6.2.0] — 2026-07-24
+
+**Model-routing rebalance (owner decision 2026-07-24): research on Sonnet,
+execution on Opus.** Two deliberate policy flips, both scoped so judgment
+never runs on a cheaper model. (For clarity: the `opus` alias resolves to
+Opus 4.8 — there is no "Opus 5"; the Claude 5 family is Fable/Mythos/Sonnet.)
+
+- **define-goal recon: gather agents now run on `sonnet`.** Reverses the
+  v-earlier always-inherit rule. Search subagents (read, grep, trace,
+  report) spawn as `general-purpose` with `model: sonnet`; the
+  synthesis/judgment agent and the contract writing stay on the session
+  model — the shallow-recon guard the old rule provided now lives in the
+  gather/judge split. Explore stays banned (its model cannot be pinned).
+  Still no `config.research_model` knob; an explicit per-run user ask
+  remains the only override.
+- **ideate context orientation follows the same routing** — its 1–2
+  read-only orientation subagents spawn on `sonnet`; approach weighing and
+  design stay in the session-model main context.
+- **Implementer rubric rebalanced: `opus` is now the DEFAULT for every
+  `type: feature` and `type: bug` goal.** The goal's `type:` picks the lane
+  and wins ties: a tight contract is NOT a downgrade reason — a feature/bug
+  goal stays opus even when every criterion is an exact command and the
+  work follows an existing pattern (an explicit user ask for cheap
+  execution on that goal is the only route down). The sonnet lane is rote
+  `type: chore`-shaped work only (lint/format sweeps, doc syncs, config
+  edits, ports with an exact source of truth, test sweeps against settled
+  behavior). Rationale: execution quality is the factory's product, and a
+  blocked goal plus the escalation ladder's stronger-model rescue costs
+  more than opus from the start. `inherit`, `haiku`, and unsure-→-stronger
+  are unchanged; dispatch resolution order (goal `model:` > `config.model`
+  > inherit) is unchanged.
+- **Unchanged on the session model:** the dispatch orchestrator, the gate
+  reviewer, the contract red-team, and recon/ideate synthesis. fresh-check
+  lenses still inherit the implementer's resolved model.
+- Docs synced: README (recon + model-stamp bullets, config table, example
+  listings), site define-goal card, repo CLAUDE.md.
+
 ## [6.1.1] — 2026-07-24
 
 **Slash-menu argument hints.** The four argument-taking flywheel skills now

@@ -94,10 +94,10 @@ goal's code-writing agents in this order: the goal file's frontmatter `model:` f
 goal author's difficulty call), else `config.model`, else `inherit`. A non-`inherit` value is
 passed as the `model` parameter on EVERY code-writing agent you spawn for THAT goal — the
 implementer and any fix/repair agent alike; `inherit` means omit the parameter so the agent
-runs your session model. This split is the token-efficiency lever: the orchestrator stays on
-the session's strong model for claim/gate/review judgment while well-specified goals run
-cheap implementers, and only the judgment-heavy goals get the expensive one. Neither field
-is yours to override, and neither ever applies to recon/review read-only agents — those
+runs your session model. This split keeps judgment on strong models: the orchestrator stays
+on the session model for claim/gate/review calls, features and bugs default to an `opus`
+stamp (define-goal's rubric), and only rote mechanical goals run cheap implementers. Neither
+field is yours to override, and neither ever applies to review read-only agents — those
 always inherit the session model.
 
 **Named review agents (plugin-shipped).** The plugin ships three read-only agent

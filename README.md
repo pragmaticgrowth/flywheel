@@ -5,7 +5,7 @@ A skills-first plugin marketplace for [Claude Code](https://claude.com/claude-co
 from Pragmatic Growth.
 
 [![Website](https://img.shields.io/badge/site-flywheel.pragmaticgrowth.com-6366f1)](https://flywheel.pragmaticgrowth.com)
-[![Version](https://img.shields.io/badge/version-6.1.1-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-6.2.0-8b5cf6)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
 > 🌐 **Full docs:** **<https://flywheel.pragmaticgrowth.com>**
@@ -114,9 +114,10 @@ never implementation.
 
 - **Recon first, by default.** Before writing a single success criterion, it
   sends parallel read-only agents to investigate the actual system (your repo,
-  a separate service, a database — wherever it lives). Those agents inherit the
-  current model; flywheel does not force Sonnet for recon. “The description
-  sounded clear” is the failure mode this replaces.
+  a separate service, a database — wherever it lives). Gather agents run on
+  Sonnet (fast, strong tool use); the synthesis step and the contract itself
+  stay on your session model, so the judgment never runs cheap. “The
+  description sounded clear” is the failure mode this replaces.
 - **Brief first, then a real artifact.** If outcome, environment, validator,
   scope, or risk is missing, it asks one concise question round, then finishes
   with either a run-now command or a queued goal file — not open-ended advice.
@@ -129,10 +130,10 @@ never implementation.
   run plus a rollback.
 - **Per-goal implementer model, stamped last.** Every queued goal's frontmatter
   carries `model:` (`inherit | opus | sonnet | haiku`), chosen AFTER the
-  acceptance criteria are final: a tight, objectively-checkable contract
-  defaults to `sonnet` (the judgment was front-loaded into the contract), while
-  flagship design craft, wide-blast-radius refactors, and ambiguous root-cause
-  work get `opus`. Dispatch reads it per goal when spawning the implementer;
+  acceptance criteria are final: features and bugs default to `opus` —
+  execution quality is the factory's product — while genuinely mechanical work
+  (rote edits, ports with an exact source of truth, config/doc sweeps) gets
+  `sonnet`. Dispatch reads it per goal when spawning the implementer;
   the orchestrator itself always stays on your session model.
 - **Two destinations.** It can hand you a copy-pasteable **run-now** line
   (`/goal …`), or **queue**
@@ -228,7 +229,7 @@ dependency shows what it's waiting on.
 docs/goals — 3 open · 5 completed (hidden)
 
 ▶ IN PROGRESS  (1)
-  002-rate-limit-api                       feature · sonnet
+  002-rate-limit-api                       feature · opus
   Rate-limit the public API
   › Callers hitting /api/* more than 100×/min get a 429 instead of
     silently degrading the service for everyone.
@@ -240,7 +241,7 @@ docs/goals — 3 open · 5 completed (hidden)
   ✗ reason: gate FAIL — repro test still red after 3 attempts
 
 ○ NOT STARTED  (1)
-  006-invoice-pdf                          feature · sonnet
+  006-invoice-pdf                          feature · opus
   Export invoices as a monthly PDF
   › Finance can download one month of invoices as a single PDF.
   ⏳ waiting on 002-rate-limit-api
@@ -427,7 +428,7 @@ config:
 | Key | Default | What it does |
 |---|---|---|
 | `base` | repo default branch | The branch dispatch works on — implementers commit here directly. Per-goal `base:` override allowed. |
-| `model` | `inherit` | Repo-wide **default** model for spawned **code** agents (`inherit`/`opus`/`sonnet`/`haiku`). Each goal's frontmatter `model:` — stamped by define-goal from a contract-tightness rubric — overrides it per goal. The depth-vs-quota trade. Recon subagents and the orchestrator always stay on the current session model. |
+| `model` | `inherit` | Repo-wide **default** model for spawned **code** agents (`inherit`/`opus`/`sonnet`/`haiku`). Each goal's frontmatter `model:` — stamped by define-goal from a contract-tightness rubric (opus default for features/bugs, sonnet for mechanical work) — overrides it per goal. The depth-vs-quota trade. Recon gather agents run on Sonnet; the orchestrator, synthesis, and review agents always stay on the current session model. |
 | `skills` | — | Repo-wide skills every implementer must use (e.g. your TDD or review skills). |
 | `verify` | — | Ordered list of local build + test commands. Run by the dispatch orchestrator after each implementation; PASS keeps the squash commit, FAIL rolls it back. |
 | `budget` | none | `max_goals_per_session` / `max_iterations` ceilings the loop can’t exceed — the external brake on a long run. It always outranks a batch flag: `--unlimited` still stops at the cap. |

@@ -32,7 +32,8 @@ cleanup (pure guidance, no scripts).
 - **ideate** (v6.1.0, adapted from superpowers' brainstorming after the
   2026-07-24 full-plugin deep-read) — the pipeline's front door: explores a
   fuzzy idea into a user-approved design through open dialogue. Context
-  orientation first (1–2 read-only subagents max, session model), split-first
+  orientation first (1–2 read-only subagents max; on `sonnet` as of v6.2.0 —
+  gather work, same routing as define-goal recon), split-first
   scope check (decomposition before detail questions — pieces map 1:1 onto
   goals + `depends_on`), option-based question rounds with NO round cap (the
   attended stage; define-goal keeps its two-round cap), 2–3 approaches with a
@@ -52,9 +53,12 @@ cleanup (pure guidance, no scripts).
   verification commands) and a batch mode for documents of items.
   Stamps each queued goal's frontmatter `model:` (inherit|opus|sonnet|haiku)
   LAST, after the acceptance criteria are final, from a contract-tightness
-  rubric (v4.15.0): tight objective contracts → sonnet; flagship design
-  craft / wide blast radius / ambiguous root-cause → opus; unsure → the
-  stronger. Every queued goal gets an adversarial contract review first
+  rubric (v4.15.0; rebalanced v6.2.0, owner decision 2026-07-24): the goal
+  `type:` picks the lane and wins ties — opus is the DEFAULT for every
+  feature/bug goal (tightness is never a downgrade reason; an explicit user
+  ask for cheap execution is the only route down), sonnet is rote
+  chore-shaped work only (lint/doc/config sweeps, ports with an exact
+  source of truth); unsure → the stronger. Every queued goal gets an adversarial contract review first
   (v5.1.0): one fresh read-only subagent red-teams the drafted contract —
   gameability, command reality, type shape, gate fit, termination — one
   round, before the model stamp and the user confirmation (run-now `/goal`
@@ -271,7 +275,8 @@ Separate marketplace plugins:
   per-goal `base:` override allowed), `model` (inherit|opus|sonnet|haiku —
   the repo-wide DEFAULT for code agents dispatch spawns; each goal's
   frontmatter `model:` — stamped by define-goal from its contract-tightness
-  rubric — overrides it per goal, and the orchestrator/recon/review agents
+  rubric (opus default for features/bugs since v6.2.0) — overrides it per
+  goal, and the orchestrator and review agents
   always stay on the session model; the depth-vs-limit trade), repo-wide
   `skills`, `verify` (the ordered local
   build+test commands the gate runs after each implementer), and `budget`
@@ -301,12 +306,14 @@ Separate marketplace plugins:
   skip only for genuinely greenfield or one-liner wants. Reaches the system
   wherever it lives (local checkout, separate repo, a host you connect to, a
   service/DB), told to each subagent, never hardcoded. Recon search subagents
-  inherit the current session model; do not set a fixed model alias,
-  including Sonnet, unless the user explicitly asks for it in that run.
-  Use the `general-purpose` type without a model override,
-  strictly read-only, and avoid the built-in Explore type if it would force a
-  cheaper model instead of inheriting the current one. The optional synthesis
-  agent also inherits the current session model. `config.model`
+  run on `sonnet` (v6.2.0, owner routing decision 2026-07-24 — gather is
+  strong-tool-use work; the prior always-inherit rule guarded against
+  shallow recon, and that guard now lives in the gather/judge split instead).
+  Use the `general-purpose` type with `model: sonnet`, strictly read-only,
+  and never the built-in Explore type (its model cannot be pinned). The
+  synthesis/judgment agent — and the contract writing itself — ALWAYS stays
+  on the current session model; a per-run explicit user ask is the only
+  override for the gather model. `config.model`
   governs only code-writing agents, never recon. (Recon stays plain parallel
   subagents, NOT a Workflow: 2–4 agents is below the workflow scale threshold
   and a workflow can be disabled on a user's machine — define-goal batch mode

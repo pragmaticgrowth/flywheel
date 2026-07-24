@@ -42,9 +42,11 @@ Work through these in order; scale each step to the idea's size.
 
 Orient in the current system before asking anything — files, docs, recent commits,
 where similar features already live. For a bigger unknown, spawn 1–2 read-only
-subagents (`general-purpose`, no model override — they inherit the session model;
-never the built-in Explore type if it would force a cheaper model) reporting
-`path:line` summaries, never file dumps. This is orientation, not recon: enough to
+subagents (`general-purpose` with `model: sonnet` — orientation is gather work,
+routed to Sonnet like define-goal's recon search agents; never the built-in Explore
+type, whose model cannot be pinned) reporting
+`path:line` summaries, never file dumps. The judgment stays with you: weighing what
+they found, the approaches, and the design all happen in your session-model context. This is orientation, not recon: enough to
 ask good questions and propose grounded approaches. define-goal's recon still runs
 later, narrowed by what you found — the handoff tells it what you already located so
 it verifies rather than re-derives.

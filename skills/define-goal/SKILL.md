@@ -187,23 +187,27 @@ guessing is exactly what recon exists to replace. Skip recon ONLY when the want 
 greenfield (nothing existing to understand) or a one-liner you can already pin with certainty.
 Recon details:
 
-- **Model (mandatory)**: recon search subagents inherit the current session model.
-  Use the `general-purpose` type
-  without a model override, strictly READ-ONLY (report only — never edit, fix, or run heavy
-  repro). Do NOT use the built-in `Explore` type if it would force a cheaper model instead
-  of inheriting the current one; recon's job is real understanding of the existing system,
-  not shallow grep. The synthesis/judgment step (when you split one out to weigh evidence
-  and rank hypotheses) also inherits the current session model. Search agents report
-  what the code shows (files, call paths, suspect commits), ranking what it means happens
-  there or in your own synthesis. The queue's `config.model` and the per-goal frontmatter
-  `model:` never apply here — they govern
+- **Model (mandatory — gather on sonnet, judgment on the session model)**: recon SEARCH
+  subagents run on `sonnet` — pass `model: sonnet` on each spawn (owner routing decision
+  2026-07-24: gathering — read, grep, trace, report — is strong-tool-use work Sonnet
+  handles at near-parity; the judgment that guards contract quality lives in synthesis,
+  which this rule keeps on the stronger model). Use the `general-purpose` type with
+  `model: sonnet`, strictly READ-ONLY (report only — never edit, fix, or run heavy
+  repro). Do NOT use the built-in `Explore` type — its model cannot be pinned, and this
+  rule needs the model explicit. The SYNTHESIS/judgment step (when you split one out to
+  weigh evidence and rank hypotheses) stays on the current session model — never
+  sonnet-route it: weighing what the findings mean is the contract-quality step the
+  gather/judge split protects, and so is the contract you write from it. Search agents
+  report what the code shows (files, call paths, suspect commits); ranking what it means
+  happens in synthesis or your own context — never inside a gather agent. The queue's
+  `config.model` and the per-goal frontmatter `model:` never apply here — they govern
   code-writing agents only, and there is NO persistent config knob for a recon model
-  (a `config.research_model` re-invites the shallow-recon
-  failure this rule guards against — deliberately not added).
-  - **Per-run override (the ONLY override).** Do NOT set a fixed model
-    alias for recon unless the user explicitly asks for a model in THIS run; the ask applies
-    to this run only and is never persisted to `index.yaml`. Pass the requested model
-    (`opus | sonnet | haiku`, or `inherit`) as the spawn's `model`.
+  (a `config.research_model` re-invites per-repo drift — the sonnet gather default is
+  fixed in this skill, deliberately not config).
+  - **Per-run override (the ONLY override).** If the user explicitly asks for a recon
+    model in THIS run (e.g. "run recon on opus"), pass that instead
+    (`opus | sonnet | haiku`, or `inherit`); the ask applies to this run only and is
+    never persisted to `index.yaml`.
 - **Angles, 2–4 per fan-out** — for a bug: symptom trace (error strings/log lines → the
   code that throws and handles them), data/control flow (entry point → failure area),
   recent-change scan (`git log`/`blame` on suspect areas), config/wiring (flags, env,
@@ -342,9 +346,10 @@ title: Customers get a receipt email after payment
 created: 2026-06-12
 type: feature   # bug | feature | chore — shapes the contract, see below
 skills: []      # goal-specific skills the implementer must invoke, e.g. [agent-browser]
-model: sonnet   # implementer model for dispatch: inherit | opus | sonnet | haiku —
-                #   stamp it LAST, after the acceptance criteria are final (see
-                #   "Implementer model — decide it last")
+model: opus     # implementer model for dispatch: inherit | opus | sonnet | haiku —
+                #   opus is the default for features/bugs; sonnet only for rote
+                #   mechanical work. Stamp it LAST, after the acceptance criteria are
+                #   final (see "Implementer model — decide it last")
 # size: M                    # optional: S|M|L rough effort — lets dispatch and any budget cap size a run
 # touches: [apps/orders/*]   # optional: declared surfaces (PRODUCT code) → local gate scope allowlist.
 #                            #   Do NOT enumerate test dirs — the gate auto-exempts test paths
@@ -562,24 +567,31 @@ drafting and the approval table.
 Every queued goal carries a frontmatter `model:` — the model `dispatch` passes to that
 goal's code-writing agents (the implementer and any repair agent). The orchestrator itself
 always stays on the session model the user chose at session start (e.g. Opus/Fable), and
-recon/review agents always inherit the session model too — this field routes ONLY the
-goal's implementation work. It is the queue's token-efficiency lever: the judgment is
-front-loaded HERE, into the contract, which is what lets a cheaper model execute it at
-near-parity.
+review agents always inherit the session model too (recon gather agents run on sonnet —
+see Recon) — this field routes ONLY the
+goal's implementation work. The contract still front-loads the judgment; the stamp
+decides how much implementation judgment the goal needs on top of it.
 
 Stamp it LAST, after the acceptance criteria are final (for queued goals: after the
-contract review) — the tightness of the finished
-contract is the input. Rate the contract you actually wrote, not the topic:
+contract review). Two inputs, in order: the goal's `type:` picks the lane, then the
+finished contract confirms it — and when the two lanes both seem to fit, `type:` wins:
 
-- **`sonnet` — the default for a well-specified queue goal.** Every acceptance criterion is
-  an exact command with objective pass/fail, scope is bounded (`touches:` filled), and the
-  work is a port with a source of truth, a scaffold, config, a test sweep, rote/mechanical
-  edits, or pages on an existing design system — strong tool use and spec-following is all
-  it needs.
-- **`opus` — the judgment-heavy tail.** Flagship visual/design craft, wide blast radius
-  (many call sites, API-preservation constraints), ambiguous root-cause work, changes
-  adjacent to security or data loss, or contracts where subjective
-  needs-independent-review criteria carry real weight.
+- **`opus` — the DEFAULT for every `type: feature` and `type: bug` goal** (owner routing
+  decision 2026-07-24: execution quality is the factory's product, and a blocked goal
+  plus the escalation ladder's stronger-model rescue costs more than opus from the
+  start). A tight contract is NOT a downgrade reason — a feature or bug goal stays
+  `opus` even when every criterion is an exact command and the work follows an existing
+  pattern; the only way such a goal lands on `sonnet` is the user explicitly asking for
+  cheap execution on that goal. Also the lane for flagship visual/design craft, wide
+  blast radius (many call sites, API-preservation constraints), ambiguous root-cause
+  work, changes adjacent to security or data loss, or contracts where subjective
+  needs-independent-review criteria carry real weight — whatever the type.
+- **`sonnet` — the mechanical lane: rote `type: chore`-shaped work only.** The WORK must
+  be transcription, not design: lint/format sweeps, doc syncs, config edits, a port with
+  an exact source of truth, a test sweep against settled behavior. Every acceptance
+  criterion an exact command with objective pass/fail AND nothing left to design —
+  spec-following is all it needs. Never route a feature or bug goal here on contract
+  tightness alone (see the opus bullet).
 - **`inherit` — match the orchestrator's session model.** For the rare goal that must get
   the strongest model available in the session, whichever the user selected.
 - **`haiku` — only a truly rote one-file mechanical chore.** When in doubt, don't.
