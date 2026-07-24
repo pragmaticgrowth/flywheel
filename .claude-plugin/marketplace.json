@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "flywheel",
-      "description": "Pragmatic Growth workflow skills for Claude Code — define-goal, dispatch, goals-status, loop-architect, and factory-doctor: turn wants into measurable goal contracts, work one ready goal per run on the current branch, see what's still open, design autonomous loop contracts, and preflight the environment.",
+      "description": "Pragmatic Growth workflow skills for Claude Code — ideate, define-goal, dispatch, goals-status, loop-architect, and factory-doctor: explore fuzzy ideas into approved designs, turn wants into measurable goal contracts, work ready goals one at a time on the current branch (next, exact, or a --count/--unlimited batch), see what's still open, design autonomous loop contracts, and preflight the environment.",
       "source": "./",
       "homepage": "https://github.com/pragmaticgrowth/flywheel",
       "author": {

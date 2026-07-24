@@ -1,6 +1,6 @@
 ---
 name: dispatch
-description: Factory dispatcher — use when the user says "/dispatch", "run the factory", wants the docs/goals queue worked, or wants to work one specific queued goal in this session ("work goal 005"). Works in any repo with a docs/goals/ queue. Works ONE ready goal per run, on the currently checked-out branch — no pull requests, no worktrees, no parallel implementers. Orchestrates only — never implements in its own context; the phase procedure lives in the skill body, never in this description.
+description: Factory dispatcher — use when the user says "/dispatch" (optionally with a goal id, --count N, or --unlimited), "run the factory", wants the docs/goals queue worked, or wants to work one specific queued goal in this session ("work goal 005", "/dispatch 005"). Works in any repo with a docs/goals/ queue. Works ready goals ONE AT A TIME on the currently checked-out branch — the next goal by default, a named goal, or a bounded/unlimited sequential batch — no pull requests, no worktrees, no parallel implementers. Orchestrates only — never implements in its own context; the phase procedure lives in the skill body, never in this description.
 ---
 
 # Dispatch — the factory orchestrator
@@ -10,8 +10,9 @@ and its nested helpers (depth 2+, system cap depth=5) hold the mess. Compose exi
 skills — never re-derive what a skill already encodes. The queue is `docs/goals/index.yaml`
 (see `define-goal` for the format).
 
-Dispatch works **one ready goal per run, on the currently checked-out branch**
-(e.g. `staging`). One goal at a time: claim it, spawn a single foreground implementer that
+Dispatch works ready goals **one at a time, on the currently checked-out branch**
+(e.g. `staging`) — one goal per run by default; the Invocation flags below can extend a
+run to a sequential batch of the same settled cycles. Per goal: claim it, spawn a single foreground implementer that
 commits its work on this branch, run a LOCAL gate yourself, and on PASS keep a squashed
 commit — on FAIL roll the goal back so the branch never carries unverified work. No pull
 requests, no worktrees, no `goal/<id>` branches, no parallel/background implementers, no
@@ -24,6 +25,57 @@ blocking every merge, and stale `goal/*`/`worktree-agent-*` branch garbage (see 
 were removed; the extra concurrency lives INSIDE one goal (read-only recon/review), never
 across goals.
 Use `/loop /dispatch` to repeat this one-goal cycle until the queue is drained.
+
+## Invocation — `/dispatch [<goal-id>] [--count N | --unlimited]`
+
+| Invocation | Behavior |
+|---|---|
+| `/dispatch` | Work the next ready goal, then stop (≡ `--count 1` — today's default). |
+| `/dispatch 087` (also `87`, `087-slug`, or "work goal 087") | Solo mode: work exactly that goal (see Solo mode below). |
+| `/dispatch --count N` | Work up to N ready goals, sequentially, in this run (N ≥ 1). |
+| `/dispatch --unlimited` | Keep working ready goals until the queue drains or a brake below fires. |
+
+Argument rules: a goal id combined with `--count`/`--unlimited` → the id wins; note the
+ignored flag in the report. `--count` without a valid N ≥ 1, or an unknown flag →
+report the usage line above and work one goal.
+
+**Batch runs repeat the same settled cycle — they change nothing about safety.** The
+invariant was never "one goal per run"; it is one goal AT A TIME, on one branch, behind
+the local gate. A batch is in-session what `/loop /dispatch` is across fires: Phase 0
+and Phase 1 run ONCE at batch start (finished work still beats new work), then per goal
+the full cycle — Phase 2 claim → Phase 3 implement → the local gate (Working a goal,
+steps 3–4) → settle (complete or
+blocked, branch clean) → Phase 4 report line + heartbeat append — before the next
+claim. The single-`in_progress` invariant holds continuously; each per-goal cycle
+counts as one fire for the heartbeat and the cross-fire brake. A goal that settles
+`blocked` does NOT stop the batch — the next ready goal is claimed, exactly as the next
+loop fire would claim it. The end-of-drain CI observation stays end-of-batch, never
+per-goal; the stalled-factory notification stays once per distinct blocker set.
+
+**Batch stop conditions — first one wins:**
+
+1. Count reached (`--count N`).
+2. No ready goals left (for `--unlimited` this is the drained-queue terminal stop,
+   Phase 0).
+3. `config.budget.max_goals_per_session` exhausted — the budget ALWAYS outranks the
+   flag (effective cap = min(flag, budget)); it is the external brake precisely because
+   this session cannot edit it. A true unlimited drain requires the repo owner to
+   remove the budget from `config`, never a flag.
+4. **Environment brake:** two CONSECUTIVE goals fail with the same
+   infrastructure-shaped cause — the same `config.verify` command failing identically
+   in a way the two goals' diffs cannot explain, or two INCONCLUSIVE gate verdicts →
+   stop the batch and surface "run `/factory-doctor`" under needs-you. A broken
+   environment must not burn the queue one blocked goal at a time. The first goal
+   still gets its normal repair attempt (one failure can't prove a systemic cause);
+   when the SECOND goal's gate failure matches the first's infrastructure signature,
+   skip its repair spawn and fire the brake — a repair agent cannot fix the registry
+   or the environment.
+
+`--unlimited` is the ATTENDED "drain it now" mode. For unattended drains keep using
+`/loop /dispatch` with external scheduling (loop-architect's usage-limit rails): an
+in-session batch dies silently at a subscription usage limit with no hook fired — the
+per-goal heartbeat makes that death detectable and Phase 1 makes the next run's
+recovery clean, but nothing restarts a session from inside it.
 
 Read the queue's `config:` block first; defaults when absent:
 `base` = the branch dispatch works ON (the started branch — staging, main, or other;
@@ -68,9 +120,11 @@ own description forbids review use.
 
 ## Hard rules (every iteration, before any action)
 
-- One goal per run, in this session, on the current branch. There are NO pull requests,
+- One goal at a time, in this session, on the current branch — the next claim waits for
+  the current goal to fully settle (the Invocation flags size the run; default one
+  goal). There are NO pull requests,
   NO worktrees, NO `goal/<id>` branches. After a goal's work passes the LOCAL gate you keep
-  its commit on the branch (squashed to one) and stop the run. A failed gate rolls the goal
+  its commit on the branch (squashed to one) and move on per the run's flags. A failed gate rolls the goal
   back to its `gate_base` so the branch never carries unverified work. Implementers never
   merge.
 - Read the repo's CLAUDE.md hard rules once per session and treat them as law
@@ -78,14 +132,17 @@ own description forbids review use.
 - **Every queue write goes through the claim protocol below.** Implementers never touch
   `docs/goals/` — the orchestrator owns queue state.
 - No-progress rule: same goal fails the same way twice with no progress → stop retrying,
-  set the goal `blocked` with a `reason`, report, and stop the run. (Orchestrator-level —
+  set the goal `blocked` with a `reason`, report, and move on per the run's flags — a
+  flagless run stops here; a batch run claims the next ready goal (Invocation; the
+  environment brake still applies). (Orchestrator-level —
   distinct from the implementer's own ~3-honest-attempts rule inside one spawn.)
 - Substantive conflicts are never guessed through. A local `git merge`/squash that hits a
   conflict on the current branch means two pieces of work changed the same logic → set the
   goal `blocked`, surface under needs-you, and roll back; never resolve by guessing.
 - **Session budget (external brake).** If `config.budget.max_goals_per_session` (or
-  `max_iterations`) is set, count this run as one worked goal. Because dispatch never claims
-  a second goal in the same run, `max_goals_per_session: 1` is the natural default behavior;
+  `max_iterations`) is set, count each claimed goal against it. A flagless run claims at
+  most one goal; batch flags (`--count`, `--unlimited`) claim more but NEVER past the
+  cap — the budget always outranks a flag (effective cap = min(flag, budget));
   lower/zero or exhausted caps stop before claiming. Let any in-flight goal finish its gate
   cleanly, surface `budget exhausted (<n>/<cap> goals)` under needs-you, and send ONE
   notification per Phase 4 via the PushNotification tool. The cap comes from config you
@@ -106,9 +163,10 @@ Every status transition uses the same convention — one entry, its own commit:
 
 ## Re-entrancy — idempotent iterations
 
-A direct `/dispatch` run settles in-flight work first, then claims at most one new ready
-goal, gates it, reports, and stops. `/loop /dispatch` repeats the
-same one-goal cycle. Each run must be idempotent so a re-run after a transient death picks up
+A direct `/dispatch` run settles in-flight work first, then claims ready goals one at a
+time — one by default, more under a batch flag (Invocation) — gating and settling each
+before the next claim, reports, and stops. `/loop /dispatch` repeats the
+same one-goal cycle across fires. Each run must be idempotent so a re-run after a transient death picks up
 where it left off:
 
 1. **The index is the claim ledger.** A claim is a committed status flip made BEFORE the
@@ -279,8 +337,8 @@ For each claimed goal, in order:
    `python3 "$PGVALIDATE" --head HEAD --base <gate_base> --goal <id> --goal-file docs/goals/<id>.md`
    plus the repo `config.verify` commands (ordered, all must exit 0). Show output.
 4. PASS → `git reset --soft <gate_base> && git commit -m "feat(goal <id>): <slug>"` (squash to
-   one), then `chore(goals): complete <id>`; push if a remote exists (non-blocking); report
-   and stop without claiming another goal.
+   one), then `chore(goals): complete <id>`; push if a remote exists (non-blocking); report —
+   a flagless run stops here; a batch run (Invocation) claims the next ready goal instead.
    FAIL_FIXABLE → one repair agent (fed the COMPLETE verified findings list in one spawn —
    never one repair agent per finding), re-gate (re-run the commands; when verified review
    findings drove the repair, add a focused re-check by one fresh read-only agent —
@@ -364,7 +422,9 @@ differs from the started branch is surfaced under needs-you (switch branches and
 separate session), never silently worked on the wrong branch.
 
 If `config.budget` is set and `max_goals_per_session` is exhausted, stop claiming (Hard
-rules) and let the current goal finish. Never claim a second goal in the same dispatch run.
+rules) and let the current goal finish. Never claim a goal while another is unsettled;
+a flagless run claims at most one goal, and a batch flag claims the next only after the
+previous goal fully settles (Invocation).
 
 ## Phase 3 — spawn the implementer (depth 1, foreground)
 
@@ -389,7 +449,11 @@ Concrete stop triggers: an architectural fork with multiple valid approaches the
 contract does not arbitrate (report it as `STATUS: CONTRACT_AMBIGUOUS` too — the fork,
 the candidate approaches, what would disambiguate), or you are reading file after file
 without progress (report that as `STATUS: BLOCKED`, with what you searched for and what
-is missing).
+is missing). If instead you need specific information the goal file, latest context,
+and the repo genuinely cannot provide — a sibling goal's interface, a config value,
+where a credential or environment lives — end your turn with `STATUS: NEEDS_CONTEXT`,
+naming exactly what you need and where you looked; the dispatcher may hold it and will
+re-spawn you once with the answer. Never guess it and never grind without it.
 
 Latest context from the dispatcher:
 <latest plan/progress/PR bullets, or "none">
@@ -475,20 +539,22 @@ output, the TDD red/green evidence, the off-happy-path probe result, and the com
 fresh-check lens verdicts with their findings. End your turn with ONLY a terse report —
 15 lines max:
 
-STATUS: DONE | DONE_WITH_CONCERNS | BLOCKED | GOAL_UNREACHABLE | CONTRACT_AMBIGUOUS
+STATUS: DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT | GOAL_UNREACHABLE | CONTRACT_AMBIGUOUS
 Commits: <short SHA + subject, one per line; if listing would breach the 15-line cap,
   one line: `<N> commits, <first sha>..<last sha>`>
 Tests: <one-line summary of the final acceptance run>
 Fresh-check: <one line — contract-conformance|tests-overbuild|stray-regressions
   PASS|FAIL (step 5's lenses), or the literal `not required (one-file mechanical edit)`>
 Report: <the report file path>
-Blocker: <only for BLOCKED | GOAL_UNREACHABLE | CONTRACT_AMBIGUOUS — the criterion and
-  readings, or the blocker with key evidence and what would unlock; more lines OK
-  within the cap>
+Blocker: <only for BLOCKED | NEEDS_CONTEXT | GOAL_UNREACHABLE | CONTRACT_AMBIGUOUS —
+  the criterion and readings, the blocker with key evidence and what would unlock, or
+  for NEEDS_CONTEXT exactly what information you need and where you looked; more
+  lines OK within the cap>
 Concerns: <only when DONE_WITH_CONCERNS — one line each>
 
-For BLOCKED / GOAL_UNREACHABLE / CONTRACT_AMBIGUOUS, put the specifics (attempted paths,
-evidence, the blocker or the ambiguous criterion and its readings) directly in the
+For BLOCKED / NEEDS_CONTEXT / GOAL_UNREACHABLE / CONTRACT_AMBIGUOUS, put the specifics
+(attempted paths, evidence, the blocker, the missing information, or the ambiguous
+criterion and its readings) directly in the
 message — the dispatcher acts on them immediately; the report file holds evidence, never
 the lede. Everything you print stays resident in the orchestrator's context for the whole
 fire — the report file is what keeps the factory lean, and a missing report file for
@@ -517,25 +583,63 @@ After the implementer returns, run the independent review and the gate yourself
 same resolved implementer model, fed the COMPLETE gate findings in one spawn — including any
 verified Critical/Important
 findings from the independent review); a second identical FAIL → roll back + block.
+The repair brief appends three receiving-review rules: verify each finding against the
+code before changing anything; a finding you can disprove gets a one-line rebuttal with
+evidence in the report instead of a "fix" — the orchestrator adjudicates it; and after
+fixes, re-run the tests covering the amended code and append the results to the report
+file — the focused re-check reads evidence, it does not re-run your tests.
+Adjudicating a rebuttal: verify it against the code and the cited evidence yourself —
+confirmed false → drop the finding from the re-check scope (note it in the report);
+upheld → it goes back unfixed, and the re-gate treats it as an open failure.
 A `CONTRACT_AMBIGUOUS` return is a contract defect caught early, not a work failure: if any
 work commits landed before the stop, `git reset --hard <gate_base>`; set the goal
 `blocked — contract defect: <criterion> ambiguous` and surface it under needs-you as a
 contract amendment (the human re-specifies via `define-goal`) — never respawn it to "try a
-reading", the respawn guesses at the same fork. A live `BLOCKED` or `GOAL_UNREACHABLE`
-return likewise skips the gate — there is nothing to certify: roll back any work commits
-(`git reset --hard <gate_base>`), then block via the claim protocol with the implementer's
-stated reason (BLOCKED → its blocker; GOAL_UNREACHABLE → `contract defect: <criterion>
-unreachable`, a needs-you contract amendment — never a respawn; same routing as
-Re-entrancy).
+reading", the respawn guesses at the same fork. A live `NEEDS_CONTEXT` or `BLOCKED`
+return likewise skips the gate — there is nothing to certify yet — but does NOT go
+straight to `blocked`: run the escalation ladder below first. `GOAL_UNREACHABLE` skips
+the ladder: roll back any work commits (`git reset --hard <gate_base>`) and block with
+reason `contract defect: <criterion> unreachable` (a needs-you contract amendment —
+never a respawn; same routing as Re-entrancy).
+
+**Escalation ladder — before any goal blocks.** Each rung fires at most ONCE per goal
+per session, and never as a same-model-unchanged respawn — if the implementer is stuck,
+something must change (more context, a stronger model, or a better contract). A ladder
+re-spawn continues from the current branch state (same claim, same `gate_base`; roll
+nothing back — the gate certifies the whole `gate_base..HEAD` diff regardless of which
+spawn produced it):
+
+1. **`NEEDS_CONTEXT`** → answer it from what you hold — the queue, sibling goal files
+   and their Interfaces notes, the latest-context bullets, repo config — and re-spawn
+   once with the answer added to the brief. Nothing you hold answers it → roll back any
+   work commits and block with the ask as the reason (needs-you).
+2. **`BLOCKED`, capability-shaped, on a cheap-stamped goal.** The goal's resolved
+   implementer model is `sonnet` or `haiku` AND the blocker reads capability-shaped (an
+   architectural fork within contract bounds, "reading file after file without
+   progress") → ONE re-spawn on the stronger model (the session model), noted in the
+   report line. Never downgrade; goals already resolved to `inherit`/`opus` skip this
+   rung — capability was not the gap there.
+3. **Too large / contract wrong.** A blocker that reads "the goal is too large" or "the
+   contract is wrong" → the contract-defect route: roll back, block with
+   `contract defect: <reason>` (needs-you amendment via define-goal, which splits or
+   re-specifies). Never respawn — a respawn hits the same wall.
+4. **Anything else** → roll back any work commits and block with the implementer's
+   stated reason, as today.
 
 ## Solo mode — work one named goal in this session
 
-The default model is already one-goal-at-a-time on the current branch, so "work goal 005"
-just scopes the iteration to a single id: skip Phase 2's ready-scan, claim goal 005 directly
+The default model is already one-goal-at-a-time on the current branch, so "work goal
+005" — or the argument forms `/dispatch 005`, `/dispatch 5`, `/dispatch 005-slug`
+(Invocation) — just scopes the run to a single id: skip Phase 2's ready-scan, claim
+that goal directly
 via the protocol, and run it through Working a goal (anchor → claim → foreground implementer
 → local gate → PASS squash+complete / FAIL roll back+block). Everything else — the brief, the
-gate, the rollback — is identical. `/dispatch` already stops after that one goal; solo mode
-only changes which goal is selected.
+gate, the rollback — is identical, and the run stops after that one goal (a batch flag
+alongside an id is ignored — the id wins). Guards before claiming: a named goal that is
+`completed` or already `in_progress` is reported, not re-claimed; one whose
+`depends_on` are not all `completed` is surfaced under needs-you instead of claimed —
+dependency order is part of the contract (amend the chain via define-goal to mean it);
+an id matching no entry reports the near-misses.
 
 ## Phase 4 — report (always, exactly one line)
 
@@ -558,6 +662,11 @@ The bar is 20 cells: `filled = round(20 × done ÷ total)` (0.5 rounds up), clam
 empty = 20 − filled. Filled cells = █, empty = ░; omit the whole bar when total = 0.
 Anchor example: 19/21 → round(18.10) = 18 filled → `[██████████████████░░]`.
 
+**Batch runs** (Invocation): the one-line report above is emitted after EACH settled
+goal, and one final summary line closes the run:
+`[dispatch batch] worked <n>: <id PASS|FAIL, …> · stopped: <count reached|drained|budget exhausted|environment brake>`
+(the summary line itself appends no extra heartbeat — heartbeats are per-goal-cycle).
+
 needs-you lists everything currently waiting on the human: every goal with explicit `blocked`
 status (with the dependents stuck behind it), `GOAL_UNREACHABLE`/`CONTRACT_AMBIGUOUS`/
 `FAIL_CONTRACT` contract
@@ -573,7 +682,8 @@ iteration could do about it — sends the needs-you line via the PushNotificatio
 identical no-op fires after it send no further notifications, though the report line still goes
 out every fire — new blocker content notifies again.
 
-**Heartbeat (liveness) — every fire.** APPEND a one-line heartbeat —
+**Heartbeat (liveness) — every fire** (in a batch run, once per per-goal cycle — each
+cycle is one fire). APPEND a one-line heartbeat —
 `<UTC timestamp> · <done>/<total> · current <id or none> · drained <yes|no>` — to the runtime
 cache at `~/.local/state/pg-dispatch/<SLUG>/heartbeat` (`<SLUG>` = the repo dir name;
 `mkdir -p` first; after appending, trim the file to its newest ~50 lines). The log serves two

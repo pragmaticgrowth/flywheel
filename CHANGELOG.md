@@ -13,6 +13,76 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [6.1.0] — 2026-07-24
+
+**The ideate skill, dispatch batch flags, and quality-system adoptions from a
+full deep-read of all 14 superpowers v6.1.1 skills** (design:
+`docs/superpowers/specs/2026-07-24-ideate-dispatch-flags-quality-system-design.md`).
+flywheel now has **six** skills, forming the pipeline
+`/ideate → /define-goal → /dispatch → /goals-status`.
+
+- **New skill: `ideate` — the pipeline's front door** (the brainstorming →
+  writing-plans analog, mapped onto ideate → define-goal). Explores a fuzzy
+  idea into a user-approved design: read-only context orientation first,
+  split-first scope check (decomposition before detail questions; pieces map
+  1:1 onto goals + `depends_on`), option-based question rounds with NO round
+  cap (the attended stage — define-goal keeps its two-round cap), 2–3
+  approaches with a recommendation, sectioned design presentation, inline
+  self-review (placeholders / contradictions / two-readable requirements).
+  HARD GATE: its only terminal states are invoking define-goal with the
+  approved design or the user parking the idea — it never writes goal files,
+  index entries, or code. Multi-goal chains get ONE design brief at
+  `docs/goals/briefs/YYYY-MM-DD-<topic>.md` linked from each chain goal's
+  Context; single-goal outcomes stay fileless. Already-shaped wants skip it.
+- **dispatch invocation grammar** —
+  `/dispatch [<goal-id>] [--count N | --unlimited]`. Flagless = next ready
+  goal (unchanged). `/dispatch 087` formalizes solo mode as an argument, with
+  claim guards (completed/in_progress reported, unmet deps → needs-you, id
+  beats a batch flag). `--count N` / `--unlimited` run an in-session
+  sequential batch of the same fully-settled per-goal cycles — the invariant
+  was never "one goal per run", it is one goal AT A TIME behind the local
+  gate. Phase 0/1 run once per batch; each cycle emits its own report line +
+  heartbeat (each cycle = one fire for the cross-fire brake); a blocked goal
+  doesn't stop a batch; `config.budget` ALWAYS outranks flags (effective cap
+  = min(flag, budget)); a new **environment brake** stops a batch when two
+  consecutive goals fail with the same infrastructure-shaped cause (the
+  second futile repair spawn is skipped) and points at `/factory-doctor`.
+  `--unlimited` is the attended drain — unattended stays `/loop` + external
+  scheduling.
+- **BLOCKED escalation ladder + `NEEDS_CONTEXT`** (from
+  subagent-driven-development's controller). The implementer status contract
+  adds `NEEDS_CONTEXT` (a missing-information stop is not a failure); before
+  any goal blocks the orchestrator runs the ladder — answer the context ask
+  from what it holds and re-spawn once → ONE stronger-model re-spawn for
+  capability-shaped blockers on sonnet/haiku-stamped goals (never downgrade)
+  → too-large / wrong-contract routes to the contract-defect amendment → else
+  block. Each rung once; never a same-model-unchanged respawn; ladder
+  re-spawns continue from the current branch state.
+- **Repair-agent receiving-review discipline.** The repair brief adds:
+  verify each finding against the code before changing anything; a disproved
+  finding gets a one-line rebuttal with evidence instead of a "fix" (the
+  orchestrator adjudicates — confirmed-false findings drop from the re-check
+  scope, upheld ones return as open failures); covering tests re-run after
+  fixes and appended to the report file.
+- **define-goal: no-placeholders red-team check + ideate routing.** The
+  contract-review rubric adds a Placeholders check ("TBD", "appropriate error
+  handling", command-less criteria, numberless thresholds →
+  contract-blocking, from writing-plans' plan-failure list). Fuzzy
+  still-being-explored wants route to ideate first (already-shaped wants
+  never bounce; ideate unavailable → design conversation inline); an ideate
+  handoff is treated as the brief — question rounds cover only remaining
+  gaps, recon narrows to verify-and-complete, chain goals link the design
+  brief.
+- Deliberately NOT adopted (re-affirmed with reasons in the design doc):
+  worktrees/PR checkpoints, per-task human checkpoints, one-question-at-a-time
+  in define-goal, a separate progress-ledger file, diff-package scripts.
+- Tested per the RED-baseline doctrine: the pre-change text left
+  `--count`/`--unlimited`/`/dispatch 87`/`NEEDS_CONTEXT`/the placeholder
+  check undecided; GREEN dry-runs on the new text decided all scenarios with
+  citations, and every flagged ambiguity (no-progress-vs-batch contradiction,
+  environment-brake timing, rebuttal adjudication, phase-label mismatch,
+  heartbeat edge, define-goal routing gaps) was closed before shipping.
+
 ## [6.0.0] — 2026-07-17
 
 **BREAKING: the `telegram-message` skill is sunset, and flywheel ships no hooks

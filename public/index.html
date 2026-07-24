@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>flywheel v6.0.0 — plain-language wants in, verified commits out · Pragmatic Growth</title>
+<title>flywheel v6.1.0 — plain-language wants in, verified commits out · Pragmatic Growth</title>
 <meta name="description" content="The pragmatic-growth marketplace ships flywheel for measurable goal queues, html-artifacts for rich browser deliverables, autoresearch for autonomous optimization loops, and human-writing for AI-writing cleanup — all skills-first for Claude Code.">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -21,7 +21,7 @@
 <meta property="og:image:alt" content="flywheel — plain-language wants in, verified commits out. Skills-first Claude Code plugins from Pragmatic Growth.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="flywheel — plain-language wants in, verified commits out">
-<meta name="twitter:description" content="Describe what you want; get goal contracts, rich HTML artifacts, and one-goal-per-run verified commits from one marketplace.">
+<meta name="twitter:description" content="Describe what you want; get goal contracts, rich HTML artifacts, and one-goal-at-a-time verified commits from one marketplace.">
 <meta name="twitter:image" content="https://flywheel.pragmaticgrowth.com/og.png">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#020617" media="(prefers-color-scheme: dark)">
@@ -249,7 +249,7 @@
       <a href="#install">Install</a>
     </nav>
     <div class="nav-actions">
-      <span class="ver-pill" title="Current flywheel version">v6.0.0</span>
+      <span class="ver-pill" title="Current flywheel version">v6.1.0</span>
       <a class="icon-btn" href="https://github.com/pragmaticgrowth/flywheel" target="_blank" rel="noopener" aria-label="GitHub repository">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.7.5.5 5.7.5 12a11.5 11.5 0 0 0 7.9 10.9c.6.1.8-.2.8-.5v-2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.4-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.6 18.3 5 18.3 5c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.6.8.5A11.5 11.5 0 0 0 23.5 12C23.5 5.7 18.3.5 12 .5Z"/></svg>
       </a>
@@ -273,7 +273,7 @@
     <div>
       <span class="h-badge"><span class="dot"></span> <b>Skills-first</b> · Claude&nbsp;Code</span>
       <h1 class="title">Plain-language wants in.<br><span class="grad-text">Verified&nbsp;commits&nbsp;out.</span></h1>
-      <p class="lead">Four skills-first plugins turn requests into measurable goal contracts, rich HTML artifacts, autonomous metric optimization, cleaner human-sounding prose, and one-goal-per-run commits kept only after local checks pass. The workflow is the “proactive loops” pattern from <a href="https://x.com/ClaudeDevs/status/2074208949205881033" target="_blank" rel="noopener">Anthropic’s official loops guidance</a>, shipped as installable skills.</p>
+      <p class="lead">Four skills-first plugins turn requests into measurable goal contracts, rich HTML artifacts, autonomous metric optimization, cleaner human-sounding prose, and one-goal-at-a-time commits kept only after local checks pass. The workflow is the “proactive loops” pattern from <a href="https://x.com/ClaudeDevs/status/2074208949205881033" target="_blank" rel="noopener">Anthropic’s official loops guidance</a>, shipped as installable skills.</p>
       <div class="cta">
         <a class="btn btn-primary" href="#install">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
@@ -287,7 +287,7 @@
       <div class="h-meta">
         <div><b>4</b><span>marketplace plugins</span></div>
         <div><b>0</b><span>servers or build step</span></div>
-        <div><b>5</b><span>workflow skills</span></div>
+        <div><b>6</b><span>workflow skills</span></div>
       </div>
     </div>
 
@@ -301,7 +301,7 @@
 <span class="c"># 2 · optional rich handoff — separate plugin, same marketplace</span><br>
 <span class="u">&gt;</span> make a stakeholder-ready implementation plan<br>
 <span class="m">  html-artifacts</span> ▸ <b>pricing-fcp-plan.html</b> · timeline · data flow · risks<br><br>
-<span class="c"># 3 · work one ready goal; loop repeats it when you want</span><br>
+<span class="c"># 3 · work one ready goal — or --count 3 / --unlimited for a batch</span><br>
 <span class="u">&gt;</span> /dispatch<br>
 <span class="m">  dispatch</span> ▸ <b>6/8 done</b> <span class="bar">████████████████░░░░</span><br>
 <span class="c">           working goal 014 · ready 1 · blocked 0</span><br>
@@ -317,16 +317,18 @@
     <div class="sec-head reveal">
       <span class="eyebrow">How it works</span>
       <h2>From a sentence to a verified commit — on a loop.</h2>
-      <p>The marketplace pairs flywheel's factory chain with three focused sidecar plugins — html-artifacts, autoresearch, and human-writing. flywheel captures wants as contracts, queues them in the repo, works one ready goal per run, and keeps each commit only after TDD-backed local checks pass.</p>
+      <p>The marketplace pairs flywheel's factory chain with three focused sidecar plugins — html-artifacts, autoresearch, and human-writing. flywheel explores fuzzy ideas into designs, captures wants as contracts, queues them in the repo, works ready goals one at a time (one per run by default; batch flags available), and keeps each commit only after TDD-backed local checks pass.</p>
     </div>
     <div class="flow">
-      <div class="step reveal"><div class="n">01 · define-goal</div><h3>Capture</h3><p>Plain-language want → a measurable contract, grounded by recon and red-teamed before it queues into <code>docs/goals/</code>.</p>
+      <div class="step reveal"><div class="n">01 · ideate</div><h3>Explore</h3><p>A fuzzy idea → a user-approved design through open dialogue. Hands the design to define-goal; never writes goals or code.</p>
         <svg class="arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></div>
-      <div class="step reveal"><div class="n">02 · the queue</div><h3>Queue</h3><p>Goal files + <code>index.yaml</code> live in the repo. Status lives only in the index, so a goal is never worked twice.</p>
+      <div class="step reveal"><div class="n">02 · define-goal</div><h3>Capture</h3><p>Plain-language want → a measurable contract, grounded by recon and red-teamed before it queues into <code>docs/goals/</code>.</p>
         <svg class="arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></div>
-      <div class="step reveal"><div class="n">03 · dispatch</div><h3>Work</h3><p>Works one ready goal per run, on the current branch — no worktrees, no PRs. One foreground implementer, backed by TDD and fresh review — then the orchestrator re-reviews the diff with its own independent reviewer.</p>
+      <div class="step reveal"><div class="n">03 · the queue</div><h3>Queue</h3><p>Goal files + <code>index.yaml</code> live in the repo. Status lives only in the index, so a goal is never worked twice.</p>
         <svg class="arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></div>
-      <div class="step reveal"><div class="n">04 · gate</div><h3>Verify</h3><p>Each goal's commit is kept only after an independent review and a local build+test gate pass; a failure rolls it back. CI is a non-blocking post-push check.</p></div>
+      <div class="step reveal"><div class="n">04 · dispatch</div><h3>Work</h3><p>Works ready goals one at a time on the current branch — no worktrees, no PRs. One foreground implementer, backed by TDD and fresh review — then the orchestrator re-reviews the diff with its own independent reviewer.</p>
+        <svg class="arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></div>
+      <div class="step reveal"><div class="n">05 · gate</div><h3>Verify</h3><p>Each goal's commit is kept only after an independent review and a local build+test gate pass; a failure rolls it back. CI is a non-blocking post-push check.</p></div>
     </div>
   </div>
 </section>
@@ -340,6 +342,15 @@
       <p>Install flywheel for the goal queue and autonomous execution. Install html-artifacts for browser-file deliverables, autoresearch for autonomous metric optimization, and human-writing to strip AI-writing tells. In Claude Code they're namespaced by plugin.</p>
     </div>
     <div class="skills">
+
+      <article class="skill reveal">
+        <div class="skill-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.6c.6.5 1 1.4 1 2.4h6c0-1 .4-1.9 1-2.4A6 6 0 0 0 12 3Z"/></svg></div>
+        <div class="skill-main">
+          <h3>ideate</h3>
+          <p>The front door for fuzzy ideas: an open design dialogue — context first, decomposition before detail, 2–3 approaches with a recommendation — ending in a user-approved design handed to define-goal. Never writes goals or code.</p>
+        </div>
+        <span class="cmd">/ideate</span>
+      </article>
 
       <article class="skill reveal">
         <div class="skill-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg></div>
@@ -363,7 +374,7 @@
         <div class="skill-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2.4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg></div>
         <div class="skill-main">
           <h3>dispatch</h3>
-          <p>The factory orchestrator. Works one ready goal per run, commits straight to your branch, and keeps only what passes an independent second-view review plus the local build+test gate. Orchestrates only.</p>
+          <p>The factory orchestrator. Works ready goals one at a time — the next goal, an exact goal (<code>/dispatch 087</code>), or a sequential batch (<code>--count 3</code>, <code>--unlimited</code>) — commits straight to your branch, and keeps only what passes an independent second-view review plus the local build+test gate. Orchestrates only.</p>
         </div>
         <span class="cmd">/dispatch</span>
       </article>

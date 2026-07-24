@@ -4,7 +4,7 @@
 
 Skills-first Claude Code marketplace from Pragmatic Growth.
 The repo now publishes four plugins from one `pragmatic-growth` marketplace:
-`flywheel` v6.0.0, `html-artifacts` v1.0.1, `autoresearch` v1.1.0, and
+`flywheel` v6.1.0, `html-artifacts` v1.0.1, `autoresearch` v1.1.0, and
 `human-writing` v1.0.1. No MCP
 servers, no commands, no hooks, no build step. ONE scoped exception to the
 skills-only rule, as of v5.4.0: THREE plugin agent definitions
@@ -17,10 +17,11 @@ Edit/Write/Agent, pins no `model:`, and has a deliberately narrow
 description so Claude never auto-delegates to it outside flywheel skills;
 the skills always keep a `general-purpose`-with-inline-brief fallback, and
 the built-in Explore type is banned for review roles).
-`flywheel` has five skills under root
+`flywheel` has six skills under root
 `skills/` (three ship deterministic Python helpers in `scripts/`), forming a
 plain-language → autonomous-execution pipeline around a file-based goal queue
-(`docs/goals/` in target repos). `html-artifacts` lives under
+(`docs/goals/` in target repos): `/ideate → /define-goal → /dispatch →
+/goals-status`, with `loop-architect` and `factory-doctor` as the rails. `html-artifacts` lives under
 `plugins/html-artifacts/` as a separate plugin for rich
 plans/reports/diagrams/editors. `autoresearch` lives under
 `plugins/autoresearch/` as a separate plugin for an autonomous try/measure/keep/
@@ -28,6 +29,22 @@ revert optimization loop (ships one Python helper). `human-writing` lives under
 `plugins/human-writing/` as a separate single-skill plugin for AI-writing
 cleanup (pure guidance, no scripts).
 
+- **ideate** (v6.1.0, adapted from superpowers' brainstorming after the
+  2026-07-24 full-plugin deep-read) — the pipeline's front door: explores a
+  fuzzy idea into a user-approved design through open dialogue. Context
+  orientation first (1–2 read-only subagents max, session model), split-first
+  scope check (decomposition before detail questions — pieces map 1:1 onto
+  goals + `depends_on`), option-based question rounds with NO round cap (the
+  attended stage; define-goal keeps its two-round cap), 2–3 approaches with a
+  recommendation, design presented in sections scaled to complexity, inline
+  self-review (placeholders, contradictions, two-readable requirements).
+  HARD GATE: its only terminal states are invoking define-goal with the
+  approved design or the user parking the idea — it never writes goal files,
+  index entries, or code. Multi-goal chains get ONE design brief at
+  `docs/goals/briefs/YYYY-MM-DD-<topic>.md` (the one sanctioned planning
+  artifact beyond goal files; never carries acceptance criteria or status),
+  linked from each chain goal's Context; single-goal outcomes stay fileless.
+  Already-shaped wants skip it entirely.
 - **define-goal** — plain-language wants → measurable goal contracts.
   Two destinations: a copy-pasteable `/goal` line to run now, or a queued
   goal file (`docs/goals/NNN-slug.md` + `index.yaml` entry). Includes
@@ -66,7 +83,15 @@ cleanup (pure guidance, no scripts).
   verdict honors GOAL_UNREACHABLE only with evidence attached, it defers while
   background work runs, and it fails open on its own errors (never the only
   unattended rail). The UI scripted-check rule also generalizes to other
-  drivable surfaces (CLI/API → drive-the-real-surface criterion).
+  drivable surfaces (CLI/API → drive-the-real-surface criterion). v6.1.0: the
+  red-team rubric adds a no-placeholders check ("TBD" / "appropriate error
+  handling" / command-less criteria are vague-by-construction →
+  contract-blocking); fuzzy still-being-explored wants route to ideate first
+  (already-shaped wants never bounce; ideate unavailable → design
+  conversation inline, the two-round cap governs only the contract
+  interview), and an ideate handoff is treated as the brief — question rounds
+  cover only remaining gaps, recon narrows to verify-and-complete, chain
+  goals link the design brief from Context.
 - **dispatch** — factory orchestrator for the docs/goals queue: works ONE
   ready goal per run on the branch that's currently checked out — no PRs, no
   worktrees, no `goal/<id>` branches, no parallel implementation. Per goal it
@@ -121,7 +146,27 @@ cleanup (pure guidance, no scripts).
   newest ~50 kept); the cross-fire brake counts heartbeat lines after a stale
   claim's date (≥3 fires with zero work commits → `blocked: repeated transient
   death`) instead of wall-clock age, so an account usage-limit pause (no fires
-  → no lines) resumes a claim rather than mislabeling it dead.
+  → no lines) resumes a claim rather than mislabeling it dead. v6.1.0
+  (superpowers full-plugin deep-read): invocation grammar —
+  `/dispatch` works the next ready goal (unchanged default); `/dispatch <id>`
+  formalizes solo mode with claim guards (completed/in_progress reported,
+  unmet deps → needs-you, id beats a batch flag); `--count N` /
+  `--unlimited` run an in-session sequential batch of the same settled
+  per-goal cycles (Phase 0/1 once; per-goal report line + heartbeat, each
+  cycle = one fire; a blocked goal doesn't stop a batch; the budget ALWAYS
+  outranks flags — effective cap = min(flag, budget); an environment brake
+  stops the batch on two consecutive infrastructure-shaped failures, skipping
+  the second futile repair spawn; `--unlimited` is the attended drain —
+  unattended stays `/loop` + external scheduling). The implementer status
+  contract adds NEEDS_CONTEXT, and a BLOCKED escalation ladder runs before
+  any goal blocks (each rung once, never a same-model-unchanged respawn:
+  answer-context re-spawn → one stronger-model re-spawn for
+  capability-shaped blockers on sonnet/haiku-stamped goals → too-large /
+  wrong-contract → contract-defect route → else block; ladder re-spawns
+  continue from the current branch state). The repair brief gains
+  receiving-review discipline: verify-then-fix, rebut-with-evidence (the
+  orchestrator adjudicates — confirmed-false findings drop from the re-check,
+  upheld ones return as open failures), covering tests re-run and appended.
 - **goals-status** (v5.2.0; simplified in v6.0.0) — read-only view of the
   docs/goals queue. Prints
   every OPEN goal — `in_progress`, `blocked`, `not_started` — with its title and
@@ -195,11 +240,16 @@ Separate marketplace plugins:
   Single skill under `plugins/human-writing/skills/human-writing/`. Based on
   Wikipedia's guide (WikiProject AI Cleanup, CC BY-SA).
 
-## Queue design invariants (research-backed; v4.1.x one-goal dispatch model, 2026-06-28)
+## Queue design invariants (research-backed; one-goal-at-a-time dispatch model, 2026-06-28; batch flags 2026-07-24)
 
-- **v4.1.x one-goal dispatch model.** dispatch works ONE ready goal per run,
+- **One-goal-AT-A-TIME dispatch model** (v4.1.x; restated for v6.1.0's batch
+  flags — the invariant was never "one per run"): dispatch works ready goals
+  strictly sequentially,
   committing work DIRECTLY on the branch that's checked out — no PRs, no
-  worktrees, no `goal/<id>` branches, no parallel implementation. Each
+  worktrees, no `goal/<id>` branches, no parallel implementation. A flagless
+  run works one goal; `--count N` / `--unlimited` extend the run to a
+  sequential batch of the same fully-settled cycles (each goal claims → gates
+  → settles before the next claim; budget outranks flags). Each
   goal is bracketed by two anchors: `anchor` (the pre-claim clean HEAD) and
   `gate_base` (HEAD right after the claim commit). The implementer commits on
   the branch; then the orchestrator runs the LOCAL gate over the
@@ -210,7 +260,8 @@ Separate marketplace plugins:
   goal's commits into one `feat(goal NNN)` commit + `completed`; FAIL →
   `git reset --hard gate_base` + `blocked`. CI, where the repo has it, is a
   NON-BLOCKING post-push observation surfaced under needs-you, never a gate.
-  `/loop /dispatch` advances the queue by repeating the same one-goal run.
+  `/loop /dispatch` advances the queue by repeating the same one-goal cycle
+  across fires; a batch flag repeats it within one run.
 - Status lives ONLY in `index.yaml`, never in goal-file frontmatter —
   dual-write drifts. Goal files are immutable contracts.
 - Statuses: `not_started | in_progress | completed | blocked` — blocked
@@ -298,7 +349,7 @@ prior model if ever needed.
 .claude-plugin/plugin.json        # root flywheel plugin manifest
 .claude-plugin/marketplace.json   # marketplace — name: pragmatic-growth, lists flywheel + html-artifacts + autoresearch + human-writing
 agents/<name>.md                  # three flywheel plugin agents — read-only factory review roles: gate-reviewer, fresh-check, contract-red-team (v5.4.0)
-skills/<name>/SKILL.md            # five flywheel skills (define-goal, dispatch, goals-status, loop-architect, factory-doctor)
+skills/<name>/SKILL.md            # six flywheel skills (ideate, define-goal, dispatch, goals-status, loop-architect, factory-doctor)
 plugins/html-artifacts/.claude-plugin/plugin.json
 plugins/html-artifacts/skills/html-artifacts/SKILL.md
 plugins/html-artifacts/skills/html-artifacts/references/ # HTML artifact recipes and foundation rules

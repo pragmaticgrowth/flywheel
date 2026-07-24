@@ -21,6 +21,22 @@ decision logs, or resume files beyond the goal file itself.
 
 ## Brief first, then artifact
 
+When the want is still an idea being explored rather than stated — the user is asking
+"what if / what should we build", and answers to your first questions keep re-opening
+what to build instead of pinning it down — route to the `ideate` skill first (when
+available): it converges the design in open dialogue and returns here with an approved
+design. Don't burn this skill's two capped question rounds on design exploration. An
+already-shaped want proceeds here directly — never bounce it to ideate. If ideate is
+unavailable and the want is still design-shaped, hold the design conversation inline
+here first (the two-round cap governs the contract interview, not that design
+convergence), then contract as usual.
+**Invoked from ideate:** treat the approved design as the brief — don't re-ask what the
+dialogue already settled (question rounds cover only the gaps the design leaves, still
+capped at two). Recon narrows to verifying and completing what ideate located rather
+than re-deriving it. A multi-piece design enters batch mode with the decomposition as
+the item list; when ideate wrote a design brief file (`docs/goals/briefs/…`), link it
+from each chain goal's Context alongside that goal's own Interfaces note.
+
 Start by extracting a short brief from the user's words and current repo context:
 desired outcome, target repo/system/environment, success evidence, scope/out of scope,
 urgency, and any action that could be irreversible or externally visible. Ask one concise
@@ -508,6 +524,9 @@ file content. Its brief: try to BREAK the contract, not approve it —
 - **Gameability**: can any criterion be satisfied without the outcome being true — a
   proxy metric, a vacuous/tautological test, a drive-to-zero criterion missing its
   legitimate exceptions?
+- **Placeholders**: "TBD", "appropriate error handling", "handle edge cases", a
+  criterion that names no command, a threshold with no number — vague-by-construction
+  contract text is contract-blocking (an implementer cannot honestly verify it).
 - **Command reality**: does every command named in the acceptance criteria and
   `acceptance:` actually exist and run in THIS repo (script present in
   package.json/Makefile, test paths exist, right package manager)? Verify by reading the
@@ -607,6 +626,8 @@ cheaper and simpler — the platform docs' own threshold.
 
 ## Related skills
 
+- Fuzzy idea that needs design exploration before contracting → **ideate** (it hands
+  the approved design back to this skill).
 - Recurring or unattended run rather than a single goal → design the contract with
   **loop-architect**.
 - Working the queue → **dispatch** (run `/dispatch`, or *"work goal NNN"* for one goal).

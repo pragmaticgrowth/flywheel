@@ -5,7 +5,7 @@ A skills-first plugin marketplace for [Claude Code](https://claude.com/claude-co
 from Pragmatic Growth.
 
 [![Website](https://img.shields.io/badge/site-flywheel.pragmaticgrowth.com-6366f1)](https://flywheel.pragmaticgrowth.com)
-[![Version](https://img.shields.io/badge/version-6.0.0-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-6.1.0-8b5cf6)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
 > 🌐 **Full docs:** **<https://flywheel.pragmaticgrowth.com>**
@@ -21,7 +21,7 @@ keep an unattended agent loop from going off the rails.
 You say *“I want the pricing page to load in under 1.2 seconds.”* The plugin
 investigates your codebase, turns that into a **measurable contract** (what
 “done” means, how to verify it), drops it into a **queue that lives in your
-repo**, and then — when you’re ready — works that queue **one goal per run**:
+repo**, and then — when you’re ready — works that queue **one goal at a time**:
 a foreground implementer commits directly on your current branch using TDD and
 a lightweight subagent review loop (independent read-only lenses), the orchestrator
 independently reviews the diff (a fresh adversarial second view — the implementer never
@@ -40,7 +40,7 @@ read-only [subagent](https://code.claude.com/docs/en/sub-agents) definitions
 `flywheel:contract-red-team` — the factory's review roles, tool-restricted so
 they can never edit files, and only used when a flywheel skill spawns them).
 The marketplace
-exposes four plugins: `flywheel` with five workflow
+exposes four plugins: `flywheel` with six workflow
 [skills](https://docs.claude.com/en/docs/claude-code/skills),
 `html-artifacts` as a separate rich-deliverables plugin,
 `autoresearch` for autonomous optimization loops, and
@@ -61,7 +61,7 @@ want a review surface — flywheel just doesn't require one.)
 
 | Plugin | What it contains | Install |
 |---|---|---|
-| **flywheel** | `define-goal`, `dispatch`, `goals-status`, `loop-architect`, and `factory-doctor` for the docs/goals execution pipeline. | `/plugin install flywheel@pragmatic-growth` |
+| **flywheel** | `ideate`, `define-goal`, `dispatch`, `goals-status`, `loop-architect`, and `factory-doctor` for the docs/goals execution pipeline. | `/plugin install flywheel@pragmatic-growth` |
 | **html-artifacts** | One `html-artifacts` skill with references for self-contained browser deliverables. | `/plugin install html-artifacts@pragmatic-growth` |
 | **autoresearch** | One `autoresearch` skill (+ a Python helper) for an autonomous try/measure/keep/revert optimization loop. | `/plugin install autoresearch@pragmatic-growth` |
 | **human-writing** | One `human-writing` skill that strips AI-writing tells and adds human voice. | `/plugin install human-writing@pragmatic-growth` |
@@ -70,8 +70,9 @@ want a review surface — flywheel just doesn't require one.)
 
 | Skill | One line | Invoke with |
 |---|---|---|
+| **ideate** | Fuzzy idea → a user-approved design through open dialogue, then handed to define-goal. Never writes goals or code. | `/ideate` · *“I have an idea…”* |
 | **define-goal** | Plain-language want → a measurable, red-teamed goal contract (or a whole document of them). Never writes code. | `/define-goal …` · or just say *“I want…”* |
-| **dispatch** | The factory orchestrator: works one ready goal per run — claim, implement with TDD + fresh checks, independent-review-backed local gate, keep or roll back. | `/dispatch` · *”work goal 005”* |
+| **dispatch** | The factory orchestrator: works ready goals one at a time — claim, implement with TDD + fresh checks, independent-review-backed local gate, keep or roll back. Default one goal; flags run a batch. | `/dispatch` · `/dispatch 005` · `/dispatch --count 3` · `/dispatch --unlimited` |
 | **goals-status** | Read-only view of the open queue: every `in_progress` / `blocked` / `not_started` goal with its title + brief (completed hidden). | `/goals-status` |
 | **loop-architect** | Designs the *loop contract* (prompt + verification + stop conditions) for autonomous, scheduled, or remote runs. | *“keep working on X”* · setting up a `/loop`, routine, or cron |
 | **factory-doctor** | One-pass preflight/doctor for the repo + machine. Auto-fixes everything local; reports the rest with exact fixes. | `/factory-doctor` |
@@ -82,10 +83,34 @@ etc. `html-artifacts` installs as its own plugin and exposes
 your message matches what they’re for, so most of the time you don’t type the
 name at all.
 
+### ideate — explore an idea into a design
+
+The pipeline's front door for **fuzzy ideas**. When you don't yet know exactly
+what you want built — "what if we…", "I have an idea…" — ideate runs an open
+design dialogue instead of jumping to a contract:
+
+- **Context first.** It orients in your repo (read-only) before asking anything,
+  so questions go to purpose, constraints, and success — never to things the
+  code already answers.
+- **Split before detail.** If the idea is really several independently shippable
+  pieces, it surfaces that decomposition before refining any one piece — the
+  pieces map 1:1 onto future goals and their `depends_on` chain.
+- **Real alternatives.** 2–3 approaches with trade-offs, recommendation first.
+  No round cap — the dialogue runs while answers still change the design.
+- **Hard gate.** Its only exit is handing the approved design to define-goal
+  (single goal, or batch mode for a chain). It never writes goal files, queue
+  entries, or code. Multi-goal chains get one short design brief in
+  `docs/goals/briefs/` that every chain goal links from its Context.
+
+An already-shaped want ("add rate limiting, 429 over 100 req/min") skips ideate
+entirely — that goes straight to define-goal.
+
 ### define-goal — capture wants as contracts
 
-The front door. Give it a sentence, a paragraph, or a whole bug-report
-document, and it produces **goal contracts** — never implementation.
+The contract writer — and the direct entrance for already-shaped wants. Give it
+a sentence, a paragraph, a whole bug-report
+document, or an ideate-approved design, and it produces **goal contracts** —
+never implementation.
 
 - **Recon first, by default.** Before writing a single success criterion, it
   sends parallel read-only agents to investigate the actual system (your repo,
@@ -147,9 +172,24 @@ prototypes, and custom editors.
 
 ### dispatch — work the queue
 
-The orchestrator. It works **one ready goal per run** on the currently
-checked-out branch — no PRs, no worktrees, no parallel implementers. Use
-`/loop /dispatch` to repeat that cycle until the queue is drained.
+The orchestrator. It works ready goals **one at a time** on the currently
+checked-out branch — no PRs, no worktrees, no parallel implementers. By default
+one goal per run; use
+`/loop /dispatch` to repeat that cycle until the queue is drained, or size the
+run directly:
+
+```bash
+/dispatch               # next ready goal, then stop
+/dispatch 087           # exactly goal 087 (solo mode)
+/dispatch --count 3     # up to 3 ready goals, sequentially
+/dispatch --unlimited   # drain the queue (attended) — budget & brakes still apply
+```
+
+Batch runs repeat the same fully-settled per-goal cycle; a blocked goal doesn't
+stop the batch, `config.budget` always outranks the flags, and an environment
+brake stops a batch when two consecutive goals fail with the same
+infrastructure-shaped cause (pointing you at `/factory-doctor` instead of
+burning the queue).
 
 Per goal:
 
@@ -166,11 +206,15 @@ Per goal:
    - **PASS** → the implementer’s commits are squashed into one
      `feat(goal NNN)` commit kept on the branch.  
    - **FAIL** → work is rolled back; the goal is marked `blocked`.
-4. **Stop** after this goal. A later `/dispatch` run picks up the next ready
-   goal; `/loop /dispatch` repeats automatically.
+4. **Stop or continue** per the run's flags: a flagless run stops after this
+   goal; a batch run claims the next ready goal. A later `/dispatch` run picks
+   up the next ready goal; `/loop /dispatch` repeats automatically.
 
-CI, if present, is a post-push observation — not a gate. You can also target a
-single goal in an interactive session: *”work goal 005.”*
+CI, if present, is a post-push observation — not a gate. If an implementer gets
+stuck, an escalation ladder runs before the goal blocks: a missing-information
+stop (`NEEDS_CONTEXT`) gets answered and re-spawned once, a capability-shaped
+blocker on a cheap-stamped goal gets one re-spawn on the stronger model, and a
+too-large/wrong contract routes to a human amendment.
 
 ### goals-status — see what's open
 
@@ -272,7 +316,9 @@ artifacts ("I hope this helps!") — rewrites them, and pushes for real voice
 
 ```mermaid
 flowchart TD
-    you(["You — plain language"]) --> dg["define-goal<br/>writes measurable contracts"]
+    you(["You — plain language"]) -->|fuzzy idea| id["ideate<br/>dialogue → approved design"]
+    id -->|approved design| dg
+    you -->|shaped want| dg["define-goal<br/>writes measurable contracts"]
     you -->|asks for plan, report, diagram, deck, editor| ha["html-artifacts<br/>self-contained .html files"]
     dg -->|queues| q[("docs/goals/ queue<br/>index.yaml + goal files")]
     q -->|claim next goal| dsp{{"dispatch · orchestrator"}}
@@ -290,7 +336,7 @@ flowchart TD
     classDef human fill:#0f172a,stroke:#0f172a,color:#ffffff;
     classDef support fill:#f1f5f9,stroke:#cbd5e1,color:#334155;
     classDef warn fill:#fee2e2,stroke:#e11d48,color:#9f1239;
-    class dg,ha,dsp,squash brand
+    class id,dg,ha,dsp,squash brand
     class q store
     class impl,gate,art neutral
     class you human
@@ -298,7 +344,8 @@ flowchart TD
     class rollback warn
 ```
 
-The intended flow: **capture** wants with define-goal → **work** the queue with
+The intended flow: **explore** fuzzy ideas with ideate → **capture** wants with
+define-goal → **work** the queue with
 dispatch → **keep it running** unattended with a loop designed by
 loop-architect. html-artifacts handles rich browser deliverables along the way,
 and factory-doctor makes sure the ground is solid first.
@@ -383,7 +430,7 @@ config:
 | `model` | `inherit` | Repo-wide **default** model for spawned **code** agents (`inherit`/`opus`/`sonnet`/`haiku`). Each goal's frontmatter `model:` — stamped by define-goal from a contract-tightness rubric — overrides it per goal. The depth-vs-quota trade. Recon subagents and the orchestrator always stay on the current session model. |
 | `skills` | — | Repo-wide skills every implementer must use (e.g. your TDD or review skills). |
 | `verify` | — | Ordered list of local build + test commands. Run by the dispatch orchestrator after each implementation; PASS keeps the squash commit, FAIL rolls it back. |
-| `budget` | none | `max_goals_per_session` / `max_iterations` ceilings the loop can’t exceed — the external brake on a long run. Dispatch itself works one goal per run. |
+| `budget` | none | `max_goals_per_session` / `max_iterations` ceilings the loop can’t exceed — the external brake on a long run. It always outranks a batch flag: `--unlimited` still stops at the cap. |
 
 ---
 
@@ -404,8 +451,9 @@ any installed plugin from the Installed tab.
 
 ```bash
 /factory-doctor                              # 1. make sure the repo + machine are ready
+/ideate what if signups had a referral loop  # (optional) explore a fuzzy idea into a design
 /define-goal I want the API p95 latency under 200ms   # 2. capture a want → queued contract
-/dispatch                                    # 3. work one ready goal
+/dispatch                                    # 3. work one ready goal (--count N / --unlimited for more)
 ```
 
 That’s the whole arc: preflight, capture, work. Add more goals any time —
@@ -443,7 +491,9 @@ or test command — which is a setup gap, not a code failure: run `/factory-doct
 
 ## Running it autonomously
 
-`/dispatch` works one ready goal and stops. Each run reports **progress-first**:
+`/dispatch` works one ready goal and stops; `--count N` / `--unlimited` run an
+attended sequential batch of the same cycle. Each settled goal reports
+**progress-first**:
 `6/8 done ████████████████░░░░ · ready 0 · blocked 2`.
 
 If you want the queue to keep moving without re-running manually, `/loop
@@ -490,6 +540,7 @@ flywheel/
 │   ├── plugin.json        # flywheel plugin manifest
 │   └── marketplace.json   # the pragmatic-growth marketplace, listing all four plugins
 ├── skills/
+│   ├── ideate/SKILL.md
 │   ├── define-goal/SKILL.md
 │   ├── dispatch/
 │   │   ├── SKILL.md
