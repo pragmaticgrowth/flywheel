@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>flywheel v8.1.0 — session summary</title>
+<style>
+  :root{
+    --bg:#0b0d10; --panel:#12151a; --panel2:#171b21; --line:#232833;
+    --tx:#e6e9ef; --dim:#98a2b3; --faint:#6b7484;
+    --ok:#3fb950; --warn:#d29922; --bad:#f85149; --a1:#8b5cf6; --a2:#22d3ee;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.6 var(--sans);
+       padding:48px 24px 80px}
+  .wrap{max-width:1080px;margin:0 auto}
+  header{border-bottom:1px solid var(--line);padding-bottom:24px;margin-bottom:32px}
+  h1{font-size:1.9rem;margin:0 0 8px;letter-spacing:-.02em}
+  .sub{color:var(--dim);font-size:1.02rem;margin:0}
+  .pill{display:inline-block;font:600 .74rem/1 var(--mono);padding:6px 10px;border-radius:999px;
+        background:color-mix(in srgb,var(--a1) 16%,transparent);color:#c4b5fd;
+        border:1px solid color-mix(in srgb,var(--a1) 34%,transparent);vertical-align:middle;margin-left:10px}
+  h2{font-size:1.05rem;margin:40px 0 14px;letter-spacing:.02em;color:var(--tx)}
+  h2 .n{color:var(--faint);font:600 .8rem var(--mono);margin-right:8px}
+
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+  .stat .v{font:700 1.65rem/1 var(--mono);letter-spacing:-.02em}
+  .stat .k{color:var(--dim);font-size:.78rem;margin-top:6px;letter-spacing:.03em}
+  .green{color:var(--ok)} .amber{color:var(--warn)} .red{color:var(--bad)}
+  .violet{color:#a78bfa} .cyan{color:var(--a2)}
+
+  .bar{font:600 .95rem var(--mono);color:var(--ok);letter-spacing:-1px}
+
+  table{width:100%;border-collapse:collapse;background:var(--panel);
+        border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:.9rem}
+  th{background:var(--panel2);text-align:left;padding:11px 14px;font-size:.72rem;
+     letter-spacing:.07em;text-transform:uppercase;color:var(--dim);font-weight:600}
+  td{padding:12px 14px;border-top:1px solid var(--line);vertical-align:top}
+  td.id{font:600 .82rem var(--mono);color:#a78bfa;white-space:nowrap}
+  .tag{display:inline-block;font:600 .68rem/1 var(--mono);padding:4px 7px;border-radius:5px;white-space:nowrap}
+  .t-ok{background:color-mix(in srgb,var(--ok) 15%,transparent);color:var(--ok)}
+  .t-bug{background:color-mix(in srgb,var(--bad) 14%,transparent);color:#ff9492}
+  .t-feat{background:color-mix(in srgb,var(--a2) 13%,transparent);color:var(--a2)}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--a1);
+        border-radius:10px;padding:18px 20px;margin-bottom:14px}
+  .card h3{margin:0 0 8px;font-size:.97rem}
+  .card p{margin:0 0 10px;color:var(--dim);font-size:.9rem}
+  .card p:last-child{margin-bottom:0}
+  .card .was{color:var(--faint)}
+  code{font:.84em var(--mono);background:#1c2129;padding:2px 6px;border-radius:4px;color:#cdd5e0}
+
+  .flow{display:flex;align-items:stretch;gap:0;flex-wrap:wrap;margin:6px 0 4px}
+  .step{flex:1;min-width:118px;background:var(--panel);border:1px solid var(--line);
+        padding:13px 12px;text-align:center;position:relative}
+  .step:first-child{border-radius:9px 0 0 9px} .step:last-child{border-radius:0 9px 9px 0}
+  .step + .step{border-left:none}
+  .step .t{font:600 .78rem var(--mono);letter-spacing:.02em}
+  .step .d{color:var(--faint);font-size:.7rem;margin-top:5px;line-height:1.35}
+  .step.pass{border-top:2px solid var(--ok)} .step.pass .t{color:var(--ok)}
+  .step.fail{border-top:2px solid var(--bad)} .step.fail .t{color:var(--bad)}
+  .step.fix{border-top:2px solid var(--warn)} .step.fix .t{color:var(--warn)}
+
+  .note{background:linear-gradient(180deg,#1a1420,#161119);border:1px solid #3b2d4d;
+        border-radius:10px;padding:18px 20px}
+  .note h3{margin:0 0 10px;font-size:.97rem;color:#c4b5fd}
+  .note p{margin:0 0 10px;color:#cdc3dd;font-size:.9rem} .note p:last-child{margin:0}
+
+  .mut{width:100%;border-collapse:collapse;font:.82rem var(--mono);margin-top:10px}
+  .mut td{padding:8px 10px;border-top:1px solid #33294a}
+  .mut td:last-child{text-align:right;white-space:nowrap}
+
+  footer{margin-top:44px;padding-top:20px;border-top:1px solid var(--line);
+         color:var(--faint);font-size:.8rem;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  a{color:#a78bfa;text-decoration:none} a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>The factory proves what it claims<span class="pill">v8.1.0</span></h1>
+  <p class="sub">One session: idea &rarr; design &rarr; three red-teamed contracts &rarr; dispatched, gated, shipped.</p>
+</header>
+
+<div class="stats">
+  <div class="stat"><div class="v green">3/3</div><div class="k">GOALS COMPLETED</div></div>
+  <div class="stat"><div class="v cyan">197</div><div class="k">TESTS PASSING <span style="color:var(--faint)">(from 166)</span></div></div>
+  <div class="stat"><div class="v violet">16</div><div class="k">COMMITS PUSHED</div></div>
+  <div class="stat"><div class="v amber">1</div><div class="k">CONTRACT DEFECT CAUGHT</div></div>
+  <div class="stat"><div class="v green">0</div><div class="k">UNVERIFIED WORK ON MAIN</div></div>
+</div>
+<p class="bar" style="margin-top:14px">████████████████████ 100% &nbsp;<span style="color:var(--faint);font-family:var(--sans);font-weight:400;font-size:.86rem">queue drained</span></p>
+
+<h2><span class="n">01</span>What shipped</h2>
+<table>
+  <thead><tr><th style="width:180px">Goal</th><th style="width:74px">Type</th><th>Outcome</th><th style="width:82px">Gate</th></tr></thead>
+  <tbody>
+    <tr>
+      <td class="id">001<br><span style="color:var(--faint);font-weight:400">prove-the-gate-runs</span></td>
+      <td><span class="tag t-feat">feature</span></td>
+      <td><strong>factory-doctor runs <code>config.verify</code> instead of counting it.</strong>
+          A renamed script or build-only command list used to report READY while certifying nothing —
+          making every later PASS unearned. Now BLOCKER on red or unresolvable, WARN on timeout.</td>
+      <td><span class="tag t-ok">PASS</span></td>
+    </tr>
+    <tr>
+      <td class="id">002<br><span style="color:var(--faint);font-weight:400">answerable-needs-you</span></td>
+      <td><span class="tag t-feat">feature</span></td>
+      <td><strong>Every human decision names the command that resolves it</strong>, plus
+          <code>define-goal --amend</code> to repair a blocked contract. Narrows the
+          &ldquo;immutable contracts&rdquo; invariant that contradicted the documented repair path in 8 places.</td>
+      <td><span class="tag t-ok">PASS</span></td>
+    </tr>
+    <tr>
+      <td class="id">003<br><span style="color:var(--faint);font-weight:400">surface-subjective-criteria</span></td>
+      <td><span class="tag t-bug">bug</span></td>
+      <td><strong>Criteria marked <em>needs independent review</em> finally reach a human.</strong>
+          define-goal promised this 3&times;; dispatch mentioned it 0&times;. Those criteria were passing
+          <em>verified by nobody</em>.</td>
+      <td><span class="tag t-ok">PASS</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<h2><span class="n">02</span>Goal 003 took the long road — and that was the system working</h2>
+
+<div class="flow">
+  <div class="step pass"><div class="t">IMPLEMENT</div><div class="d">rule text + surfacing correct</div></div>
+  <div class="step pass"><div class="t">GATE</div><div class="d">deterministic checks PASS</div></div>
+  <div class="step fail"><div class="t">REVIEWER</div><div class="d">test is gameable</div></div>
+  <div class="step fail"><div class="t">BLOCK</div><div class="d">rolled back to gate_base</div></div>
+  <div class="step fix"><div class="t">AMEND</div><div class="d">contract repaired + red-teamed</div></div>
+  <div class="step pass"><div class="t">RE-RUN</div><div class="d">PASS &rarr; completed</div></div>
+</div>
+<p style="color:var(--dim);font-size:.88rem;margin-top:12px">
+  The deterministic gate passed. The <em>independent reviewer</em> caught it — and the defect was in
+  the contract <strong>I wrote</strong>, not the implementation. That routes <code>FAIL_CONTRACT</code>:
+  reset and block, because a repair agent cannot fix code into a defective contract.
+</p>
+
+<div class="note" style="margin-top:18px">
+  <h3>The lesson, verified by running it</h3>
+  <p>My criterion said &ldquo;assert these phrases appear in the same section, <em>so the test cannot be
+     satisfied by pasting a string</em>.&rdquo; The mechanism could not deliver the purpose. Three mutations,
+     each actually executed against the code:</p>
+  <table class="mut">
+    <tr><td>Glossary paste ending &ldquo;Dispatch does none of this&rdquo;</td><td class="red">9/9 passed &mdash; not caught</td></tr>
+    <tr><td>Invert by <strong>addition</strong> (keeps the phrase)</td><td class="red">9/9 passed &mdash; not caught</td></tr>
+    <tr><td>Invert by <strong>replacement</strong> (deletes the phrase)</td><td class="green">3 failed &mdash; caught incidentally</td></tr>
+  </table>
+  <p style="margin-top:12px">A first amendment tried finer location-binding. It <em>also</em> passed the inversion,
+     and its span was 58 lines wide — swallowing unrelated prose, contradicting its own promise.</p>
+  <p><strong>Settled reading: a substring assertion cannot detect negation at any granularity.</strong>
+     The test is now honestly scoped to <em>placement</em>; meaning is verified by the dry-run and the gate
+     reviewer — a human-judgment surface, which is what goal 003 is about in the first place.</p>
+</div>
+
+<h2><span class="n">03</span>Where the value came from</h2>
+
+<div class="card">
+  <h3>The red-team paid for itself before any code ran</h3>
+  <p>Goals 002 and 003 required README/site edits <em>outside</em> their declared <code>touches:</code>.
+     <code>blast_radius</code> fails that, and <code>queue_untouched</code> bars the repair agent from
+     widening it — a deadlock, not a repair cycle. Both would have burned a full implementer run and blocked.
+     I verified it against <code>pg_validate.py:56</code> and <code>:216</code> rather than trusting the finding.</p>
+  <p class="was">It also caught that goal 003's item fires on a <em>PASS</em> — so a &ldquo;blocker &rarr; command&rdquo;
+     table literally could not hold it. A genuine interface break between 002 and 003, found before either ran.</p>
+</div>
+
+<div class="card">
+  <h3>Two pre-existing contradictions surfaced</h3>
+  <p><strong>The invariant that contradicted the repair path.</strong> Four files declared goal files
+     &ldquo;immutable contracts&rdquo; while dispatch routed defects to &ldquo;the human re-specifies via define-goal&rdquo;
+     in eight places. Narrowed to what it actually protects: immutable <em>to implementers</em> and
+     <em>while claimable</em>.</p>
+  <p><strong>A promise nothing kept.</strong> <code>needs independent review</code> was documented three times
+     and implemented nowhere. Any goal with a subjective criterion had been passing unchecked — in the repo
+     before this session started.</p>
+</div>
+
+<div class="card">
+  <h3>One reviewer finding I overrode</h3>
+  <p>The red-team wanted a version bump per goal. Three bumps for one logical change, dragging
+     <code>plugin.json</code> into every scope list. Made it one owner-performed release instead — and wrote
+     that explicitly into all three contracts so no implementer half-did it.</p>
+</div>
+
+<h2><span class="n">04</span>Honest notes</h2>
+<div class="card" style="border-left-color:var(--warn)">
+  <h3>What slowed this down</h3>
+  <p><strong>Subagents vs <code>droid exec</code>.</strong> The <code>Task</code> tool was unavailable inside
+     spawned implementers in this session, so they reached for <code>droid exec -f</code> to get fresh-context
+     reviewers. That works — the reviews were genuinely independent — but each is a full CLI boot instead of an
+     in-process spawn, which is most of the wall-clock cost. My own orchestrator-level reviews used real subagents.</p>
+  <p><strong>Two false starts I caught and corrected:</strong> a mutation that silently failed to apply
+     (wrong anchor string) briefly looked like a clean pass, and I wrongly assumed a cancelled run had landed
+     no work — it had committed <code>96ddda9</code> and was complete. Both were caught by re-checking rather
+     than trusting the first read.</p>
+  <p><strong>Known drift, deliberately unfixed:</strong> dispatch and factory-doctor both claim dispatch runs
+     the doctor probe every fire. It does not. Harmless today — and it is what makes goal 001's cost
+     acceptable — but it is documentation asserting a safety behavior that does not exist. Recorded in the brief.</p>
+</div>
+
+<footer>
+  <span>flywheel v8.1.0 &middot; 3 goals &middot; 16 commits &middot; 197 tests green &middot; main in sync</span>
+  <span><a href="https://github.com/pragmaticgrowth/flywheel/releases/tag/v8.1.0">Release notes &rarr;</a></span>
+</footer>
+
+</div>
+</body>
+</html>
