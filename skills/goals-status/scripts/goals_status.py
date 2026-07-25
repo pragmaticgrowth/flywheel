@@ -6,8 +6,10 @@ hidden (only counted). It reads git + docs/goals/index.yaml + each goal file;
 it never writes to the queue (dispatch owns queue state).
 
 Status lives only in index.yaml. The title/type/model come from each goal
-file's frontmatter, and the "brief" is the file's `## Outcome (plain language)`
-paragraph — there is no `brief:` field.
+file's frontmatter — `model:` is the execution tier (heavy|medium|light|inherit;
+legacy opus/sonnet/haiku stamps are read as heavy/medium/light aliases) — and
+the "brief" is the file's `## Outcome (plain language)` paragraph — there is no
+`brief:` field.
 
 PyYAML is the only parser: factory-doctor already treats a missing PyYAML and a
 malformed index as BLOCKERs, so this view points at that fix rather than
@@ -142,6 +144,15 @@ def _extract_brief(body):
     return _first_paragraph(section) if section else ""
 
 
+TIER_ALIASES = {"opus": "heavy", "sonnet": "medium", "haiku": "light"}
+
+
+def normalize_tier(value):
+    """Map legacy model names to tier names; tier names and '' pass through."""
+    v = (value or "").strip().lower()
+    return TIER_ALIASES.get(v, v)
+
+
 def parse_goal_file(path):
     """Return {title, type, model, brief}. Missing file → a clear placeholder."""
     try:
@@ -153,7 +164,7 @@ def parse_goal_file(path):
     return {
         "title": meta.get("title") or "(untitled)",
         "type": meta.get("type") or "",
-        "model": meta.get("model") or "",
+        "model": normalize_tier(meta.get("model")),
         "brief": _extract_brief(body),
     }
 

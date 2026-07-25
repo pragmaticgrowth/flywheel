@@ -112,11 +112,32 @@ def test_parse_goal_file_fields_and_brief():
     gf = gs.parse_goal_file(os.path.join(d, "002-rate-limit-api.md"))
     assert gf["title"] == "Rate-limit the public API"
     assert gf["type"] == "feature"      # inline comment stripped by YAML
-    assert gf["model"] == "sonnet"
+    assert gf["model"] == "medium"      # 'sonnet' stamp normalized to its tier
     assert gf["brief"].startswith("Callers hitting /api/*")
     assert "degrading the service" in gf["brief"]
     # brief stops at the blank line before the next section
     assert "something else entirely" not in gf["brief"]
+
+
+def test_legacy_model_names_normalize_to_tiers():
+    # goals stamped with the pre-v7 vocabulary must read as their tier
+    d = _make_queue()
+    gf = gs.parse_goal_file(os.path.join(d, "003-receipt-dupes.md"))  # model: opus
+    assert gf["model"] == "heavy"
+    out = gs.render_detailed(gs.build_report(d))
+    assert "medium" in out          # 002 stamped sonnet
+    assert "sonnet" not in out and "opus" not in out
+
+
+def test_tier_names_pass_through_verbatim():
+    d = tempfile.mkdtemp(prefix="goals-status-tier-")
+    with open(os.path.join(d, "index.yaml"), "w") as f:
+        f.write("config:\n  base: main\ngoals:\n  001-t: {status: in_progress}\n")
+    with open(os.path.join(d, "001-t.md"), "w") as f:
+        f.write(_goal_md("Tiered goal", "feature", "heavy", "Brief."))
+    gf = gs.parse_goal_file(os.path.join(d, "001-t.md"))
+    assert gf["model"] == "heavy"
+    assert "heavy" in gs.render_detailed(gs.build_report(d))
 
 
 def test_parse_goal_file_missing():
