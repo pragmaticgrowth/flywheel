@@ -213,6 +213,14 @@ flag, not `/loop`/`claude -p`/`droid exec`) — one round, at most two questions
 options with a recommended default. Unsure? It writes the needs-you line instead;
 an interactive question in an unattended fire is worse than none.
 
+**Subjective criteria reach a human.** A criterion no command can settle is
+marked `needs independent review` when the goal is written. On a PASS, dispatch
+re-reads the goal file for that marker and surfaces each one under needs-you as
+what to run and what to look for, drawn from the implementer's evidence — never
+the criterion text echoed back. It is an observation, not a gate: the PASS still
+completes the goal, so an unattended drain is never blocked waiting on you. A
+goal with no such criteria surfaces nothing.
+
 ### goals-status — see what's open
 
 A read-only glance at the queue. `/goals-status` prints every goal that is

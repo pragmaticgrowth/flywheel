@@ -203,6 +203,7 @@ the `→` half.
 | `unmet dependency` | a named goal whose `depends_on` are not all `completed` | `/dispatch <blocking-id>` first (the named goal is `not_started`, so `--amend` refuses it — to change the chain instead, edit its `depends_on` in `index.yaml` by hand) |
 | `CI failure` | the branch's latest CI run is red (a non-blocking observation) | `gh run view --log-failed` |
 | `recurring lesson` | the same gate-failure class recurring across goals | the proposed encoding site — a `config.verify` command, a `config.skills` entry, a CLAUDE.md rule, or `/define-goal --amend <id>` on a goal already `blocked` by it |
+| `needs independent review` | a PASSed goal whose acceptance criteria carry the **needs independent review** marker (a non-blocking observation) | the command or surface from the implementer's report evidence, plus what to look for there (Working a goal, step 4) |
 
 **The class set is open and NOT all classes are blocking.** `CI failure` already rides this
 format as a pure observation, and a class may fire on a PASS. Adding a class = adding ONE
@@ -429,8 +430,26 @@ For each claimed goal, in order:
    `python3 "$PGVALIDATE" --head HEAD --base <gate_base> --goal <id> --goal-file docs/goals/<id>.md`
    plus the repo `config.verify` commands (ordered, all must exit 0). Show output.
 4. PASS → `git reset --soft <gate_base> && git commit -m "feat(goal <id>): <slug>"` (squash to
-   one), then `chore(goals): complete <id>`; push if a remote exists (non-blocking); report —
-   a flagless run stops here; a batch run (Invocation) claims the next ready goal instead.
+   one), then `chore(goals): complete <id>`; push if a remote exists (non-blocking).
+   **Then, on every PASS, surface the goal's subjective criteria.** define-goal marks a
+   criterion no command can settle **needs independent review** and tells the goal author it
+   reaches a human under needs-you at integration — so after the squash, re-read
+   `docs/goals/<id>.md` and collect every acceptance criterion carrying that marker. For each
+   one, emit a needs-you item as class `needs independent review` (needs-you above supplies
+   the `→` half; this class has no `index.yaml` block reason to quote — the goal PASSed — so
+   its `<reason>` half is the criterion's own subject, e.g. `007 — subjective criterion:
+   checkout page calm`). Render the `→` half as **what to run and what to look for** — the
+   command, URL, or surface the implementer's report actually exercised for that criterion
+   plus the thing a human should judge there — drawn from the implementer's report file,
+   never the criterion text repeated verbatim (a criterion echoed back is the
+   diagnosis-without-an-answer the format exists to end). Report evidence too thin to name a
+   surface? Say so in the `→` half and name the report path — never drop the item. A goal
+   whose criteria carry no such marker surfaces nothing: no empty item, no "none"
+   placeholder. This is an observation, never a completion gate — a PASS still completes the
+   goal, the entry stays `completed` with no new status or sign-off state, and an unattended
+   `/loop /dispatch` drain keeps claiming the next goal whether or not a human ever reads the
+   item. Then report — a flagless run stops here; a batch run (Invocation) claims the next
+   ready goal instead.
    FAIL_FIXABLE → one repair agent (fed the COMPLETE verified findings list in one spawn —
    never one repair agent per finding), re-gate (re-run the commands; when verified review
    findings drove the repair, add a focused re-check by one fresh read-only agent —
@@ -772,10 +791,15 @@ goal, and one final summary line closes the run:
 needs-you lists everything currently waiting on the human: every goal with explicit `blocked`
 status (with the dependents stuck behind it), `GOAL_UNREACHABLE`/`CONTRACT_AMBIGUOUS`/
 `FAIL_CONTRACT` contract
-amendments, a `base:`-mismatched goal needing a branch switch, and `budget exhausted`. A
+amendments, a `base:`-mismatched goal needing a branch switch, `budget exhausted`, and the
+non-blocking observations — a red CI run, and every criterion marked
+**needs independent review** on a goal this fire PASSed (Working a goal, step 4: those goals
+are `completed`, so the item asks for a look, not a decision). A
 **dep-blocked** goal (not_started, waiting on another goal still running or not yet ready) is
 NOT human-blocked: it unblocks on its own, so it never appears here on its own — only as a
-"dependent stuck behind" a goal that is human-blocked. Every iteration, not only new ones.
+"dependent stuck behind" a goal that is human-blocked. Every iteration, not only new ones —
+except the non-blocking observations, which belong to the fire that produced them (nothing
+persists a PASSed goal's review items, per status-only-in-index).
 Every item is written in the canonical needs-you format (see needs-you above): its class's
 `→ <what to run>` half is not optional — an item with no command is the
 diagnosis-without-an-answer this format exists to end.

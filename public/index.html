@@ -445,6 +445,7 @@ docs/goals/
             <div><code>direct-to-branch</code><span>The implementer commits straight to the checked-out branch — no worktrees, no <code>goal/&lt;id&gt;</code> branches.</span></div>
             <div><code>blocked ≠ lost</code><span>A blocked goal keeps a reason and is surfaced under <b>needs-you</b>, never re-dispatched into livelock.</span></div>
             <div><code>answerable</code><span>Every needs-you item names its command — <code>&lt;id&gt; — &lt;reason&gt; → &lt;what to run&gt;</code>. A contract defect resolves with <code>/define-goal --amend &lt;id&gt;</code>.</span></div>
+            <div><code>human judgement</code><span>Criteria marked <code>needs independent review</code> are surfaced on a PASS as what to run and what to look for — an observation, never a completion gate.</span></div>
             <div><code>local gate</code><span>One goal per run; the commit is kept only after TDD-backed verification and the <code>verify</code> build+test gate pass, else rolled back.</span></div>
           </div>
         </div>
