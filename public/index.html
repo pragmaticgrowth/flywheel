@@ -356,7 +356,7 @@
         <div class="skill-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg></div>
         <div class="skill-main">
           <h3>define-goal</h3>
-          <p>Turns a plain-language want — or a whole document of them — into a measurable goal contract, grounded by recon (medium-tier gather agents, session-model synthesis) and a concise brief. Red-teams every queued contract before it lands, then stamps the implementer tier last — heavy by default for features and bugs, medium for mechanical work. Produces goals only; never implements.</p>
+          <p>Turns a plain-language want — or a whole document of them — into a measurable goal contract, grounded by recon (medium-tier gather agents, session-model synthesis) and a concise brief. Red-teams every queued contract before it lands, then stamps the implementer tier last — heavy by default for features and bugs, medium for mechanical work. <code>--amend &lt;id&gt;</code> repairs a <b>blocked</b> goal's defective criteria in place — one plain-language round, an amendment note, a fresh red-team — and requeues it. Produces goals only; never implements.</p>
         </div>
         <span class="cmd">/define-goal</span>
       </article>
@@ -365,7 +365,7 @@
         <div class="skill-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2.4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg></div>
         <div class="skill-main">
           <h3>dispatch</h3>
-          <p>The factory orchestrator. Works ready goals one at a time — the next goal, an exact goal (<code>/dispatch 087</code>), or a sequential batch (<code>--count 3</code>, <code>--unlimited</code>) — commits straight to your branch, and keeps only what passes an independent second-view review plus the local build+test gate. Orchestrates only.</p>
+          <p>The factory orchestrator. Works ready goals one at a time — the next goal, an exact goal (<code>/dispatch 087</code>), or a sequential batch (<code>--count 3</code>, <code>--unlimited</code>) — commits straight to your branch, and keeps only what passes an independent second-view review plus the local build+test gate. Everything it hands back to you names the command that resolves it; it only asks a live question when the run is provably attended. Orchestrates only.</p>
         </div>
         <span class="cmd">/dispatch</span>
       </article>
@@ -414,7 +414,7 @@
         <div class="code">
           <div class="code-head"><span>docs/goals/ layout</span>
             <button class="copy" data-copy="docs/goals/&#10;├── index.yaml&#10;├── 001-faster-checkout.md&#10;├── 002-fix-auth-redirect.md&#10;└── done/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>Copy</button></div>
-<pre><span class="c"># status lives ONLY in index.yaml — goal files are immutable contracts</span>
+<pre><span class="c"># status lives ONLY in index.yaml — goal files are immutable contracts, except /define-goal --amend on a blocked one</span>
 docs/goals/
 ├── <span class="k">index.yaml</span>        <span class="c"># config + queue state</span>
 ├── 001-faster-checkout.md
@@ -444,6 +444,7 @@ docs/goals/
             <div><code>claim protocol</code><span>Flip one entry to <code>in_progress</code> before working it, so a goal is never picked up twice.</span></div>
             <div><code>direct-to-branch</code><span>The implementer commits straight to the checked-out branch — no worktrees, no <code>goal/&lt;id&gt;</code> branches.</span></div>
             <div><code>blocked ≠ lost</code><span>A blocked goal keeps a reason and is surfaced under <b>needs-you</b>, never re-dispatched into livelock.</span></div>
+            <div><code>answerable</code><span>Every needs-you item names its command — <code>&lt;id&gt; — &lt;reason&gt; → &lt;what to run&gt;</code>. A contract defect resolves with <code>/define-goal --amend &lt;id&gt;</code>.</span></div>
             <div><code>local gate</code><span>One goal per run; the commit is kept only after TDD-backed verification and the <code>verify</code> build+test gate pass, else rolled back.</span></div>
           </div>
         </div>

@@ -65,7 +65,7 @@ per-goal; the stalled-factory notification stays once per distinct blocker set.
 4. **Environment brake:** two CONSECUTIVE goals fail with the same
    infrastructure-shaped cause — the same `config.verify` command failing identically
    in a way the two goals' diffs cannot explain, or two INCONCLUSIVE gate verdicts →
-   stop the batch and surface "run `/factory-doctor`" under needs-you. A broken
+   stop the batch and surface it under needs-you as class `environment brake`. A broken
    environment must not burn the queue one blocked goal at a time. The first goal
    still gets its normal repair attempt (one failure can't prove a systemic cause);
    when the SECOND goal's gate failure matches the first's infrastructure signature,
@@ -156,15 +156,80 @@ a review role: review needs to run commands (tests, builds), which `explorer` ca
   distinct from the implementer's own ~3-honest-attempts rule inside one spawn.)
 - Substantive conflicts are never guessed through. A local `git merge`/squash that hits a
   conflict on the current branch means two pieces of work changed the same logic → set the
-  goal `blocked`, surface under needs-you, and roll back; never resolve by guessing.
+  goal `blocked`, surface it under needs-you as class `conflict`, and roll back; never
+  resolve by guessing.
 - **Session budget (external brake).** If `config.budget.max_goals_per_session` (or
   `max_iterations`) is set, count each claimed goal against it. A flagless run claims at
   most one goal; batch flags (`--count`, `--unlimited`) claim more but NEVER past the
   cap — the budget always outranks a flag (effective cap = min(flag, budget));
   lower/zero or exhausted caps stop before claiming. Let any in-flight goal finish its gate
-  cleanly, surface `budget exhausted (<n>/<cap> goals)` under needs-you, and send ONE
+  cleanly, surface `budget exhausted (<n>/<cap> goals)` as class `budget exhausted` under
+  needs-you, and send ONE
   notification per Phase 4 via the PushNotification tool. The cap comes from config you
   cannot edit; that is what makes it a real brake and not a soft self-limit.
+
+## needs-you — the canonical format (every human decision names its command)
+
+needs-you is the factory's only channel to a human, and a diagnosis is not an answer:
+`004 — contract defect: criterion 3 ambiguous` tells the reader what broke and leaves them
+to work out what to do about it. Every needs-you item is emitted in ONE shape, defined here
+and nowhere else — the emission sites below name their CLASS and let this table supply the
+command, so a new class is one new row instead of a new phrasing:
+
+`<id or item> — <reason> → <what to run>`
+
+`<id or item>` is the goal id (or the item name for a queue-wide condition), `<reason>` is
+the block reason exactly as it was written to `index.yaml` (never a paraphrase — the index
+and the report line must read the same), and `<what to run>` is the resolving command from
+the table, with `<id>` and `<base>` substituted. Command unclear for a class not in the
+table? Emit the item with the closest table command and say what is uncertain — never drop
+the `→` half.
+
+| class | trigger | what to run |
+|---|---|---|
+| `contract defect (ambiguous)` | reason `contract defect: <criterion> ambiguous` | `/define-goal --amend <id>` |
+| `contract defect (unreachable)` | reason `contract defect: <criterion> unreachable` | `/define-goal --amend <id>` |
+| `contract defect (finding)` | reason `contract defect: <the verified finding>` (FAIL_CONTRACT) | `/define-goal --amend <id>` |
+| `contract defect (too large / wrong)` | reason `contract defect: <reason>` (escalation ladder rung 3) | `/define-goal --amend <id>` |
+| `needs context` | the implementer's `NEEDS_CONTEXT` ask verbatim, unanswerable from the queue | `/define-goal --amend <id>` (add the missing fact to the goal's Context) |
+| `no runnable local gate` | reason `no runnable local gate: <evidence>` (INCONCLUSIVE gate) | `/factory-doctor` |
+| `environment brake` | two consecutive infrastructure-shaped gate failures stopped a batch | `/factory-doctor` |
+| `environment failure` | tooling, queue, or `config.verify` failure this fire could not handle | `/factory-doctor` |
+| `repeated transient death` | reason `repeated transient death` (≥3 fires observed, zero work commits) | `/dispatch <id>` once the cause is gone |
+| `budget exhausted` | `budget exhausted (<n>/<cap> goals)` | raise or remove `config.budget.max_goals_per_session` in `docs/goals/index.yaml`, then `/dispatch` |
+| `base: mismatch` | a goal entry whose `base:` mismatches the started branch | `git checkout <base>` then `/dispatch <id>` |
+| `multiple in_progress` | `multiple in_progress claims — manual review` | manual review: pick the entry to keep, fix `index.yaml` by hand, then `/dispatch` |
+| `conflict` | a local squash/merge conflict — two pieces of work changed the same logic | resolve the overlap by hand, or `/define-goal --amend <id>` to re-scope, then `/dispatch <id>` |
+| `unmet dependency` | a named goal whose `depends_on` are not all `completed` | `/dispatch <blocking-id>` first (the named goal is `not_started`, so `--amend` refuses it — to change the chain instead, edit its `depends_on` in `index.yaml` by hand) |
+| `CI failure` | the branch's latest CI run is red (a non-blocking observation) | `gh run view --log-failed` |
+| `recurring lesson` | the same gate-failure class recurring across goals | the proposed encoding site — a `config.verify` command, a `config.skills` entry, a CLAUDE.md rule, or `/define-goal --amend <id>` on a goal already `blocked` by it |
+
+**The class set is open and NOT all classes are blocking.** `CI failure` already rides this
+format as a pure observation, and a class may fire on a PASS. Adding a class = adding ONE
+row here (class, trigger, what to run) — never a second line shape, and never a parallel
+format section elsewhere in this skill. A class whose "what to run" is prose rather than a
+fixed command (what to look at, not what to type) still fills the `→` half with that prose.
+
+**Attended-only interactive questions.** Dispatch may ask the human a question directly —
+instead of only writing the item into needs-you — when, and only when, ALL THREE of these
+hold at once:
+
+1. the user invoked `/dispatch` conversationally in this session (a turn you can see in
+   this conversation, not a scheduled or piped invocation), AND
+2. no batch flag (`--count`/`--unlimited`) is active, AND
+3. the run is not `/loop`, `claude -p`, or `droid exec`.
+
+When any one of the three is unknown or unverifiable, do NOT ask — write the needs-you item
+and move on. A batch run NEVER asks, whatever the other conditions say (`--unlimited` is
+labeled the attended mode, but a flag is a user's word about the run, not evidence about who
+is watching it). Defaulting to not-asking is load-bearing: an interactive question in an
+unattended fire hangs the loop or gets auto-answered by it, which is strictly worse than a
+needs-you line a human reads later. Nothing here is a probe — no TTY sniffing, no env
+inspection; you evaluate the three conditions from evidence you already hold.
+
+When you do ask: ONE round, at most 2 questions, each with concrete options and a
+recommended default, in the same plain language the needs-you line uses. Then act on the
+answer and continue; an unanswered question falls back to the needs-you item.
 
 ## Claim protocol — every status write
 
@@ -177,7 +242,10 @@ The index is the claim ledger. A claim is a status flip committed BEFORE impleme
    ever run two dispatch sessions on one local queue they race on index.yaml — don't.
 
 Every status transition uses the same convention — one entry, its own commit:
-`chore(goals): claim|complete|block|archive <id>`.
+`chore(goals): claim|complete|block|archive <id>`. These four are dispatch's closed verb
+set; the one status write dispatch does NOT own is define-goal's `chore(goals): amend <id>`,
+which requeues a `blocked` goal after repairing its contract (needs-you class
+`contract defect (…)` above).
 
 ## Re-entrancy — idempotent iterations
 
@@ -195,10 +263,12 @@ where it left off:
    final report named a blocker, set `blocked` with that reason. A report that declares
    `GOAL_UNREACHABLE` (the acceptance criteria can be neither satisfied nor shown measurable
    after honest attempts) is a contract defect, not a work failure: set `blocked` with reason
-   `contract defect: <criterion> unreachable` and surface it under needs-you as a contract
-   amendment (the human re-specifies via `define-goal`) — do NOT respawn it, a re-run hits the
+   `contract defect: <criterion> unreachable` and surface it under needs-you as class
+   `contract defect (unreachable)` (the human re-specifies via `define-goal --amend`) — do NOT
+   respawn it, a re-run hits the
    same unmeasurable check. A final report declaring `CONTRACT_AMBIGUOUS` routes identically
-   (reason `contract defect: <criterion> ambiguous`) — a respawn guesses at the same fork. Otherwise respawn — but distinguish a transient infrastructure
+   as class `contract defect (ambiguous)` (reason `contract defect: <criterion> ambiguous`) —
+   a respawn guesses at the same fork. Otherwise respawn — but distinguish a transient infrastructure
    death (connection closed mid-response, parse error, 529 overloaded: NOT a work failure)
    from a logic blocker. A transient death is not a "fail" toward the no-progress rule; don't
    let it burn the respawn budget — retry it, up to ~3 transient respawns per goal per session,
@@ -245,7 +315,7 @@ before stopping. A later `/dispatch` (or `/loop`) re-run picks up newly-added go
 At end-of-drain only (NOT per-goal — no polling), if the working branch has a remote AND `gh`
 is available and authenticated, do ONE non-blocking check of the latest CI run on the current
 branch (`gh run list --branch <current> --limit 1`); if it is failing, surface it under
-needs-you as a non-blocking observation (a CI failure to look at — never block, never wait on
+needs-you as class `CI failure` — a non-blocking observation (never block, never wait on
 it). If `gh` or the remote is absent, skip silently (`gh` is optional).
 
 **Latest-context preflight (read-only, never a gate).** Before spawning an implementer, gather
@@ -269,8 +339,8 @@ silently fixed: every entry has its goal file and vice versa; no circular `depen
 different `base` branches.
 
 On any environment failure you can't handle (missing tooling, an unrunnable `config.verify`
-command, a queue the claim protocol can't write), stop the iteration and surface "run
-`/factory-doctor`" under needs-you — it diagnoses and fixes setup so the loop stops failing
+command, a queue the claim protocol can't write), stop the iteration and surface it under
+needs-you as class `environment failure` — `/factory-doctor` diagnoses and fixes setup so the loop stops failing
 the same way every fire instead of burning quota on a wall it can't clear.
 
 **Implementer-cost awareness.** When goals resolve to an expensive session model (no per-goal
@@ -338,7 +408,8 @@ For each claimed goal, in order:
    verify yourself against the diff and the cited evidence — never orders; verified
    Critical/Important findings enter the FAIL_FIXABLE repair
    path like any gate finding — EXCEPT a verified contract-mandated finding, which is a
-   contract defect: route it FAIL_CONTRACT (reset + block, needs-you contract amendment) —
+   contract defect: route it FAIL_CONTRACT (reset + block, needs-you class
+   `contract defect (finding)`) —
    a repair agent cannot fix code into a defective contract. A genuinely one-file mechanical edit skips the reviewer —
    judge that from the DIFF, not the implementer's claim; the
    deterministic gate + `config.verify` suffice there; that carve-out is what keeps the
@@ -368,9 +439,10 @@ For each claimed goal, in order:
    break a neighbor — not a new full panel); still failing →
    `git reset --hard <gate_base>`,
    `chore(goals): block <id> — <reason>`. FAIL_CONTRACT → reset + block, reason
-   `contract defect: <the verified finding>` (needs-you contract
-   amendment). INCONCLUSIVE → reset + block "no runnable local gate: <the failing check's
-   `evidence` from the JSON>" — the evidence names the exact cause and operator fix (e.g.
+   `contract defect: <the verified finding>` (needs-you class
+   `contract defect (finding)`). INCONCLUSIVE → reset + block "no runnable local gate: <the
+   failing check's
+   `evidence` from the JSON>" (needs-you class `no runnable local gate`) — the evidence names the exact cause and operator fix (e.g.
    the Windows symlink privilege below), so it must reach the block reason, not die in the
    gate output.
 
@@ -406,7 +478,8 @@ Before claiming anything new, settle every `in_progress` entry — finished work
 an older goal's `gate_base` is an ancestor of a newer goal's claim + work, and a
 `git reset --hard <older gate_base>` on a FAIL would rewind past the newer claim and silently
 destroy its committed work. STOP, roll back nothing, and surface
-`multiple in_progress claims — manual review` under needs-you. (This state only arises from a
+`multiple in_progress claims — manual review` under needs-you as class
+`multiple in_progress`. (This state only arises from a
 crash between claims, a manual index edit, or a prior buggy run; resume once a human resolves
 it.) When exactly one `in_progress` exists, proceed:
 
@@ -424,8 +497,9 @@ branch after that claim commit:
    `chore(goals): complete <id>`.
    FAIL_FIXABLE → one repair agent, re-gate (incl. the focused review re-check); still
    failing → `git reset --hard <gate_base>` +
-   `chore(goals): block <id> — <reason>`. FAIL_CONTRACT → reset + block (needs-you contract
-   amendment). INCONCLUSIVE → reset + block "no runnable local gate: <evidence>" (same
+   `chore(goals): block <id> — <reason>`. FAIL_CONTRACT → reset + block (needs-you class
+   `contract defect (finding)`). INCONCLUSIVE → reset + block "no runnable local gate:
+   <evidence>" (needs-you class `no runnable local gate`; same
    evidence-in-reason rule as step 4).
 2. **No work commits after the claim commit and no active agent** (stale claim — the
    implementer died) → `gate_base` is the current HEAD (no work landed). Apply the stale-claim
@@ -439,8 +513,8 @@ dependency makes dependents not-ready; report the stuck chain. Pick `priority: h
 then top-most in the file; claim via the protocol BEFORE spawning. A per-goal `base:` field
 in the index entry overrides `config.base` for that goal (epic integration branches) — but
 since dispatch works on the currently-checked-out branch sequentially, a goal whose `base:`
-differs from the started branch is surfaced under needs-you (switch branches and run a
-separate session), never silently worked on the wrong branch.
+differs from the started branch is surfaced under needs-you as class `base: mismatch`
+(switch branches and run a separate session), never silently worked on the wrong branch.
 
 If `config.budget` is set and `max_goals_per_session` is exhausted, stop claiming (Hard
 rules) and let the current goal finish. Never claim a goal while another is unsettled;
@@ -596,7 +670,8 @@ acceptance criteria cannot be made green AND you cannot show the target is even
 measurable/reachable (a flaky, non-deterministic, or contradictory check), end your turn
 declaring `GOAL_UNREACHABLE: <which criterion, why unmeasurable, last measurement>` instead
 of churning your whole window — never retry the identical failing approach; the dispatcher
-routes that to a needs-you contract amendment (a `CONTRACT_AMBIGUOUS` stop — from your
+routes that to a needs-you contract defect resolved by `/define-goal --amend <id>`
+(a `CONTRACT_AMBIGUOUS` stop — from your
 first skeptical read or a mid-work fork — routes the same way: a contract defect, never
 your failure).
 ```
@@ -616,14 +691,14 @@ confirmed false → drop the finding from the re-check scope (note it in the rep
 upheld → it goes back unfixed, and the re-gate treats it as an open failure.
 A `CONTRACT_AMBIGUOUS` return is a contract defect caught early, not a work failure: if any
 work commits landed before the stop, `git reset --hard <gate_base>`; set the goal
-`blocked — contract defect: <criterion> ambiguous` and surface it under needs-you as a
-contract amendment (the human re-specifies via `define-goal`) — never respawn it to "try a
+`blocked — contract defect: <criterion> ambiguous` and surface it under needs-you as class
+`contract defect (ambiguous)` (the human re-specifies via `define-goal --amend`) — never respawn it to "try a
 reading", the respawn guesses at the same fork. A live `NEEDS_CONTEXT` or `BLOCKED`
 return likewise skips the gate — there is nothing to certify yet — but does NOT go
 straight to `blocked`: run the escalation ladder below first. `GOAL_UNREACHABLE` skips
 the ladder: roll back any work commits (`git reset --hard <gate_base>`) and block with
-reason `contract defect: <criterion> unreachable` (a needs-you contract amendment —
-never a respawn; same routing as Re-entrancy).
+reason `contract defect: <criterion> unreachable` (needs-you class
+`contract defect (unreachable)` — never a respawn; same routing as Re-entrancy).
 
 **Escalation ladder — before any goal blocks.** Each rung fires at most ONCE per goal
 per session, and never as a same-model-unchanged respawn — if the implementer is stuck,
@@ -635,7 +710,7 @@ spawn produced it):
 1. **`NEEDS_CONTEXT`** → answer it from what you hold — the queue, sibling goal files
    and their Interfaces notes, the latest-context bullets, repo config — and re-spawn
    once with the answer added to the brief. Nothing you hold answers it → roll back any
-   work commits and block with the ask as the reason (needs-you).
+   work commits and block with the ask as the reason (needs-you class `needs context`).
 2. **`BLOCKED`, capability-shaped, on a cheap-stamped goal.** The goal's resolved
    implementer tier is `medium` or `light` AND the blocker reads capability-shaped (an
    architectural fork within contract bounds, "reading file after file without
@@ -647,8 +722,8 @@ spawn produced it):
    `inherit`/`heavy` skip this rung — capability was not the gap there.
 3. **Too large / contract wrong.** A blocker that reads "the goal is too large" or "the
    contract is wrong" → the contract-defect route: roll back, block with
-   `contract defect: <reason>` (needs-you amendment via define-goal, which splits or
-   re-specifies). Never respawn — a respawn hits the same wall.
+   `contract defect: <reason>` (needs-you class `contract defect (too large / wrong)` —
+   define-goal splits or re-specifies). Never respawn — a respawn hits the same wall.
 4. **Anything else** → roll back any work commits and block with the implementer's
    stated reason, as today.
 
@@ -663,7 +738,8 @@ via the protocol, and run it through Working a goal (anchor → claim → foregr
 gate, the rollback — is identical, and the run stops after that one goal (a batch flag
 alongside an id is ignored — the id wins). Guards before claiming: a named goal that is
 `completed` or already `in_progress` is reported, not re-claimed; one whose
-`depends_on` are not all `completed` is surfaced under needs-you instead of claimed —
+`depends_on` are not all `completed` is surfaced under needs-you as class
+`unmet dependency` instead of claimed —
 dependency order is part of the contract (amend the chain via define-goal to mean it);
 an id matching no entry reports the near-misses.
 
@@ -700,6 +776,9 @@ amendments, a `base:`-mismatched goal needing a branch switch, and `budget exhau
 **dep-blocked** goal (not_started, waiting on another goal still running or not yet ready) is
 NOT human-blocked: it unblocks on its own, so it never appears here on its own — only as a
 "dependent stuck behind" a goal that is human-blocked. Every iteration, not only new ones.
+Every item is written in the canonical needs-you format (see needs-you above): its class's
+`→ <what to run>` half is not optional — an item with no command is the
+diagnosis-without-an-answer this format exists to end.
 
 **Stalled factory → one real notification.** A report line in an unattended run has no reader.
 The fire that first finds the factory fully stalled — needs-you non-empty and nothing this
@@ -732,7 +811,8 @@ every iteration — keep it small.
 
 **Encode recurring lessons.** When the same class of gate failure recurs across different
 goals (the same lint family, the same missing verify step, the same scope-creep shape),
-that is a system defect, not a string of per-goal bugs: surface ONE needs-you line
+that is a system defect, not a string of per-goal bugs: surface ONE needs-you line as class
+`recurring lesson`, its `→` half
 proposing where to encode it — a `config.verify` command, a `config.skills` entry, a
 CLAUDE.md rule, or a contract fix via define-goal — so future implementers inherit the
 rule instead of re-learning it one blocked goal at a time. Propose only; the repo owner

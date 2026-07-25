@@ -134,6 +134,16 @@ never implementation.
   (`/goal …`), or **queue**
   a goal file (`docs/goals/NNN-slug.md` + an `index.yaml` entry) to be worked
   later by dispatch.
+- **`--amend <id>` — repair a blocked contract.** When dispatch blocks a goal
+  with a *contract defect* (a criterion with two readings, an unreachable
+  check, a goal too large for one run), its needs-you line points here:
+  `/define-goal --amend 004` reads the goal file, the blocker reason, and the
+  implementer's report, asks you ONE plain-language round with options and a
+  recommended default, rewrites **only** the defective criteria, records a
+  one-line amendment note so the next implementer can't re-open the same fork,
+  re-runs the contract red-team, and requeues the goal
+  (`chore(goals): amend <id>` — status back to `not_started`, stale reason
+  cleared). It refuses any goal that isn't `blocked`, and never auto-amends.
 - **Grounded in your repo.** It copies your `CLAUDE.md` rules
   verbatim into the contract, fills in *real* verification commands, and
   auto-populates the goal’s `touches:` / `acceptance:` fields from recon.
@@ -191,6 +201,17 @@ stuck, an escalation ladder runs before the goal blocks: a missing-information
 stop (`NEEDS_CONTEXT`) gets answered and re-spawned once, a capability-shaped
 blocker on a cheap-stamped goal gets one re-spawn on the stronger model, and a
 too-large/wrong contract routes to a human amendment.
+
+**Every needs-you item names the command that resolves it.** Anything waiting on
+you is reported in one shape — `<id or item> — <reason> → <what to run>` — with
+the command coming from a single blocker-class table: a contract defect →
+`/define-goal --amend <id>`, an unrunnable gate or a stalled batch →
+`/factory-doctor`, a transient death → `/dispatch <id>`, a red CI run →
+`gh run view --log-failed`. Dispatch may also just *ask* you, but only when it
+can see the run is attended (you invoked `/dispatch` conversationally, no batch
+flag, not `/loop`/`claude -p`/`droid exec`) — one round, at most two questions,
+options with a recommended default. Unsure? It writes the needs-you line instead;
+an interactive question in an unattended fire is worse than none.
 
 ### goals-status — see what's open
 
@@ -306,7 +327,10 @@ docs/goals/
 ```
 
 **Status lives only in `index.yaml`** (never in goal-file frontmatter —
-dual-writing drifts). Goal files are immutable contracts. Statuses move
+dual-writing drifts). Goal files are immutable contracts, with `--amend` the one
+exception: immutable to implementers and while a goal is claimable, editable only
+by `/define-goal --amend <id>` on a **blocked** goal, which repairs the defective
+criteria in place and requeues it. Statuses move
 `not_started → in_progress → completed`, plus `blocked` (always with a reason,
 so a blocked goal is surfaced for you rather than re-dispatched into a livelock).
 
@@ -338,7 +362,8 @@ must prove no behavior change (suite green before and after).
 ### The claim protocol
 
 Every status write is **flip one entry → commit** (`chore(goals):
-claim|complete|block|archive <id>`) on the current branch — one entry per
+claim|complete|block|archive <id>` from dispatch, plus define-goal's
+`amend <id>` requeue of a blocked goal) on the current branch — one entry per
 commit. The single session owns the branch, so there is no push-arbitration;
 push is an optional backup only. Implementer agents work directly on `<base>`
 and **never touch `docs/goals/` at all** — only the orchestrator does.

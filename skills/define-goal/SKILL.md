@@ -1,7 +1,7 @@
 ---
 name: define-goal
-description: Use when the user states something they want — a goal, wish, feature, fix, or annoyance ("I want…", "set a goal", "/define-goal"), asks to clarify success criteria or turn fuzzy intent into a measurable objective, OR hands over a document with multiple items (bug report doc, feedback list, meeting notes) to convert. Also use to add work to the docs/goals queue. Defines goals only; never starts the implementation work.
-argument-hint: "[want in plain language — or a doc of items to convert]"
+description: Use when the user states something they want — a goal, wish, feature, fix, or annoyance ("I want…", "set a goal", "/define-goal"), asks to clarify success criteria or turn fuzzy intent into a measurable objective, OR hands over a document with multiple items (bug report doc, feedback list, meeting notes) to convert. Also use to add work to the docs/goals queue, and to amend a blocked goal's defective contract and requeue it ("/define-goal --amend 004", "fix goal 004's contract", a needs-you contract defect). Defines and amends goals only; never starts the implementation work.
+argument-hint: "[want in plain language — or a doc of items to convert] [--amend <id>]"
 ---
 
 # Define Goal
@@ -19,6 +19,20 @@ Every goal ends at one of two destinations:
 
 Defining ends the skill. Never implement. Do not create planning artifacts, ledgers,
 decision logs, or resume files beyond the goal file itself.
+
+## Invocation — `/define-goal [<want>] [--amend <id>]`
+
+| Invocation | Behavior |
+|---|---|
+| `/define-goal <want>` (also just *"I want…"*) | Shape the want into a contract and pick a destination — run-now line or queued goal file (today's default). |
+| `/define-goal <document>` | Batch mode: extract many items, one approval table, many goal files. |
+| `/define-goal --amend 004` (also `4`, `004-slug`, or *"fix goal 004's contract"*) | Amend mode: repair a **blocked** goal's defective contract in place and requeue it (see "Amend mode" below). |
+
+Argument rules: `--amend` needs an id — `--amend` with no id, or an id matching no index
+entry, reports the usage line above plus the near-miss ids and stops (never falls through to
+defining a new goal). An id combined with a want or a document → the id wins; note the
+ignored text. `--amend` on a goal whose index status is not `blocked` is refused (Amend
+mode, step 1) — it is never a way to edit a live contract.
 
 ## Brief first, then artifact
 
@@ -585,6 +599,81 @@ contract.
 Batch mode: one reviewer covers ALL drafted goals in a single pass — it also catches
 cross-goal overlap and duplicated criteria that per-item drafting can't see — between
 drafting and the approval table.
+
+## Amend mode — `/define-goal --amend <id>` (repair a blocked contract, then requeue)
+
+Dispatch blocks a goal with `contract defect: …` when the contract itself is the problem —
+a two-readable criterion, an unreachable check, a verified contract-mandated finding, a goal
+too large for one run. Its needs-you line points here. Amend mode is the answer to that
+line: repair the contract in place and put the goal back in the queue.
+
+**Amend is the ONE exception to two standing rules.** Goal files are immutable to
+implementers and immutable while a goal is claimable — this mode, on a `blocked` goal only,
+is the sole path that edits one. And dispatch owns status writes everywhere else — this mode
+owns the single `blocked → not_started` requeue, using dispatch's own claim protocol
+convention (one entry, its own commit). Both narrowings are deliberate: without them a
+contract defect has no repair path but a hand-edit nobody reviews.
+
+Run the steps in this order:
+
+1. **Refuse anything not `blocked`.** Read `docs/goals/index.yaml` with a real YAML parser.
+   A status that is not `blocked` — `not_started`, `in_progress`, `completed` — stops the
+   mode: it reports the actual status and what to do instead (`in_progress`: the goal is
+   claimed by a running session, wait for it to settle or block it; `completed`: define a
+   NEW goal; `not_started`: it is already queued — amend it only after it blocks). Also stop
+   if the working tree is dirty, if the goal file named by the entry is missing, or if the
+   id matches no entry (report the near-misses).
+2. **Read the whole picture before asking anything.** Three sources: the goal file (the
+   contract as written), the index entry's `reason` (dispatch's verdict — it names the
+   defective criterion), and the implementer's report at
+   `~/.local/state/pg-dispatch/<SLUG>/reports/<id>-report.md` (`<SLUG>` = the repo dir name)
+   — the evidence behind the reason. A missing or stale report is non-fatal and never
+   blocks the amend: the file is overwritten by every attempt, so it may describe a
+   different run than the one that produced this `reason` — treat the `reason` as
+   authoritative and the report as corroborating evidence, and say which you used. Read
+   whatever repo code the defective criterion names; a criterion is often ambiguous only
+   until you look.
+3. **ONE question round, plain language.** Present the defect the way the user would say it
+   — the criterion, the two (or more) readings dispatch's implementer could not choose
+   between, what each would mean for the finished work — with options and a **recommended
+   default** (AskUserQuestion; max 2–3 questions). ONE round: the reason already named the
+   defect, so this is a choice, not an interview. The user can't decide → take the
+   conservative reading, state it, and write it into the amendment note. A `needs context`
+   block (the reason is an unanswered implementer ask, not a defective criterion) asks for
+   that missing fact instead — the same one round, same options-with-a-default shape.
+4. **Rewrite ONLY the criteria the reason identifies as defective** — or, for a
+   `needs context` block, only the missing fact, added to Context. Everything else in the
+   goal file stays byte-for-byte: the id, title, type, `depends_on`, working criteria, Out
+   of scope. An amend that rewrites the whole contract is a new goal wearing an old id — if
+   the want really changed, `completed`/archive this one and define a fresh goal instead.
+   Re-stamp `model:` only if the amended criteria change the tightness rubric's answer.
+   Status stays out of the file: status stays ONLY in `index.yaml` (see the queue rules),
+   and this mode never adds a status field to goal frontmatter.
+5. **Record a one-line amendment note in the goal file's Context section** —
+   `**Amended <date>:** <the defect> → <the resolved reading>` — so the next implementer
+   reads the settled fork instead of re-opening it. One line per amendment, appended; never
+   rewrite or delete an earlier note (the notes are the goal's decision history, and git
+   holds the rest).
+6. **Re-run the contract red-team on the amended draft** (Contract review above — the
+   `contract-red-team` agent when the runtime lists it, else the generic type with the
+   rubric inline). Same one round, same rules: verify each finding, fix the
+   contract-blocking ones. A contract that just failed at dispatch time earns the second
+   view more than a fresh draft does.
+7. **Confirm with the user, then write and requeue in TWO commits** — the contract edit and
+   the status write never share a commit (queue writes are always their own commit, exactly
+   as `reserve`/`add` split them above). Show the amended criteria and the amendment note.
+   On approval: first write the amended goal file and commit `chore(goals): amend <id> —
+   contract`; then flip the index entry and commit
+   `chore(goals): amend <id>` — one entry, its own commit, matching the claim protocol
+   convention — flipping the entry's `status` back to `not_started` AND clearing the stale
+   `reason` field. Clearing `reason` is not cosmetic: a stale reason survives in the index
+   invisibly (goals-status shows `reason` only while a goal is `blocked`) and would describe
+   a defect that no longer exists. Push is optional backup, exactly as elsewhere in this
+   skill. Then point at the next step: `/dispatch <id>`.
+
+Never auto-amend: this mode is always human-invoked and always asks before rewriting.
+Never amend a goal another session has claimed (step 1 refuses `in_progress`). Never edit
+`docs/goals/` for any goal other than the one named.
 
 ## Implementer tier — decide it last
 

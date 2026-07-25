@@ -254,7 +254,10 @@ is no `plugins/` directory — the repo root IS the flywheel plugin.
   `/loop /dispatch` advances the queue by repeating the same one-goal cycle
   across fires; a batch flag repeats it within one run.
 - Status lives ONLY in `index.yaml`, never in goal-file frontmatter —
-  dual-write drifts. Goal files are immutable contracts.
+  dual-write drifts. Goal files are immutable contracts, `define-goal --amend <id>` the
+  sole exception: immutable to implementers and while a goal is claimable, editable only
+  by an amend on a `blocked` goal, which repairs the defective criteria in place, records
+  a one-line amendment note, and requeues via `chore(goals): amend <id>`.
 - Statuses: `not_started | in_progress | completed | blocked` — blocked
   (with reason) is required to avoid re-dispatch livelock. `completed`
   only when the gate has PASSED and the goal's commit is on the branch.
@@ -278,7 +281,8 @@ is no `plugins/` directory — the repo root IS the flywheel plugin.
   prove "no behavior change" (suite green before and after) plus one
   mechanical check.
 - Claim protocol is LOCAL: every status write is flip ONE entry → commit
-  (`chore(goals): claim|complete|block|archive <id>`). One entry per commit,
+  (`chore(goals): claim|complete|block|archive <id>` from dispatch, plus
+  define-goal's `amend <id>` requeue of a blocked goal). One entry per commit,
   status-only-in-index; no push, no push-arbitration — the single session
   owns the branch. NNN minting is local too (a collision renumbers the NEW
   goal only; never renumber existing goals).
