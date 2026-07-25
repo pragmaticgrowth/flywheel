@@ -2,10 +2,16 @@
 
 ## Project Overview
 
-Skills-first Claude Code marketplace from Pragmatic Growth.
-The repo now publishes four plugins from one `pragmatic-growth` marketplace:
-`flywheel` v6.1.0, `html-artifacts` v1.0.1, `autoresearch` v1.1.0, and
-`human-writing` v1.0.1. No MCP
+Skills-first plugin marketplace from Pragmatic Growth, dual-target since
+v7.0.0: **Claude Code and Factory Droid are both first-class harnesses**
+(Droid installs the Claude-layout plugins via its compatibility translation;
+v5.0.0 had removed the old dual-CLI support, v7.0.0 restored it on a new
+architecture — one harness-neutral **execution-tier vocabulary
+`heavy|medium|light`** plus one small harness-mapping block per skill,
+instead of the v4.x dual-branch prose).
+The repo publishes four plugins from one `pragmatic-growth` marketplace:
+`flywheel` v7.0.0, `html-artifacts` v1.0.2, `autoresearch` v1.2.0, and
+`human-writing` v1.0.2. No MCP
 servers, no commands, no hooks, no build step. ONE scoped exception to the
 skills-only rule, as of v5.4.0: THREE plugin agent definitions
 (root `agents/` — the factory's read-only review roles `gate-reviewer`,
@@ -13,10 +19,15 @@ skills-only rule, as of v5.4.0: THREE plugin agent definitions
 2026-07-16 after transcript forensics on real dispatch runs showed
 hand-composed review briefs drifting across fires. Each carries the role
 brief + output contract as its system prompt and a tool allowlist with no
-Edit/Write/Agent, pins no `model:`, and has a deliberately narrow
-description so Claude never auto-delegates to it outside flywheel skills;
-the skills always keep a `general-purpose`-with-inline-brief fallback, and
-the built-in Explore type is banned for review roles).
+write-capable tools (the list names both harnesses' shell tools, `Bash` +
+`Execute` — each harness silently ignores the other's; live-verified on
+Droid 2026-07-25), pins no `model:`, and has a deliberately narrow
+description so the agent never auto-delegates to it outside flywheel skills;
+the skills always keep a generic-type-with-inline-brief fallback
+(`general-purpose` on Claude Code, `worker` on Droid; spawn plugin agents as
+`flywheel:<name>` on Claude Code, bare `<name>` on Droid), and
+the built-in Explore type (Claude Code) and `explorer` (Droid) are banned
+for review roles).
 `flywheel` has six skills under root
 `skills/` (three ship deterministic Python helpers in `scripts/`), forming a
 plain-language → autonomous-execution pipeline around a file-based goal queue
@@ -32,8 +43,10 @@ cleanup (pure guidance, no scripts).
 - **ideate** (v6.1.0, adapted from superpowers' brainstorming after the
   2026-07-24 full-plugin deep-read) — the pipeline's front door: explores a
   fuzzy idea into a user-approved design through open dialogue. Context
-  orientation first (1–2 read-only subagents max; on `sonnet` as of v6.2.0 —
-  gather work, same routing as define-goal recon), split-first
+  orientation first (1–2 read-only subagents max; on the medium tier as of
+  v6.2.0 — gather work, same routing as define-goal recon; medium maps to
+  `general-purpose` + `model: sonnet` on Claude Code and to `explorer` +
+  `complexity: medium` on Droid), split-first
   scope check (decomposition before detail questions — pieces map 1:1 onto
   goals + `depends_on`), option-based question rounds with NO round cap (the
   attended stage; define-goal keeps its two-round cap), 2–3 approaches with a
@@ -51,12 +64,15 @@ cleanup (pure guidance, no scripts).
   goal file (`docs/goals/NNN-slug.md` + `index.yaml` entry). Includes
   repo grounding (CLAUDE.md rules copied verbatim, real
   verification commands) and a batch mode for documents of items.
-  Stamps each queued goal's frontmatter `model:` (inherit|opus|sonnet|haiku)
+  Stamps each queued goal's frontmatter `model:` (inherit|heavy|medium|light;
+  legacy opus/sonnet/haiku stamps read as heavy/medium/light aliases forever,
+  never written anew)
   LAST, after the acceptance criteria are final, from a contract-tightness
-  rubric (v4.15.0; rebalanced v6.2.0, owner decision 2026-07-24): the goal
-  `type:` picks the lane and wins ties — opus is the DEFAULT for every
+  rubric (v4.15.0; rebalanced v6.2.0, owner decision 2026-07-24; tier
+  vocabulary since v7.0.0): the goal
+  `type:` picks the lane and wins ties — heavy is the DEFAULT for every
   feature/bug goal (tightness is never a downgrade reason; an explicit user
-  ask for cheap execution is the only route down), sonnet is rote
+  ask for cheap execution is the only route down), medium is rote
   chore-shaped work only (lint/doc/config sweeps, ports with an exact
   source of truth); unsure → the stronger. Every queued goal gets an adversarial contract review first
   (v5.1.0): one fresh read-only subagent red-teams the drafted contract —
@@ -68,8 +84,8 @@ cleanup (pure guidance, no scripts).
   the superpowers eval-evidence deep-read): dependent goals in a `depends_on`
   chain carry an Interfaces note in Context (exact names the dependency
   produces — the implementer sees only its own goal file; red-team checks it,
-  advisory), the model rubric adds turn-count-beats-token-price to the haiku
-  caution, and ambiguity is named a contract defect in its own right
+  advisory), the tier rubric adds turn-count-beats-token-price to the light
+  (formerly haiku — alias) caution, and ambiguity is named a contract defect in its own right
   (dispatch implementers STOP `CONTRACT_AMBIGUOUS` on a two-readable
   criterion instead of guessing). v5.5.1: the question round is split-first
   (split question before detail questions), option-based with a recommended
@@ -87,7 +103,11 @@ cleanup (pure guidance, no scripts).
   verdict honors GOAL_UNREACHABLE only with evidence attached, it defers while
   background work runs, and it fails open on its own errors (never the only
   unattended rail). The UI scripted-check rule also generalizes to other
-  drivable surfaces (CLI/API → drive-the-real-surface criterion). v6.1.0: the
+  drivable surfaces (CLI/API → drive-the-real-surface criterion). Since
+  v7.0.0 the `/goal` facts are labeled Claude Code facts; on Droid the
+  run-now destination is a self-contained contract prompt block invoked via
+  `droid exec -f goal-prompt.md` (no evaluator — the contract itself carries
+  the verification; live-verified 2026-07-25). v6.1.0: the
   red-team rubric adds a no-placeholders check ("TBD" / "appropriate error
   handling" / command-less criteria are vague-by-construction →
   contract-blocking); fuzzy still-being-explored wants route to ideate first
@@ -102,8 +122,10 @@ cleanup (pure guidance, no scripts).
   records the pre-claim clean
   HEAD as `anchor`, commits the claim, records the post-claim HEAD as
   `gate_base`, spawns ONE foreground implementer that commits its work
-  directly on the branch — on the goal's resolved implementer model
-  (goal frontmatter `model:` > `config.model` > inherit, v4.15.0; the
+  directly on the branch — on the goal's resolved implementer tier
+  (goal frontmatter `model:` > `config.model` > inherit, v4.15.0; tiers since
+  v7.0.0, mapped at spawn time — heavy/medium/light become
+  opus/sonnet/haiku model pins on Claude Code, Task `complexity` on Droid; the
   orchestrator and recon/review agents always stay on the session
   model) — using a lightweight subagent-driven quality loop
   (plan/checklist, TDD, fresh verifier/reviewer subagent for non-trivial work;
@@ -164,8 +186,8 @@ cleanup (pure guidance, no scripts).
   unattended stays `/loop` + external scheduling). The implementer status
   contract adds NEEDS_CONTEXT, and a BLOCKED escalation ladder runs before
   any goal blocks (each rung once, never a same-model-unchanged respawn:
-  answer-context re-spawn → one stronger-model re-spawn for
-  capability-shaped blockers on sonnet/haiku-stamped goals → too-large /
+  answer-context re-spawn → one stronger-tier re-spawn for
+  capability-shaped blockers on medium/light-stamped goals → too-large /
   wrong-contract → contract-defect route → else block; ladder re-spawns
   continue from the current branch state). The repair brief gains
   receiving-review discipline: verify-then-fix, rebut-with-evidence (the
@@ -272,11 +294,12 @@ Separate marketplace plugins:
   (with reason) is required to avoid re-dispatch livelock. `completed`
   only when the gate has PASSED and the goal's commit is on the branch.
 - `index.yaml` `config:` block: `base` (the branch goals are worked on;
-  per-goal `base:` override allowed), `model` (inherit|opus|sonnet|haiku —
-  the repo-wide DEFAULT for code agents dispatch spawns; each goal's
-  frontmatter `model:` — stamped by define-goal from its contract-tightness
-  rubric (opus default for features/bugs since v6.2.0) — overrides it per
-  goal, and the orchestrator and review agents
+  per-goal `base:` override allowed), `model` (inherit|heavy|medium|light —
+  the repo-wide DEFAULT execution tier for code agents dispatch spawns;
+  legacy opus/sonnet/haiku values read as heavy/medium/light aliases; each
+  goal's frontmatter `model:` — stamped by define-goal from its
+  contract-tightness rubric (heavy default for features/bugs since
+  v6.2.0) — overrides it per goal, and the orchestrator and review agents
   always stay on the session model; the depth-vs-limit trade), repo-wide
   `skills`, `verify` (the ordered local
   build+test commands the gate runs after each implementer), and `budget`
@@ -306,14 +329,15 @@ Separate marketplace plugins:
   skip only for genuinely greenfield or one-liner wants. Reaches the system
   wherever it lives (local checkout, separate repo, a host you connect to, a
   service/DB), told to each subagent, never hardcoded. Recon search subagents
-  run on `sonnet` (v6.2.0, owner routing decision 2026-07-24 — gather is
-  strong-tool-use work; the prior always-inherit rule guarded against
+  run on the medium tier (v6.2.0, owner routing decision 2026-07-24 — gather
+  is strong-tool-use work; the prior always-inherit rule guarded against
   shallow recon, and that guard now lives in the gather/judge split instead).
-  Use the `general-purpose` type with `model: sonnet`, strictly read-only,
-  and never the built-in Explore type (its model cannot be pinned). The
+  On Claude Code use the `general-purpose` type with `model: sonnet` and
+  never the built-in Explore type (its model cannot be pinned); on Droid use
+  `explorer` with `complexity: medium`. Strictly read-only either way. The
   synthesis/judgment agent — and the contract writing itself — ALWAYS stays
   on the current session model; a per-run explicit user ask is the only
-  override for the gather model. `config.model`
+  override for the gather tier. `config.model`
   governs only code-writing agents, never recon. (Recon stays plain parallel
   subagents, NOT a Workflow: 2–4 agents is below the workflow scale threshold
   and a workflow can be disabled on a user's machine — define-goal batch mode
@@ -348,7 +372,13 @@ on 2026-07-17 along with `hooks/hooks.json`, the repo's only hook bundle,
 and dispatch's `active` fire marker (written every fire; the notifier was
 its only reader — the heartbeat, which factory-doctor and the cross-fire
 brake actually use, is a separate file and stays). Git history has every
-prior model if ever needed.
+prior model if ever needed. Dual-CLI history: v4.x carried Droid (Factory
+CLI) support as dual-branch prose + a `config.droid_models` mapping; v5.0.0
+(2026-07-11) removed it entirely (Claude-Code-only); v7.0.0 (2026-07-25)
+restored Factory Droid as a first-class harness on the tier architecture —
+one harness-neutral heavy/medium/light vocabulary plus one mapping block per
+skill, all Droid claims live-verified (spec:
+docs/superpowers/specs/2026-07-25-droid-dual-target-tiers-design.md).
 
 ## Structure
 
@@ -378,22 +408,30 @@ wrangler.jsonc                    # Cloudflare Workers static-assets deploy conf
   agents, or hooks here without an explicit ask. ONE exception to date: the
   three root `agents/` definitions (the factory's read-only review roles,
   owner-delegated decision 2026-07-16). Keep it minimal: plugin agents
-  must stay read-only-by-tools (no Edit/Write/Agent), pin no `model:`, carry
+  must stay read-only-by-tools on BOTH harnesses (no Edit/Write/Create/
+  ApplyPatch/Agent/Task; the allowlist names both shell tools `Bash` +
+  `Execute` since each harness silently drops unknown names), pin no
+  `model:`, carry
   narrow non-auto-triggering descriptions, and every skill that spawns one keeps
-  a `general-purpose` inline-brief fallback so nothing breaks where plugin
+  a generic-type inline-brief fallback (`general-purpose` on Claude Code,
+  `worker` on Droid) so nothing breaks where plugin
   agents are unavailable. A new hook or agent needs the same explicit ask.
   (The repo carried a second exception — `hooks/hooks.json` for the
   `telegram-message` notifier, owner decision 2026-07-07 — from v4.11.0 until
   the v6.0.0 sunset removed the skill and the hook bundle; flywheel ships no
   hooks again.)
 - **Portability.** Skills must not contain user-specific absolute paths
-  (`/Users/...`, `~/.claude/...`). They run in arbitrary repos.
+  (`/Users/...`) for either harness. They run in arbitrary repos; script
+  resolution goes `$CLAUDE_PLUGIN_ROOT` (Droid aliases it) → `~/.claude/plugins`
+  glob → `~/.factory/plugins/cache` glob.
 - **This repo is the single source of truth.** The plugins are installed
   user-scoped from the `pragmatic-growth` marketplace; the former
   user-level copies in `~/.claude/skills/` were deleted on 2026-06-10.
   Root flywheel skill edits land here, bump the root `plugin.json` version,
   push, then
-  refresh with `/plugin marketplace update pragmatic-growth`. `html-artifacts`,
+  refresh with `/plugin marketplace update pragmatic-growth` (Claude Code)
+  and `droid plugin marketplace update` + `droid plugin update` (Droid).
+  `html-artifacts`,
   `autoresearch`, and `human-writing` edits
   bump their own `plugins/<name>/.claude-plugin/plugin.json`; if the root
   marketplace copy/docs also change, keep the root release metadata aligned too.

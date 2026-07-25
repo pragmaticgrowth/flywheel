@@ -53,7 +53,7 @@ a loop composes.)
 
 | Situation | Primitive |
 |---|---|
-| Work until a verifiable end state is true | `/goal` (a separate small-fast-model evaluator — default Haiku — checks after every turn) |
+| Work until a verifiable end state is true | `/goal` (Claude Code; a separate small-fast-model evaluator — default Haiku — checks after every turn) |
 | Poll/babysit on a cadence while a session is open | `/loop <interval> <skill-or-prompt>` |
 | Recurring default maintenance for this repo | bare `/loop` + a `.claude/loop.md` |
 | A backlog of shippable changes worked unattended | docs/goals queue — fill with `define-goal`, then repeat `/dispatch` (one ready goal per run on the checked-out branch; `/loop /dispatch` drains over repeated fires) |
@@ -84,7 +84,7 @@ fallback for when it's unavailable.
 
 ### For /goal — six elements, one cap (condition max 4,000 chars)
 
-CRITICAL CONSTRAINT: the `/goal` evaluator (the configured
+CRITICAL CONSTRAINT: the `/goal` evaluator (Claude Code; the configured
 small-fast model, default Haiku) only reads the
 transcript. It cannot run commands or read
 files. Every clause must be demonstrable by output the agent prints (test results, exit

@@ -14,16 +14,13 @@ wrangler deploy                                       # redeploy the public site
 `docs/goals/index.yaml` declares `verify: python3 -m pytest -q` — that is the gate
 command dispatch runs in this repo.
 
-Note: the three root-level tests (`test_skill_inventory.py`, `test_docs_model_policy.py`)
-currently fail against `main`; they assert a pre-`ideate`, pre-v6.2.0 doc/skill inventory
-and need updating with whatever change touches them. The 154 script-level tests pass.
-
 ## Architecture
 
-This repo *is* a Claude Code plugin marketplace (`pragmatic-growth`), not an
-application. Everything ships as Markdown skills read by an agent at runtime; the
-only executable code is a handful of stdlib-Python helper scripts the skills shell
-out to.
+This repo *is* a plugin marketplace (`pragmatic-growth`) for **Claude Code and
+Factory Droid** (dual-target since v7.0.0; Droid installs the Claude-layout
+plugins via its compatibility translation), not an application. Everything ships
+as Markdown skills read by an agent at runtime; the only executable code is a
+handful of stdlib-Python helper scripts the skills shell out to.
 
 ```
 .claude-plugin/marketplace.json   # lists 4 plugins; root plugin.json = flywheel version
@@ -38,7 +35,8 @@ public/index.html                 # the public site, self-contained; deployed vi
 queue that lives in *target* repos (`docs/goals/index.yaml` + `docs/goals/NNN-slug.md`):
 
 `ideate` (fuzzy idea → approved design) → `define-goal` (design → measurable, red-teamed
-goal contract; stamps a per-goal `model:`) → `dispatch` (works ready goals one at a
+goal contract; stamps a per-goal `model:` execution tier — `heavy|medium|light|inherit`,
+legacy opus/sonnet/haiku read as aliases) → `dispatch` (works ready goals one at a
 time) → `goals-status` (read-only queue view). `loop-architect` designs the unattended
 cadence; `factory-doctor` preflights the environment.
 
@@ -65,10 +63,13 @@ live in `CLAUDE.md` — read it before changing skill mechanics.
 
 - **Skills-first.** Don't add MCP servers, commands, hooks, or new agents without an
   explicit ask. The three `agents/` definitions are the one standing exception; they
-  stay read-only-by-tools (no Edit/Write/Agent), pin no `model:`, and every skill that
-  spawns one keeps a `general-purpose`-with-inline-brief fallback.
+  stay read-only-by-tools on both harnesses (no Edit/Write/Create/ApplyPatch/Agent/Task;
+  the allowlist names both shell tools `Bash` + `Execute`), pin no `model:`, and every
+  skill that spawns one keeps a generic-type inline-brief fallback (`general-purpose` on
+  Claude Code, `worker` on Droid).
 - **Portability.** Skills run in arbitrary repos — never embed user-specific absolute
-  paths (`/Users/...`, `~/.claude/...`). Resolve helpers via `$CLAUDE_PLUGIN_ROOT`.
+  paths (`/Users/...`). Resolve helpers via `$CLAUDE_PLUGIN_ROOT` (Droid aliases it),
+  then the `~/.claude/plugins` glob, then the `~/.factory/plugins/cache` glob.
 - **Docs move with the skills.** Changing what a skill does, how it's invoked, plugin
   boundaries, install, or the queue/config model means updating `README.md` AND
   `public/index.html` in the SAME change. Stale docs = stale ship.

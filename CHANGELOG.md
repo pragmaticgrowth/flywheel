@@ -13,6 +13,61 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [7.0.0] — 2026-07-25
+
+**Dual-target: Factory Droid restored as a first-class harness alongside
+Claude Code, on a native execution-tier vocabulary.** Reverses the v5.0.0
+Claude-only decision (owner decision 2026-07-25) with a new architecture —
+one harness-neutral vocabulary plus one small mapping block per skill, not
+the v4.x dual-branch prose. Every Droid claim was live-verified against a
+real Droid install of this repo before it was written into a skill
+(marketplace add/install, agents→droids translation, bare-name agent spawns,
+tool-allowlist behavior, `droid exec` flags, autonomy gating of the Task
+tool). Spec: `docs/superpowers/specs/2026-07-25-droid-dual-target-tiers-design.md`.
+
+- **Tier vocabulary (breaking, with permanent aliases).** Goal frontmatter
+  `model:` and `config.model` now take `inherit | heavy | medium | light`.
+  Legacy `opus`/`sonnet`/`haiku` values are read as heavy/medium/light
+  aliases forever (goals-status normalizes at read time; existing queues work
+  unmodified) but are never written into new goals. define-goal's rubric is
+  unchanged in substance: heavy is the default for every feature/bug goal,
+  medium is rote chore-shaped work only, light only truly rote one-file
+  chores. Spawn-time mapping: Claude Code heavy/medium/light →
+  opus/sonnet/haiku model pins; Droid → Task `complexity: heavy|medium|light`.
+- **Harness-mapped subagents.** Recon/orientation gather agents: Claude Code
+  `general-purpose` + `model: sonnet`, Droid `explorer` + `complexity:
+  medium` (read-only by construction). Plugin review agents spawn as
+  `flywheel:<name>` on Claude Code, bare `<name>` on Droid; generic fallback
+  is `general-purpose` (Claude Code) / `worker` (Droid). Explore stays banned
+  on Claude Code; `explorer` is banned for review roles on Droid (it cannot
+  run commands).
+- **Agents run on both harnesses.** The three review-role allowlists now name
+  both shell tools (`Bash` + `Execute`) — each harness silently drops the
+  other's name (live-verified: without `Execute`, Droid's translated
+  gate-reviewer had no shell at all). Still no write-capable tools.
+- **Dual-harness rails.** loop-architect Step 5 and factory-doctor's
+  `limit-resilience` probe now treat an OS scheduler firing
+  `droid exec "/dispatch"` as limit-proof evidence equal to
+  `claude -p "/dispatch"`; `doctor_checks.py` probes `.factory/` settings
+  (project + user) alongside `.claude/`; the reset-clock detection facts are
+  labeled Claude Code-only. Droid's built-in CronCreate/automations are
+  documented as building blocks, never the unattended rail.
+- **Droid run-now destination (define-goal).** No `/goal` evaluator on
+  Droid: run-now hands over a self-contained contract prompt block invoked
+  via `droid exec -f goal-prompt.md --auto medium` (`--auto high` when the
+  work needs subagents — Droid gates the Task tool behind high autonomy).
+  All `/goal` evaluator facts are labeled Claude Code facts.
+- **Path portability.** Script resolution chains gain the Droid cache
+  fallback (`~/.factory/plugins/cache/*/…`) in dispatch, goals-status,
+  factory-doctor, and autoresearch; `pg_validate.py` forbids `.factory/*`
+  changes same as `.claude/*`.
+- **Docs + tests.** README/site/CLAUDE.md/AGENTS.md rewritten dual-target
+  with both install flows; root policy tests now enforce the tier vocabulary
+  and the dual-harness scheduling rail; script suites cover aliases and the
+  `.factory` probes. Sibling plugin bumps: autoresearch 1.2.0 (path fallback
+  + Droid cadence), html-artifacts 1.0.2 and human-writing 1.0.2
+  (description updates).
+
 ## [6.2.0] — 2026-07-24
 
 **Model-routing rebalance (owner decision 2026-07-24): research on Sonnet,

@@ -1,11 +1,11 @@
 # flywheel
 
 **Turn plain-language wants into autonomous execution.**
-A skills-first plugin marketplace for [Claude Code](https://claude.com/claude-code),
-from Pragmatic Growth.
+A skills-first plugin marketplace for [Claude Code](https://claude.com/claude-code)
+and [Factory Droid](https://factory.ai), from Pragmatic Growth.
 
 [![Website](https://img.shields.io/badge/site-flywheel.pragmaticgrowth.com-6366f1)](https://flywheel.pragmaticgrowth.com)
-[![Version](https://img.shields.io/badge/version-6.2.0-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-7.0.0-8b5cf6)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
 > 🌐 **Full docs:** **<https://flywheel.pragmaticgrowth.com>**
@@ -115,8 +115,8 @@ never implementation.
 - **Recon first, by default.** Before writing a single success criterion, it
   sends parallel read-only agents to investigate the actual system (your repo,
   a separate service, a database — wherever it lives). Gather agents run on
-  Sonnet (fast, strong tool use); the synthesis step and the contract itself
-  stay on your session model, so the judgment never runs cheap. “The
+  the medium tier (fast, strong tool use); the synthesis step and the contract
+  itself stay on your session model, so the judgment never runs cheap. “The
   description sounded clear” is the failure mode this replaces.
 - **Brief first, then a real artifact.** If outcome, environment, validator,
   scope, or risk is missing, it asks one concise question round, then finishes
@@ -128,13 +128,15 @@ never implementation.
   model stamp and your confirmation. A contract defect caught here costs one
   read-only agent; the same defect at dispatch time costs a full implementer
   run plus a rollback.
-- **Per-goal implementer model, stamped last.** Every queued goal's frontmatter
-  carries `model:` (`inherit | opus | sonnet | haiku`), chosen AFTER the
-  acceptance criteria are final: features and bugs default to `opus` —
+- **Per-goal implementer tier, stamped last.** Every queued goal's frontmatter
+  carries `model:` (`inherit | heavy | medium | light`; legacy
+  opus/sonnet/haiku stamps read as heavy/medium/light aliases), chosen AFTER
+  the acceptance criteria are final: features and bugs default to `heavy` —
   execution quality is the factory's product — while genuinely mechanical work
   (rote edits, ports with an exact source of truth, config/doc sweeps) gets
-  `sonnet`. Dispatch reads it per goal when spawning the implementer;
-  the orchestrator itself always stays on your session model.
+  `medium`. Dispatch reads it per goal when spawning the implementer (on
+  Claude Code the tier pins the model; on Factory Droid it sets the Task
+  `complexity`); the orchestrator itself always stays on your session model.
 - **Two destinations.** It can hand you a copy-pasteable **run-now** line
   (`/goal …`), or **queue**
   a goal file (`docs/goals/NNN-slug.md` + an `index.yaml` entry) to be worked
@@ -229,19 +231,19 @@ dependency shows what it's waiting on.
 docs/goals — 3 open · 5 completed (hidden)
 
 ▶ IN PROGRESS  (1)
-  002-rate-limit-api                       feature · opus
+  002-rate-limit-api                       feature · heavy
   Rate-limit the public API
   › Callers hitting /api/* more than 100×/min get a 429 instead of
     silently degrading the service for everyone.
 
 ⛔ BLOCKED  (1)
-  005-receipt-dupes                        bug · opus
+  005-receipt-dupes                        bug · heavy
   Stop duplicate receipt emails
   › Some customers receive two receipts for a single payment.
   ✗ reason: gate FAIL — repro test still red after 3 attempts
 
 ○ NOT STARTED  (1)
-  006-invoice-pdf                          feature · opus
+  006-invoice-pdf                          feature · heavy
   Export invoices as a monthly PDF
   › Finance can download one month of invoices as a single PDF.
   ⏳ waiting on 002-rate-limit-api
@@ -413,8 +415,9 @@ panel. Everything has a sensible default — an unconfigured repo just works.
 ```yaml
 config:
   base: main              # branch dispatch works on and commits to
-  model: inherit          # code-agent default: inherit | opus | sonnet | haiku
-                          #   (a goal's own frontmatter model: overrides per goal)
+  model: inherit          # code-agent default tier: inherit | heavy | medium | light
+                          #   (a goal's own frontmatter model: overrides per goal;
+                          #   legacy opus/sonnet/haiku values read as aliases)
   # --- optional ---
   skills: []              # skills every implementer must invoke
   verify:                 # ordered local build + test gate (run before keeping a commit)
@@ -428,7 +431,7 @@ config:
 | Key | Default | What it does |
 |---|---|---|
 | `base` | repo default branch | The branch dispatch works on — implementers commit here directly. Per-goal `base:` override allowed. |
-| `model` | `inherit` | Repo-wide **default** model for spawned **code** agents (`inherit`/`opus`/`sonnet`/`haiku`). Each goal's frontmatter `model:` — stamped by define-goal from a contract-tightness rubric (opus default for features/bugs, sonnet for mechanical work) — overrides it per goal. The depth-vs-quota trade. Recon gather agents run on Sonnet; the orchestrator, synthesis, and review agents always stay on the current session model. |
+| `model` | `inherit` | Repo-wide **default** execution tier for spawned **code** agents (`inherit`/`heavy`/`medium`/`light`; legacy `opus`/`sonnet`/`haiku` values read as heavy/medium/light aliases). Each goal's frontmatter `model:` — stamped by define-goal from a contract-tightness rubric (heavy default for features/bugs, medium for mechanical work) — overrides it per goal. On Claude Code the tier pins the model; on Factory Droid it sets the Task `complexity`. The depth-vs-quota trade. Recon gather agents run on the medium tier; the orchestrator, synthesis, and review agents always stay on the current session model. |
 | `skills` | — | Repo-wide skills every implementer must use (e.g. your TDD or review skills). |
 | `verify` | — | Ordered list of local build + test commands. Run by the dispatch orchestrator after each implementation; PASS keeps the squash commit, FAIL rolls it back. |
 | `budget` | none | `max_goals_per_session` / `max_iterations` ceilings the loop can’t exceed — the external brake on a long run. It always outranks a batch flag: `--unlimited` still stops at the cap. |
@@ -436,6 +439,8 @@ config:
 ---
 
 ## Install
+
+### Claude Code
 
 ```bash
 /plugin marketplace add pragmaticgrowth/flywheel
@@ -447,6 +452,22 @@ config:
 
 Pull updates later with `/plugin marketplace update pragmatic-growth`, then update
 any installed plugin from the Installed tab.
+
+### Factory Droid
+
+```bash
+droid plugin marketplace add https://github.com/pragmaticgrowth/flywheel
+droid plugin install flywheel@flywheel
+droid plugin install html-artifacts@flywheel
+droid plugin install autoresearch@flywheel
+droid plugin install human-writing@flywheel
+```
+
+(Droid names the marketplace after the repo; `droid plugin marketplace list`
+shows the exact name to use after `@`.) Pull updates later with
+`droid plugin marketplace update` + `droid plugin update`. Droid translates the
+Claude-layout plugins automatically — skills register under their bare names
+and the three review agents become custom droids.
 
 ### Quick start
 
@@ -467,9 +488,10 @@ them up. Set `config.budget` in `index.yaml` before long unattended runs.
 
 After each implementation, the dispatch orchestrator first runs an
 **independent review**: for any non-trivial diff it spawns one fresh read-only
-adversarial reviewer (the plugin's tool-restricted `flywheel:gate-reviewer`
-agent where available, a `general-purpose` agent with the same brief
-otherwise) over `gate_base..HEAD` plus the goal contract — refute
+adversarial reviewer (the plugin's tool-restricted gate-reviewer
+agent where available — `flywheel:gate-reviewer` on Claude Code, `gate-reviewer`
+on Factory Droid — else a generic agent with the same brief) over
+`gate_base..HEAD` plus the goal contract — refute
 conformance, test realness, and scope; the implementer’s own fresh-check
 verdicts are corroborating evidence, never the verdict. Then it runs the repo’s
 `config.verify` commands (build + tests), and `pg_validate.py` runs the
