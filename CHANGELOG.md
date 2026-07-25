@@ -13,6 +13,35 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [8.0.0] — 2026-07-25
+
+**The marketplace ships flywheel alone.** Owner decision 2026-07-25: the three
+sidecar plugins — `html-artifacts` (v1.0.2), `autoresearch` (v1.2.0), and
+`human-writing` (v1.0.2) — are removed from `pragmatic-growth`. The marketplace
+is the goal factory now: one plugin, one version, one purpose.
+
+- **Removed, not deprecated in place.** The `plugins/` directory is deleted
+  outright. Anyone who wants a removed plugin can recover it intact from git
+  history: `git show v7.0.0:plugins/html-artifacts` (likewise `autoresearch`,
+  `human-writing`). `marketplace.json` now lists a single entry.
+- **Breaking for installers.** `/plugin install html-artifacts@pragmatic-growth`
+  (and the autoresearch / human-writing equivalents, on either harness) no
+  longer resolve. Already-installed copies keep working from their local cache
+  until updated; nothing auto-uninstalls.
+- **flywheel itself is unchanged.** Same six skills, same three review agents,
+  same tier vocabulary and dual-harness support from v7.0.0 — the major bump
+  reflects the marketplace-level break, not a skill change.
+- **Docs collapsed to one plugin.** README (intro, plugin table, install for
+  both harnesses, project layout, contributing), the site (title/meta/og,
+  version pill, terminal demo, skill cards, install blocks), CLAUDE.md
+  (overview, structure, release rules, history note), and AGENTS.md all
+  describe a single-plugin marketplace. `test_skill_inventory.py` was rewritten
+  to enforce it: exactly one marketplace entry, no `plugins/` tree, and no
+  stale references to a removed plugin in any active doc.
+- One skill-text fix fell out of the removal: ideate's optional visual-handoff
+  line no longer names html-artifacts, just "a rich-artifact skill … if
+  available in the session" — it was always advisory, never required.
+
 ## [7.0.0] — 2026-07-25
 
 **Dual-target: Factory Droid restored as a first-class harness alongside

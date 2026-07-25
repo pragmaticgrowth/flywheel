@@ -9,9 +9,11 @@ v5.0.0 had removed the old dual-CLI support, v7.0.0 restored it on a new
 architecture — one harness-neutral **execution-tier vocabulary
 `heavy|medium|light`** plus one small harness-mapping block per skill,
 instead of the v4.x dual-branch prose).
-The repo publishes four plugins from one `pragmatic-growth` marketplace:
-`flywheel` v7.0.0, `html-artifacts` v1.0.2, `autoresearch` v1.2.0, and
-`human-writing` v1.0.2. No MCP
+The repo publishes ONE plugin from the `pragmatic-growth` marketplace:
+`flywheel` v8.0.0. (The `html-artifacts`, `autoresearch`, and `human-writing`
+plugins were **removed** from the marketplace in v8.0.0, owner decision
+2026-07-25 — the marketplace is the goal-factory only now; git history keeps
+them recoverable.) No MCP
 servers, no commands, no hooks, no build step. ONE scoped exception to the
 skills-only rule, as of v5.4.0: THREE plugin agent definitions
 (root `agents/` — the factory's read-only review roles `gate-reviewer`,
@@ -32,13 +34,8 @@ for review roles).
 `skills/` (three ship deterministic Python helpers in `scripts/`), forming a
 plain-language → autonomous-execution pipeline around a file-based goal queue
 (`docs/goals/` in target repos): `/ideate → /define-goal → /dispatch →
-/goals-status`, with `loop-architect` and `factory-doctor` as the rails. `html-artifacts` lives under
-`plugins/html-artifacts/` as a separate plugin for rich
-plans/reports/diagrams/editors. `autoresearch` lives under
-`plugins/autoresearch/` as a separate plugin for an autonomous try/measure/keep/
-revert optimization loop (ships one Python helper). `human-writing` lives under
-`plugins/human-writing/` as a separate single-skill plugin for AI-writing
-cleanup (pure guidance, no scripts).
+/goals-status`, with `loop-architect` and `factory-doctor` as the rails. There
+is no `plugins/` directory — the repo root IS the flywheel plugin.
 
 - **ideate** (v6.1.0, adapted from superpowers' brainstorming after the
   2026-07-24 full-plugin deep-read) — the pipeline's front door: explores a
@@ -234,38 +231,6 @@ cleanup (pure guidance, no scripts).
   (read-only probe, `BLOCKER|WARN|FIXED|INFO`, exit 0/1/2). The v4 sequential
   model commits directly on the local branch, so there is no merge allow-rule
   to provision — the gate is local. The probe checks settings in `.claude/`.
-Separate marketplace plugins:
-
-- **html-artifacts** — produces self-contained browser artifacts for
-  deliverables where markdown is the wrong shape: stakeholder-ready plans,
-  specs, PR/code-review writeups, module maps, diagrams, timelines,
-  research explainers, status/incident reports, decks, prototypes, and
-  one-off editors with export/copy round trips. Single skill with
-  `references/` for progressive disclosure under
-  `plugins/html-artifacts/skills/html-artifacts/`. No listener, server,
-  command, MCP surface, or build step; interactive results export through
-  the HTML file's copy/export button.
-- **autoresearch** — autonomous optimization loop: given a measurable metric,
-  a benchmark command, files-in-scope, constraints, and a termination
-  condition, it works an `autoresearch/<goal>-<date>` branch — try one
-  hypothesis, run the benchmark, keep the change if the primary metric improves
-  and `git`-revert it if not, journaling every run — with MAD-based confidence
-  scoring separating real gains from noise. All state lives in files
-  (`autoresearch.md`/`.sh`/`.jsonl` in the target repo) so any fresh session
-  resumes exactly where the last stopped; on termination it groups kept
-  experiments into independently-mergeable branches. Single skill +
-  `scripts/autoresearch_helper.py` (stdlib-only JSONL/confidence helper,
-  resolved via `$CLAUDE_PLUGIN_ROOT`) under
-  `plugins/autoresearch/skills/autoresearch/`. Unattended cadence via `/loop`.
-- **human-writing** — edits AI-sounding text into human prose: scans for the tells
-  catalogued in Wikipedia's "Signs of AI writing" (inflated significance,
-  promotional language, `-ing` filler, em-dash/rule-of-three overuse, AI
-  vocabulary, vague attributions, chatbot artifacts), rewrites them, and pushes
-  for real voice. Pure writing guidance, one
-  `SKILL.md`, no scripts/state/references.
-  Single skill under `plugins/human-writing/skills/human-writing/`. Based on
-  Wikipedia's guide (WikiProject AI Cleanup, CC BY-SA).
-
 ## Queue design invariants (research-backed; one-goal-at-a-time dispatch model, 2026-06-28; batch flags 2026-07-24)
 
 - **One-goal-AT-A-TIME dispatch model** (v4.1.x; restated for v6.1.0's batch
@@ -379,22 +344,19 @@ restored Factory Droid as a first-class harness on the tier architecture —
 one harness-neutral heavy/medium/light vocabulary plus one mapping block per
 skill, all Droid claims live-verified (spec:
 docs/superpowers/specs/2026-07-25-droid-dual-target-tiers-design.md).
+Three sibling plugins were removed in v8.0.0 (owner decision 2026-07-25):
+**html-artifacts** v1.0.2 removed, **autoresearch** v1.2.0 removed, and
+**human-writing** v1.0.2 removed — `pragmatic-growth` now
+ships the goal factory alone. Their trees are deleted, not deprecated in
+place; `git show v7.0.0:plugins/<name>` recovers any of them intact.
 
 ## Structure
 
 ```
-.claude-plugin/plugin.json        # root flywheel plugin manifest
-.claude-plugin/marketplace.json   # marketplace — name: pragmatic-growth, lists flywheel + html-artifacts + autoresearch + human-writing
+.claude-plugin/plugin.json        # root flywheel plugin manifest — the ONLY plugin
+.claude-plugin/marketplace.json   # marketplace — name: pragmatic-growth, lists flywheel alone
 agents/<name>.md                  # three flywheel plugin agents — read-only factory review roles: gate-reviewer, fresh-check, contract-red-team (v5.4.0)
 skills/<name>/SKILL.md            # six flywheel skills (ideate, define-goal, dispatch, goals-status, loop-architect, factory-doctor)
-plugins/html-artifacts/.claude-plugin/plugin.json
-plugins/html-artifacts/skills/html-artifacts/SKILL.md
-plugins/html-artifacts/skills/html-artifacts/references/ # HTML artifact recipes and foundation rules
-plugins/autoresearch/.claude-plugin/plugin.json
-plugins/autoresearch/skills/autoresearch/SKILL.md
-plugins/autoresearch/skills/autoresearch/scripts/autoresearch_helper.py # stdlib JSONL/MAD-confidence helper
-plugins/human-writing/.claude-plugin/plugin.json
-plugins/human-writing/skills/human-writing/SKILL.md # AI-writing cleanup (no scripts)
 skills/<name>/scripts/*.py        # dispatch/pg_validate.py (local gate), factory-doctor/doctor_checks.py, goals-status/goals_status.py (read-only queue view)
 CHANGELOG.md                      # canonical, git-tracked version history (site carries no on-page changelog)
 public/index.html                 # the public site (flywheel.pragmaticgrowth.com) — self-contained, themed
@@ -431,10 +393,7 @@ wrangler.jsonc                    # Cloudflare Workers static-assets deploy conf
   push, then
   refresh with `/plugin marketplace update pragmatic-growth` (Claude Code)
   and `droid plugin marketplace update` + `droid plugin update` (Droid).
-  `html-artifacts`,
-  `autoresearch`, and `human-writing` edits
-  bump their own `plugins/<name>/.claude-plugin/plugin.json`; if the root
-  marketplace copy/docs also change, keep the root release metadata aligned too.
+  There is one plugin and one version — the root `plugin.json`.
 - **Push every time — on every completion, the FULL tree (owner decision
   2026-07-14).** Pushing to GitHub (`origin main`) after committing is
   pre-authorized — always push without asking. Whenever you complete a unit of
@@ -475,8 +434,8 @@ deps) plus the brand SVGs in `public/`, with `wrangler.jsonc` at the root.
   does, how it's invoked, the plugin boundaries, the install commands, or the
   queue/config model,
   update BOTH `public/index.html` AND `README.md` to match in the SAME change.
-  The site and README both document the two marketplace plugins, the flywheel
-  workflow skills, the html-artifacts plugin, the docs/goals pipeline, the
+  The site and README both document the flywheel
+  workflow skills, the docs/goals pipeline, the
   config model, and install — drift in either is a
   shipped-but-wrong doc, same severity as a stale SKILL.md.
 - **Versioned changelog (CHANGELOG.md is the single source).** `CHANGELOG.md`

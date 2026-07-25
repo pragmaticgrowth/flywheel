@@ -88,7 +88,7 @@ far?"). Cover what applies: the outcome in the user's terms, architecture and
 components, data flow, error handling, and — always — how it will be verified (name
 real commands and drivable surfaces where you can; this feeds define-goal's
 acceptance criteria directly). When a comparison is genuinely clearer shown than
-told and the html-artifacts skill is available, use it; never require it.
+told and a rich-artifact skill is available in the session, use it; never require it.
 
 ### 6. Self-review, inline
 

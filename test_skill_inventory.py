@@ -1,15 +1,23 @@
+"""Marketplace shape tests.
+
+As of v8.0.0 `pragmatic-growth` ships exactly ONE plugin: flywheel. The
+html-artifacts, autoresearch, and human-writing plugins were removed from the
+marketplace (owner decision 2026-07-25); git history keeps them recoverable.
+"""
 import json
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent
 
+REMOVED_PLUGINS = ("html-artifacts", "autoresearch", "human-writing")
+
 
 def read(path: str) -> str:
     return (ROOT / path).read_text()
 
 
-def test_flywheel_root_skill_inventory_excludes_html_artifacts_plugin():
+def test_flywheel_root_skill_inventory():
     skills = sorted(
         path.parent.name
         for path in (ROOT / "skills").glob("*/SKILL.md")
@@ -25,37 +33,34 @@ def test_flywheel_root_skill_inventory_excludes_html_artifacts_plugin():
     ]
 
 
-def test_marketplace_lists_html_artifacts_as_separate_plugin():
+def test_marketplace_ships_flywheel_only():
     marketplace = json.loads(read(".claude-plugin/marketplace.json"))
     entries = {entry["name"]: entry for entry in marketplace["plugins"]}
 
+    assert list(entries) == ["flywheel"]
     assert entries["flywheel"]["source"] == "./"
-    assert entries["html-artifacts"]["source"] == "./plugins/html-artifacts"
-
-    html_plugin = json.loads(read("plugins/html-artifacts/.claude-plugin/plugin.json"))
-    assert html_plugin["name"] == "html-artifacts"
 
 
-def test_html_artifacts_plugin_stays_skills_only():
-    skill_root = ROOT / "plugins" / "html-artifacts" / "skills" / "html-artifacts"
-    files = [path.relative_to(skill_root).as_posix() for path in skill_root.rglob("*") if path.is_file()]
-
-    assert "SKILL.md" in files
-    assert any(path.startswith("references/") for path in files)
-    assert not any(path.startswith("scripts/") for path in files)
-    assert not any("server" in path or "listen" in path for path in files)
+def test_removed_plugin_trees_are_gone():
+    assert not (ROOT / "plugins").exists(), "plugins/ should be gone in v8.0.0"
 
 
-_COUNT_WORD = {2: "two", 3: "three", 4: "four", 5: "five", 6: "six"}
-
-
-def test_public_docs_advertise_current_plugin_count_and_html_artifacts():
-    # Derive the expected count from the marketplace manifest so this self-updates when a
-    # plugin is added — and catches the NEXT addition if the docs' prose word isn't bumped.
-    marketplace = json.loads(read(".claude-plugin/marketplace.json"))
-    n = len(marketplace["plugins"])
-    word = _COUNT_WORD[n]
+def test_active_docs_do_not_advertise_removed_plugins():
+    # History files (CHANGELOG, docs/superpowers/**) keep their references; the
+    # active docs must not offer a plugin nobody can install.
     for path in ["README.md", "CLAUDE.md", "public/index.html"]:
         text = read(path).lower()
-        assert f"{word} plugin" in text, f"{path}: expected '{word} plugin' (marketplace lists {n})"
-        assert "html-artifacts" in read(path), path
+        for name in REMOVED_PLUGINS:
+            for i, line in enumerate(text.splitlines(), 1):
+                if name in line:
+                    assert "removed" in line or "v8.0.0" in line, (
+                        f"{path}:{i}: stale reference to removed plugin '{name}'"
+                    )
+
+
+def test_public_docs_advertise_a_single_plugin_marketplace():
+    marketplace = json.loads(read(".claude-plugin/marketplace.json"))
+    assert len(marketplace["plugins"]) == 1
+    for path in ["README.md", "CLAUDE.md", "public/index.html"]:
+        text = read(path).lower()
+        assert "one plugin" in text, f"{path}: expected 'one plugin'"

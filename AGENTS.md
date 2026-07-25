@@ -16,20 +16,23 @@ command dispatch runs in this repo.
 
 ## Architecture
 
-This repo *is* a plugin marketplace (`pragmatic-growth`) for **Claude Code and
-Factory Droid** (dual-target since v7.0.0; Droid installs the Claude-layout
-plugins via its compatibility translation), not an application. Everything ships
+This repo *is* a single-plugin marketplace (`pragmatic-growth`) for **Claude Code
+and Factory Droid** (dual-target since v7.0.0; Droid installs the Claude-layout
+plugin via its compatibility translation), not an application. Everything ships
 as Markdown skills read by an agent at runtime; the only executable code is a
 handful of stdlib-Python helper scripts the skills shell out to.
 
 ```
-.claude-plugin/marketplace.json   # lists 4 plugins; root plugin.json = flywheel version
+.claude-plugin/marketplace.json   # lists one plugin; root plugin.json = flywheel version
 skills/<name>/SKILL.md            # 6 flywheel skills (root plugin)
 skills/<name>/scripts/*.py        # deterministic helpers + their pytest files
 agents/*.md                       # 3 read-only review subagents (gate-reviewer, fresh-check, contract-red-team)
-plugins/<name>/                   # 3 sibling plugins, each with its own plugin.json + skills/
 public/index.html                 # the public site, self-contained; deployed via wrangler.jsonc
 ```
+
+As of v8.0.0 the marketplace ships **flywheel only** — the html-artifacts,
+autoresearch, and human-writing sibling plugins were removed (recoverable via
+`git show v7.0.0:plugins/<name>`).
 
 **The pipeline.** The six flywheel skills compose into one flow around a file-based
 queue that lives in *target* repos (`docs/goals/index.yaml` + `docs/goals/NNN-slug.md`):
@@ -73,7 +76,7 @@ live in `CLAUDE.md` — read it before changing skill mechanics.
 - **Docs move with the skills.** Changing what a skill does, how it's invoked, plugin
   boundaries, install, or the queue/config model means updating `README.md` AND
   `public/index.html` in the SAME change. Stale docs = stale ship.
-- **Every version bump is a release.** Bump the relevant `plugin.json`, add a
+- **Every version bump is a release.** Bump the root `plugin.json`, add a
   `## [X.Y.Z] — <date>` block to `CHANGELOG.md` (canonical history — never delete),
   bump the site `.ver-pill`/`<title>` and the README version badge, then annotated tag
   `vX.Y.Z` + `gh release create` with notes taken from that changelog section.

@@ -1,6 +1,6 @@
 {
   "name": "pragmatic-growth",
-  "description": "Skills-first plugins for Claude Code and Factory Droid from Pragmatic Growth: flywheel for autonomous goal queues, html-artifacts for rich browser deliverables, autoresearch for autonomous optimization loops, and human-writing for AI-writing cleanup.",
+  "description": "Skills-first plugins for Claude Code and Factory Droid from Pragmatic Growth: flywheel turns plain-language wants into autonomous, gated execution through a file-based goal queue.",
   "owner": {
     "name": "pragmaticgrowth",
     "url": "https://github.com/pragmaticgrowth"
@@ -14,36 +14,6 @@
       "author": {
         "name": "pragmaticgrowth"
       }
-    },
-    {
-      "name": "html-artifacts",
-      "description": "Create self-contained HTML plans, specs, reports, research syntheses, diagrams, timelines, dashboards, decks, prototypes, and one-off editors when markdown would flatten the work.",
-      "source": "./plugins/html-artifacts",
-      "homepage": "https://github.com/pragmaticgrowth/flywheel/tree/main/plugins/html-artifacts",
-      "author": {
-        "name": "pragmaticgrowth"
-      },
-      "category": "productivity"
-    },
-    {
-      "name": "autoresearch",
-      "description": "Autonomous optimization loop — try an idea, measure it, keep what works, revert what doesn't, repeat. MAD-based confidence scoring, git branch isolation, and file-based experiment logs any fresh session can resume.",
-      "source": "./plugins/autoresearch",
-      "homepage": "https://github.com/pragmaticgrowth/flywheel/tree/main/plugins/autoresearch",
-      "author": {
-        "name": "pragmaticgrowth"
-      },
-      "category": "productivity"
-    },
-    {
-      "name": "human-writing",
-      "description": "Remove signs of AI-generated writing and add real human voice — strip inflated significance, promotional language, -ing filler, em-dash and rule-of-three overuse, AI vocabulary, and chatbot artifacts. Based on Wikipedia's 'Signs of AI writing'.",
-      "source": "./plugins/human-writing",
-      "homepage": "https://github.com/pragmaticgrowth/flywheel/tree/main/plugins/human-writing",
-      "author": {
-        "name": "pragmaticgrowth"
-      },
-      "category": "productivity"
     }
   ]
 }

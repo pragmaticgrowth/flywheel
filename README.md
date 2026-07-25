@@ -5,7 +5,7 @@ A skills-first plugin marketplace for [Claude Code](https://claude.com/claude-co
 and [Factory Droid](https://factory.ai), from Pragmatic Growth.
 
 [![Website](https://img.shields.io/badge/site-flywheel.pragmaticgrowth.com-6366f1)](https://flywheel.pragmaticgrowth.com)
-[![Version](https://img.shields.io/badge/version-7.0.0-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-8.0.0-8b5cf6)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
 > 🌐 **Full docs:** **<https://flywheel.pragmaticgrowth.com>**
@@ -40,11 +40,8 @@ read-only [subagent](https://code.claude.com/docs/en/sub-agents) definitions
 `flywheel:contract-red-team` — the factory's review roles, tool-restricted so
 they can never edit files, and only used when a flywheel skill spawns them).
 The marketplace
-exposes four plugins: `flywheel` with six workflow
-[skills](https://docs.claude.com/en/docs/claude-code/skills),
-`html-artifacts` as a separate rich-deliverables plugin,
-`autoresearch` for autonomous optimization loops, and
-`human-writing` for AI-writing cleanup.
+exposes one plugin: `flywheel`, with six workflow
+[skills](https://docs.claude.com/en/docs/claude-code/skills).
 
 ### Why a queue in the repo instead of GitHub issues?
 
@@ -57,14 +54,11 @@ want a review surface — flywheel just doesn't require one.)
 
 ---
 
-## Marketplace plugins
+## The marketplace
 
 | Plugin | What it contains | Install |
 |---|---|---|
 | **flywheel** | `ideate`, `define-goal`, `dispatch`, `goals-status`, `loop-architect`, and `factory-doctor` for the docs/goals execution pipeline. | `/plugin install flywheel@pragmatic-growth` |
-| **html-artifacts** | One `html-artifacts` skill with references for self-contained browser deliverables. | `/plugin install html-artifacts@pragmatic-growth` |
-| **autoresearch** | One `autoresearch` skill (+ a Python helper) for an autonomous try/measure/keep/revert optimization loop. | `/plugin install autoresearch@pragmatic-growth` |
-| **human-writing** | One `human-writing` skill that strips AI-writing tells and adds human voice. | `/plugin install human-writing@pragmatic-growth` |
 
 ## The workflow skills
 
@@ -78,8 +72,7 @@ want a review surface — flywheel just doesn't require one.)
 | **factory-doctor** | One-pass preflight/doctor for the repo + machine. Auto-fixes everything local; reports the rest with exact fixes. | `/factory-doctor` |
 
 In Claude Code the workflow skills are namespaced — `flywheel:define-goal`,
-etc. `html-artifacts` installs as its own plugin and exposes
-`html-artifacts:html-artifacts`. Skills also activate **automatically** when
+etc. Skills also activate **automatically** when
 your message matches what they’re for, so most of the time you don’t type the
 name at all.
 
@@ -152,26 +145,6 @@ never implementation.
   define-goal ▸ recon (3 read-only agents) ▸ contract ▸ contract review
   ✓ queued  docs/goals/021-welcome-email.md   type: feature
 ```
-
-### html-artifacts plugin — make rich deliverables readable
-
-The browser-file sidecar lives as a separate plugin in the same marketplace. Use
-it for work that markdown flattens: implementation plans, specs, PR reviews,
-codebase tours, diagrams, research explainers, status reports, decks,
-prototypes, and custom editors.
-
-- **One skill, many references.** The skill has a small trigger/routing front
-  door, then loads category references only when needed: planning,
-  code-review, design/prototypes, diagrams/data, research/reports, editors,
-  decks, and source coverage.
-- **Self-contained files.** It writes real `.html` artifacts with inline CSS
-  and JavaScript — no server, no listener, no build step, no new plugin
-  surface.
-- **Round-trip editors.** If the user manipulates state (triage, tuning,
-  annotation, selection), the artifact includes an export/copy button that
-  returns JSON, markdown, CSV, or prompt text back to the agent.
-- **Default only when it helps.** Short chat answers, code-only snippets, and
-  command sequences stay in markdown.
 
 ### dispatch — work the queue
 
@@ -281,38 +254,6 @@ demonstrably fires but has no rail that survives an account limit stop) —
 reporting remote/CI issues with the exact fix. It diagnoses and fixes setup; it
 never implements goals.
 
-### autoresearch plugin — optimize by experiment
-
-A separate plugin in the same marketplace for a different job: **autonomously
-optimizing a measurable metric**. Point it at a benchmark (training loss, test
-runtime, bundle size, build time…) and it runs a disciplined loop — try one
-hypothesis, measure, keep the change if it improves and revert it if it doesn't,
-then repeat — with **MAD-based confidence scoring** to tell a real gain from
-noise.
-
-- **Isolated and resumable.** Work happens on an `autoresearch/<goal>-<date>`
-  branch; all state lives in files (`autoresearch.md`, `autoresearch.sh`,
-  `autoresearch.jsonl`) so a fresh session with no memory reads them and
-  continues exactly where the last one stopped.
-- **Runs unattended.** Let it loop in one session, or wrap the resume in `/loop`.
-- **Clean output.** On termination it groups the kept experiments into
-  independently-mergeable branches for review — the raw experiment branch is
-  always preserved.
-
-### human-writing plugin — make text sound human
-
-The fourth plugin does one focused thing: **edit AI-sounding text into something a
-person would actually write.** It scans for the tells catalogued in Wikipedia's
-"Signs of AI writing" — inflated significance, promotional language, `-ing` filler,
-em-dash and rule-of-three overuse, AI vocabulary, vague attributions, and chatbot
-artifacts ("I hope this helps!") — rewrites them, and pushes for real voice
-(opinions, varied rhythm, specific detail) instead of clean-but-soulless prose.
-
-- **Pure guidance, no runtime.** One skill, no scripts or state. Use it when writing
-  or reviewing markdown, docs, emails, blog posts, or PRDs.
-- **Sourced and attributed.** Based on Wikipedia's "Signs of AI writing" (WikiProject
-  AI Cleanup, CC BY-SA).
-
 ---
 
 ## How it all fits together
@@ -322,7 +263,6 @@ flowchart TD
     you(["You — plain language"]) -->|fuzzy idea| id["ideate<br/>dialogue → approved design"]
     id -->|approved design| dg
     you -->|shaped want| dg["define-goal<br/>writes measurable contracts"]
-    you -->|asks for plan, report, diagram, deck, editor| ha["html-artifacts<br/>self-contained .html files"]
     dg -->|queues| q[("docs/goals/ queue<br/>index.yaml + goal files")]
     q -->|claim next goal| dsp{{"dispatch · orchestrator"}}
     dsp -->|foreground implementer<br/>TDD + fresh checks| impl["work commit<br/>on &lt;base&gt;"]
@@ -332,16 +272,15 @@ flowchart TD
     squash -.->|next dispatch fire| q
     fd["factory-doctor<br/>preflight + fixes setup"] -.->|readies| dsp
     la["loop-architect<br/>designs the loop"] -.->|keeps it running| dsp
-    ha --> art[/"browser artifact<br/>export when interactive"/]
     classDef brand fill:#059669,stroke:#047857,color:#ffffff;
     classDef store fill:#d1fae5,stroke:#10b981,color:#064e3b;
     classDef neutral fill:#ffffff,stroke:#cbd5e1,color:#0f172a;
     classDef human fill:#0f172a,stroke:#0f172a,color:#ffffff;
     classDef support fill:#f1f5f9,stroke:#cbd5e1,color:#334155;
     classDef warn fill:#fee2e2,stroke:#e11d48,color:#9f1239;
-    class id,dg,ha,dsp,squash brand
+    class id,dg,dsp,squash brand
     class q store
-    class impl,gate,art neutral
+    class impl,gate neutral
     class you human
     class fd,la support
     class rollback warn
@@ -350,8 +289,7 @@ flowchart TD
 The intended flow: **explore** fuzzy ideas with ideate → **capture** wants with
 define-goal → **work** the queue with
 dispatch → **keep it running** unattended with a loop designed by
-loop-architect. html-artifacts handles rich browser deliverables along the way,
-and factory-doctor makes sure the ground is solid first.
+loop-architect, with factory-doctor making sure the ground is solid first.
 
 ---
 
@@ -445,9 +383,6 @@ config:
 ```bash
 /plugin marketplace add pragmaticgrowth/flywheel
 /plugin install flywheel@pragmatic-growth
-/plugin install html-artifacts@pragmatic-growth
-/plugin install autoresearch@pragmatic-growth
-/plugin install human-writing@pragmatic-growth
 ```
 
 Pull updates later with `/plugin marketplace update pragmatic-growth`, then update
@@ -458,9 +393,6 @@ any installed plugin from the Installed tab.
 ```bash
 droid plugin marketplace add https://github.com/pragmaticgrowth/flywheel
 droid plugin install flywheel@flywheel
-droid plugin install html-artifacts@flywheel
-droid plugin install autoresearch@flywheel
-droid plugin install human-writing@flywheel
 ```
 
 (Droid names the marketplace after the repo; `droid plugin marketplace list`
@@ -547,9 +479,8 @@ limit rail.
 - **The site** — <https://flywheel.pragmaticgrowth.com> hosts the full docs and
   install (canonical version history lives in CHANGELOG.md and GitHub Releases).
 
-The `flywheel` plugin version lives in `.claude-plugin/plugin.json`; the
-`html-artifacts` plugin version lives in
-`plugins/html-artifacts/.claude-plugin/plugin.json`. The public site is
+The `flywheel` plugin version lives in `.claude-plugin/plugin.json` — one
+plugin, one version. The public site is
 regenerated and redeployed on each release (see `CLAUDE.md` →
 *Public site & changelog*).
 
@@ -561,7 +492,7 @@ regenerated and redeployed on each release (see `CLAUDE.md` →
 flywheel/
 ├── .claude-plugin/
 │   ├── plugin.json        # flywheel plugin manifest
-│   └── marketplace.json   # the pragmatic-growth marketplace, listing all four plugins
+│   └── marketplace.json   # the pragmatic-growth marketplace, listing flywheel alone
 ├── skills/
 │   ├── ideate/SKILL.md
 │   ├── define-goal/SKILL.md
@@ -576,20 +507,7 @@ flywheel/
 │   │   ├── SKILL.md
 │   │   └── scripts/doctor_checks.py   # read-only readiness probe
 │   └── loop-architect/SKILL.md
-├── plugins/
-│   ├── html-artifacts/
-│   │   ├── .claude-plugin/plugin.json
-│   │   └── skills/html-artifacts/
-│   │       ├── SKILL.md
-│   │       └── references/            # HTML artifact recipes and foundation rules
-│   ├── autoresearch/
-│   │   ├── .claude-plugin/plugin.json
-│   │   └── skills/autoresearch/
-│   │       ├── SKILL.md
-│   │       └── scripts/autoresearch_helper.py  # stdlib JSONL + MAD-confidence helper
-│   └── human-writing/
-│       ├── .claude-plugin/plugin.json
-│       └── skills/human-writing/SKILL.md       # AI-writing cleanup guidance (no scripts)
+├── agents/                # 3 read-only review roles (gate-reviewer, fresh-check, contract-red-team)
 ├── public/                # the flywheel.pragmaticgrowth.com site (index.html + brand SVGs)
 ├── wrangler.jsonc         # Cloudflare deploy config for the site
 ├── CHANGELOG.md           # canonical version history
@@ -600,8 +518,8 @@ flywheel/
 
 ## Contributing & maintenance
 
-This repo is the single source of truth — all four plugins install from the
-`pragmatic-growth` marketplace and refresh from GitHub. If you’re editing
+This repo is the single source of truth — the flywheel plugin installs from the
+`pragmatic-growth` marketplace and refreshes from GitHub. If you’re editing
 skills, read **[CLAUDE.md](CLAUDE.md)**: it documents the queue design
 invariants, the release flow (bump `plugin.json` → update `CHANGELOG.md` + the
 site → tag → push → refresh), and the rule that skills stay portable (no
