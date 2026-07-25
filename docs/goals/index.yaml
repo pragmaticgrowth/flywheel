@@ -6,4 +6,7 @@ config:
     - python3 -m pytest -q
   # budget:           # optional — uncomment to cap repeated dispatch fires
   #   max_goals_per_session: 1
-goals: {}
+goals:
+  001-prove-the-gate-runs: {status: not_started, priority: high}
+  002-answerable-needs-you: {status: not_started}
+  003-surface-subjective-criteria: {status: not_started, depends_on: [002-answerable-needs-you]}
