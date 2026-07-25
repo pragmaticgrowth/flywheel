@@ -58,6 +58,35 @@ The failing-test direction for this bug is documentary, not runtime: the proving
 that dispatch's text contains the rule, and the RED baseline is trivially available since the
 current text contains nothing at all.
 
+**Amended 2026-07-25:** the original regression-test criterion asked for the marker and
+`never a completion gate` to appear in the same `## ` section, while declaring its purpose as
+"so the test cannot be satisfied by pasting a string". It did not achieve that purpose.
+Reproduced against the rolled-back implementation (`d93133f`), two mutation shapes matter and
+they behave differently — the distinction is the whole lesson:
+
+- Inversion by **addition**, which RETAINS the phrase ("This BLOCKS completion until a human
+  signs off. (Historically it was an observation, never a completion gate — a PASS still
+  completes the goal…") → **9/9 passed.** The rule asserts the opposite of the contract and
+  the suite is blind to it. This is what blocked the goal.
+- Inversion by **replacement**, which DELETES the phrase → 3 failed. Caught, but only
+  incidentally: the assertion notices the missing string, not the reversed meaning.
+- A glossary paragraph carrying all required phrases and ending "Dispatch does none of this",
+  with the PASS path untouched → **9/9 passed.**
+
+A first amendment tried to fix this by binding the assertions to structural LOCATION. Verified
+by running it: the inversion-by-addition still passed, and the prescribed step-4 span turned
+out to be 58 lines wide (swallowing the Windows note), contradicting its own promise that a
+paste elsewhere would fail. → **Resolved reading:** stop trying to make a text-presence test
+verify meaning. Two rounds of finer string matching failed, and the third would too — a
+substring assertion cannot detect negation at any granularity. The test is now scoped
+honestly to what it CAN do: pin the placement of required text (narrow step-4 span with a
+width bound, goal 002's table row, the Phase 4 contents paragraph) as a guard against
+regression and accidental deletion, with an explicit instruction NOT to claim semantic
+detection. Meaning is verified by the dry-run and by the orchestrator's gate reviewer — a
+human-judgment surface, which is exactly what this goal is about in the first place.
+The first implementation's rule TEXT and surfacing logic were correct — only this criterion
+was defective; work commit `d93133f` is recoverable and is a valid starting point.
+
 **Interfaces consumed from 002-answerable-needs-you** (its dependency): 002 establishes the
 single canonical needs-you format section in `skills/dispatch/SKILL.md`, defining the line
 shape `<id or item> — <reason> → <command>` and a blocker-class → command table. This goal
@@ -66,16 +95,39 @@ introduce a second needs-you format.
 
 ## Acceptance criteria
 
-- [ ] A regression test in the repo's pytest suite asserts ALL THREE of the following about
-  `skills/dispatch/SKILL.md`, so the test cannot be satisfied by pasting a string:
-  (a) the literal marker `needs independent review` appears in the file;
-  (b) the same section that contains the marker also contains text stating completion is not
-  blocked (assert the marker and the phrase `never a completion gate` occur within the same
-  section — i.e. with no intervening `\n## ` heading between them);
-  (c) the needs-you contents rules enumerate it as an item class.
+- [ ] A regression test in the repo's pytest suite pins the rule's PLACEMENT — and claims
+  nothing more. Scope note, binding on the implementer: a text-presence test cannot verify
+  that prose MEANS what it should; it can only verify that required text sits where it
+  belongs. Two rounds of trying to close that gap with finer string matching failed (see the
+  Amended note in Context). So this test is explicitly a placement guard against regression
+  and accidental deletion, NOT a semantic check — the dry-run in the criterion below and the
+  orchestrator's own gate reviewer are what verify meaning. Do not add assertions that claim
+  to detect a negated or contradicted rule. Assert exactly:
+  (a) **PASS-path span.** Slice `skills/dispatch/SKILL.md` from the line beginning
+  `## Working a goal` to the next line beginning `## `; within that slice, take from the line
+  beginning `4. PASS →` up to (exclusive) the first subsequent non-blank line that starts at
+  column 0 (i.e. is not an indented continuation of step 4). Against the current text that
+  span ends just before the `anchor`/`gate_base` paragraph and excludes the Windows note.
+  Assert the span is **at most 45 lines** — a bound with headroom for this goal's own
+  additions, whose purpose is to fail loudly if a future restructuring silently widens the
+  span to the whole section (the first amendment's span was 58 lines and swallowed unrelated
+  prose). Assert the literal marker `needs independent review` occurs in THAT span.
+  (b) **Table-row span.** Slice from the table header line `| class | trigger | what to run |`
+  inside the `## needs-you — the canonical format` section to the first following blank line.
+  Assert exactly one row in THAT span begins with `` | `needs independent review` `` and has
+  4 pipes. A row appended elsewhere in the file must NOT satisfy this.
+  (c) **Contents-rules span.** Slice the Phase 4 paragraph that begins
+  `needs-you lists everything currently waiting on the human` up to `**Stalled factory`.
+  Assert the class is enumerated in THAT span.
+  (d) **Placement proof, run and shown — two transcripts.** (i) Paste a paragraph containing
+  the marker plus the phrases the rule uses into an UNRELATED part of the file (the Windows
+  note is a good target, and an orphan table row at end-of-file), leaving step 4 untouched;
+  run the test file and show it FAILS. (ii) Show it passes on the real tree. Attach the
+  mutation as a `git diff` and both pytest outputs — a described mutation is a claim, not
+  evidence. This proves the placement guard works; it deliberately does NOT claim to prove
+  negation-resistance.
   Shown red before the change and green after — the red/green transcript is evidence, and the
-  subagent dry-run below is the PRIMARY evidence that the behavior is specified, with this
-  test as the regression guard.
+  subagent dry-run below is the PRIMARY evidence that the behavior is correctly specified.
 - [ ] `skills/dispatch/SKILL.md` states that after a PASS gate the orchestrator reads the
   goal file for criteria marked `needs independent review`, and when any exist surfaces them
   under needs-you using the canonical format section from goal 002.
