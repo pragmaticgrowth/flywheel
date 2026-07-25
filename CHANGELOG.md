@@ -13,6 +13,44 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [8.2.0] — 2026-07-25
+
+**A solid subagent system on both harnesses.** Audited the plugin's review roles
+against the current Claude Code
+[subagents](https://code.claude.com/docs/en/sub-agents) and Factory Droid
+[custom droids](https://docs.factory.ai/cli/configuration/custom-droids) docs.
+Two real defects were found and fixed — one of them was silently degrading every
+Droid implementer's review into self-review.
+
+- **Droid's nested-spawn limit is now stated, with a working path.** Factory's
+  docs are explicit: *"a subagent cannot spawn its own subagents (the `Task` tool
+  is not available to it)."* Dispatch nonetheless required its implementer to
+  spawn a fresh-check panel, and the only stated fallback was "run the same
+  checklist yourself" — i.e. the maker grading its own work, the exact failure
+  maker–checker exists to prevent. Real runs improvised around it with
+  `droid exec`. That path is now **sanctioned and documented**: Claude Code
+  spawns the panel directly (subagents nest, cap depth=5); Droid uses
+  `droid exec -f <prompt-file>` for genuinely fresh contexts, capped at two
+  lenses since each costs a CLI cold start.
+- **Self-review is never the fallback.** Implementers get an honest
+  `Fresh-check: not run (no fresh-context mechanism available)` verdict. The
+  orchestrator treats it as an escalation to its own full panel — and explicitly
+  **not** as a compliance miss. What remains a miss: a panel silently skipped, or
+  claimed but self-run in the implementer's own context.
+- **Agent tool allowlists are now valid on both harnesses.** The three review
+  agents declared `SendMessage` and `ToolSearch` — neither appears in Droid's
+  tool table, where an unknown ID is a validation error that can drop the whole
+  definition to the generic fallback. Allowlists are now
+  `Bash, Execute, Read, Grep, Glob, LS`: both harnesses' shell tools (each
+  silently ignores the other's) plus read-only tools both define. `SendMessage`
+  was never load-bearing — the agent bodies already treated it as optional, and a
+  subagent's final message is the whole return channel on both harnesses.
+- **`test_subagent_policy.py`** (9 tests) locks all of it in: every tool ID valid
+  on some harness, both shell tools present, no write-capable tool, no pinned
+  model, no message-tool dependency, and dispatch documenting the nesting limit,
+  the honest `not run` verdict, and the not-a-compliance-miss rule. Proven with a
+  RED baseline — 5 of the 9 fail against the pre-change tree.
+
 ## [8.1.0] — 2026-07-25
 
 **The factory proves what it claims.** Three defects shared one root: flywheel

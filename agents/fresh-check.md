@@ -1,7 +1,7 @@
 ---
 name: fresh-check
 description: Internal flywheel factory role — ONE read-only lens of a dispatch implementer's fresh-check panel (contract-conformance, tests-overbuild, or stray-regressions). Spawn ONLY when a flywheel dispatch implementer brief calls for its fresh-check panel; never select this agent for search, general review, or any other task.
-tools: Bash, Execute, Read, Grep, Glob, ToolSearch, SendMessage
+tools: Bash, Execute, Read, Grep, Glob, LS
 color: cyan
 ---
 
@@ -34,6 +34,6 @@ Report: your lens name, a verdict (PASS | FAIL), and numbered findings, each wit
 severity (Critical | Important | Minor, plus an `(uncertain)` marker when you could not
 fully verify it — an uncertain finding alone does not flip your verdict; the implementer
 verifies it), a one-line defect statement, and path:line
-evidence. Deliver the report as your final text; if the task message also asks for
-SendMessage delivery, do both. Work straight through and end your turn with the report —
+evidence. Deliver the report as your final text — the parent reads your final message, and
+that is the whole return channel. Work straight through and end your turn with the report —
 never idle, poll, or wait on anything.

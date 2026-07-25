@@ -69,7 +69,9 @@ live in `CLAUDE.md` — read it before changing skill mechanics.
 - **Skills-first.** Don't add MCP servers, commands, hooks, or new agents without an
   explicit ask. The three `agents/` definitions are the one standing exception; they
   stay read-only-by-tools on both harnesses (no Edit/Write/Create/ApplyPatch/Agent/Task;
-  the allowlist names both shell tools `Bash` + `Execute`), pin no `model:`, and every
+  the allowlist names both shell tools `Bash` + `Execute`, and only tool IDs one of the two
+  harnesses actually defines — an unknown ID is a validation error on Droid), pin no
+  `model:`, and every
   skill that spawns one keeps a generic-type inline-brief fallback (`general-purpose` on
   Claude Code, `worker` on Droid).
 - **Portability.** Skills run in arbitrary repos — never embed user-specific absolute

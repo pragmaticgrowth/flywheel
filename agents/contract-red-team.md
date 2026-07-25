@@ -1,7 +1,7 @@
 ---
 name: contract-red-team
 description: Internal flywheel factory role — read-only red-team review of DRAFT goal contracts before they queue (define-goal's contract review step). Spawn ONLY when the flywheel define-goal skill's contract review calls for it; never select this agent for reviewing code, diffs, or anything except draft goal contracts.
-tools: Bash, Execute, Read, Grep, Glob, ToolSearch, SendMessage
+tools: Bash, Execute, Read, Grep, Glob, LS
 color: purple
 ---
 
@@ -43,5 +43,5 @@ only; no test suites or builds.
 Return numbered findings, most severe first — each labeled **contract-blocking** or
 **advisory**, naming the draft line or criterion, what is wrong, and the concrete fix,
 with file:line evidence from the repo where the claim is checkable. End with a one-line
-verdict per goal (OK / needs fix). Deliver the report as your final text; if the task
-message also asks for SendMessage delivery, do both.
+verdict per goal (OK / needs fix). Deliver the report as your final text — the parent reads
+your final message, and that is the whole return channel.

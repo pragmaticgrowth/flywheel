@@ -5,7 +5,7 @@ A skills-first plugin marketplace for [Claude Code](https://claude.com/claude-co
 and [Factory Droid](https://factory.ai), from Pragmatic Growth.
 
 [![Website](https://img.shields.io/badge/site-flywheel.pragmaticgrowth.com-6366f1)](https://flywheel.pragmaticgrowth.com)
-[![Version](https://img.shields.io/badge/version-8.1.0-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-8.2.0-8b5cf6)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
 > 🌐 **Full docs:** **<https://flywheel.pragmaticgrowth.com>**
@@ -39,6 +39,14 @@ read-only [subagent](https://code.claude.com/docs/en/sub-agents) definitions
 (`flywheel:gate-reviewer`, `flywheel:fresh-check`,
 `flywheel:contract-red-team` — the factory's review roles, tool-restricted so
 they can never edit files, and only used when a flywheel skill spawns them).
+They work as
+[subagents](https://code.claude.com/docs/en/sub-agents) on Claude Code and as
+[custom droids](https://docs.factory.ai/cli/configuration/custom-droids) on
+Factory Droid, with allowlists naming only tool IDs one of the two harnesses
+defines. One platform difference is load-bearing: a Claude Code subagent can
+spawn further subagents, a Droid subagent cannot (no `Task` tool), so a
+dispatch implementer runs its fresh-check panel directly on Claude Code and via
+`droid exec` on Droid — never by reviewing its own diff in its own context.
 The marketplace
 exposes one plugin: `flywheel`, with six workflow
 [skills](https://docs.claude.com/en/docs/claude-code/skills).

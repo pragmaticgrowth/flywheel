@@ -21,9 +21,10 @@ skills-only rule, as of v5.4.0: THREE plugin agent definitions
 2026-07-16 after transcript forensics on real dispatch runs showed
 hand-composed review briefs drifting across fires. Each carries the role
 brief + output contract as its system prompt and a tool allowlist with no
-write-capable tools (the list names both harnesses' shell tools, `Bash` +
-`Execute` — each harness silently ignores the other's; live-verified on
-Droid 2026-07-25), pins no `model:`, and has a deliberately narrow
+write-capable tools (the list names both harnesses' shell tools, `Bash` + `Execute` — each harness silently
+ignores the other's; live-verified on Droid 2026-07-25 — and ONLY tool IDs one of the two
+harnesses defines, since Droid validates `tools:` against a fixed table and an unknown ID
+is a validation error), pins no `model:`, and has a deliberately narrow
 description so the agent never auto-delegates to it outside flywheel skills;
 the skills always keep a generic-type-with-inline-brief fallback
 (`general-purpose` on Claude Code, `worker` on Droid; spawn plugin agents as
@@ -113,6 +114,15 @@ is no `plugins/` directory — the repo root IS the flywheel plugin.
   interview), and an ideate handoff is treated as the brief — question rounds
   cover only remaining gaps, recon narrows to verify-and-complete, chain
   goals link the design brief from Context.
+**Harness note (v8.2.0):** on Claude Code a subagent can spawn further subagents
+(Agent nests, cap depth=5), so a dispatch implementer runs its fresh-check panel directly.
+On Droid a subagent has NO Task tool — Factory's docs state "a subagent cannot spawn its
+own subagents" — so the implementer uses the sanctioned `droid exec -f <prompt-file>` path
+for genuinely fresh review contexts (≤2 lenses; it costs a CLI cold start each). Self-review
+in the implementer's own context is NEVER the fallback: an honest
+`Fresh-check: not run (no fresh-context mechanism available)` escalates the orchestrator's
+own review to the full panel, and is explicitly not a compliance miss.
+
 - **dispatch** — factory orchestrator for the docs/goals queue: works ONE
   ready goal per run on the branch that's currently checked out — no PRs, no
   worktrees, no `goal/<id>` branches, no parallel implementation. Per goal it

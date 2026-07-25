@@ -415,7 +415,8 @@ For each claimed goal, in order:
    judge that from the DIFF, not the implementer's claim; the
    deterministic gate + `config.verify` suffice there; that carve-out is what keeps the
    second view proportional.
-   **Escalation to the full panel.** A missing `Fresh-check:` block, or a not-required
+   **Escalation to the full panel.** A missing `Fresh-check:` block, a
+   `not run (no fresh-context mechanism available)` verdict, or a not-required
    claim the diff belies (multi-file work, or a single-file diff whose changes are plainly
    substantive rather than mechanical), upgrades the single reviewer to the full 2–3 read-only
    lenses (same lenses as the brief's Quality loop step 5, fresh windows, concurrent —
@@ -425,7 +426,11 @@ For each claimed goal, in order:
    already in hand — and run the panel INSTEAD of the single reviewer, never after it. A
    skipped implementer panel is a compliance miss: when the same miss recurs across goals
    in this session's fires (no persisted counter — session memory only, per the
-   status-only-in-index rule), surface it once via Hygiene's lesson-encoding rule.
+   status-only-in-index rule), surface it once via Hygiene's lesson-encoding rule. An
+   HONEST `not run (no fresh-context mechanism available)` is NOT a compliance miss — it is
+   the implementer correctly refusing to self-review where the harness gives it no fresh
+   context; it escalates your own review to the full panel and nothing more. What IS a miss
+   is a panel silently skipped, or claimed but self-run in the implementer's own context.
    **Then the gate commands:**
    `python3 "$PGVALIDATE" --head HEAD --base <gate_base> --goal <id> --goal-file docs/goals/<id>.md`
    plus the repo `config.verify` commands (ordered, all must exit 0). Show output.
@@ -578,7 +583,22 @@ independent verification, and review in fresh windows — this is `subagent-driv
 (invoke the skill when it is available). Two patterns earn their keep here: adversarial
 verification (a reviewer tries to REFUTE the change, not rubber-stamp it) and, for bug hunts,
 loop-until-dry (keep looking until a pass turns up nothing new). They are never a second
-implementer lane. If subagents are unavailable, say so and run the same checklist yourself.
+implementer lane.
+
+**Harness note — nested spawning.** On Claude Code you ARE a subagent that can spawn further
+subagents (the Agent tool nests, system cap depth=5): spawn the panel directly. On Droid a
+subagent has NO Task tool — the platform does not let you spawn a subagent at all
+(documented: "a subagent cannot spawn its own subagents"). Do not pretend otherwise and do
+NOT fall back to reviewing your own diff in your own context: self-review is the maker
+grading its own work, which is the exact failure the panel exists to prevent. Instead use
+the sanctioned Droid path — `droid exec -f <prompt-file>` (or `droid exec "<prompt>"`),
+which starts a genuinely fresh headless session with clean context. Write each lens brief to
+a temp file, run the lenses, and paste each verdict into your `Fresh-check:` line. It costs a
+CLI cold start per lens, so on Droid run at most two lenses and skip the panel entirely for a
+one-file mechanical edit. If neither path is available, say so plainly in the
+`Fresh-check:` line — `not run (no fresh-context mechanism available)` — and never imply a
+panel happened. The orchestrator always runs its own independent review regardless, and a
+truthful "not run" simply escalates it to the full orchestrator-run panel.
 
 Workspace: you are on the current branch in this checkout — work on the current branch in
 this checkout, commit your intended files here. Do NOT create a worktree, do NOT create a
