@@ -80,44 +80,60 @@ recovery clean, but nothing restarts a session from inside it.
 
 Read the queue's `config:` block first; defaults when absent:
 `base` = the branch dispatch works ON (the started branch — staging, main, or other;
-default = the currently checked-out branch), `model: inherit` (opus|sonnet|haiku — the
-repo-wide DEFAULT for implementer/fix agents; a goal file's own frontmatter `model:`
-overrides it per goal), `skills: []` (repo-wide skill mandates), `verify: []` (the
+default = the currently checked-out branch), `model: inherit` (heavy|medium|light — the
+repo-wide DEFAULT execution tier for implementer/fix agents; a goal file's own
+frontmatter `model:` overrides it per goal), `skills: []` (repo-wide skill mandates),
+`verify: []` (the
 ordered LOCAL gate — a list of shell commands run top-to-bottom, all must exit 0; e.g.
 [ "npm ci", "npm run build", "npm test" ]; empty = auto-detect a single test command, and
 if none is found the gate is INCONCLUSIVE, never a silent PASS), `budget` (default none;
 `max_goals_per_session` + optional `max_iterations` = the external burnstop).
 
-**Implementer-model resolution — per goal, before each spawn.** Resolve the model for a
-goal's code-writing agents in this order: the goal file's frontmatter `model:` field
-(`inherit | opus | sonnet | haiku` — stamped by define-goal at contract-writing time as the
-goal author's difficulty call), else `config.model`, else `inherit`. A non-`inherit` value is
-passed as the `model` parameter on EVERY code-writing agent you spawn for THAT goal — the
-implementer and any fix/repair agent alike; `inherit` means omit the parameter so the agent
-runs your session model. This split keeps judgment on strong models: the orchestrator stays
-on the session model for claim/gate/review calls, features and bugs default to an `opus`
-stamp (define-goal's rubric), and only rote mechanical goals run cheap implementers. Neither
-field is yours to override, and neither ever applies to review read-only agents — those
-always inherit the session model.
+**Implementer-tier resolution — per goal, before each spawn.** Resolve the execution
+tier for a goal's code-writing agents in this order: the goal file's frontmatter
+`model:` field (`inherit | heavy | medium | light` — stamped by define-goal at
+contract-writing time as the goal author's difficulty call), else `config.model`, else
+`inherit`.
+
+**Execution tiers (canonical alias table).** Legacy values are read as aliases forever —
+`opus` → heavy, `sonnet` → medium, `haiku` → light — and never written into new goals or
+claims. Spawn-time mapping per harness:
+
+- **Claude Code**: heavy → `model: opus`, medium → `model: sonnet`, and
+  light → `model: haiku` on the code-writing agent spawn; `inherit` omits the pin.
+- **Droid**: pass `complexity: heavy|medium|light` on the Task spawn (`worker` type for
+  implementers); `inherit` omits it.
+
+A non-`inherit` tier applies to EVERY code-writing agent you spawn for THAT goal — the
+implementer and any fix/repair agent alike; `inherit` means omit the mapping so the agent
+runs your session model. This split keeps judgment on strong models: the orchestrator
+stays on the session model for claim/gate/review calls, features and bugs default to a
+`heavy` stamp (define-goal's rubric), and only rote mechanical goals run lighter
+implementers. Neither field is yours to override, and neither ever applies to review
+read-only agents — those always inherit the session model.
 
 **Named review agents (plugin-shipped).** The plugin ships three read-only agent
-definitions for the factory's review roles: `flywheel:gate-reviewer` (the orchestrator's
-independent second view, also used for focused re-checks), `flywheel:fresh-check` (one
-lens of the implementer's panel), and `flywheel:contract-red-team` (define-goal's draft
-review). Each definition carries the role brief, the output contract, and a tool
-allowlist with no Edit/Write/Agent — read-only enforced by the runtime, not by prompt
+definitions for the factory's review roles: gate-reviewer (the orchestrator's
+independent second view, also used for focused re-checks), fresh-check (one
+lens of the implementer's panel), and contract-red-team (define-goal's draft
+review). Spawn them as `flywheel:gate-reviewer` etc. on Claude Code, bare
+`gate-reviewer` etc. on Droid (Droid auto-translates plugin agents and registers them
+unprefixed). Each definition carries the role brief, the output contract, and a tool
+allowlist with no write-capable tools — read-only enforced by the runtime, not by prompt
 discipline — so a spawn prompt carries only the per-goal specifics (repo/branch, diff
 range, goal file, checklist, evidence to challenge). None pins a `model:` in its
 definition, so each resolves by the runtime's normal inheritance: an orchestrator-spawned
 `gate-reviewer` or `contract-red-team` inherits the session model — never pass them a
-`model` parameter (the review-agents rule above) — and an implementer-spawned
+model or complexity parameter (the review-agents rule above) — and an implementer-spawned
 `fresh-check` lens inherits the implementer's own resolved model, which is fine: the
 definitions leave model choice entirely to the spawn context. Fallback is mandatory,
 never a stop: when the runtime doesn't
 list the type (plugin agents disabled, older CLI, a failed spawn naming the type),
-spawn `general-purpose` and state the role inline exactly as the relevant step describes.
-Never use the built-in Explore type for any review role — it is a search agent and its
-own description forbids review use.
+spawn the generic read-capable type (`general-purpose` on Claude Code, `worker` on
+Droid) and state the role inline exactly as the relevant step describes.
+Never use the built-in Explore type (Claude Code) for any review role — it is a search
+agent and its own description forbids review use. On Droid, `explorer` is likewise never
+a review role: review needs to run commands (tests, builds), which `explorer` cannot.
 
 ## Hard rules (every iteration, before any action)
 
@@ -265,8 +281,10 @@ set `config.model`) if they want that trade. Do not name or apply a fixed alias 
 `$PGVALIDATE` resolution (do this once, before the first gate): use the same fallback chain
 the surviving scripts use — `$CLAUDE_PLUGIN_ROOT/skills/dispatch/scripts/pg_validate.py`,
 else the newest match of
-`~/.claude/plugins/{cache,marketplaces}/*/flywheel/*/skills/dispatch/scripts/pg_validate.py`.
-Hold the resolved absolute path in `$PGVALIDATE`.
+`~/.claude/plugins/{cache,marketplaces}/*/flywheel/*/skills/dispatch/scripts/pg_validate.py`,
+else the newest match of
+`~/.factory/plugins/cache/*/flywheel/*/skills/dispatch/scripts/pg_validate.py` (the Droid
+plugin cache). Hold the resolved absolute path in `$PGVALIDATE`.
 
 ## Working a goal — the canonical per-goal sequence
 
@@ -285,8 +303,9 @@ For each claimed goal, in order:
    `Fresh-check: not required (one-file mechanical edit)` for work that genuinely is) — but
    that block is corroborating evidence, never the verdict: the implementer graded its own
    work. For any diff bigger than a one-file mechanical edit, spawn ONE fresh read-only
-   adversarial reviewer — `flywheel:gate-reviewer` when the runtime lists it, else
-   `general-purpose` with the role stated inline (Named review agents above); no model
+   adversarial reviewer — the gate-reviewer plugin agent (`flywheel:gate-reviewer` on
+   Claude Code, `gate-reviewer` on Droid) when the runtime lists it, else the generic
+   type with the role stated inline (Named review agents above); no model
    override either way, review agents always inherit the session model — over the
    `gate_base..HEAD` diff plus the goal file, and hand
    it the `Fresh-check:` line and the implementer's report-file path to challenge — this
@@ -327,8 +346,8 @@ For each claimed goal, in order:
    claim the diff belies (multi-file work, or a single-file diff whose changes are plainly
    substantive rather than mechanical), upgrades the single reviewer to the full 2–3 read-only
    lenses (same lenses as the brief's Quality loop step 5, fresh windows, concurrent —
-   spawned foreground as `flywheel:fresh-check` when the runtime lists it, else
-   `general-purpose`).
+   spawned foreground as the fresh-check plugin agent when the runtime lists it, else
+   the generic type — Named review agents above).
    Decide this BEFORE spawning any reviewer — the implementer's report and the diff are
    already in hand — and run the panel INSTEAD of the single reviewer, never after it. A
    skipped implementer panel is a compliance miss: when the same miss recurs across goals
@@ -343,7 +362,7 @@ For each claimed goal, in order:
    FAIL_FIXABLE → one repair agent (fed the COMPLETE verified findings list in one spawn —
    never one repair agent per finding), re-gate (re-run the commands; when verified review
    findings drove the repair, add a focused re-check by one fresh read-only agent —
-   `flywheel:gate-reviewer` else `general-purpose`, session model, scoped to exactly
+   the gate-reviewer plugin agent else the generic type, session model, scoped to exactly
    those findings PLUS a one-pass collateral scan of the repair diff itself — a fix can
    break a neighbor — not a new full panel); still failing →
    `git reset --hard <gate_base>`,
@@ -500,9 +519,11 @@ Quality loop — keep it lightweight, but do not skip it:
    concurrently and return synchronously. Never spawn lenses as background agents you must
    poll — background children end your turn the moment you stop calling tools, and
    sleep-loop waiting has produced discarded verdicts and false "no findings" claims on
-   real runs. Never use the built-in Explore type for review (it is a search agent). Use
-   the plugin's `flywheel:fresh-check` agent type when the runtime lists it (read-only
-   enforced; name the lens in each spawn prompt), else `general-purpose` with the lens
+   real runs. Never use the built-in Explore type (Claude Code) or `explorer` (Droid)
+   for review (search agents; `explorer` can't run commands). Use
+   the plugin's fresh-check agent (`flywheel:fresh-check` on Claude Code, `fresh-check`
+   on Droid) when the runtime lists it (read-only
+   enforced; name the lens in each spawn prompt), else the generic type with the lens
    brief inline. Two or three lenses is
    the norm and stays lightweight; escalate to a read-only review Workflow only at the ~5+
    independent-checks threshold from step 3. Treat every finding as something to verify, not
@@ -614,12 +635,12 @@ spawn produced it):
    and their Interfaces notes, the latest-context bullets, repo config — and re-spawn
    once with the answer added to the brief. Nothing you hold answers it → roll back any
    work commits and block with the ask as the reason (needs-you).
-2. **`BLOCKED`, capability-shaped, on a cheap-stamped goal.** The goal's resolved
-   implementer model is `sonnet` or `haiku` AND the blocker reads capability-shaped (an
+2. **`BLOCKED`, capability-shaped, on a light-stamped goal.** The goal's resolved
+   implementer tier is `medium` or `light` AND the blocker reads capability-shaped (an
    architectural fork within contract bounds, "reading file after file without
-   progress") → ONE re-spawn on the stronger model (the session model), noted in the
-   report line. Never downgrade; goals already resolved to `inherit`/`opus` skip this
-   rung — capability was not the gap there.
+   progress") → ONE re-spawn on the stronger tier (the session model — omit the
+   tier mapping), noted in the report line. Never downgrade; goals already resolved to
+   `inherit`/`heavy` skip this rung — capability was not the gap there.
 3. **Too large / contract wrong.** A blocker that reads "the goal is too large" or "the
    contract is wrong" → the contract-defect route: roll back, block with
    `contract defect: <reason>` (needs-you amendment via define-goal, which splits or
