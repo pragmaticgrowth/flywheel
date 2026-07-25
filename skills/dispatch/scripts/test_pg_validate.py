@@ -39,6 +39,10 @@ def test_blast_radius_forbidden_path():
     r = pgv.blast_radius([".claude/settings.json"], [])
     assert r["pass"] is False and r["kind"] == "fixable" and ".claude" in r["evidence"]
 
+def test_blast_radius_blocks_factory_settings():
+    r = pgv.blast_radius([".factory/settings.json"], [])
+    assert r["pass"] is False and "forbidden path" in r["evidence"]
+
 def test_blast_radius_workflow_forbidden():
     r = pgv.blast_radius([".github/workflows/ci.yml"], [])
     assert r["pass"] is False

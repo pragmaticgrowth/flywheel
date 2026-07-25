@@ -22,7 +22,7 @@ def aggregate(results):
 import fnmatch
 
 # fnmatch '*' spans '/', so '.claude/*' matches nested paths too.
-FORBIDDEN_PATHS = (".claude/*", ".github/workflows/*", "*/deploy*.sh", "deploy*.sh")
+FORBIDDEN_PATHS = (".claude/*", ".factory/*", ".github/workflows/*", "*/deploy*.sh", "deploy*.sh")
 LOCKFILES = ("package-lock.json", "yarn.lock", "pnpm-lock.yaml", "go.sum",
              "Gemfile.lock", "poetry.lock", "Cargo.lock", "composer.lock")
 
