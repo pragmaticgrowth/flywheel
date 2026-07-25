@@ -193,6 +193,38 @@ def test_limit_resilience_ok_with_external_scheduler():
 def test_limit_resilience_ok_with_stopfailure_hook():
     assert dc.limit_resilience_check(2, 3, True, False)["level"] == "INFO"
 
+def test_scheduler_evidence_matches_droid_exec(monkeypatch):
+    # a crontab firing fresh droid sessions is limit-proof evidence, same as claude -p.
+    # (uses a -f prompt-file form deliberately NOT containing "/dispatch", so only the
+    # "droid exec" pattern itself can match)
+    monkeypatch.setattr(dc, "_run",
+                        lambda cmd: (0, '0 * * * * droid exec -f /etc/goal-prompt.md', ""))
+    assert dc._external_scheduler_evidence()
+
+def test_scheduler_evidence_still_ignores_unrelated_crontab(monkeypatch):
+    monkeypatch.setattr(dc, "_run", lambda cmd: (0, "0 * * * * /usr/bin/backup.sh", ""))
+    monkeypatch.setattr(dc.glob, "glob", lambda g: [])
+    assert not dc._external_scheduler_evidence()
+
+def test_stop_failure_hook_found_in_factory_settings(monkeypatch):
+    with tempfile.TemporaryDirectory() as repo:
+        proj = os.path.join(repo, ".factory")
+        os.makedirs(proj)
+        with open(os.path.join(proj, "settings.json"), "w") as f:
+            f.write('{"hooks": {"StopFailure": [{"matcher": "rate_limit"}]}}')
+        monkeypatch.setenv("HOME", os.path.join(repo, "nohome"))
+        assert dc._has_stop_failure_hook(repo)
+
+def test_stop_failure_hook_found_in_user_factory_settings(monkeypatch):
+    with tempfile.TemporaryDirectory() as home:
+        user = os.path.join(home, ".factory")
+        os.makedirs(user)
+        with open(os.path.join(user, "settings.json"), "w") as f:
+            f.write('{"hooks": {"StopFailure": [{"matcher": "rate_limit"}]}}')
+        monkeypatch.setenv("HOME", home)
+        with tempfile.TemporaryDirectory() as repo:
+            assert dc._has_stop_failure_hook(repo)
+
 def test_symlink_capability_warn_on_windows_without_privilege():
     # Windows default (Developer Mode off, non-elevated): os.symlink raises
     # WinError 1314, so bug-goal base worktrees can't link deps and every type: bug

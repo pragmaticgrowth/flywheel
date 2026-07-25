@@ -201,7 +201,7 @@ def limit_resilience_check(active_goals, heartbeat_lines, signal_configured, sch
                       "usage-limit stop (5-hour/weekly window): in-session loops die at the "
                       "limit and no hook fires on the banner",
             "fix": "schedule fresh sessions OUTSIDE the CLI (cron/launchd running "
-                   "claude -p \"/dispatch\"), and/or add a "
+                   "claude -p \"/dispatch\" or droid exec \"/dispatch\"), and/or add a "
                    "StopFailure hook (rate_limit matcher) that arms a resume at "
                    "rate_limits.*.resets_at — see loop-architect Step 5 limit-proofing"}
 
@@ -221,11 +221,14 @@ def _heartbeat_line_count(repo_root):
 def _has_stop_failure_hook(repo_root):
     # A configured StopFailure hook = the machine gets a signal when a turn dies on an
     # API error (incl. rate_limit) and can arm an external resume. Read-only; checks
-    # project + user settings. Parse errors count as absent.
+    # project + user settings for both harnesses (.claude/ = Claude Code,
+    # .factory/ = Factory Droid). Parse errors count as absent.
     home = os.path.expanduser("~")
-    candidates = [os.path.join(repo_root, ".claude", f)
+    candidates = [os.path.join(repo_root, d, f)
+                  for d in (".claude", ".factory")
                   for f in ("settings.json", "settings.local.json")]
-    candidates += [os.path.join(home, ".claude", "settings.json")]
+    candidates += [os.path.join(home, ".claude", "settings.json"),
+                   os.path.join(home, ".factory", "settings.json")]
     for p in candidates:
         try:
             hooks = (json.load(open(p)) or {}).get("hooks") or {}
@@ -239,9 +242,9 @@ def _has_stop_failure_hook(repo_root):
 def _external_scheduler_evidence():
     # Best-effort, read-only sweep for an OS-level scheduler that fires fresh CLI
     # sessions (the limit-proof loop shape): user crontab, macOS LaunchAgents, and
-    # systemd user timers. Match only unambiguous patterns — a bare "claude" would
-    # false-positive on desktop-app agents.
-    patterns = ("claude -p", "claude --print", "/dispatch")
+    # systemd user timers. Match only unambiguous patterns — a bare "claude" or
+    # "droid" would false-positive on desktop-app agents.
+    patterns = ("claude -p", "claude --print", "droid exec", "/dispatch")
 
     def hit(text):
         return any(p in (text or "") for p in patterns)
