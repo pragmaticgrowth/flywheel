@@ -15,7 +15,10 @@ green report.
 1. **Resolve paths.** `$DC` = `doctor_checks.py`, via the surviving scripts' resolution chain
    (the same fallback chain dispatch uses for `$PGVALIDATE`):
    `$CLAUDE_PLUGIN_ROOT/skills/factory-doctor/scripts/doctor_checks.py`, else newest
-   `~/.claude/plugins/{cache,marketplaces}/*/flywheel/*/skills/factory-doctor/scripts/doctor_checks.py`.
+   `~/.claude/plugins/{cache,marketplaces}/*/flywheel/*/skills/factory-doctor/scripts/doctor_checks.py`,
+   else newest
+   `~/.factory/plugins/cache/*/flywheel/*/skills/factory-doctor/scripts/doctor_checks.py`
+   (the Droid plugin cache).
 2. **Read the queue config** (`docs/goals/index.yaml` `config:` if present) for `base`.
    Pass `--base <base>` ONLY when `config.base` is explicitly set. If it is absent, omit
    `--base` — dispatch defaults base to the checked-out branch, so there is no separate
@@ -80,8 +83,8 @@ Push, open a PR, touch the remote, edit a CI workflow, run `gh auth login`/`refr
 (browser-blocking — report the exact command instead), run a SYSTEM/sudo/global install (`gh`,
 `git`, `brew`/`apt`, OR `npm i -g agent-browser` + its Chromium download — report those; the
 ONLY install you may run is the plugin's own python dep at `--user` scope, above), `git stash`,
-delete branches/worktrees, or write to user-scope `~/.claude/settings.json`. Anything not in
-the fix list above is REPORT-only.
+delete branches/worktrees, or write to user-scope settings (`~/.claude/settings.json` or
+`~/.factory/settings.json`). Anything not in the fix list above is REPORT-only.
 
 ## Report (always, last line is the status)
 
@@ -102,7 +105,9 @@ silent-death candidate dispatch will respawn or that needs unblocking), `goal-co
 (WARN naming any active goal whose file lacks a checkable done-condition — tighten via
 `/define-goal` before dispatch picks it up), and `limit-resilience` (WARN when a dispatch loop
 demonstrably fires on this repo — heartbeat log lines exist — but nothing survives an account
-usage-limit stop: no external scheduler firing fresh sessions and no `StopFailure` hook; its
+usage-limit stop: no external scheduler firing fresh sessions (`claude -p "/dispatch"` or
+`droid exec "/dispatch"`) and no `StopFailure` hook — the probe checks settings in
+`.claude/` and `.factory/`, project + user scope; its
 `fix` field carries the limit-proofing guidance from loop-architect Step 5. INFO-only when no
 loop has fired here or a rail is detected). The `verify` check WARNs if `config.verify` is
 absent and there are active goals — copy its `fix` (add a `verify:` list to `index.yaml`). Then

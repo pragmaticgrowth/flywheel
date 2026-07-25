@@ -57,7 +57,7 @@ a loop composes.)
 | Poll/babysit on a cadence while a session is open | `/loop <interval> <skill-or-prompt>` |
 | Recurring default maintenance for this repo | bare `/loop` + a `.claude/loop.md` |
 | A backlog of shippable changes worked unattended | docs/goals queue — fill with `define-goal`, then repeat `/dispatch` (one ready goal per run on the checked-out branch; `/loop /dispatch` drains over repeated fires) |
-| Unattended loop must survive account usage-limit stops (subscription 5-hour/weekly windows) | OS scheduler (cron/launchd) firing fresh `claude -p "/dispatch"` sessions — the limit-proof wrapper around the backlog row's drain; in-session `/loop` dies at the limit (see Step 5 limit-proofing) |
+| Unattended loop must survive account usage-limit stops (subscription 5-hour/weekly windows) | OS scheduler (cron/launchd) firing fresh sessions — `claude -p "/dispatch"` (Claude Code) or `droid exec "/dispatch"` (Droid) — the limit-proof wrapper around the backlog row's drain; in-session `/loop` dies at the limit (see Step 5 limit-proofing) |
 | Must run with the laptop closed | Routine (`/schedule`; cloud; schedule / API / GitHub triggers) |
 | Needs local files, machine on, no session open | Desktop scheduled task |
 | React to external events (CI, chat) instead of polling | Channels (`--channels`) or Routine API trigger |
@@ -225,16 +225,21 @@ Either way the CLI ships no wait-until-reset auto-resume. Treat the limit like a
 not an error the loop can handle from inside. Rails, in order of leverage:
 
 - **Schedule outside the session.** The limit-proof shape is an OS scheduler (cron / launchd /
-  Task Scheduler) firing a fresh `claude -p "/dispatch"` per cadence.
+  Task Scheduler) firing a fresh headless session per cadence — `claude -p "/dispatch"`
+  on Claude Code, `droid exec "/dispatch"` on Droid.
   Fires during the limit window fail cheaply; the first fire after reset just works — dispatch
-  fires are idempotent and one-goal, so no state transfer is needed.
-- **Detect instead of blind-firing (optional refinement).** Two supported surfaces expose the
+  fires are idempotent and one-goal, so no state transfer is needed. (Droid's built-in
+  CronCreate/automations are building blocks, not this rail: session-bound loops die
+  with the session — the exact failure this step exists to avoid.)
+- **Detect instead of blind-firing (optional refinement — Claude Code facts).** Two
+  supported surfaces expose the
   reset clock: the statusline stdin JSON carries `rate_limits.five_hour.resets_at` /
   `rate_limits.seven_day.resets_at` (Unix epoch seconds; subscription plans; present after the
   session's first API response), and a `StopFailure` hook with the `rate_limit` matcher fires
   when a turn dies mid-flight on a rate-limit API error (informational only, and it misses the
   between-turns banner shape — have it write a marker file the outer scheduler reads; never
   make it the only rail). Sleep until the relevant `resets_at` plus jitter, then fire.
+  On Droid no equivalent reset-clock surface is verified — schedule blind by cadence.
 - **Respect the weekly window.** `seven_day.resets_at` can be days away — retrying a
   weekly-capped account hourly is pure noise; stand down until that reset.
 - **Bookkeeping survives on its own.** The docs/goals ledger plus dispatch's fires-observed
