@@ -70,7 +70,7 @@ contract the loop will run.
 
 **Claude Code** has a built-in `/goal` command (user-run only; no `create_goal` or
 `get_goal` tool). After each turn, a separate evaluator model — the configured small-fast
-model, default Haiku — reads the conversation transcript and checks whether the condition
+model, default Haiku on Claude Code — reads the conversation transcript and checks whether the condition
 holds (condition cap: 4,000 chars). The evaluator cannot run commands or read files —
 every clause must be provable by output that appears in the transcript (test results,
 exit codes, diffs, counts). Never write taste conditions ("clean", "better"). Bound every
@@ -101,6 +101,20 @@ contract consequence:
 - **Fails open.** An evaluator-side error (API failure, malformed verdict) lets the
   session stop with the goal unmet. `/goal` is a strong in-session rail, not a guarantee —
   unattended runs still need the external ledger/scheduler rails (loop-architect).
+
+**Factory Droid** has no `/goal` evaluator — everything in this section above is a
+Claude Code fact. On Droid the run-now destination is a self-contained prompt block for
+a fresh headless session: the full contract inline (outcome, every acceptance criterion
+with its exact command, stop conditions, the turn/effort bound stated as an instruction),
+saved to a file and invoked as
+
+    droid exec -f goal-prompt.md --auto medium
+
+(`--auto high` only when the contract's work needs subagents — Droid gates the Task tool
+behind high autonomy). The `/goal`-specific facts (4,000-char condition cap, transcript
+evaluation, recency truncation, turn-cap announcements) do not apply to the Droid block;
+the contract itself carries the verification — which is why it must still restate exact
+commands and print final acceptance outputs before finishing.
 
 ## Shape the contract (both destinations)
 
@@ -187,26 +201,28 @@ guessing is exactly what recon exists to replace. Skip recon ONLY when the want 
 greenfield (nothing existing to understand) or a one-liner you can already pin with certainty.
 Recon details:
 
-- **Model (mandatory — gather on sonnet, judgment on the session model)**: recon SEARCH
-  subagents run on `sonnet` — pass `model: sonnet` on each spawn (owner routing decision
-  2026-07-24: gathering — read, grep, trace, report — is strong-tool-use work Sonnet
-  handles at near-parity; the judgment that guards contract quality lives in synthesis,
-  which this rule keeps on the stronger model). Use the `general-purpose` type with
-  `model: sonnet`, strictly READ-ONLY (report only — never edit, fix, or run heavy
-  repro). Do NOT use the built-in `Explore` type — its model cannot be pinned, and this
-  rule needs the model explicit. The SYNTHESIS/judgment step (when you split one out to
+- **Model (mandatory — gather on the medium tier, judgment on the session model)**: recon
+  SEARCH subagents run on the medium tier (owner routing decision 2026-07-24: gathering —
+  read, grep, trace, report — is strong-tool-use work the medium tier handles at
+  near-parity; the judgment that guards contract quality lives in synthesis, which this
+  rule keeps on the stronger model). Harness mapping — Claude Code: spawn
+  `general-purpose` with `model: sonnet` (the medium tier); do NOT use the built-in
+  `Explore` type — its model cannot be pinned, and this rule needs the model explicit.
+  Droid: spawn `explorer` (read-only by construction) with `complexity: medium`. On
+  either harness the gather agents are strictly READ-ONLY (report only — never edit,
+  fix, or run heavy repro). The SYNTHESIS/judgment step (when you split one out to
   weigh evidence and rank hypotheses) stays on the current session model — never
-  sonnet-route it: weighing what the findings mean is the contract-quality step the
-  gather/judge split protects, and so is the contract you write from it. Search agents
-  report what the code shows (files, call paths, suspect commits); ranking what it means
-  happens in synthesis or your own context — never inside a gather agent. The queue's
-  `config.model` and the per-goal frontmatter `model:` never apply here — they govern
-  code-writing agents only, and there is NO persistent config knob for a recon model
-  (a `config.research_model` re-invites per-repo drift — the sonnet gather default is
-  fixed in this skill, deliberately not config).
+  route it to the gather tier: weighing what the findings mean is the contract-quality
+  step the gather/judge split protects, and so is the contract you write from it. Search
+  agents report what the code shows (files, call paths, suspect commits); ranking what it
+  means happens in synthesis or your own context — never inside a gather agent. The
+  queue's `config.model` and the per-goal frontmatter `model:` never apply here — they
+  govern code-writing agents only, and there is NO persistent config knob for a recon
+  model (a `config.research_model` re-invites per-repo drift — the medium-tier gather
+  default is fixed in this skill, deliberately not config).
   - **Per-run override (the ONLY override).** If the user explicitly asks for a recon
-    model in THIS run (e.g. "run recon on opus"), pass that instead
-    (`opus | sonnet | haiku`, or `inherit`); the ask applies to this run only and is
+    tier or model in THIS run (e.g. "run recon on the heavy tier"), pass that instead
+    (`heavy | medium | light`, or `inherit`); the ask applies to this run only and is
     never persisted to `index.yaml`.
 - **Angles, 2–4 per fan-out** — for a bug: symptom trace (error strings/log lines → the
   code that throws and handles them), data/control flow (entry point → failure area),
@@ -239,10 +255,12 @@ Recon details:
 ## Pick the destination
 
 - **Run now** when the user wants this pursued immediately in-session or headlessly.
-  Present the goal line in a code block (built-in slash commands cannot be invoked by
-  the agent directly). Show the `/goal` line; for headless or scheduled
-  runs show `claude -p "/goal …"`. If a goal is already active this
-  session and matches, continue under it instead of duplicating.
+  On Claude Code, present the goal line in a code block (built-in slash commands cannot
+  be invoked by the agent directly): show the `/goal` line; for headless or scheduled
+  runs show `claude -p "/goal …"`. On Droid, present the self-contained prompt block
+  (see "Goal command facts") and its `droid exec -f goal-prompt.md --auto medium`
+  invocation. If a goal is already active this session and matches, continue under it
+  instead of duplicating.
 - **Queue** when the user wants it parked for the factory, hands over multiple items, or
   says to add it to the goals/backlog. After writing, point at the next step: run
   `/dispatch` (or *"work goal NNN"* for a single goal).
@@ -271,8 +289,10 @@ within priority:
 # status: not_started | in_progress | completed | blocked
 config:
   base: main        # branch dispatch works on and commits to
-  model: inherit    # DEFAULT for spawned code agents when a goal has no model: of its
-                    # own — inherit | opus | sonnet | haiku (per-goal frontmatter wins)
+  model: inherit    # DEFAULT execution tier for spawned code agents when a goal has no
+                    # model: of its own — inherit | heavy | medium | light (per-goal
+                    # frontmatter wins; legacy opus/sonnet/haiku aliases read as
+                    # heavy/medium/light — never write them)
   skills: []        # repo-wide skills every implementer must invoke
   verify:           # ordered local build+test gate commands (dispatch runs these to validate)
     - npm ci
@@ -346,10 +366,11 @@ title: Customers get a receipt email after payment
 created: 2026-06-12
 type: feature   # bug | feature | chore — shapes the contract, see below
 skills: []      # goal-specific skills the implementer must invoke, e.g. [agent-browser]
-model: opus     # implementer model for dispatch: inherit | opus | sonnet | haiku —
-                #   opus is the default for features/bugs; sonnet only for rote
-                #   mechanical work. Stamp it LAST, after the acceptance criteria are
-                #   final (see "Implementer model — decide it last")
+model: heavy    # execution tier for dispatch: inherit | heavy | medium | light —
+                #   heavy is the default for features/bugs; medium only for rote
+                #   mechanical work. Legacy opus/sonnet/haiku aliases read as
+                #   heavy/medium/light — never write them. Stamp it LAST, after
+                #   the acceptance criteria are final (see "Implementer tier — decide it last")
 # size: M                    # optional: S|M|L rough effort — lets dispatch and any budget cap size a run
 # touches: [apps/orders/*]   # optional: declared surfaces (PRODUCT code) → local gate scope allowlist.
 #                            #   Do NOT enumerate test dirs — the gate auto-exempts test paths
@@ -520,12 +541,14 @@ criteria are drafted — the second view on the contract itself, mirroring the i
 review dispatch runs on the diff. Run-now `/goal` lines skip it: the user is present and
 the `/goal` evaluator model already provides a second view at run time.
 
-Spawn ONE fresh read-only subagent — the plugin's `flywheel:contract-red-team` agent
-type when the runtime lists it (the rubric below plus a no-Edit/Write tool allowlist are
-baked into its definition, so the spawn prompt carries only the drafts and repo
-specifics), else `general-purpose` with the rubric stated inline; no model override
-either way — it inherits the session model, same rule as recon — with the drafted goal
-file content. Its brief: try to BREAK the contract, not approve it —
+Spawn ONE fresh read-only subagent — the plugin's contract-red-team agent when the
+runtime lists it (`flywheel:contract-red-team` on Claude Code, bare `contract-red-team`
+on Droid — the rubric below plus a read-only tool allowlist are baked into its
+definition, so the spawn prompt carries only the drafts and repo specifics), else the
+generic type (`general-purpose` on Claude Code, `worker` on Droid) with the rubric
+stated inline; no model override either way — it inherits the session model, same rule
+as recon synthesis — with the drafted goal file content. Its brief: try to BREAK the
+contract, not approve it —
 
 - **Gameability**: can any criterion be satisfied without the outcome being true — a
   proxy metric, a vacuous/tautological test, a drive-to-zero criterion missing its
@@ -562,46 +585,50 @@ Batch mode: one reviewer covers ALL drafted goals in a single pass — it also c
 cross-goal overlap and duplicated criteria that per-item drafting can't see — between
 drafting and the approval table.
 
-## Implementer model — decide it last
+## Implementer tier — decide it last
 
-Every queued goal carries a frontmatter `model:` — the model `dispatch` passes to that
-goal's code-writing agents (the implementer and any repair agent). The orchestrator itself
-always stays on the session model the user chose at session start (e.g. Opus/Fable), and
-review agents always inherit the session model too (recon gather agents run on sonnet —
-see Recon) — this field routes ONLY the
-goal's implementation work. The contract still front-loads the judgment; the stamp
-decides how much implementation judgment the goal needs on top of it.
+Every queued goal carries a frontmatter `model:` — the execution tier `dispatch` passes
+to that goal's code-writing agents (the implementer and any repair agent). Values:
+`inherit | heavy | medium | light`; legacy `opus`/`sonnet`/`haiku` stamps in existing
+queues are read as heavy/medium/light aliases (never write them). At spawn time dispatch
+maps the tier per harness — Claude Code: heavy → `model: opus`, medium → `model: sonnet`,
+light → `model: haiku`; Droid: `complexity: heavy|medium|light` on the Task spawn. The
+orchestrator itself always stays on the session model the user chose at session start,
+and review agents always inherit the session model too (recon gather agents run on the
+medium tier — see Recon) — this field routes ONLY the goal's implementation work. The
+contract still front-loads the judgment; the stamp decides how much implementation
+judgment the goal needs on top of it.
 
 Stamp it LAST, after the acceptance criteria are final (for queued goals: after the
 contract review). Two inputs, in order: the goal's `type:` picks the lane, then the
 finished contract confirms it — and when the two lanes both seem to fit, `type:` wins:
 
-- **`opus` — the DEFAULT for every `type: feature` and `type: bug` goal** (owner routing
+- **`heavy` — the DEFAULT for every `type: feature` and `type: bug` goal** (owner routing
   decision 2026-07-24: execution quality is the factory's product, and a blocked goal
-  plus the escalation ladder's stronger-model rescue costs more than opus from the
+  plus the escalation ladder's stronger-tier rescue costs more than heavy from the
   start). A tight contract is NOT a downgrade reason — a feature or bug goal stays
-  `opus` even when every criterion is an exact command and the work follows an existing
-  pattern; the only way such a goal lands on `sonnet` is the user explicitly asking for
+  `heavy` even when every criterion is an exact command and the work follows an existing
+  pattern; the only way such a goal lands on `medium` is the user explicitly asking for
   cheap execution on that goal. Also the lane for flagship visual/design craft, wide
   blast radius (many call sites, API-preservation constraints), ambiguous root-cause
   work, changes adjacent to security or data loss, or contracts where subjective
   needs-independent-review criteria carry real weight — whatever the type.
-- **`sonnet` — the mechanical lane: rote `type: chore`-shaped work only.** The WORK must
+- **`medium` — the mechanical lane: rote `type: chore`-shaped work only.** The WORK must
   be transcription, not design: lint/format sweeps, doc syncs, config edits, a port with
   an exact source of truth, a test sweep against settled behavior. Every acceptance
   criterion an exact command with objective pass/fail AND nothing left to design —
   spec-following is all it needs. Never route a feature or bug goal here on contract
-  tightness alone (see the opus bullet).
+  tightness alone (see the heavy bullet).
 - **`inherit` — match the orchestrator's session model.** For the rare goal that must get
   the strongest model available in the session, whichever the user selected.
-- **`haiku` — only a truly rote one-file mechanical chore.** When in doubt, don't.
-  Turn count beats token price: a cheaper model takes 2–3× the turns on multi-step work,
-  so an under-modeled goal costs more, not less — the discount is real only when the
+- **`light` — only a truly rote one-file mechanical chore.** When in doubt, don't.
+  Turn count beats token price: a lighter tier takes 2–3× the turns on multi-step work,
+  so an under-tiered goal costs more, not less — the discount is real only when the
   contract reads as pure transcription.
 
 Genuinely unsure between two tiers → pick the stronger. And if the honest reason a goal
-needs `opus` is that its criteria are loose, tighten the contract first — a vague contract
-on a stronger model is still a vague contract.
+needs `heavy` is that its criteria are loose, tighten the contract first — a vague
+contract on a stronger tier is still a vague contract.
 
 Include the choice in the draft you confirm with the user (batch mode: the `model` column
 in the approval table). Resolution at dispatch time: goal `model:` > `config.model` >
