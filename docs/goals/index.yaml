@@ -9,4 +9,4 @@ config:
 goals:
   001-prove-the-gate-runs: {status: completed, priority: high}
   002-answerable-needs-you: {status: completed}
-  003-surface-subjective-criteria: {status: in_progress, depends_on: [002-answerable-needs-you]}
+  003-surface-subjective-criteria: {status: blocked, depends_on: [002-answerable-needs-you], reason: "contract defect: the regression-test criterion mandates same-section string co-location but states its purpose as 'the test cannot be satisfied by pasting a string' — the prescribed mechanism does not achieve it (verified: inverting the rule to 'This BLOCKS completion until a human signs off' keeps all 9 tests green). Work commit d93133f is recoverable."}
