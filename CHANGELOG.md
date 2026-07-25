@@ -13,6 +13,68 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [8.1.0] — 2026-07-25
+
+**The factory proves what it claims.** Three defects shared one root: flywheel
+reported confidence it had not earned. The declared local gate was never proven
+to run, every human decision was emitted as a diagnosis rather than an
+answerable question, and a criterion class define-goal promised was handled
+reached nobody. All three are closed. Design brief:
+`docs/goals/briefs/2026-07-25-close-the-gap.md`.
+
+- **factory-doctor now RUNS `config.verify` instead of counting it**
+  (goal 001). `verify_check` only asked whether the list was non-empty, so a
+  renamed script, a wrong workspace filter, or a build-only command list
+  reported READY while certifying nothing — and every later dispatch PASS was
+  unearned. The new `verify-run` check executes each command: **BLOCKER** on a
+  non-zero exit or an unresolvable command (naming it and its exit code),
+  **WARN** on timeout, INFO when green or skipped. `--skip-verify-run` opts
+  out; `PG_DOCTOR_VERIFY_TIMEOUT` (default 1800) bounds each command. Report-only
+  — a red suite is never auto-fixed. Affordable because dispatch never invokes
+  the probe: factory-doctor is human-invoked, so this is one slow pass, not a
+  per-fire tax. It also fixed a live landmine — `test_doctor_checks.py` ran the
+  real script with `cwd` = repo root, so unconditional execution would have made
+  this repo's own suite recursively spawn itself.
+- **Every needs-you item names the command that resolves it** (goal 002).
+  Dispatch emitted diagnoses (`contract defect: criterion 3 ambiguous`) and the
+  escalation ladder's last rung was always "ask the human" — who is whoever
+  needed the factory. Adds ONE canonical needs-you format section: the line shape
+  `<id or item> — <reason> → <what to run>` plus a `class | trigger | what to run`
+  table whose class set is **open and admits non-blocking classes**. Every
+  emission site now names its class instead of restating the format.
+- **Dispatch may ask — but only when provably attended** (goal 002). One round,
+  ≤2 questions, options with a recommended default, gated on conversational
+  invocation AND no batch flag AND not `/loop`, `claude -p`, or `droid exec`.
+  When any condition is unknown it does NOT ask, and a batch run never asks: an
+  AskUserQuestion in a headless fire hangs or auto-answers the loop.
+- **`define-goal --amend <id>`** (goal 002) repairs a blocked contract and
+  requeues it: refuses non-`blocked` goals, reads the goal file + index `reason` +
+  implementer report, runs one plain-language round, rewrites only the defective
+  criteria, re-runs the contract red-team, records an amendment note in Context,
+  and requeues via `chore(goals): amend <id>` — clearing the stale `reason`.
+- **The "immutable contracts" invariant is narrowed at all four sites**
+  (goal 002 — `CLAUDE.md`, `AGENTS.md`, `README.md`, `public/index.html`). It
+  contradicted the documented repair path in eight places: goal files are
+  immutable **to implementers and while claimable**, with `define-goal --amend`
+  on a `blocked` goal the sole exception.
+- **`needs independent review` is implemented** (goal 003 — a bug fix, not a
+  feature). define-goal stated three times that dispatch surfaces subjective
+  criteria to a human at integration; dispatch contained the phrase zero times
+  and `pg_validate.py` had no concept of it, so such criteria **passed verified
+  by nobody**. Dispatch now re-reads the goal file after a PASS and surfaces each
+  marked criterion as what to run and what to look for, drawn from the
+  implementer's report — as a row in goal 002's table. A PASS still completes the
+  goal: surfaced, never a completion gate, so an unattended drain is not blocked.
+- **A note on the goal-003 contract, kept deliberately.** Goal 003 was blocked
+  once as a contract defect — its own test criterion asked for phrases in the
+  same section while declaring the purpose "so the test cannot be satisfied by
+  pasting a string". Inverting the shipped rule by *addition* (retaining the
+  phrase) passed 9/9. A first amendment tried finer location-binding; that also
+  passed the inversion and its span was 58 lines wide. The settled reading:
+  **a substring assertion cannot detect negation at any granularity.** The test
+  is now honestly scoped to placement, with meaning verified by the dry-run and
+  the gate reviewer. The reasoning is preserved in the goal file's Amended note.
+
 ## [8.0.0] — 2026-07-25
 
 **The marketplace ships flywheel alone.** Owner decision 2026-07-25: the three
