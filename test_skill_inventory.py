@@ -20,6 +20,7 @@ def test_flywheel_root_skill_inventory_excludes_html_artifacts_plugin():
         "dispatch",
         "factory-doctor",
         "goals-status",
+        "ideate",
         "loop-architect",
     ]
 

@@ -1,3 +1,10 @@
+"""Tier-vocabulary policy tests (v7.0.0 dual-target port).
+
+heavy|medium|light is the native execution-tier vocabulary; the Anthropic model
+names opus/sonnet/haiku may appear in active docs ONLY as read-time aliases or
+inside a harness-mapping context (a line that also names the tier, says
+"alias"/"maps", or is scoped to Claude Code).
+"""
 from pathlib import Path
 
 
@@ -8,51 +15,46 @@ def read(path: str) -> str:
     return (ROOT / path).read_text()
 
 
-def section(text: str, start: str, end: str) -> str:
-    start_index = text.index(start)
-    end_index = text.index(end, start_index)
-    return text[start_index:end_index]
+ACTIVE_DOCS = [
+    "CLAUDE.md",
+    "README.md",
+    "public/index.html",
+    "skills/define-goal/SKILL.md",
+    "skills/dispatch/SKILL.md",
+    "skills/ideate/SKILL.md",
+    "skills/goals-status/SKILL.md",
+    "skills/loop-architect/SKILL.md",
+    "skills/factory-doctor/SKILL.md",
+]
 
 
-def test_define_goal_recon_subagents_inherit_session_model():
-    recon_model_policy = section(
-        read("skills/define-goal/SKILL.md"),
-        "- **Model (mandatory)**:",
-        "- **Angles, 2–4 per fan-out**",
-    ).lower()
-
-    assert "model: sonnet" not in recon_model_policy
-    assert "never inherits the session model" not in recon_model_policy
-    assert "sonnet earns its keep" not in recon_model_policy
-    assert "inherit" in recon_model_policy
-    assert "session model" in recon_model_policy
+def test_define_goal_stamps_tiers_not_model_names():
+    text = read("skills/define-goal/SKILL.md").lower()
+    assert "inherit | heavy | medium | light" in text
+    assert "inherit | opus | sonnet | haiku" not in text
 
 
-def test_active_docs_do_not_claim_recon_always_runs_on_sonnet():
-    active_docs = [
-        "CLAUDE.md",
-        "README.md",
-        "public/index.html",
-        "skills/define-goal/SKILL.md",
-        "skills/dispatch/SKILL.md",
-    ]
-    forbidden_phrases = [
-        "recon always runs on sonnet",
-        "sonnet-for-all-recon",
-        "synthesis agent is also sonnet",
-        "model: sonnet`, strictly read-only",
-        "`model: sonnet` trades",
-        "`config.model: sonnet` would",
-        "finder agents on cheap models",
-    ]
-
-    for path in active_docs:
+def test_active_docs_use_tier_vocabulary():
+    for path in ACTIVE_DOCS:
         text = read(path).lower()
-        for phrase in forbidden_phrases:
-            assert phrase not in text, path
+        for name, tier in (("opus", "heavy"), ("sonnet", "medium"), ("haiku", "light")):
+            for i, line in enumerate(text.splitlines(), 1):
+                if name in line:
+                    assert (
+                        tier in line or "alias" in line or "maps" in line
+                        or "claude code" in line
+                    ), f"{path}:{i}: bare model name '{name}' outside alias/mapping context"
 
 
-def test_config_model_alias_examples_match_public_docs():
-    define_goal = read("skills/define-goal/SKILL.md").lower()
-    assert "sonnet, haiku, opus" not in define_goal
-    assert "inherit | opus | sonnet | haiku" in define_goal
+def test_dispatch_carries_the_canonical_alias_table():
+    text = read("skills/dispatch/SKILL.md").lower()
+    assert "opus` → heavy" in text or "opus → heavy" in text
+    assert "sonnet` → medium" in text or "sonnet → medium" in text
+    assert "haiku` → light" in text or "haiku → light" in text
+
+
+def test_scheduling_rail_names_both_harnesses():
+    for path in ["skills/loop-architect/SKILL.md", "skills/factory-doctor/SKILL.md"]:
+        text = read(path)
+        assert 'claude -p "/dispatch"' in text, path
+        assert 'droid exec "/dispatch"' in text, path
