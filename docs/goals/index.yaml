@@ -8,5 +8,5 @@ config:
   #   max_goals_per_session: 1
 goals:
   001-prove-the-gate-runs: {status: completed, priority: high}
-  002-answerable-needs-you: {status: not_started}
+  002-answerable-needs-you: {status: in_progress}
   003-surface-subjective-criteria: {status: not_started, depends_on: [002-answerable-needs-you]}
