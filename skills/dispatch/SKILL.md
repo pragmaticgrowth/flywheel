@@ -101,8 +101,9 @@ claims. Spawn-time mapping per harness:
 
 - **Claude Code**: heavy → `model: opus`, medium → `model: sonnet`, and
   light → `model: haiku` on the code-writing agent spawn; `inherit` omits the pin.
-- **Droid**: pass `complexity: heavy|medium|light` on the Task spawn (`worker` type for
-  implementers); `inherit` omits it.
+- **Droid**: pass `complexity: heavy|medium|light` on the Task spawn (the accepted
+  value set, live-verified 2026-07-25); `inherit` omits it. Implementers always spawn
+  as the `worker` type regardless of tier.
 
 A non-`inherit` tier applies to EVERY code-writing agent you spawn for THAT goal — the
 implementer and any fix/repair agent alike; `inherit` means omit the mapping so the agent
@@ -635,11 +636,14 @@ spawn produced it):
    and their Interfaces notes, the latest-context bullets, repo config — and re-spawn
    once with the answer added to the brief. Nothing you hold answers it → roll back any
    work commits and block with the ask as the reason (needs-you).
-2. **`BLOCKED`, capability-shaped, on a light-stamped goal.** The goal's resolved
+2. **`BLOCKED`, capability-shaped, on a cheap-stamped goal.** The goal's resolved
    implementer tier is `medium` or `light` AND the blocker reads capability-shaped (an
    architectural fork within contract bounds, "reading file after file without
-   progress") → ONE re-spawn on the stronger tier (the session model — omit the
-   tier mapping), noted in the report line. Never downgrade; goals already resolved to
+   progress") → ONE re-spawn on the session model: omit the tier mapping entirely —
+   the session model is the strongest judge available in this run, so dropping the
+   pin IS the escalation (never pass a lighter tier, and never pass `heavy` instead:
+   inherit-the-session-model is the rung) — noted in the report line. Never
+   downgrade; goals already resolved to
    `inherit`/`heavy` skip this rung — capability was not the gap there.
 3. **Too large / contract wrong.** A blocker that reads "the goal is too large" or "the
    contract is wrong" → the contract-defect route: roll back, block with

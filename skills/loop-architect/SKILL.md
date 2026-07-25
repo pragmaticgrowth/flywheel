@@ -228,9 +228,12 @@ not an error the loop can handle from inside. Rails, in order of leverage:
   Task Scheduler) firing a fresh headless session per cadence — `claude -p "/dispatch"`
   on Claude Code, `droid exec "/dispatch"` on Droid.
   Fires during the limit window fail cheaply; the first fire after reset just works — dispatch
-  fires are idempotent and one-goal, so no state transfer is needed. (Droid's built-in
-  CronCreate/automations are building blocks, not this rail: session-bound loops die
-  with the session — the exact failure this step exists to avoid.)
+  fires are idempotent and one-goal, so no state transfer is needed. (Droid's
+  built-ins are building blocks, not this rail — that exclusion covers CronCreate
+  session loops AND automations in both local and cloud modes: session-bound loops
+  die with the session, the exact failure this step exists to avoid, and the
+  automation surfaces are unverified as limit-proof; the verified rail is the OS
+  scheduler.)
 - **Detect instead of blind-firing (optional refinement — Claude Code facts).** Two
   supported surfaces expose the
   reset clock: the statusline stdin JSON carries `rate_limits.five_hour.resets_at` /

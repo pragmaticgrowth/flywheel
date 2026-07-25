@@ -222,8 +222,9 @@ Recon details:
   default is fixed in this skill, deliberately not config).
   - **Per-run override (the ONLY override).** If the user explicitly asks for a recon
     tier or model in THIS run (e.g. "run recon on the heavy tier"), pass that instead
-    (`heavy | medium | light`, or `inherit`); the ask applies to this run only and is
-    never persisted to `index.yaml`.
+    (`heavy | medium | light`, or `inherit`; a legacy model name in the ask — "run
+    recon on opus" — is read as its tier alias); the ask applies to this run only and
+    is never persisted to `index.yaml`.
 - **Angles, 2–4 per fan-out** — for a bug: symptom trace (error strings/log lines → the
   code that throws and handles them), data/control flow (entry point → failure area),
   recent-change scan (`git log`/`blame` on suspect areas), config/wiring (flags, env,
