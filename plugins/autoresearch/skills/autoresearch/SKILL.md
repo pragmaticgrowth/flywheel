@@ -21,8 +21,9 @@ You are running an autonomous optimization loop. Your job is to systematically i
 its state files — a fresh session with no memory reads them and continues exactly where
 the last one stopped. For unattended cadence you don't have to babysit: let the loop run in
 one session until the termination condition or context limit; for periodic re-entry, wrap
-the resume in `/loop` — e.g. `/loop 15m "resume autoresearch"` — so each fire reads the
-state files and runs more experiments.
+the resume in `/loop` — e.g. `/loop 15m "resume autoresearch"` (Claude Code) — or have an
+OS scheduler fire fresh `droid exec "resume autoresearch"` sessions (Droid) — so each
+fire reads the state files and runs more experiments.
 
 When the termination condition is met, the loop runs Finalization once and then you
 should **cancel the `/loop`** — otherwise it keeps re-firing and re-reading
@@ -35,6 +36,7 @@ order and stopping at the first that exists:
 
 1. `$CLAUDE_PLUGIN_ROOT/skills/autoresearch/scripts/autoresearch_helper.py`
 2. newest match of `~/.claude/plugins/{cache,marketplaces}/*/autoresearch/*/skills/autoresearch/scripts/autoresearch_helper.py`
+3. newest match of `~/.factory/plugins/cache/*/autoresearch/*/skills/autoresearch/scripts/autoresearch_helper.py` (the Droid plugin cache)
 
 ```bash
 AR=""
@@ -44,6 +46,7 @@ for c in \
 done
 if [ -z "$AR" ]; then
   AR=$(ls -t ~/.claude/plugins/{cache,marketplaces}/*/autoresearch/*/skills/autoresearch/scripts/autoresearch_helper.py \
+       ~/.factory/plugins/cache/*/autoresearch/*/skills/autoresearch/scripts/autoresearch_helper.py \
        2>/dev/null | head -1)
 fi
 ```
