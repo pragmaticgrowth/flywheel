@@ -9,4 +9,4 @@ config:
 goals:
   001-prove-the-gate-runs: {status: completed, priority: high}
   002-answerable-needs-you: {status: completed}
-  003-surface-subjective-criteria: {status: in_progress, depends_on: [002-answerable-needs-you]}
+  003-surface-subjective-criteria: {status: completed, depends_on: [002-answerable-needs-you]}
