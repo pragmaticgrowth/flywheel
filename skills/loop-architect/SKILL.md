@@ -84,8 +84,8 @@ fallback for when it's unavailable.
 
 ### For /goal — six elements, one cap (condition max 4,000 chars)
 
-CRITICAL CONSTRAINT: the `/goal` evaluator (Claude Code; the configured
-small-fast model, default Haiku) only reads the
+CRITICAL CONSTRAINT: the `/goal` evaluator (Claude Code's configured
+small-fast model — default Haiku, a Claude Code setting) only reads the
 transcript. It cannot run commands or read
 files. Every clause must be demonstrable by output the agent prints (test results, exit
 codes, diffs, counts). Never write taste conditions ("clean", "better", "high quality").
