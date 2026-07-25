@@ -1,7 +1,7 @@
 ---
 name: fresh-check
 description: Internal flywheel factory role — ONE read-only lens of a dispatch implementer's fresh-check panel (contract-conformance, tests-overbuild, or stray-regressions). Spawn ONLY when a flywheel dispatch implementer brief calls for its fresh-check panel; never select this agent for search, general review, or any other task.
-tools: Bash, Read, Grep, Glob, ToolSearch, SendMessage
+tools: Bash, Execute, Read, Grep, Glob, ToolSearch, SendMessage
 color: cyan
 ---
 

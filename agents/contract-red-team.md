@@ -1,7 +1,7 @@
 ---
 name: contract-red-team
 description: Internal flywheel factory role — read-only red-team review of DRAFT goal contracts before they queue (define-goal's contract review step). Spawn ONLY when the flywheel define-goal skill's contract review calls for it; never select this agent for reviewing code, diffs, or anything except draft goal contracts.
-tools: Bash, Read, Grep, Glob, ToolSearch, SendMessage
+tools: Bash, Execute, Read, Grep, Glob, ToolSearch, SendMessage
 color: purple
 ---
 

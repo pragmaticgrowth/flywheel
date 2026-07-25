@@ -1,7 +1,7 @@
 ---
 name: gate-reviewer
 description: Internal flywheel factory role — read-only adversarial reviewer for the dispatch gate (independent second view over a goal's diff, or a focused re-check after a repair). Spawn ONLY when the flywheel dispatch skill's gate step calls for it; never select this agent for general code review or any other task.
-tools: Bash, Read, Grep, Glob, ToolSearch, SendMessage
+tools: Bash, Execute, Read, Grep, Glob, ToolSearch, SendMessage
 color: red
 ---
 
