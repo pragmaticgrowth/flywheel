@@ -42,9 +42,10 @@ Work through these in order; scale each step to the idea's size.
 
 Orient in the current system before asking anything — files, docs, recent commits,
 where similar features already live. For a bigger unknown, spawn 1–2 read-only
-subagents (`general-purpose` with `model: sonnet` — orientation is gather work,
-routed to Sonnet like define-goal's recon search agents; never the built-in Explore
-type, whose model cannot be pinned) reporting
+subagents on the medium tier — Claude Code: `general-purpose` with `model: sonnet`
+(never the built-in Explore type, whose model cannot be pinned); Droid: `explorer`
+with `complexity: medium` — orientation is gather work, routed like define-goal's
+recon search agents, reporting
 `path:line` summaries, never file dumps. The judgment stays with you: weighing what
 they found, the approaches, and the design all happen in your session-model context. This is orientation, not recon: enough to
 ask good questions and propose grounded approaches. define-goal's recon still runs

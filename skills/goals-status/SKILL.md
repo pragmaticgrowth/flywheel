@@ -18,7 +18,7 @@ calls:
 
 ```bash
 GS="$CLAUDE_PLUGIN_ROOT/skills/goals-status/scripts/goals_status.py"
-[ -f "$GS" ] || GS=$(find ~/.claude/plugins -path '*/flywheel/*/skills/goals-status/scripts/goals_status.py' 2>/dev/null | sort -V | tail -1)
+[ -f "$GS" ] || GS=$(find ~/.claude/plugins ~/.factory/plugins/cache -path '*/flywheel/*/skills/goals-status/scripts/goals_status.py' 2>/dev/null | sort -V | tail -1)
 [ -n "$GS" ] && python3 "$GS" || echo "goals_status.py not found — reinstall/update the flywheel plugin"
 ```
 
