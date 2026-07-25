@@ -23,9 +23,17 @@ green report.
    Pass `--base <base>` ONLY when `config.base` is explicitly set. If it is absent, omit
    `--base` — dispatch defaults base to the checked-out branch, so there is no separate
    working branch to mismatch against (the probe reports INFO, not a spurious warning).
-3. **Run the read-only probe:** `python3 "$DC" [--base <config.base>]`
+3. **Run the read-only probe:** `python3 "$DC" [--base <config.base>] [--skip-verify-run]`
    — it emits JSON `{checks:[{check,level,detail,fix}], result}` and
    exits 0/1/2. Never edit it.
+   By DEFAULT the probe EXECUTES the repo's `config.verify` commands (POSIX shell, cwd = repo
+   root, sequential, no short-circuit, per-command timeout from `PG_DOCTOR_VERIFY_TIMEOUT`,
+   default 1800s) and reports the `verify-run` check — a *declared* gate is not a *working*
+   gate, and a renamed script or wrong workspace filter makes every later dispatch PASS
+   unearned. Pass `--skip-verify-run` when execution would be circular or unwanted: the probe
+   is being invoked from inside that very gate (a `config.verify` command that itself runs the
+   doctor), or the user asked for a fast read-only pass. Skipping is honest, not silent — the
+   check then reports INFO `not run … it is unproven`.
 
 ## Apply local fixes (aggressive — these and ONLY these)
 
@@ -79,7 +87,11 @@ doctor's). The edits show up in the `working-tree` WARN as expected; the user re
 
 ## Never (even though you're aggressive)
 
-Push, open a PR, touch the remote, edit a CI workflow, run `gh auth login`/`refresh`
+Push, open a PR, touch the remote, **edit or "repair" a repo's tests or its `config.verify`
+list because `verify-run` came back red** (a failing verify command is REPORT-only — quote the
+`detail` + `fix` under needs-you and let the human decide; silently rewriting the gate the
+factory depends on, or the tests it runs, would manufacture the exact false green this check
+exists to catch), edit a CI workflow, run `gh auth login`/`refresh`
 (browser-blocking — report the exact command instead), run a SYSTEM/sudo/global install (`gh`,
 `git`, `brew`/`apt`, OR `npm i -g agent-browser` + its Chromium download — report those; the
 ONLY install you may run is the plugin's own python dep at `--user` scope, above), `git stash`,
@@ -110,10 +122,20 @@ usage-limit stop: no external scheduler firing fresh sessions (`claude -p "/disp
 `.claude/` and `.factory/`, project + user scope; its
 `fix` field carries the limit-proofing guidance from loop-architect Step 5. INFO-only when no
 loop has fired here or a rail is detected). The `verify` check WARNs if `config.verify` is
-absent and there are active goals — copy its `fix` (add a `verify:` list to `index.yaml`). Then
-one status line:
+absent and there are active goals — copy its `fix` (add a `verify:` list to `index.yaml`). The
+`verify-run` check reports whether those declared commands ACTUALLY run: BLOCKER naming the
+failing or unresolvable command verbatim with its exit code, WARN on a timeout, INFO when all
+exited 0, were skipped, or none are configured. It is REPORT-only — never auto-fix a red gate
+(see Never, above); surface it under needs-you with its `detail` and `fix` verbatim. Then one
+status line:
 
-`[doctor] software: <ok|missing> · auth: <ok|n/a> · verify: <configured|⚠ missing|n/a> · working-tree: <clean|⚠ dirty> · working-branch: <ok|⚠ off-base> · ci: <present|none> · queue: <valid|scaffolded|drift> · health: <live|⚠ stale claims|⚠ underspecified goals|⚠ limit-exposed> · result: READY|WARN|BLOCKER`
+`[doctor] software: <ok|missing> · auth: <ok|n/a> · verify: <ran-green|⚠ ran-red|⚠ unresolved|⚠ timeout|configured (unrun)|⚠ missing|n/a> · working-tree: <clean|⚠ dirty> · working-branch: <ok|⚠ off-base> · ci: <present|none> · queue: <valid|scaffolded|drift> · health: <live|⚠ stale claims|⚠ underspecified goals|⚠ limit-exposed> · result: READY|WARN|BLOCKER`
+
+The `verify:` token comes from both verify checks together: `ran-green` (all commands exited
+0), `⚠ ran-red` (a command failed), `⚠ unresolved` (a command exited 127 — the shell could not
+find it), `⚠ timeout` (a command hit `PG_DOCTOR_VERIFY_TIMEOUT`), `configured (unrun)`
+(commands declared but execution skipped via `--skip-verify-run`), `⚠ missing` (no
+`config.verify` with active goals), `n/a` (no `config.verify`, no active goals).
 
 ## Relationship to the other skills
 

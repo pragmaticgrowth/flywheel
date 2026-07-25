@@ -114,13 +114,18 @@ def test_stale_claim_info_when_claim_commit_not_found():
     assert dc.stale_claim_problems(goals, claim_info) == []
 
 def test_runner_emits_valid_json_and_exit_code():
-    r = subprocess.run([sys.executable, os.path.join(_here, "doctor_checks.py"), "--base", "main"],
+    # --skip-verify-run is REQUIRED here: this repo's own config.verify is
+    # `python3 -m pytest -q`, so a probe that executes the gate would spawn the whole
+    # suite (including this test) recursively.
+    r = subprocess.run([sys.executable, os.path.join(_here, "doctor_checks.py"),
+                        "--base", "main", "--skip-verify-run"],
                        capture_output=True, text=True,
                        cwd=os.path.dirname(os.path.dirname(os.path.dirname(_here))))
     assert r.returncode in (0, 1, 2), r.stderr
     payload = json.loads(r.stdout)
     assert "checks" in payload and "result" in payload
     assert all({"check", "level"} <= set(c) for c in payload["checks"])
+    assert any(c["check"] == "verify-run" for c in payload["checks"]), payload["checks"]
 
 # ---- new local-gate check helpers (TDD) ----
 
@@ -240,6 +245,146 @@ def test_symlink_capability_info_when_available_on_windows():
 
 def test_symlink_capability_not_reported_on_posix():
     assert dc.symlink_capability_check(can_symlink=True, windows=False) is None
+
+# ---- verify-run: does the DECLARED local gate actually run? (TDD) ----
+
+def test_verify_run_info_when_every_command_exits_zero():
+    r = dc.verify_run_check(["npm run build", "npm test"],
+                            [("npm run build", 0), ("npm test", 0)])
+    assert r["check"] == "verify-run"
+    assert r["level"] == "INFO"
+    assert "2" in r["detail"]
+    assert set(r) == {"check", "level", "detail", "fix"}
+
+def test_verify_run_blocker_when_a_command_fails():
+    # the declared gate is red: name the command verbatim + its exit code, and hand
+    # back the exact command to reproduce it. REPORT-only — never auto-fixed.
+    r = dc.verify_run_check(["npm run build", "npm test"],
+                            [("npm run build", 0), ("npm test", 1)])
+    assert r["check"] == "verify-run"
+    assert r["level"] == "BLOCKER"
+    assert "npm test" in r["detail"]
+    assert "1" in r["detail"]
+    assert "npm test" in r["fix"]
+
+def test_verify_run_blocker_when_a_command_is_unresolvable():
+    # exit 127 = shell couldn't resolve it — the classic renamed-script gate rot.
+    r = dc.verify_run_check(["pnpm test"], [("pnpm test", 127)])
+    assert r["level"] == "BLOCKER"
+    assert "pnpm test" in r["detail"]
+    assert "127" in r["detail"]
+    assert r["fix"]
+
+def test_verify_run_warns_on_timeout_when_nothing_else_failed():
+    r = dc.verify_run_check(["npm test"], [("npm test", 124)])
+    assert r["level"] == "WARN"
+    assert "npm test" in r["detail"]
+    assert "124" in r["detail"]
+
+def test_verify_run_blocker_outranks_timeout():
+    # a real failure alongside a timeout is still a red gate, not a WARN.
+    r = dc.verify_run_check(["a", "b"], [("a", 124), ("b", 2)])
+    assert r["level"] == "BLOCKER"
+    assert "b" in r["detail"]
+    assert "2" in r["detail"]
+
+def test_verify_run_info_when_skipped():
+    r = dc.verify_run_check(["npm test"], None, skipped=True)
+    assert r["check"] == "verify-run"
+    assert r["level"] == "INFO"
+    assert "not run" in r["detail"]
+
+def test_verify_run_info_when_no_commands_configured():
+    # nothing declared → nothing to execute; the `verify` check owns that WARN.
+    r = dc.verify_run_check([], None)
+    assert r["check"] == "verify-run"
+    assert r["level"] == "INFO"
+
+def test_verify_run_resolve_shell_pg_bash_override_wins():
+    p = dc._resolve_shell(environ={"PG_BASH": "/custom/bin/bash"},
+                          which=lambda n: "/usr/bin/bash",
+                          isfile=lambda q: True, windows=False)
+    assert p == "/custom/bin/bash"
+
+def test_verify_run_resolve_shell_posix_returns_full_path():
+    p = dc._resolve_shell(environ={}, which=lambda n: "/bin/bash" if n == "bash" else None,
+                          isfile=lambda q: True, windows=False)
+    assert p == "/bin/bash"
+
+def test_verify_run_resolve_shell_windows_rejects_system32_wsl_stub():
+    git_bash = "C:\\Program Files\\Git\\usr\\bin\\bash.exe"
+    p = dc._resolve_shell(environ={"SystemRoot": "C:\\Windows", "ProgramFiles": "C:\\Program Files"},
+                          which=lambda n: "C:\\Windows\\System32\\bash.exe" if n == "bash" else None,
+                          isfile=lambda q: q == git_bash, windows=True)
+    assert p == git_bash
+
+def test_verify_run_resolve_shell_none_when_no_posix_shell():
+    p = dc._resolve_shell(environ={"SystemRoot": "C:\\Windows"},
+                          which=lambda n: None, isfile=lambda q: False, windows=True)
+    assert p is None
+
+def test_run_verify_cmds_runs_every_command_without_short_circuiting():
+    # a failing first command must NOT hide the rest — the gate's full shape matters.
+    with tempfile.TemporaryDirectory() as d:
+        assert dc._run_verify_cmds(["exit 3", "exit 0", "exit 1"], d) == [3, 0, 1]
+
+def test_run_verify_cmds_uses_shell_and_repo_root_cwd():
+    with tempfile.TemporaryDirectory() as d:
+        open(os.path.join(d, "marker.txt"), "w").close()
+        # shell syntax (&&) and cwd both have to work for a real config.verify string
+        assert dc._run_verify_cmds(["test -f marker.txt && true"], d) == [0]
+
+def test_run_verify_cmds_reports_127_for_an_unresolvable_command():
+    with tempfile.TemporaryDirectory() as d:
+        assert dc._run_verify_cmds(["pg-doctor-no-such-command-xyz"], d) == [127]
+
+def test_run_verify_cmds_times_out_to_124(monkeypatch):
+    import time as _time
+    monkeypatch.setenv("PG_DOCTOR_VERIFY_TIMEOUT", "1")
+    with tempfile.TemporaryDirectory() as d:
+        t0 = _time.monotonic()
+        exits = dc._run_verify_cmds(["sleep 30"], d)
+        elapsed = _time.monotonic() - t0
+    assert exits == [124], exits
+    assert elapsed < 15, f"timeout did not bound the run ({elapsed:.1f}s)"
+
+def test_run_checks_skip_flag_suppresses_execution(monkeypatch):
+    calls = []
+    monkeypatch.setattr(dc, "_run_verify_cmds", lambda cmds, cwd: calls.append(cmds) or [0])
+    checks, _ = dc.run_checks("main", skip_verify_run=True)
+    vr = [c for c in checks if c["check"] == "verify-run"]
+    assert len(vr) == 1, checks
+    assert vr[0]["level"] == "INFO" and "not run" in vr[0]["detail"]
+    assert calls == [], calls
+
+def test_run_checks_attempts_no_execution_when_no_commands_configured(monkeypatch, tmp_path):
+    # empty config.verify -> INFO and the executor is never reached (an empty command
+    # list must not even resolve a shell). The `verify` check owns the missing-gate WARN.
+    (tmp_path / "docs" / "goals").mkdir(parents=True)
+    (tmp_path / "docs" / "goals" / "index.yaml").write_text(
+        "config:\n  base: main\ngoals:\n  001-x: {status: not_started}\n")
+    monkeypatch.chdir(tmp_path)
+    calls = []
+    monkeypatch.setattr(dc, "_run_verify_cmds", lambda cmds, cwd: calls.append(cmds) or [])
+    monkeypatch.setattr(dc, "_run", lambda cmd: (1, "", ""))  # no git repo here
+    checks, _ = dc.run_checks("main")
+    vr = [c for c in checks if c["check"] == "verify-run"]
+    assert len(vr) == 1 and vr[0]["level"] == "INFO", checks
+    assert calls == [], calls
+
+def test_run_checks_executes_the_gate_by_default(monkeypatch):
+    calls = []
+
+    def fake(cmds, cwd):
+        calls.append((cmds, cwd))
+        return [0] * len(cmds)
+
+    monkeypatch.setattr(dc, "_run_verify_cmds", fake)
+    checks, _ = dc.run_checks("main")
+    vr = [c for c in checks if c["check"] == "verify-run"]
+    assert len(vr) == 1, checks
+    assert vr[0]["level"] == "INFO"
+    assert calls, "default run must execute the declared config.verify commands"
 
 if __name__ == "__main__":
     fns = [g for n, g in sorted(globals().items()) if n.startswith("test_")]

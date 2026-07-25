@@ -44,7 +44,7 @@ def validate_queue(index_obj):
     return (len(problems) == 0, problems)
 
 
-import argparse, glob, json, os, subprocess, sys, tempfile
+import argparse, glob, json, ntpath, os, posixpath, shutil, subprocess, sys, tempfile
 try:
     import yaml
 except ImportError:
@@ -176,6 +176,120 @@ def verify_check(verify_cmds, active_goals):
         return {"check": "verify", "level": "INFO", "detail": "no config.verify (no active goals)", "fix": ""}
     return {"check": "verify", "level": "INFO",
             "detail": f"verify: {len(verify_cmds)} command(s) configured", "fix": ""}
+
+
+def _resolve_shell(environ=None, which=None, isfile=None, windows=None):
+    """Full path to the POSIX shell that runs config.verify commands, or None.
+
+    Duplicated from pg_validate.py deliberately: the two scripts live in different
+    skill dirs, are not a package, and are resolved independently at runtime — this
+    one must never import from that one. A bare-name ["bash", ...] argv is resolved by
+    CreateProcess on Windows, which searches System32 BEFORE PATH, so with the WSL
+    feature enabled the distro-less launcher stub %SystemRoot%\\System32\\bash.exe
+    shadows Git Bash and every command exits nonzero — false-reddening the gate the
+    doctor is probing. Order: $PG_BASH > which('bash') > which('sh') (both rejected
+    under %SystemRoot%) > standard Git-for-Windows locations. None -> platform shell.
+    The keyword args exist for cross-platform tests; production callers pass none.
+    """
+    env = os.environ if environ is None else environ
+    look = shutil.which if which is None else which
+    isf = os.path.isfile if isfile is None else isfile
+    win = (os.name == "nt") if windows is None else windows
+    p_ = ntpath if win else posixpath
+
+    override = env.get("PG_BASH")
+    if override:
+        return override
+
+    sysroot = p_.normcase(p_.normpath(env.get("SystemRoot") or "C:\\Windows")) if win else None
+
+    def under_sysroot(path):
+        return win and p_.normcase(p_.normpath(path)).startswith(sysroot + p_.sep)
+
+    for name in ("bash", "sh"):
+        found = look(name)
+        if found and not under_sysroot(found):
+            return found
+
+    if win:
+        bases = [env.get(k) for k in ("ProgramFiles", "ProgramW6432", "ProgramFiles(x86)")]
+        if env.get("LocalAppData"):
+            bases.append(p_.join(env["LocalAppData"], "Programs"))
+        for base in bases:
+            if not base:
+                continue
+            for rel in (("Git", "usr", "bin", "bash.exe"), ("Git", "bin", "bash.exe")):
+                cand = p_.join(base, *rel)
+                if isf(cand):
+                    return cand
+    return None
+
+
+_SHELL_MEMO = []  # resolved once per process; [None] means "no POSIX shell found"
+
+
+def _run_verify_cmds(cmds, cwd):
+    # Thin executor, kept separate from the verdict so tests can monkeypatch it away.
+    # config.verify entries are shell STRINGS ("npm run build && npm test"), so they
+    # need a shell — _run()'s argv-list form cannot express them. Sequential and never
+    # short-circuiting: a red first command must not hide the shape of the rest.
+    if not _SHELL_MEMO:
+        _SHELL_MEMO.append(_resolve_shell())
+    shell = _SHELL_MEMO[0]
+    # Bounded so a hung suite reports a timeout instead of locking the doctor forever.
+    timeout = float(os.environ.get("PG_DOCTOR_VERIFY_TIMEOUT", "1800"))
+    exits = []
+    for c in cmds:
+        try:
+            if shell:
+                r = subprocess.run([shell, "-lc", c], capture_output=True, text=True,
+                                   cwd=cwd, timeout=timeout)
+            else:
+                r = subprocess.run(c, shell=True, capture_output=True, text=True,
+                                   cwd=cwd, timeout=timeout)
+            exits.append(r.returncode)
+        except subprocess.TimeoutExpired:
+            exits.append(124)
+    return exits
+
+
+def verify_run_check(verify_cmds, results, skipped=False):
+    # Pure verdict over already-computed results — runs nothing itself.
+    # results: [(command, exit_code), ...] or None when nothing was executed.
+    # `verify` says a gate is DECLARED; this says the declared gate actually RUNS.
+    # Always REPORT-only: no `FIX:` prefix, because factory-doctor must never edit a
+    # repo's test suite or its config.verify list in response to a red gate.
+    if not verify_cmds:
+        return {"check": "verify-run", "level": "INFO",
+                "detail": "no config.verify commands to execute", "fix": ""}
+    if skipped:
+        return {"check": "verify-run", "level": "INFO",
+                "detail": f"verify execution skipped (--skip-verify-run): the declared gate "
+                          f"({len(verify_cmds)} command(s)) was not run — it is unproven",
+                "fix": ""}
+    results = results or []
+    failed = [(c, rc) for c, rc in results if rc not in (0, 124)]
+    timed_out = [(c, rc) for c, rc in results if rc == 124]
+    if failed:
+        parts = [f"`{c}` {'is unresolvable' if rc == 127 else 'failed'}, exit {rc}"
+                 for c, rc in failed]
+        return {"check": "verify-run", "level": "BLOCKER",
+                "detail": "the declared local gate does not run: " + "; ".join(parts)
+                          + " — every dispatch PASS gated on it is unearned",
+                "fix": f"reproduce from the repo root: {failed[0][0]} — then fix the command "
+                       "or correct config.verify in docs/goals/index.yaml yourself "
+                       "(REPORT-only: factory-doctor never edits a repo's gate or tests)"}
+    if timed_out:
+        parts = [f"`{c}` timed out, exit {rc}" for c, rc in timed_out]
+        return {"check": "verify-run", "level": "WARN",
+                "detail": "the declared local gate did not finish: " + "; ".join(parts)
+                          + f" (PG_DOCTOR_VERIFY_TIMEOUT="
+                            f"{os.environ.get('PG_DOCTOR_VERIFY_TIMEOUT', '1800')}s)",
+                "fix": f"run it yourself from the repo root: {timed_out[0][0]} — raise "
+                       "PG_DOCTOR_VERIFY_TIMEOUT if the gate is legitimately this slow"}
+    return {"check": "verify-run", "level": "INFO",
+            "detail": f"verify-run: {len(results)} command(s) ran, all exited 0 — "
+                      "the declared local gate really runs", "fix": ""}
 
 
 def limit_resilience_check(active_goals, heartbeat_lines, signal_configured, scheduler_evidence):
@@ -319,7 +433,7 @@ def symlink_capability_check(can_symlink, windows):
                    "For developers) or run elevated"}
 
 
-def run_checks(base):
+def run_checks(base, skip_verify_run=False):
     C = []
 
     def add(check, level, detail, fix=""):
@@ -446,6 +560,14 @@ def run_checks(base):
     vc = verify_check(verify_cmds, active_goals)
     C.append(vc)
 
+    # verify-run: a DECLARED gate is not a WORKING gate. Execute the commands (unless
+    # suppressed) and report whether they actually run. Skipped or empty -> no execution.
+    if verify_cmds and not skip_verify_run:
+        exits = _run_verify_cmds(verify_cmds, repo_root)
+        C.append(verify_run_check(verify_cmds, list(zip(verify_cmds, exits))))
+    else:
+        C.append(verify_run_check(verify_cmds, None, skipped=skip_verify_run))
+
     # usage-limit resilience — needs active_goals from the queue parse above
     C.append(limit_resilience_check(active_goals,
                                     _heartbeat_line_count(repo_root),
@@ -463,12 +585,15 @@ def main(argv=None):
                     help="config.base if explicitly set; omit when the queue has no config.base "
                          "(dispatch then defaults base to the checked-out branch)")
     ap.add_argument("--self-test", action="store_true", help="run the test suite and exit")
+    ap.add_argument("--skip-verify-run", action="store_true",
+                    help="do not execute config.verify; report the gate as unrun (use when "
+                         "the caller is already running inside that gate)")
     a = ap.parse_args(argv)
     if a.self_test:
         test_file = os.path.join(os.path.dirname(__file__), "test_doctor_checks.py")
         rc = subprocess.run([sys.executable, "-m", "pytest", test_file, "-v"]).returncode
         return rc
-    checks, result = run_checks(a.base)
+    checks, result = run_checks(a.base, skip_verify_run=a.skip_verify_run)
     print(json.dumps({"checks": checks, "result": result}, indent=2))
     return {"READY": 0, "WARN": 1, "BLOCKER": 2}[result]
 
