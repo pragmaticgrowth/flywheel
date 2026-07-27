@@ -13,6 +13,22 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [8.3.1] — 2026-07-28
+
+**The zsh glob abort is finally out of the helper paths.** dispatch and
+factory-doctor still resolved their Python helpers with the
+`~/.claude/plugins/{cache,marketplaces}/*/…` brace-glob prose — the exact form
+goals-status abandoned, because zsh aborts the whole command with
+`no matches found` when any brace alternative fails to match (true on every
+machine that lacks one of the two directories). Both skills now carry the same
+ONE-bash-block `find`-based resolution goals-status pioneered
+(`$CLAUDE_PLUGIN_ROOT` first, else `find ~/.claude/plugins
+~/.factory/plugins/cache -path '*/flywheel/*/…' | sort -V | tail -1`),
+live-verified under zsh against the installed plugin caches. A new policy test
+(`test_no_brace_glob_in_helper_resolution`) bans the brace form across every
+active doc and requires the find-form in all three script-shipping skills —
+RED-proven: both files fail it at the pre-change tree. Suite at 208.
+
 ## [8.3.0] — 2026-07-28
 
 **Speed to production, measured first.** Forensics across this factory's real

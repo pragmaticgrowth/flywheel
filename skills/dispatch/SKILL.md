@@ -365,13 +365,17 @@ the same way every fire instead of burning quota on a wall it can't clear.
 your model and that the repo owner can have define-goal stamp per-goal `model:` fields (or
 set `config.model`) if they want that trade. Do not name or apply a fixed alias yourself.
 
-`$PGVALIDATE` resolution (do this once, before the first gate): use the same fallback chain
-the surviving scripts use — `$CLAUDE_PLUGIN_ROOT/skills/dispatch/scripts/pg_validate.py`,
-else the newest match of
-`~/.claude/plugins/{cache,marketplaces}/*/flywheel/*/skills/dispatch/scripts/pg_validate.py`,
-else the newest match of
-`~/.factory/plugins/cache/*/flywheel/*/skills/dispatch/scripts/pg_validate.py` (the Droid
-plugin cache). Hold the resolved absolute path in `$PGVALIDATE`.
+`$PGVALIDATE` resolution (do this once, before the first gate) — ONE bash block, the same
+shape goals-status uses (`find`, never a brace-glob: zsh aborts the whole command when any
+brace alternative fails to match):
+
+```bash
+PGVALIDATE="$CLAUDE_PLUGIN_ROOT/skills/dispatch/scripts/pg_validate.py"
+[ -f "$PGVALIDATE" ] || PGVALIDATE=$(find ~/.claude/plugins ~/.factory/plugins/cache -path '*/flywheel/*/skills/dispatch/scripts/pg_validate.py' 2>/dev/null | sort -V | tail -1)
+[ -n "$PGVALIDATE" ] || echo "pg_validate.py not found — reinstall/update the flywheel plugin"
+```
+
+Hold the resolved absolute path in `$PGVALIDATE`.
 
 ## Working a goal — the canonical per-goal sequence
 

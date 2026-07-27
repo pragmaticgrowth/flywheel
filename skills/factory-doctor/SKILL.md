@@ -12,13 +12,15 @@ green report.
 
 ## Run order
 
-1. **Resolve paths.** `$DC` = `doctor_checks.py`, via the surviving scripts' resolution chain
-   (the same fallback chain dispatch uses for `$PGVALIDATE`):
-   `$CLAUDE_PLUGIN_ROOT/skills/factory-doctor/scripts/doctor_checks.py`, else newest
-   `~/.claude/plugins/{cache,marketplaces}/*/flywheel/*/skills/factory-doctor/scripts/doctor_checks.py`,
-   else newest
-   `~/.factory/plugins/cache/*/flywheel/*/skills/factory-doctor/scripts/doctor_checks.py`
-   (the Droid plugin cache).
+1. **Resolve paths.** `$DC` = `doctor_checks.py`, in ONE bash block — the same shape
+   goals-status and dispatch use (`find`, never a brace-glob: zsh aborts the whole
+   command when any brace alternative fails to match):
+
+   ```bash
+   DC="$CLAUDE_PLUGIN_ROOT/skills/factory-doctor/scripts/doctor_checks.py"
+   [ -f "$DC" ] || DC=$(find ~/.claude/plugins ~/.factory/plugins/cache -path '*/flywheel/*/skills/factory-doctor/scripts/doctor_checks.py' 2>/dev/null | sort -V | tail -1)
+   [ -n "$DC" ] || echo "doctor_checks.py not found — reinstall/update the flywheel plugin"
+   ```
 2. **Read the queue config** (`docs/goals/index.yaml` `config:` if present) for `base`.
    Pass `--base <base>` ONLY when `config.base` is explicitly set. If it is absent, omit
    `--base` — dispatch defaults base to the checked-out branch, so there is no separate

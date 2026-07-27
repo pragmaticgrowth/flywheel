@@ -53,6 +53,19 @@ def test_dispatch_carries_the_canonical_alias_table():
     assert "haiku` → light" in text or "haiku → light" in text
 
 
+def test_no_brace_glob_in_helper_resolution():
+    # zsh aborts the WHOLE command on an unmatched glob (`no matches found`), and
+    # `{cache,marketplaces}/*` is unmatched on any machine missing one of the two
+    # directories — so every skill's helper-resolution must use the find-based
+    # one-block form goals-status pioneered, never a brace-glob. (v8.3.1; the
+    # brace form shipped broken in dispatch + factory-doctor until then.)
+    for path in ACTIVE_DOCS:
+        assert "{cache,marketplaces}" not in read(path), path
+    for skill in ("dispatch", "factory-doctor", "goals-status"):
+        text = read(f"skills/{skill}/SKILL.md")
+        assert "find ~/.claude/plugins ~/.factory/plugins/cache -path" in text, skill
+
+
 def test_limit_rail_is_window_timed_attended_drain():
     # Owner decision 2026-07-28: the factory runs in-subscription and in-session —
     # the limit-survival rail is a window-timed attended drain (/dispatch --unlimited
