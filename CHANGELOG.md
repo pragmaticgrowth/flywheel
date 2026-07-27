@@ -13,6 +13,59 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [8.3.0] — 2026-07-28
+
+**Speed to production, measured first.** Forensics across this factory's real
+dispatch sessions (158 measured claim→settle cycles; pooled median 57 minutes)
+showed where goal cycle time actually goes: usage-limit idle stalls dominate
+(≈61% of session span), the implementer runs ≈29%, and ALL review machinery
+combined costs ≈4% — while catching real bugs. So v8.3.0 accelerates around
+the reviews, never through them, and closes two real compliance leaks the same
+forensics surfaced. Owner decision 2026-07-28 constrains every lever:
+in-subscription and in-session only — no fast mode, no headless `claude -p`
+scheduling.
+
+- **The gate's two arms now overlap.** The deterministic commands
+  (`pg_validate.py` + `config.verify`) and the independent reviewer read the
+  same frozen `gate_base..HEAD` range and neither consumes the other's output —
+  so dispatch starts the commands as ONE background Bash invocation, spawns the
+  reviewer in the foreground, and joins both before any verdict. This is a
+  background *command* (output re-read from file, safe), not the banned
+  background *review spawn* (the discarded-verdict scar stands). The reviewer's
+  brief adds a concurrency rule — read-based verification first, named-risk
+  command checks last — and the repair re-gate overlaps the same way. The
+  overlap moves wall-clock, never the bar.
+- **The batch count meters CLAIMS.** A real `--count 1` fire settled a
+  pre-existing in-flight goal and then claimed a new one — two goals on a
+  one-goal budget. Now each Phase-2 claim consumes one unit before the
+  implementer spawns; Phase 1 settles neither consume nor license anything.
+- **The reviewer skip is evidenced, or it doesn't exist.** A real batch had
+  settled a goal with no reviewer and no trace. The mechanical carve-out is now
+  the ONLY legal skip — one file AND evidenced-mechanical, judged from the
+  diff, never from the implementer's claim — and the fire's report line must
+  say which happened: `PASS (reviewed)` or `PASS (review-skipped: mechanical)`.
+  A silent skip is a compliance miss.
+- **The one-sitting rule cuts the tail.** Every 13–18h outlier cycle traced to
+  an oversized contract. define-goal now sizes every goal to one implementer
+  sitting — one subsystem, one drivable surface, roughly ≤5 acceptance
+  criteria — and splits anything bigger into a `depends_on` chain with
+  Interfaces notes; the red-team rubric gains a matching Size check
+  (contract-blocking, unless Context states why the goal is atomic).
+- **The limit rail is now window-timed attended drains.** The prior
+  cron/launchd → `claude -p "/dispatch"` rail is retired (owner decision:
+  headless has too many inabilities). loop-architect Step 5 is rewritten
+  around draining each 5-hour window with `/dispatch --unlimited` started
+  right after the reset (statusline `rate_limits.*.resets_at` gives the
+  clock); factory-doctor's limit-resilience fix text now recommends the same.
+  A batch killed mid-goal costs nothing — the next drain's Phase 1 settles the
+  in-flight goal first.
+- **Depth claim corrected.** Official docs put the default subagent nesting
+  cap at 3 layers below the main conversation, not the 5 previously claimed;
+  dispatch's main → implementer → lens chain uses 2 and fits either way.
+- All compliance-critical rule changes shipped with subagent dry-runs and RED
+  baselines (the pre-change text provably decided the scenarios differently);
+  suite green at 207 tests.
+
 ## [8.2.0] — 2026-07-25
 
 **A solid subagent system on both harnesses.** Audited the plugin's review roles

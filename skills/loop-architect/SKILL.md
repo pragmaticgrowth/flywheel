@@ -57,7 +57,7 @@ a loop composes.)
 | Poll/babysit on a cadence while a session is open | `/loop <interval> <skill-or-prompt>` |
 | Recurring default maintenance for this repo | bare `/loop` + a `.claude/loop.md` |
 | A backlog of shippable changes worked unattended | docs/goals queue — fill with `define-goal`, then repeat `/dispatch` (one ready goal per run on the checked-out branch; `/loop /dispatch` drains over repeated fires) |
-| Unattended loop must survive account usage-limit stops (subscription 5-hour/weekly windows) | OS scheduler (cron/launchd) firing fresh sessions — `claude -p "/dispatch"` (Claude Code) or `droid exec "/dispatch"` (Droid) — the limit-proof wrapper around the backlog row's drain; in-session `/loop` dies at the limit (see Step 5 limit-proofing) |
+| Drain must survive account usage-limit stops (subscription 5-hour/weekly windows) | Window-timed attended drains: `/dispatch --unlimited` (or `--count N`) started right after a limit reset, repeated per window — the limit-proof shape around the backlog row; in-session `/loop` dies silently at the limit (see Step 5 limit-proofing) |
 | Must run with the laptop closed | Routine (`/schedule`; cloud; schedule / API / GitHub triggers) |
 | Needs local files, machine on, no session open | Desktop scheduled task |
 | React to external events (CI, chat) instead of polling | Channels (`--channels`) or Routine API trigger |
@@ -197,7 +197,8 @@ agent CANNOT edit: a Stop hook, an external cron/budget process ("burnstop"), th
 horsepower" — and never let the loop grade itself against a criterion it can rewrite.
 (One caveat on `/goal` as a brake: its evaluator FAILS OPEN on its own errors — an
 evaluator API failure lets the session stop with the goal unmet — so on an unattended run
-it is never the ONLY rail; the external scheduler + ledger stay the hard layer.)
+it is never the ONLY rail; the docs/goals ledger + the window-timed drain pattern (below)
+stay the hard layer.)
 
 Always include, in the prompt itself (the soft layer, restated for the agent):
 - Max iterations / turn cap ("stop after 25 turns", "max 3 retries on the same finding")
@@ -214,7 +215,7 @@ Always include, in the prompt itself (the soft layer, restated for the agent):
 - Quarantine: agents reading untrusted content (tickets, scraped pages) get no
   high-privilege tools; separate actor agents never see the raw text
 
-### Usage-limit proofing (unattended runs on subscription plans)
+### Usage-limit proofing (long runs on subscription plans)
 
 A subscription usage limit (the 5-hour rolling window; a separate weekly window) blocks EVERY
 turn until its reset time. An in-session `/loop` simply stops
@@ -222,29 +223,35 @@ firing, in one of two shapes — neither self-recovering: hit the limit BETWEEN 
 banner just blocks new prompts (no hook fires, SessionEnd never reports it); hit it MID-turn
 and the turn dies on a rate-limit API error, the one case a `StopFailure` hook can observe.
 Either way the CLI ships no wait-until-reset auto-resume. Treat the limit like a power cut,
-not an error the loop can handle from inside. Rails, in order of leverage:
+not an error the loop can handle from inside. Rails, in order of leverage (owner decision
+2026-07-28: the factory runs in-subscription and in-session — no fast mode, no headless
+`claude -p` scheduling; the prior cron/launchd→`claude -p` rail is retired):
 
-- **Schedule outside the session.** The limit-proof shape is an OS scheduler (cron / launchd /
-  Task Scheduler) firing a fresh headless session per cadence — `claude -p "/dispatch"`
-  on Claude Code, `droid exec "/dispatch"` on Droid.
-  Fires during the limit window fail cheaply; the first fire after reset just works — dispatch
-  fires are idempotent and one-goal, so no state transfer is needed. (Droid's
-  built-ins are building blocks, not this rail — that exclusion covers CronCreate
-  session loops AND automations in both local and cloud modes: session-bound loops
-  die with the session, the exact failure this step exists to avoid, and the
-  automation surfaces are unverified as limit-proof; the verified rail is the OS
-  scheduler.)
-- **Detect instead of blind-firing (optional refinement — Claude Code facts).** Two
-  supported surfaces expose the
-  reset clock: the statusline stdin JSON carries `rate_limits.five_hour.resets_at` /
-  `rate_limits.seven_day.resets_at` (Unix epoch seconds; subscription plans; present after the
-  session's first API response), and a `StopFailure` hook with the `rate_limit` matcher fires
-  when a turn dies mid-flight on a rate-limit API error (informational only, and it misses the
-  between-turns banner shape — have it write a marker file the outer scheduler reads; never
-  make it the only rail). Sleep until the relevant `resets_at` plus jitter, then fire.
-  On Droid no equivalent reset-clock surface is verified — schedule blind by cadence.
-- **Respect the weekly window.** `seven_day.resets_at` can be days away — retrying a
-  weekly-capped account hourly is pure noise; stand down until that reset.
+- **Drain the window, don't trickle into it.** The limit-proof shape is a window-timed
+  ATTENDED drain: at (or right after) a limit reset, start ONE interactive session and run
+  `/dispatch --unlimited` (or `--count N` sized to the window) so the batch front-loads
+  work into the quota that just refreshed instead of a `/loop` trickling fires into a
+  window that then throttles mid-goal. Dispatch's per-goal cycles are settled and
+  idempotent, so a batch the limit kills mid-goal costs nothing: the next window's drain
+  settles the in-flight goal first (Phase 1) and continues. Cycle-time forensics
+  (2026-07-28) showed limit pauses — not work — were the largest wall-clock sink in
+  real factory sessions; timing drains to the reset clock attacks exactly that.
+- **Read the reset clock, don't guess it.** The statusline stdin JSON carries
+  `rate_limits.five_hour.resets_at` / `rate_limits.seven_day.resets_at` (Unix epoch
+  seconds; subscription plans; present after the session's first API response) — note
+  the value BEFORE the window dies (it's only readable inside a live session, so the
+  session that hits the limit is the one that knows when the next window opens) and
+  time the next drain to it. A `StopFailure` hook with
+  the `rate_limit` matcher fires when a turn dies mid-flight on a rate-limit API error
+  (informational only; it misses the between-turns banner shape — never the only rail).
+  On Droid no equivalent reset-clock surface is verified — time drains by wall clock.
+- **Respect the weekly window.** `seven_day.resets_at` can be days away — draining an
+  exhausted weekly window hourly is pure noise; stand down until that reset.
+- **`/loop` stays the in-window cadence option, eyes open.** For polling/babysitting
+  within a window `/loop /dispatch` still works; know that it dies silently at the limit
+  (the heartbeat's per-fire line is what makes that death detectable afterwards) and
+  hands unclaimed work to the next window's drain. It is a cadence tool, not a
+  limit-survival rail.
 - **Bookkeeping survives on its own.** The docs/goals ledger plus dispatch's fires-observed
   cross-fire brake already treat a quota pause as "no attempts made" (stale claims resume,
   never get blocked as dead). `factory-doctor`'s `limit-resilience` probe warns when a repo

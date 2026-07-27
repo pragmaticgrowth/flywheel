@@ -113,9 +113,18 @@ is no `plugins/` directory — the repo root IS the flywheel plugin.
   conversation inline, the two-round cap governs only the contract
   interview), and an ideate handoff is treated as the brief — question rounds
   cover only remaining gaps, recon narrows to verify-and-complete, chain
-  goals link the design brief from Context.
-**Harness note (v8.2.0):** on Claude Code a subagent can spawn further subagents
-(Agent nests, cap depth=5), so a dispatch implementer runs its fresh-check panel directly.
+  goals link the design brief from Context. v8.3.0 adds the ONE-SITTING rule
+  + a matching red-team Size check: a goal is one implementer sitting — one
+  subsystem, one drivable surface, ~≤5 acceptance criteria — else it's an
+  unsplit `depends_on` chain and splitting is contract-blocking (unless
+  Context states why it's atomic, then advisory); grounded in 2026-07-28
+  cycle forensics (158 cycles, median ~57 min; every 13–18h outlier was an
+  oversized contract).
+**Harness note (v8.2.0; depth corrected v8.3.0):** on Claude Code a subagent can spawn
+further subagents (Agent nests — official docs put the default nesting depth at 3 layers
+below the main conversation, not the 5 previously claimed here; dispatch's
+main → implementer → lens chain uses 2 and fits either way), so a dispatch implementer
+runs its fresh-check panel directly.
 On Droid a subagent has NO Task tool — Factory's docs state "a subagent cannot spawn its
 own subagents" — so the implementer uses the sanctioned `droid exec -f <prompt-file>` path
 for genuinely fresh review contexts (≤2 lenses; it costs a CLI cold start each). Self-review
@@ -146,7 +155,16 @@ own review to the full panel, and is explicitly not a compliance miss.
   implementer's `Fresh-check:` lens verdicts are corroborating evidence,
   never the verdict; a missing block or a not-required claim the diff belies
   escalates to the full 2–3-lens panel; verified Critical/Important findings
-  feed the repair path; v5.3.0 calibrates the reviewer — surface half-believed
+  feed the repair path; v8.3.0 OVERLAPS the gate's two arms — the
+  deterministic commands run as ONE background Bash started BEFORE the
+  foreground reviewer spawn, joined before any verdict (both arms unchanged
+  in content; a background command's output file can't be discarded the way
+  a background review spawn's turn could — that scar stays); v8.3.0 also
+  tightens the mechanical carve-out: a reviewer skip is legal only on a
+  one-file genuinely-mechanical diff judged from the diff itself, and the
+  decision is stated in the fire's report (`last: <id> PASS (reviewed |
+  review-skipped: mechanical)`) — a real batch had settled goal 113 with no
+  reviewer and no trace; v5.3.0 calibrates the reviewer — surface half-believed
   findings marked uncertain rather than silently dropping them, Critical
   findings quote the triggering line, pre-existing baseline failures and
   exempted test paths are named non-findings — and the implementer's verify
@@ -189,8 +207,10 @@ own review to the full panel, and is explicitly not a compliance miss.
   cycle = one fire; a blocked goal doesn't stop a batch; the budget ALWAYS
   outranks flags — effective cap = min(flag, budget); an environment brake
   stops the batch on two consecutive infrastructure-shaped failures, skipping
-  the second futile repair spawn; `--unlimited` is the attended drain —
-  unattended stays `/loop` + external scheduling). The implementer status
+  the second futile repair spawn; v8.3.0: the count meters CLAIMS — a Phase 1
+  settle neither consumes nor licenses one, closing a real `--count 1`
+  two-goal leak — and window-timed attended drains, `--unlimited` right
+  after a limit reset, are the primary throughput pattern). The implementer status
   contract adds NEEDS_CONTEXT, and a BLOCKED escalation ladder runs before
   any goal blocks (each rung once, never a same-model-unchanged respawn:
   answer-context re-spawn → one stronger-tier re-spawn for
@@ -223,16 +243,20 @@ own review to the full panel, and is explicitly not a compliance miss.
 - **loop-architect** — designs loop contracts (prompt + verification +
   stop conditions) for autonomous /goal, /loop, routine, or remote runs;
   names `docs/goals/index.yaml` the canonical factory ledger. Includes
-  usage-limit proofing (Step 5): subscription 5-hour/weekly limits kill
-  in-session loops with no hook fired, so unattended drains schedule OUTSIDE
-  the session (cron/launchd firing fresh `claude -p "/dispatch"`), optionally
-  reading the reset clock from statusline
-  `rate_limits.*.resets_at` or a `StopFailure` (rate_limit) hook marker.
+  usage-limit proofing (Step 5; rewritten v8.3.0 per the owner's 2026-07-28
+  no-fast-mode / no-headless decision): subscription 5-hour/weekly limits
+  kill in-session loops with no hook fired, and the rail is now WINDOW-TIMED
+  ATTENDED DRAINS — `/dispatch --unlimited` (or `--count N`) started right
+  after each limit reset, timed via statusline `rate_limits.*.resets_at`
+  (a `StopFailure` (rate_limit) hook stays an optional mid-turn death
+  signal); the prior cron/launchd → `claude -p "/dispatch"` rail is retired,
+  and `/loop` remains an in-window cadence tool that dies at the limit.
 - **factory-doctor** — one-pass preflight/doctor for a repo + machine:
   checks software, gh auth + scopes, the git working tree, CI, queue
   state, and loop health (stale claims, underspecified goals, and
   `limit-resilience` — WARN when a repo's loop demonstrably fires but has no
-  usage-limit rail: no external scheduler, no `StopFailure` hook);
+  usage-limit rail: no `StopFailure` hook, no pre-existing scheduler; its fix
+  text recommends the v8.3.0 window-timed attended drain, never headless);
   aggressively auto-fixes everything local (scaffolds the queue,
   strips deprecated v3 config keys — `merge`/`wip`/`execution`/`autonomy` —
   from a stale `index.yaml` so v3-era projects stop silently running dead

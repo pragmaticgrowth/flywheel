@@ -192,6 +192,13 @@ def test_limit_resilience_warn_when_looping_unprotected():
     assert "usage-limit" in r["detail"]
     assert r["fix"]
 
+def test_limit_resilience_fix_recommends_attended_drain_not_headless():
+    # owner decision 2026-07-28: the recommended rail is a window-timed attended drain,
+    # never cron/launchd firing headless `claude -p` sessions.
+    fix = dc.limit_resilience_check(2, 3, False, False)["fix"]
+    assert "--unlimited" in fix and "resets_at" in fix
+    assert "claude -p" not in fix and "cron" not in fix
+
 def test_limit_resilience_ok_with_external_scheduler():
     assert dc.limit_resilience_check(2, 3, False, True)["level"] == "INFO"
 

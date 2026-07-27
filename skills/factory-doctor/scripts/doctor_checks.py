@@ -295,16 +295,18 @@ def verify_run_check(verify_cmds, results, skipped=False):
 def limit_resilience_check(active_goals, heartbeat_lines, signal_configured, scheduler_evidence):
     # Subscription usage limits (the 5-hour/weekly windows) block ALL turns until reset;
     # an in-session /loop dies with the session and nothing inside the CLI restarts it
-    # — no hook fires on the limit banner. Survivable setups: an
-    # external OS scheduler firing fresh sessions, or a StopFailure hook (rate_limit
-    # matcher) arming an external resume. WARN only when a loop demonstrably fires on
-    # this repo (heartbeat lines exist) yet neither protection is present.
+    # — no hook fires on the limit banner. Recognized rails: a StopFailure hook
+    # (rate_limit matcher) arming an external signal, or a pre-existing OS scheduler
+    # (still detected as a rail where one exists, though the recommended pattern is
+    # window-timed attended drains — /dispatch --unlimited after each reset).
+    # WARN only when a loop demonstrably fires on this repo (heartbeat lines exist)
+    # yet no rail is present.
     if not active_goals:
         return {"check": "limit-resilience", "level": "INFO",
                 "detail": "no active goals; usage-limit exposure not applicable", "fix": ""}
     if heartbeat_lines == 0:
         return {"check": "limit-resilience", "level": "INFO",
-                "detail": "no dispatch loop has fired here yet; if you set up an unattended "
+                "detail": "no dispatch loop has fired here yet; if you set up a long-running "
                           "loop, make it usage-limit-proof (see loop-architect Step 5)", "fix": ""}
     if signal_configured or scheduler_evidence:
         via = "external scheduler" if scheduler_evidence else "StopFailure hook"
@@ -314,10 +316,11 @@ def limit_resilience_check(active_goals, heartbeat_lines, signal_configured, sch
             "detail": "a dispatch loop fires on this repo but nothing survives an account "
                       "usage-limit stop (5-hour/weekly window): in-session loops die at the "
                       "limit and no hook fires on the banner",
-            "fix": "schedule fresh sessions OUTSIDE the CLI (cron/launchd running "
-                   "claude -p \"/dispatch\" or droid exec \"/dispatch\"), and/or add a "
-                   "StopFailure hook (rate_limit matcher) that arms a resume at "
-                   "rate_limits.*.resets_at — see loop-architect Step 5 limit-proofing"}
+            "fix": "drain in window-timed attended batches: run /dispatch --unlimited (or "
+                   "--count N) right after each limit reset (statusline "
+                   "rate_limits.*.resets_at gives the clock) instead of an open /loop; "
+                   "optionally add a StopFailure hook (rate_limit matcher) as a mid-turn "
+                   "death signal — see loop-architect Step 5 limit-proofing"}
 
 
 def _heartbeat_line_count(repo_root):

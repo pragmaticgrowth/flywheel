@@ -452,7 +452,16 @@ never grind past a blocker. Stop after <N> turns.
 
 Titles are plain language ("Customers get a receipt email after payment"), not jargon.
 One goal = one independently shippable change; split an ambitious want only when the parts
-ship and verify independently, ordering with `depends_on` for sequencing. Every dependent
+ship and verify independently, ordering with `depends_on` for sequencing.
+**The one-sitting rule.** A well-cut goal is ONE implementer sitting: one subsystem, one
+drivable surface, and roughly ≤5 acceptance criteria. Cycle-time forensics across this
+factory's real repos (2026-07-28, 158 measured claim→settle cycles) put the median goal
+at ~57 minutes — and every multi-hour outlier (13–18h worst cases) was an oversized
+contract, not a slow implementer. A want that fails the one-sitting test is not "a big
+goal", it is an unsplit chain: cut it along its independently shippable seams into
+`depends_on`-ordered goals with Interfaces notes. When the seams genuinely don't exist
+(one atomic migration), keep it whole but say so in Context — the size is then a fact,
+not an oversight. Every dependent
 goal in a chain gets an **Interfaces** note in its Context: the exact names its dependency
 produces that this goal consumes (functions, routes, schema/table names, file paths,
 commands) — a dependent goal's implementer sees only its own goal file, and re-discovering
@@ -583,6 +592,15 @@ contract, not approve it —
   over-constraining; nothing dev-server-dependent sits in `acceptance:` (headless-only).
 - **Termination**: the `/goal` line is transcript-provable and under the 4,000-char cap,
   the turn cap is present and sized, and the If-blocked / GOAL_UNREACHABLE path exists.
+- **Size (one-sitting test)**: does the goal fit one implementer sitting — one
+  subsystem, one drivable surface, ~≤5 acceptance criteria? A draft that spans multiple
+  subsystems/surfaces or piles up criteria is flagged **contract-blocking** with the
+  proposed split seams (each independently shippable, `depends_on`-ordered). A Context
+  note stating why the work is atomic downgrades only the SPAN trigger to advisory (the
+  seams genuinely don't exist); it never excuses a piled-up criteria list — criteria
+  bloat on an atomic goal is its own finding (merge or cut criteria, don't split the
+  work). Oversized goals are the factory's dominant cycle-time tail; splitting is the
+  fix, not a bigger turn cap.
 - **Cross-goal** (whenever reviewing more than one draft): overlaps, the same file
   migrated twice, wrong or missing `depends_on` ordering, duplicated or conflicting
   criteria, and a dependent goal missing its Interfaces note (advisory).

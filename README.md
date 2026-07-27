@@ -5,7 +5,7 @@ A skills-first plugin marketplace for [Claude Code](https://claude.com/claude-co
 and [Factory Droid](https://factory.ai), from Pragmatic Growth.
 
 [![Website](https://img.shields.io/badge/site-flywheel.pragmaticgrowth.com-6366f1)](https://flywheel.pragmaticgrowth.com)
-[![Version](https://img.shields.io/badge/version-8.2.0-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-8.3.0-8b5cf6)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
 > 🌐 **Full docs:** **<https://flywheel.pragmaticgrowth.com>**
@@ -125,7 +125,10 @@ never implementation.
 - **Red-teamed before it queues.** Every queued goal gets a **contract
   review**: one fresh read-only agent tries to break the drafted contract —
   gameable criteria, commands that don't exist in your repo, a bug goal whose
-  gate never runs the proving test, missing scope or termination — before the
+  gate never runs the proving test, missing scope or termination, and an
+  **oversized goal** (more than one implementer sitting — one subsystem, one
+  drivable surface, roughly ≤5 criteria — gets split into a `depends_on`
+  chain unless the contract states why it's atomic) — before the
   model stamp and your confirmation. A contract defect caught here costs one
   read-only agent; the same defect at dispatch time costs a full implementer
   run plus a rollback.
@@ -183,7 +186,9 @@ Batch runs repeat the same fully-settled per-goal cycle; a blocked goal doesn't
 stop the batch, `config.budget` always outranks the flags, and an environment
 brake stops a batch when two consecutive goals fail with the same
 infrastructure-shaped cause (pointing you at `/factory-doctor` instead of
-burning the queue).
+burning the queue). The count meters **claims**: settling a goal that was
+already in flight when the run started neither consumes a unit nor licenses
+an extra one, so `--count 1` is always at most one new goal.
 
 Per goal:
 
@@ -192,11 +197,13 @@ Per goal:
 2. **Implement** — a foreground implementer commits work directly on `<base>`,
    using a short plan/checklist, TDD for code changes, and a fresh multi-lens
    review (a small panel of independent read-only lenses) for non-trivial work.
-3. **Local gate** — the orchestrator first spawns a fresh read-only reviewer
-   to adversarially check the diff against the contract (the implementer’s
-   self-review is evidence, not the verdict), then runs the repo’s `config.verify`
-   commands (build + tests), and `pg_validate.py` runs the per-goal acceptance +
-   structural checks on the `gate_base..HEAD` diff.  
+3. **Local gate** — two independent arms over the same frozen
+   `gate_base..HEAD` range, overlapped to save wall-clock: the deterministic
+   commands (`pg_validate.py` + the repo’s `config.verify` build + tests)
+   start in the background while a fresh read-only reviewer adversarially
+   checks the diff against the contract in the foreground (the implementer’s
+   self-review is evidence, not the verdict); both arms must be in hand
+   before any verdict.  
    - **PASS** → the implementer’s commits are squashed into one
      `feat(goal NNN)` commit kept on the branch.  
    - **FAIL** → work is rolled back; the goal is marked `blocked`.
@@ -269,12 +276,14 @@ contract** instead — the prompt, the verification step, and the **stop
 conditions**. Use it whenever you want something to
 run unattended, on a schedule, or remotely. If the cadence, gate, budget, or
 stop condition is unclear, it asks a short calibration round before writing the
-copy-pasteable setup. For unattended runs on subscription plans it also designs
+copy-pasteable setup. For long runs on subscription plans it also designs
 **usage-limit proofing**: a 5-hour/weekly limit blocks every turn until reset
 and kills an in-session `/loop` with no hook fired, so the limit-proof shape is
-an OS scheduler (cron/launchd) firing fresh `claude -p "/dispatch"` sessions —
-optionally reading the reset clock from the statusline `rate_limits.*.resets_at`
-fields or a `StopFailure` hook marker.
+**window-timed attended drains** — start `/dispatch --unlimited` (or
+`--count N`) right after each limit reset and let the batch drain the window,
+reading the reset clock from the statusline `rate_limits.*.resets_at` fields
+(optionally a `StopFailure` hook as a mid-turn death signal). The factory runs
+in-subscription and in-session — no headless `claude -p` scheduling.
 
 ### factory-doctor — get the environment ready
 
@@ -459,21 +468,28 @@ them up. Set `config.budget` in `index.yaml` before long unattended runs.
 
 ## The local gate
 
-After each implementation, the dispatch orchestrator first runs an
-**independent review**: for any non-trivial diff it spawns one fresh read-only
-adversarial reviewer (the plugin's tool-restricted gate-reviewer
+After each implementation, the dispatch orchestrator runs the gate’s **two
+independent arms over the same frozen `gate_base..HEAD` range, overlapped**:
+the deterministic commands start in the background while the **independent
+review** runs in the foreground — for any non-trivial diff, one fresh
+read-only adversarial reviewer (the plugin's tool-restricted gate-reviewer
 agent where available — `flywheel:gate-reviewer` on Claude Code, `gate-reviewer`
 on Factory Droid — else a generic agent with the same brief) over
 `gate_base..HEAD` plus the goal contract — refute
 conformance, test realness, and scope; the implementer’s own fresh-check
-verdicts are corroborating evidence, never the verdict. Then it runs the repo’s
-`config.verify` commands (build + tests), and `pg_validate.py` runs the
-per-goal acceptance + structural checks on the local `gate_base..HEAD` diff:
+verdicts are corroborating evidence, never the verdict. The only legal
+reviewer skip is a **one-file, evidenced-mechanical diff** (judged from the
+diff itself, never the implementer’s claim), and the report line must say
+which happened (`reviewed` / `review-skipped: mechanical`). The command arm —
+the repo’s `config.verify` commands (build + tests), and `pg_validate.py`
+running the per-goal acceptance + structural checks on the local
+`gate_base..HEAD` diff:
 
 - All `verify` commands must exit 0.
 - A secret / forbidden-content scan.
 
-It emits a verdict — **PASS** or **FAIL** — and the orchestrator acts on it:
+Both arms must be in hand before any verdict — the overlap moves wall-clock,
+never the bar. It emits a verdict — **PASS** or **FAIL** — and the orchestrator acts on it:
 PASS squashes the implementer’s commits into one `feat(goal NNN)` commit kept
 on the branch; FAIL rolls the work back and marks the goal `blocked`. CI,
 if configured, runs after the push as a non-blocking observation.
@@ -499,14 +515,16 @@ can’t burn indefinitely. When the budget is hit (or the queue drains), dispatc
 stops and surfaces the reason. Let **loop-architect** design the loop contract
 (verification + stop conditions) rather than firing a bare prompt.
 
-One caveat for overnight runs on subscription plans: a **usage limit** (5-hour
+One caveat for long runs on subscription plans: a **usage limit** (5-hour
 or weekly window) blocks every turn until reset and silently kills an
 in-session `/loop` — no hook fires, and the CLI has no built-in auto-resume.
-The limit-proof shape is scheduling *outside* the session (cron/launchd firing
-fresh `claude -p "/dispatch"` runs) — each
-fire is idempotent, so the first fire after reset just continues the queue.
-Dispatch’s heartbeat log and fires-observed brake keep a quota pause from being
-misread as a dead goal, and `/factory-doctor` warns when a looping repo has no
+The limit-proof shape is **window-timed attended drains**: start
+`/dispatch --unlimited` right after each reset (the statusline
+`rate_limits.*.resets_at` fields give the clock) and let the batch drain the
+window — each cycle is idempotent, so a batch killed mid-goal costs nothing;
+the next drain’s Phase 1 settles the in-flight goal first. Dispatch’s
+heartbeat log and fires-observed brake keep a quota pause from being misread
+as a dead goal, and `/factory-doctor` warns when a looping repo has no
 limit rail.
 
 ---

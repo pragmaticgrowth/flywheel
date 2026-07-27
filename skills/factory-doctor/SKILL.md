@@ -116,11 +116,12 @@ any `in_progress` goal with no work commits on the branch after its claim commit
 silent-death candidate dispatch will respawn or that needs unblocking), `goal-contracts`
 (WARN naming any active goal whose file lacks a checkable done-condition — tighten via
 `/define-goal` before dispatch picks it up), and `limit-resilience` (WARN when a dispatch loop
-demonstrably fires on this repo — heartbeat log lines exist — but nothing survives an account
-usage-limit stop: no external scheduler firing fresh sessions (`claude -p "/dispatch"` or
-`droid exec "/dispatch"`) and no `StopFailure` hook — the probe checks settings in
-`.claude/` and `.factory/`, project + user scope; its
-`fix` field carries the limit-proofing guidance from loop-architect Step 5. INFO-only when no
+demonstrably fires on this repo — heartbeat log lines exist — but no usage-limit rail is
+present: no `StopFailure` hook (the probe checks settings in `.claude/` and `.factory/`,
+project + user scope) and no pre-existing OS scheduler (still detected as a rail where
+one exists). Its `fix` field carries loop-architect Step 5's current guidance:
+window-timed attended drains — `/dispatch --unlimited` right after each limit reset —
+rather than headless scheduling. INFO-only when no
 loop has fired here or a rail is detected). The `verify` check WARNs if `config.verify` is
 absent and there are active goals — copy its `fix` (add a `verify:` list to `index.yaml`). The
 `verify-run` check reports whether those declared commands ACTUALLY run: BLOCKER naming the

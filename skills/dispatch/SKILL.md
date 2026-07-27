@@ -7,7 +7,8 @@ argument-hint: "[goal-id] [--count N | --unlimited]"
 # Dispatch — the factory orchestrator
 
 You are depth 0: a thin orchestrator. Your context stays small; the implementer (depth 1)
-and its nested helpers (depth 2+, system cap depth=5) hold the mess. Compose existing
+and its nested helpers (depth 2+; default nesting cap is 3 layers below the main
+conversation per official docs — this chain uses 2) hold the mess. Compose existing
 skills — never re-derive what a skill already encodes. The queue is `docs/goals/index.yaml`
 (see `define-goal` for the format).
 
@@ -53,9 +54,19 @@ counts as one fire for the heartbeat and the cross-fire brake. A goal that settl
 loop fire would claim it. The end-of-drain CI observation stays end-of-batch, never
 per-goal; the stalled-factory notification stays once per distinct blocker set.
 
+**The count counts CLAIMS — Phase 1 settles are free, and a spent count claims nothing.**
+`--count N` (and the flagless default, ≡ `--count 1`) budgets the number of Phase-2
+claims this run may make: each claim consumes one unit BEFORE the implementer spawns,
+and settling a pre-existing `in_progress` goal in Phase 1 neither consumes a unit nor
+licenses an extra claim. When the count is spent, the run reports and stops even if
+ready goals remain — a real fire on 2026-07-27 worked two full goals on `--count 1`
+because "finish then claim" was read as "the settle didn't count"; it does not: the
+settle is free, the NEXT claim is what the count meters, and on a spent count there is
+no next claim.
+
 **Batch stop conditions — first one wins:**
 
-1. Count reached (`--count N`).
+1. Count reached (`--count N`) — measured in claims, per the rule above.
 2. No ready goals left (for `--unlimited` this is the drained-queue terminal stop,
    Phase 0).
 3. `config.budget.max_goals_per_session` exhausted — the budget ALWAYS outranks the
@@ -72,11 +83,15 @@ per-goal; the stalled-factory notification stays once per distinct blocker set.
    skip its repair spawn and fire the brake — a repair agent cannot fix the registry
    or the environment.
 
-`--unlimited` is the ATTENDED "drain it now" mode. For unattended drains keep using
-`/loop /dispatch` with external scheduling (loop-architect's usage-limit rails): an
-in-session batch dies silently at a subscription usage limit with no hook fired — the
-per-goal heartbeat makes that death detectable and Phase 1 makes the next run's
-recovery clean, but nothing restarts a session from inside it.
+`--unlimited` is the "drain it now" mode — and window-timed drains are the factory's
+primary throughput pattern (loop-architect's limit-proofing): start one right after a
+usage-limit reset so the batch front-loads work into the fresh quota. An in-session
+batch still dies silently at a subscription usage limit with no hook fired — the
+per-goal heartbeat makes that death detectable and Phase 1 makes the next window's
+recovery clean (the killed batch's in-flight goal settles first), but nothing restarts
+a session from inside it; the next drain is a human (or the next attended session)
+starting one, never a headless scheduler (owner decision 2026-07-28: no `claude -p`
+fires).
 
 Read the queue's `config:` block first; defaults when absent:
 `base` = the branch dispatch works ON (the started branch — staging, main, or other;
@@ -369,8 +384,25 @@ For each claimed goal, in order:
    writes its full evidence to a report file, and ends with a terse fixed-format `STATUS:`
    report + a one-line `Fresh-check:` verdict (step 3's independent review challenges
    both). It never merges, never opens a PR.
-3. Run the LOCAL gate authoritatively yourself — independent review first, then commands:
-   **Independent review — maker–checker, ALWAYS for non-trivial work.** The implementer's
+3. Run the LOCAL gate authoritatively yourself. The gate has two independent arms over
+   the same frozen `gate_base..HEAD` range — the deterministic commands (Arm A) and the
+   independent review (Arm B) — and neither consumes the other's output, so OVERLAP
+   them: start Arm A in the background, spawn Arm B in the foreground, and join both
+   before any verdict. (The old review-then-commands serial order idled minutes per goal
+   for zero added safety; the combined-verdict rule below is unchanged.)
+   **Arm A — the gate commands, started FIRST, in the background.** ONE Bash call,
+   `run_in_background: true`, that runs
+   `python3 "$PGVALIDATE" --head HEAD --base <gate_base> --goal <id> --goal-file docs/goals/<id>.md`
+   then each `config.verify` command in order, echoing every exit code, so the join
+   reads one output file and reconstructs the full result. A background COMMAND is safe
+   where a background REVIEW spawn is banned (Quality loop step 5's scar): its exit
+   codes and log land in an output file you Read at join time — nothing returns through
+   a turn that can be discarded. The overlap is an optimization, never a requirement:
+   when the harness gives you no reliable background-shell mode (run it foreground on
+   Droid), or when the mechanical carve-out below skips Arm B, there is nothing to
+   overlap — run the same commands in the foreground and read them directly; the
+   verdict rule is identical either way.
+   **Arm B — independent review — maker–checker, ALWAYS for non-trivial work.** The implementer's
    report must still carry its `Fresh-check:` block (the lens verdicts, or the literal
    `Fresh-check: not required (one-file mechanical edit)` for work that genuinely is) — but
    that block is corroborating evidence, never the verdict: the implementer graded its own
@@ -395,7 +427,11 @@ For each claimed goal, in order:
    for a concrete risk the reviewer
    can NAME — one focused check per named risk, named in the report; what can't be
    verified that way is an uncertain finding, never a license to sweep the repo (unscoped
-   reviewers cost 4–8× on the same diff and find no more). And two anti-laundering rules:
+   reviewers cost 4–8× on the same diff and find no more). One concurrency rule goes in
+   the brief too: Arm A's gate commands are running in this checkout concurrently — do
+   read-based verification first and run any named-risk command check LAST (by then the
+   commands are normally finished; a command check colliding with a live install/build
+   produces phantom failures, not findings). And two anti-laundering rules:
    a stated rationale in the implementer's report never downgrades a finding's severity
    (the maker grading its own work), and a defect the goal contract itself mandates is
    still a finding, labeled contract-mandated — the contract's authorship does not grade
@@ -411,10 +447,21 @@ For each claimed goal, in order:
    path like any gate finding — EXCEPT a verified contract-mandated finding, which is a
    contract defect: route it FAIL_CONTRACT (reset + block, needs-you class
    `contract defect (finding)`) —
-   a repair agent cannot fix code into a defective contract. A genuinely one-file mechanical edit skips the reviewer —
-   judge that from the DIFF, not the implementer's claim; the
-   deterministic gate + `config.verify` suffice there; that carve-out is what keeps the
-   second view proportional.
+   a repair agent cannot fix code into a defective contract.
+   **The mechanical carve-out (the ONLY legal reviewer skip).** A genuinely one-file
+   mechanical edit skips the reviewer — but the skip is an explicit, evidenced decision,
+   never a default. It is legal ONLY when (a) the `gate_base..HEAD` diff touches exactly
+   one file, AND (b) the change is mechanical — a rename, a constant/config value, a
+   comment/doc line, a regenerated artifact — with no new branching, no signature/API
+   change, no test-logic change; any doubt means not mechanical. Judge both from the
+   DIFF itself (`git diff <gate_base>..HEAD --stat` then the diff body), never from the
+   implementer's claim or its `Fresh-check: not required` line — the maker's claim about
+   its own work is corroboration, not license. State the decision in the fire's
+   reporting either way (the `last:` field carries `reviewed` or `review-skipped:
+   mechanical` — Phase 4); a silent skip is indistinguishable from a forgotten reviewer
+   in any later audit, and goal 113 of the 2026-07-24 batch settled exactly that way.
+   The deterministic gate + `config.verify` still run in full there; that carve-out is
+   what keeps the second view proportional.
    **Escalation to the full panel.** A missing `Fresh-check:` block, a
    `not run (no fresh-context mechanism available)` verdict, or a not-required
    claim the diff belies (multi-file work, or a single-file diff whose changes are plainly
@@ -431,9 +478,10 @@ For each claimed goal, in order:
    the implementer correctly refusing to self-review where the harness gives it no fresh
    context; it escalates your own review to the full panel and nothing more. What IS a miss
    is a panel silently skipped, or claimed but self-run in the implementer's own context.
-   **Then the gate commands:**
-   `python3 "$PGVALIDATE" --head HEAD --base <gate_base> --goal <id> --goal-file docs/goals/<id>.md`
-   plus the repo `config.verify` commands (ordered, all must exit 0). Show output.
+   **Join — no verdict before BOTH arms are in hand.** When Arm B returns, Read Arm
+   A's output file (commands still running → wait on that task; never grade a partial
+   gate). Show the command output. Every `config.verify` command must exit 0, exactly
+   as before — the overlap moves wall-clock, never the bar.
 4. PASS → `git reset --soft <gate_base> && git commit -m "feat(goal <id>): <slug>"` (squash to
    one), then `chore(goals): complete <id>`; push if a remote exists (non-blocking).
    **Then, on every PASS, surface the goal's subjective criteria.** define-goal marks a
@@ -456,7 +504,9 @@ For each claimed goal, in order:
    item. Then report — a flagless run stops here; a batch run (Invocation) claims the next
    ready goal instead.
    FAIL_FIXABLE → one repair agent (fed the COMPLETE verified findings list in one spawn —
-   never one repair agent per finding), re-gate (re-run the commands; when verified review
+   never one repair agent per finding), re-gate (re-run the commands; the step-3 overlap
+   applies here too — commands in the background, re-check in the foreground, join both;
+   when verified review
    findings drove the repair, add a focused re-check by one fresh read-only agent —
    the gate-reviewer plugin agent else the generic type, session model, scoped to exactly
    those findings PLUS a one-pass collateral scan of the repair diff itself — a fix can
@@ -586,7 +636,8 @@ loop-until-dry (keep looking until a pass turns up nothing new). They are never 
 implementer lane.
 
 **Harness note — nested spawning.** On Claude Code you ARE a subagent that can spawn further
-subagents (the Agent tool nests, system cap depth=5): spawn the panel directly. On Droid a
+subagents (the Agent tool nests; default depth cap 3 — your lens spawns are depth 2 and
+fit): spawn the panel directly. On Droid a
 subagent has NO Task tool — the platform does not let you spawn a subagent at all
 (documented: "a subagent cannot spawn its own subagents"). Do not pretend otherwise and do
 NOT fall back to reviewing your own diff in your own context: self-review is the maker
@@ -784,7 +835,7 @@ an id matching no entry reports the near-misses.
 
 ## Phase 4 — report (always, exactly one line)
 
-`[dispatch] <done>/<total> done [<bar>] · ready: <count> · blocked: <count> · current: <id or none> · last: <id PASS|FAIL|none> · needs-you: <blocked goals + human decisions, or nothing>`
+`[dispatch] <done>/<total> done [<bar>] · ready: <count> · blocked: <count> · current: <id or none> · last: <id PASS (reviewed | review-skipped: mechanical)|FAIL|none> · needs-you: <blocked goals + human decisions, or nothing>`
 
 Lead with **progress** (`<done>/<total>`), never `ready/total` — a bare `ready/total` reads
 as "nothing done" to a human. Every number carries its label. The counts come from the index
@@ -794,6 +845,9 @@ after this iteration's mutations:
   being worked this fire (or none) · `last` = the most recently gated goal and its verdict
   (a goal settled this fire WITHOUT a gate run — a live BLOCKED / GOAL_UNREACHABLE /
   CONTRACT_AMBIGUOUS short-circuit — reports `<id> FAIL` here; needs-you carries the detail).
+  A gated `last` also names its review decision — `<id> PASS (reviewed)` or
+  `<id> PASS (review-skipped: mechanical)` — so the mechanical carve-out (Working a goal,
+  step 3) leaves an audit trail in every fire's report, never a silent skip.
 - Any residual `in_progress` entry this fire could not settle (e.g. one claimed on a different
   `base:` branch) counts into `blocked` (as blocked-pending) so that `done + ready + blocked`
   always equals `total` — the reconciliation the report line promises a human never silently
