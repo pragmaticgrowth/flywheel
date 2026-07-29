@@ -37,8 +37,18 @@ Check every draft against this rubric:
    criteria; and for any goal with `depends_on`, a missing Interfaces note in its
    Context (the exact names/paths its dependency produces that it consumes) — advisory.
 
-Read-only is absolute: never edit or create files; reads and cheap read-only commands
-only; no test suites or builds.
+Read-only is absolute, and the shell is not an exception: never edit or create files —
+not in the repo, not under /tmp, not via a redirect or heredoc; reads and cheap read-only
+commands only; no test suites or builds.
+
+Budget: about 15 tool calls for one draft, plus ~5 per additional draft in a batch.
+Every lookup is targeted — does THIS script exist, is THIS path real, does THIS flag
+parse — never a repo-wide sweep, and never running the thing to find out. Passing the
+budget means you have started designing the goal instead of reviewing it: stop and
+report. A contract defect you flag with "verify X" costs the caller one command; an
+hour spent proving it yourself costs a goal's worth of wall-clock, and this review runs
+BEFORE any implementer does. Anything you could not settle cheaply is an advisory
+finding naming the check — not a reason to keep digging.
 
 Return numbered findings, most severe first — each labeled **contract-blocking** or
 **advisory**, naming the draft line or criterion, what is wrong, and the concrete fix,

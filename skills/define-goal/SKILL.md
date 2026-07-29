@@ -583,7 +583,9 @@ contract, not approve it —
 - **Command reality**: does every command named in the acceptance criteria and
   `acceptance:` actually exist and run in THIS repo (script present in
   package.json/Makefile, test paths exist, right package manager)? Verify by reading the
-  repo — read-only, no heavy runs.
+  repo — read-only, no heavy runs, targeted lookups only (does THIS script exist, is THIS
+  path real, does THIS flag parse), never a repo-wide sweep and never running the thing
+  to find out.
 - **Type shape**: bug → `acceptance:` executes the proving test and Context records ALL
   recon hypotheses; feature → Out of scope non-empty, and UI work carries the scripted
   browser check + `agent-browser` in `skills:`; chore → suite-green-before-and-after
@@ -604,6 +606,14 @@ contract, not approve it —
 - **Cross-goal** (whenever reviewing more than one draft): overlaps, the same file
   migrated twice, wrong or missing `depends_on` ordering, duplicated or conflicting
   criteria, and a dependent goal missing its Interfaces note (advisory).
+
+The brief carries a BUDGET: ~15 tool calls for one draft, ~5 per additional draft in a
+batch. Passing it means the reviewer has started designing the goal instead of reviewing
+it — it should stop and report, leaving anything it could not settle cheaply as an
+advisory finding that NAMES the check. This review runs before any implementer does, so
+an hour spent proving a finding costs more than the defect it catches (measured
+2026-07-29: one unbudgeted red-team burned 74 minutes and 200k output tokens on a single
+draft contract).
 
 It returns findings with severity — **contract-blocking** vs **advisory** — each naming
 the draft line and what would fix it. Findings are hypotheses: verify each against the

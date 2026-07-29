@@ -142,7 +142,15 @@ definition, so each resolves by the runtime's normal inheritance: an orchestrato
 `gate-reviewer` or `contract-red-team` inherits the session model — never pass them a
 model or complexity parameter (the review-agents rule above) — and an implementer-spawned
 `fresh-check` lens inherits the implementer's own resolved model, which is fine: the
-definitions leave model choice entirely to the spawn context. Fallback is mandatory,
+definitions leave model choice entirely to the spawn context. Review cost is controlled
+by the BUDGET in each role's brief, never by pinning review agents to a cheaper tier —
+the gate is the only merge gate, and the same brief must hold on whatever model the
+session runs. That matters because an unbudgeted brief does not cost the same everywhere:
+measured 2026-07-29 across 11 real gate reviews on same-size diffs, the identical
+gate-reviewer brief ran 5 min / 14k output tokens on one model and 43 min / 181k on a
+stronger one — the stronger reasoner spends its extra capability on depth, not speed, so
+an open-ended "refute this" brief has no natural stopping point. The budget supplies the
+stopping point at every tier. Fallback is mandatory,
 never a stop: when the runtime doesn't
 list the type (plugin agents disabled, older CLI, a failed spawn naming the type),
 spawn the generic read-capable type (`general-purpose` on Claude Code, `worker` on
@@ -426,12 +434,22 @@ For each claimed goal, in order:
    dropping them — the orchestrator is the verifier, and a finder that self-censors
    uncertain candidates is the dominant source of missed defects; and a Critical finding
    must name the inputs/state that trigger it plus the wrong outcome, quoting the offending
-   line. A scope-of-reading rule goes in the brief too: read the diff once (with its
-   context lines it is the complete view of the changed files) and step outside it only
-   for a concrete risk the reviewer
-   can NAME — one focused check per named risk, named in the report; what can't be
-   verified that way is an uncertain finding, never a license to sweep the repo (unscoped
-   reviewers cost 4–8× on the same diff and find no more). One concurrency rule goes in
+   line. A scope-of-reading BUDGET goes in the brief too, and it is a number, not a
+   preference: read the diff once (with its context lines it is the complete view of the
+   changed files); step outside it for AT MOST TWO risks the reviewer can NAME, one cheap
+   read-only command each, both named in the report; the whole review is ~15 tool calls,
+   and passing that means stop and report what you have. What can't be verified that way
+   is an uncertain finding — never a license to sweep the repo. Spell out what is NEVER a
+   focused check, because a strong model will otherwise do all four: running the build /
+   lint / typecheck / test suite (Arm A owns those, concurrently), mutation testing a copy
+   of the tree, independently re-deriving what the diff computes (hashes, oracles,
+   fixtures, expected outputs), and probing via a written scratch script — read-only
+   covers the shell too, so the reviewer creates no file anywhere, including /tmp. An
+   unbudgeted reviewer costs 8× on the same diff and finds no more: measured 2026-07-29
+   over 11 real gate reviews — 43 min and 181k output tokens per review unbudgeted versus
+   5 min and 14k budgeted, on diffs of the same size, with the cheap reviews catching real
+   defects in two of the goals. Coming back fast with an `(uncertain)` finding is the
+   designed outcome; the orchestrator settles it in one command. One concurrency rule goes in
    the brief too: Arm A's gate commands are running in this checkout concurrently — do
    read-based verification first and run any named-risk command check LAST (by then the
    commands are normally finished; a command check colliding with a live install/build
@@ -514,7 +532,10 @@ For each claimed goal, in order:
    findings drove the repair, add a focused re-check by one fresh read-only agent —
    the gate-reviewer plugin agent else the generic type, session model, scoped to exactly
    those findings PLUS a one-pass collateral scan of the repair diff itself — a fix can
-   break a neighbor — not a new full panel); still failing →
+   break a neighbor — not a new full panel; its budget is TIGHTER than the full review's,
+   ~8 tool calls, and the brief says so: the full review already happened, so nothing
+   outside the named findings and the repair diff is in scope — not the rest of the goal,
+   not a risk the first pass left unchecked); still failing →
    `git reset --hard <gate_base>`,
    `chore(goals): block <id> — <reason>`. FAIL_CONTRACT → reset + block, reason
    `contract defect: <the verified finding>` (needs-you class

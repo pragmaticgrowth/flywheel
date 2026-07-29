@@ -5,7 +5,7 @@ A skills-first plugin marketplace for [Claude Code](https://claude.com/claude-co
 and [Factory Droid](https://factory.ai), from Pragmatic Growth.
 
 [![Website](https://img.shields.io/badge/site-flywheel.pragmaticgrowth.com-6366f1)](https://flywheel.pragmaticgrowth.com)
-[![Version](https://img.shields.io/badge/version-8.3.1-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-8.4.0-8b5cf6)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
 > 🌐 **Full docs:** **<https://flywheel.pragmaticgrowth.com>**
@@ -477,7 +477,14 @@ agent where available — `flywheel:gate-reviewer` on Claude Code, `gate-reviewe
 on Factory Droid — else a generic agent with the same brief) over
 `gate_base..HEAD` plus the goal contract — refute
 conformance, test realness, and scope; the implementer’s own fresh-check
-verdicts are corroborating evidence, never the verdict. The only legal
+verdicts are corroborating evidence, never the verdict. The reviewer runs on a
+**hard budget** (~15 tool calls, ≤2 named out-of-diff risks; ~8 on a focused
+re-check after a repair): it reads the diff and reports, and what it cannot
+settle cheaply comes back as an `(uncertain)` finding for the orchestrator to
+verify in one command. Re-running the suite, mutation-testing a copy of the
+tree, or re-deriving what the diff computes is explicitly not its job — that
+work is the implementer’s or the command arm’s, and an unbudgeted reviewer
+costs ~8× on the same diff without finding more. The only legal
 reviewer skip is a **one-file, evidenced-mechanical diff** (judged from the
 diff itself, never the implementer’s claim), and the report line must say
 which happened (`reviewed` / `review-skipped: mechanical`). The command arm —

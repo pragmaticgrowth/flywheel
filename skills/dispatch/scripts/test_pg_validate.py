@@ -90,6 +90,75 @@ def test_forbidden_content_skips_removed_lines():
     r = pgv.forbidden_content("-OLD = AKIAIOSFODNN7EXAMPLE\n")
     assert r["pass"] is True
 
+# --- complete-violation reporting -------------------------------------------------
+# First-match reporting made a repair agent fix one violation, re-gate, discover the
+# next, and repeat — one full round per violation. Every check reports the whole class.
+
+def test_forbidden_content_reports_every_violation_not_just_the_first():
+    diff = (
+        "+++ b/src/redact.ts\n"
+        "@@ -0,0 +1,4 @@\n"
+        "+const aws = \"AKIAIOSFODNN7EXAMPLE\"\n"
+        "+const gh = \"ghp_0123456789abcdefghijklmnopqrstuvwxyz\"\n"
+        "+const slack = \"xoxb-1234567890-abcdef\"\n"
+        "+const openai = \"sk-abcdefghijklmnopqrstuvwx0123456789\"\n"
+    )
+    r = pgv.forbidden_content(diff)
+    assert r["pass"] is False
+    assert len(r["violations"]) == 4, r["violations"]
+    for pat in ("AKIA", "gh[pousr]_", "xox", "sk-"):
+        assert any(pat in v for v in r["violations"]), (pat, r["violations"])
+
+def test_forbidden_content_violations_carry_path_and_line():
+    diff = (
+        "+++ b/pkg/a.ts\n"
+        "@@ -10,0 +11,2 @@\n"
+        "+ok = 1\n"
+        "+key = \"AKIAIOSFODNN7EXAMPLE\"\n"
+        "+++ b/pkg/b.ts\n"
+        "@@ -0,0 +1 @@\n"
+        "+tok = \"ghp_0123456789abcdefghijklmnopqrstuvwxyz\"\n"
+    )
+    r = pgv.forbidden_content(diff)
+    assert r["violations"][0].startswith("pkg/a.ts:12"), r["violations"]
+    assert r["violations"][1].startswith("pkg/b.ts:1"), r["violations"]
+
+def test_forbidden_content_context_lines_advance_line_numbers():
+    diff = (
+        "+++ b/x.ts\n"
+        "@@ -1,3 +1,4 @@\n"
+        " untouched\n"
+        "-gone\n"
+        " also untouched\n"
+        "+key = \"AKIAIOSFODNN7EXAMPLE\"\n"
+    )
+    # new-file lines: 1 context, 2 context, 3 added → removals must not advance
+    assert pgv.forbidden_content(diff)["violations"] == [
+        "x.ts:3 matches /AKIA[0-9A-Z]{16}/"]
+
+def test_forbidden_content_pass_carries_empty_violations():
+    assert pgv.forbidden_content("+fine\n")["violations"] == []
+
+def test_forbidden_content_evidence_caps_but_violations_do_not():
+    diff = "+++ b/big.ts\n@@ -0,0 +1,30 @@\n" + "".join(
+        f"+k{i} = \"AKIAIOSFODNN7EXAMP{i:02d}\"\n" for i in range(30))
+    r = pgv.forbidden_content(diff)
+    assert len(r["violations"]) == 30
+    assert "and 10 more" in r["evidence"]
+
+def test_blast_radius_reports_every_out_of_scope_path():
+    r = pgv.blast_radius(
+        [".claude/settings.json", "package-lock.json", "apps/billing/main.go"],
+        ["apps/orders/*"])
+    assert r["pass"] is False
+    assert len(r["violations"]) == 3, r["violations"]
+    assert "forbidden path" in r["evidence"]
+    assert "lockfile" in r["evidence"]
+    assert "outside declared surfaces" in r["evidence"]
+
+def test_blast_radius_pass_carries_empty_violations():
+    assert pgv.blast_radius(["apps/orders/main.go"], ["apps/orders/*"])["violations"] == []
+
 def test_risk_flagged_auth_path():
     assert pgv.chore_risk_flagged(["internal/auth/login.go"]) is True
 

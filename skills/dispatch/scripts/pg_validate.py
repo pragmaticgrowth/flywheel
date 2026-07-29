@@ -36,15 +36,33 @@ def _any_match(path, globs):
     return any(fnmatch.fnmatch(path, g) for g in globs)
 
 
+# Cap only the RENDERED evidence string; `violations` always carries every hit.
+_EVIDENCE_CAP = 20
+
+
+def _render(violations):
+    """One evidence line naming EVERY violation (elided past the cap).
+
+    Reporting only the first hit makes a repair agent fix one, re-gate, discover the
+    next, and repeat — a serial round per violation. Callers get the complete list in
+    one pass so a single repair can close the whole class.
+    """
+    shown = "; ".join(violations[:_EVIDENCE_CAP])
+    if len(violations) > _EVIDENCE_CAP:
+        shown += f"; … and {len(violations) - _EVIDENCE_CAP} more"
+    return shown
+
+
 def blast_radius(changed_paths, touches):
+    violations = []
     for p in changed_paths:
         name = p.rsplit("/", 1)[-1]
         if _any_match(p, FORBIDDEN_PATHS) and not _any_match(p, touches):
-            return {"name": "blast-radius", "pass": False, "kind": "fixable",
-                    "evidence": f"forbidden path changed: {p}"}
+            violations.append(f"forbidden path changed: {p}")
+            continue
         if name in LOCKFILES and not _any_match(p, touches):
-            return {"name": "blast-radius", "pass": False, "kind": "fixable",
-                    "evidence": f"lockfile/dep churn not in declared surfaces: {p}"}
+            violations.append(f"lockfile/dep churn not in declared surfaces: {p}")
+            continue
         # Test files are EXPECTED to land outside the product-surface `touches` globs:
         # TDD mandates the implementer add a proving test, and split-tree layouts
         # (tests/, __tests__/, spec/) sit outside routes/UI/schema globs. Exempt them from
@@ -53,10 +71,13 @@ def blast_radius(changed_paths, touches):
         if is_test_path(p):
             continue
         if touches and not _any_match(p, touches):
-            return {"name": "blast-radius", "pass": False, "kind": "fixable",
-                    "evidence": f"changed path outside declared surfaces: {p}"}
+            violations.append(f"changed path outside declared surfaces: {p}")
+    if violations:
+        return {"name": "blast-radius", "pass": False, "kind": "fixable",
+                "evidence": f"{len(violations)} out-of-scope path(s): " + _render(violations),
+                "violations": violations}
     return {"name": "blast-radius", "pass": True, "kind": "fixable",
-            "evidence": f"{len(changed_paths)} path(s), all in scope"}
+            "evidence": f"{len(changed_paths)} path(s), all in scope", "violations": []}
 
 
 import re
@@ -71,16 +92,46 @@ _SECRET_PATTERNS = (
 )
 
 
-def forbidden_content(diff_text):
+def _added_lines(diff_text):
+    """Yield (path, lineno, text) for every ADDED line in a unified diff.
+
+    lineno is the line number in the NEW file, tracked off the hunk headers, so a
+    violation can be reported as path:line the repair agent can open directly. A diff
+    with no ``+++``/``@@`` framing (a bare fragment) still yields its ``+`` lines, with
+    path None and a best-effort count.
+    """
+    path, lineno = None, 0
     for line in (diff_text or "").splitlines():
-        if not line.startswith("+") or line.startswith("+++"):
-            continue
+        if line.startswith("+++ "):
+            p = line[4:].strip().split("\t", 1)[0]
+            path = None if p == "/dev/null" else (p[2:] if p.startswith("b/") else p)
+        elif line.startswith("@@"):
+            # @@ -old[,cnt] +new[,cnt] @@ — take the new-file start, minus one so the
+            # first body line increments onto it.
+            try:
+                lineno = int(line.split("+", 1)[1].split(" ", 1)[0].split(",", 1)[0]) - 1
+            except (IndexError, ValueError):
+                lineno = 0
+        elif line.startswith("+"):
+            lineno += 1
+            yield path, lineno, line
+        elif not line.startswith("-"):
+            lineno += 1  # context line advances the new-file counter; removals do not
+
+
+def forbidden_content(diff_text):
+    violations = []
+    for path, lineno, line in _added_lines(diff_text):
         for pat in _SECRET_PATTERNS:
             if pat.search(line):
-                return {"name": "forbidden-content", "pass": False, "kind": "fixable",
-                        "evidence": f"secret-shaped string in added line: {pat.pattern}"}
+                violations.append(f"{path or '(unknown file)'}:{lineno} matches /{pat.pattern}/")
+    if violations:
+        return {"name": "forbidden-content", "pass": False, "kind": "fixable",
+                "evidence": f"secret-shaped string in {len(violations)} added line(s): "
+                            + _render(violations),
+                "violations": violations}
     return {"name": "forbidden-content", "pass": True, "kind": "fixable",
-            "evidence": "no secret-shaped strings in added lines"}
+            "evidence": "no secret-shaped strings in added lines", "violations": []}
 
 
 _RISK_PATH_KEYWORDS = ("auth", "billing", "payment", "migration", "deploy",

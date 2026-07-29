@@ -13,6 +13,51 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [8.4.0] — 2026-07-29
+
+**Review agents get a budget, and the gate stops reporting one violation at a
+time.** Both changes come from forensics on a real two-day, six-goal run
+(2026-07-27→29, 8 sessions, 51 subagents measured end to end).
+
+**Reviewers are budgeted, not just scoped.** Since v5.5.0 the gate-reviewer
+brief has been *diff-scoped* — read the diff once, step outside only for a
+NAMED risk. The run showed the rule holds its letter and leaks its intent: the
+identical brief cost **5 min / 14k output tokens per review on one model and 43
+min / 181k on a stronger one**, across 11 real reviews on same-size diffs (the
+largest diff in the queue, 49 files, got the *cheapest* review — size explained
+nothing). A stronger reasoner spends its extra capability on depth, so an
+open-ended "refute this" brief has no natural stopping point: the expensive
+reviews were running mutation tests in throwaway tree copies, re-deriving
+SHA-256 oracles from fixture bytes, and probing behavior with scratch scripts —
+re-implementing the work rather than reviewing it, while ~98% of what they
+generated was invisible reasoning. So `gate-reviewer` and `contract-red-team`
+now carry hard numbers: **≤2 named risks with one cheap command each, ~15 tool
+calls for a full review, ~8 for a focused re-check**, ~15 + ~5/draft for a
+contract red-team. Four behaviors are named as never-a-focused-check — running
+the build/lint/typecheck/test suite (the gate's Arm A owns those, concurrently),
+mutation testing, independently re-deriving what the diff computes, and probing
+via a written scratch script. Returning fast with an `(uncertain)` finding is
+stated as the *designed* outcome: the orchestrator is the verifier and settles
+in one command what costs a reviewer twenty. The budget lives in the brief
+rather than a cheaper `model:` pin, deliberately — the local gate is the only
+merge gate, and the same brief has to hold on whatever model the session runs.
+
+**Read-only now covers the shell.** A gate reviewer wrote a scratch file into
+the reviewed repo via `Bash` and self-disclosed it. The tool allowlist withholds
+Edit/Write but never constrained redirects, heredocs, `git archive`, or
+`mktemp`, so both read-only agent definitions now say so explicitly: create no
+file anywhere — not in the repo, not under /tmp, not in a throwaway copy.
+
+**`pg_validate.py` reports every violation, not the first.** `forbidden_content`
+and `blast_radius` both returned on first match, so a repair agent fixed one,
+re-gated, discovered the next, and repeated — one full round per violation. In
+the observed run this turned a single class of secret-shaped test literals into
+a multi-round repair loop that only ended when the orchestrator hand-enumerated
+all five patterns itself. Both checks now collect the complete list and return
+it as a new `violations` key, with `forbidden_content` resolving real
+`path:line` locations off the diff's hunk headers so one repair can close the
+whole class. Evidence strings elide past 20 entries; `violations` never does.
+
 ## [8.3.1] — 2026-07-28
 
 **The zsh glob abort is finally out of the helper paths.** dispatch and
