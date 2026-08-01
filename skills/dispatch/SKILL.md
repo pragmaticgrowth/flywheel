@@ -1,7 +1,7 @@
 ---
 name: dispatch
-description: Factory dispatcher — use when the user says "/dispatch" (optionally with a goal id, --count N, or --unlimited), "run the factory", wants the docs/goals queue worked, or wants to work one specific queued goal in this session ("work goal 005", "/dispatch 005"). Works in any repo with a docs/goals/ queue. Works ready goals ONE AT A TIME on the currently checked-out branch — the next goal by default, a named goal, or a bounded/unlimited sequential batch — no pull requests, no worktrees, no parallel implementers. Orchestrates only — never implements in its own context; the phase procedure lives in the skill body, never in this description.
-argument-hint: "[goal-id] [--count N | --unlimited]"
+description: Factory dispatcher — use when the user says "/dispatch" (optionally with a goal id, --count N, --unlimited, or --parallel), "run the factory", wants the docs/goals queue worked, or wants to work one specific queued goal in this session ("work goal 005", "/dispatch 005"). Works in any repo with a docs/goals/ queue. Works ready goals on the currently checked-out branch — serial one-at-a-time by default (next goal, a named goal, or a --count/--unlimited sequential batch); the opt-in --parallel batch mode builds provably-disjoint goals concurrently in local worktree lanes while still integrating them strictly ONE at a time behind the same local gate — no pull requests, no remote branches, never two writers in one tree. Orchestrates only — never implements in its own context; the phase procedure lives in the skill body, never in this description.
+argument-hint: "[goal-id] [--count N | --unlimited] [--parallel [K]]"
 ---
 
 # Dispatch — the factory orchestrator
@@ -12,21 +12,27 @@ conversation per official docs — this chain uses 2) hold the mess. Compose exi
 skills — never re-derive what a skill already encodes. The queue is `docs/goals/index.yaml`
 (see `define-goal` for the format).
 
-Dispatch works ready goals **one at a time, on the currently checked-out branch**
-(e.g. `staging`) — one goal per run by default; the Invocation flags below can extend a
-run to a sequential batch of the same settled cycles. Per goal: claim it, spawn a single foreground implementer that
-commits its work on this branch, run a LOCAL gate yourself, and on PASS keep a squashed
-commit — on FAIL roll the goal back so the branch never carries unverified work. No pull
-requests, no worktrees, no `goal/<id>` branches, no parallel/background implementers, no
-agent-team teammates.
-This sequential, single-branch, worktree-free shape is deliberate scar tissue, not an
-unfinished simplification: v3's per-goal worktree PRs + parallel `wip` implementers +
-CI-gated auto-merge livelocked on real autonomous runs — PR-shepherding churn, CI runners
-blocking every merge, and stale `goal/*`/`worktree-agent-*` branch garbage (see CHANGELOG
-4.0.0). Do NOT reintroduce worktrees or cross-goal parallelism without re-reading why they
-were removed; the extra concurrency lives INSIDE one goal (read-only recon/review), never
-across goals.
-Use `/loop /dispatch` to repeat this one-goal cycle until the queue is drained.
+Dispatch works ready goals **on the currently checked-out branch** (e.g. `staging`).
+The default is serial, one goal at a time — one goal per run; the Invocation flags below
+can extend a run to a sequential batch of the same settled cycles, and `--parallel` (batch
+mode only, Claude Code only) builds provably-disjoint goals concurrently in local worktree
+lanes (see Parallel mode). Per goal: claim it, spawn a single foreground implementer that
+commits its work (on this branch in serial mode; in its lane in parallel mode), run a
+LOCAL gate yourself, and on PASS keep one squashed commit — on FAIL roll the goal back so
+the branch never carries unverified work. No pull requests, no remote or `goal/<id>`
+branches, no agent-team teammates, and NEVER two writers in one working tree.
+**The invariant, stated precisely: at most one goal INTEGRATES at a time, the branch only
+ever advances to gate-verified trees, and every gate verdict is rendered on the tree the
+branch is about to become.** That is what "one at a time" always protected. The v4.0.0
+scar stays load-bearing in what it actually proved: v3's per-goal worktree PRs + parallel
+`wip` implementers + CI-gated auto-merge livelocked on real autonomous runs —
+PR-shepherding churn, CI runners blocking every merge, stale remote branch garbage (see
+CHANGELOG 4.0.0). What failed was the PR/CI/remote INTEGRATION machinery, and none of it
+returns: parallel lanes are disposable local build directories behind the same local
+gate, serialized at integration, deleted at settle. Cross-goal parallelism outside the
+Parallel-mode section's rules — parallel writes to one tree, PRs, remote branches,
+background implementers you poll — stays banned.
+Use `/loop /dispatch` to repeat the one-goal cycle until the queue is drained.
 
 ## Invocation — `/dispatch [<goal-id>] [--count N | --unlimited]`
 
@@ -36,10 +42,14 @@ Use `/loop /dispatch` to repeat this one-goal cycle until the queue is drained.
 | `/dispatch 087` (also `87`, `087-slug`, or "work goal 087") | Solo mode: work exactly that goal (see Solo mode below). |
 | `/dispatch --count N` | Work up to N ready goals, sequentially, in this run (N ≥ 1). |
 | `/dispatch --unlimited` | Keep working ready goals until the queue drains or a brake below fires. |
+| `/dispatch --parallel [K]` (combinable with `--count`/`--unlimited`) | Batch mode with lane concurrency: build up to K provably-disjoint goals at once in local worktree lanes (default K = `config.parallel.max_lanes`, else 2; hard cap 4), integrating strictly one at a time. Claude Code only — on Droid the flag is noted in the report and the run proceeds serially. See Parallel mode. |
 
-Argument rules: a goal id combined with `--count`/`--unlimited` → the id wins; note the
-ignored flag in the report. `--count` without a valid N ≥ 1, or an unknown flag →
-report the usage line above and work one goal.
+Argument rules: a goal id combined with `--count`/`--unlimited`/`--parallel` → the id
+wins; note the ignored flag in the report. `--count` without a valid N ≥ 1, or an
+unknown flag → report the usage line above and work one goal. `--parallel` alone (no
+`--count`/`--unlimited`) claims up to K co-schedulable goals as one wave, settles them
+all, and stops. The count still meters CLAIMS exactly as below — lanes change where work
+builds, never how much is claimed.
 
 **Batch runs repeat the same settled cycle — they change nothing about safety.** The
 invariant was never "one goal per run"; it is one goal AT A TIME, on one branch, behind
@@ -166,13 +176,18 @@ a review role: review needs to run commands (tests, builds), which `explorer` ca
 
 ## Hard rules (every iteration, before any action)
 
-- One goal at a time, in this session, on the current branch — the next claim waits for
-  the current goal to fully settle (the Invocation flags size the run; default one
-  goal). There are NO pull requests,
-  NO worktrees, NO `goal/<id>` branches. After a goal's work passes the LOCAL gate you keep
-  its commit on the branch (squashed to one) and move on per the run's flags. A failed gate rolls the goal
-  back to its `gate_base` so the branch never carries unverified work. Implementers never
-  merge.
+- One goal INTEGRATES at a time, in this session, on the current branch. Serial mode
+  (the default): the next claim waits for the current goal to fully settle (the
+  Invocation flags size the run; default one goal), work commits land directly on the
+  branch, and there are NO worktrees. Parallel mode (`--parallel` only): up to K
+  co-schedulable goals build concurrently in local lanes per the Parallel-mode section —
+  but integration stays strictly serial and the branch only ever advances to
+  gate-verified trees. In BOTH modes: no pull requests, no remote or `goal/<id>`
+  branches, never two writers in one tree. After a goal's work passes the LOCAL gate you
+  keep its commit on the branch (squashed to one) and move on per the run's flags. A
+  failed gate rolls the goal back (serial: `git reset --hard <gate_base>`; parallel: the
+  lane is discarded — the branch never held the work) so the branch never carries
+  unverified work. Implementers never merge.
 - Read the repo's CLAUDE.md hard rules once per session and treat them as law
   (deploy rules, forbidden merges, migration rules). Repeat-check before any git/deploy action.
 - **Every queue write goes through the claim protocol below.** Implementers never touch
@@ -228,6 +243,8 @@ the `→` half.
 | `base: mismatch` | a goal entry whose `base:` mismatches the started branch | `git checkout <base>` then `/dispatch <id>` |
 | `multiple in_progress` | `multiple in_progress claims — manual review` | manual review: pick the entry to keep, fix `index.yaml` by hand, then `/dispatch` |
 | `conflict` | a local squash/merge conflict — two pieces of work changed the same logic | resolve the overlap by hand, or `/define-goal --amend <id>` to re-scope, then `/dispatch <id>` |
+| `parallel-conflict` | a lane's rebase conflicted at integration — the touch-set prediction was wrong (goal auto-requeued for a serial re-run) | fix the mispredicted `touches:` via `/define-goal --amend <id>` if it recurs; the re-run itself needs nothing |
+| `integration interference` | a lane's gate passed alone but Arm A failed on the integrated tree, and one integration-repair didn't fix it | `/dispatch <id>` serially once the interfering pair is understood, or `/define-goal --amend <id>` to re-scope |
 | `unmet dependency` | a named goal whose `depends_on` are not all `completed` | `/dispatch <blocking-id>` first (the named goal is `not_started`, so `--amend` refuses it — to change the chain instead, edit its `depends_on` in `index.yaml` by hand) |
 | `CI failure` | the branch's latest CI run is red (a non-blocking observation) | `gh run view --log-failed` |
 | `recurring lesson` | the same gate-failure class recurring across goals | the proposed encoding site — a `config.verify` command, a `config.skills` entry, a CLAUDE.md rule, or `/define-goal --amend <id>` on a goal already `blocked` by it |
@@ -589,20 +606,134 @@ worktree and are unaffected). `factory-doctor` preflights this
 the POSIX shell; auto-resolution already skips the WSL launcher stub) and
 `PG_VALIDATE_TIMEOUT` (seconds per acceptance command, default 1800).
 
+## Parallel mode — the lane model (`--parallel`, batch runs, Claude Code only)
+
+Parallel mode is the merge-queue architecture localized: N goals BUILD concurrently in
+isolated worktree lanes; ONE integration lock admits them onto the branch strictly one
+at a time, re-gating each on the exact tree the branch is about to become. Parallelism
+never touches the gate's authority — it moves wall-clock, never the bar. Everything not
+restated here (claim protocol, briefs, gate arms, budgets, escalation ladder, report,
+heartbeat) is exactly the canonical per-goal sequence.
+
+**Harness gate.** Claude Code only (concurrent foreground Agent spawns are the same
+proven mechanism the lens panel uses). On Droid, note the ignored flag in the report and
+run serially — Droid's concurrent-Task and worktree behavior is unverified (v7.0.0
+doctrine: no Droid claim ships without live verification).
+
+**Admission control — which ready goals may share a wave.** Walk the ready list in
+normal priority order; a goal joins the wave only when ALL hold against every goal
+already in it:
+
+1. No `depends_on` path between them, in either direction, transitively.
+2. Disjoint `touches:` globs at the DIRECTORY level. A goal with no `touches:`
+   frontmatter is not parallel-eligible — it runs in a wave of one (define-goal stamps
+   `touches:` on recon-backed goals; a missing field is a drafting miss, not a license
+   to guess scope).
+3. No conflict-domain membership — any of these makes the goal exclusive (wave of one):
+   it adds/removes a dependency (manifest + lockfile), touches DB migrations/schema,
+   regenerates generated artifacts, or touches CI/workflow files or global config
+   (env schema, tsconfig/build config).
+4. Disjoint drivable surfaces: two goals whose acceptance drives a live dev
+   server/port are never co-scheduled (v9.0.0 serializes them; no port juggling).
+5. Same `base:` branch.
+
+Anything uncertain → not co-scheduled. A wave of one is always legal and is just the
+serial cycle. `config.budget` outranks the wave: never start more lanes than the
+remaining budget allows.
+
+**Lane lifecycle (per wave-member goal):**
+
+1. Claim exactly as the protocol requires — K claims are K separate
+   `chore(goals): claim <id>` commits on the branch, made before any lane spawns
+   (claim commits are index-only and cannot conflict with lane work).
+2. Create the lane:
+   `git worktree add ~/.local/state/pg-dispatch/<SLUG>/lanes/<id> -b lane/<id> <branch-HEAD>`.
+   `lane/<id>` is LOCAL, never pushed, deleted at settle — a disposable build
+   directory, not v3's remote PR branch. If `config.parallel.setup` is set (e.g.
+   `pnpm install --prefer-offline`), run it in the lane; lanes persist across fires to
+   amortize setup, and factory-doctor reports orphans.
+3. Spawn ALL wave implementers foreground in ONE message (the lens-panel concurrency
+   pattern — concurrent, returning synchronously; never background-then-poll). Each
+   brief is the canonical Phase 3 brief with ONE substitution — the Workspace
+   paragraph becomes: "Workspace: you are in the worktree at
+   `~/.local/state/pg-dispatch/<SLUG>/lanes/<id>` on local branch `lane/<id>` — work
+   and commit THERE only. Never touch the main checkout, never switch branches, do NOT
+   create further worktrees or branches, do NOT push, do NOT open a PR."
+4. In-lane gate, per returned implementer: Arm B reviews `<branch-HEAD>..lane/<id>`
+   (read-only reviewers of DIFFERENT lanes may spawn concurrently in one message;
+   Arm A background commands run inside each lane directory). Verified findings → ONE
+   repair agent IN the lane; focused re-check in the lane. At most one writing agent
+   per lane at any moment — reviews of lane A may overlap a repair in lane B freely.
+   A goal is integration-ready when its lane gate has no open findings.
+5. **Integration lock — strictly serial, one goal at a time, in wave order of
+   readiness**: rebase `lane/<id>` onto the CURRENT branch HEAD (later wave members
+   replay over freshly integrated work), then re-run Arm A (pg_validate over the
+   rebased range + every `config.verify` command) INSIDE the rebased lane — this
+   verifies the exact tree the branch is about to become, which is where cross-goal
+   interference is caught. PASS → squash the lane's commits to one
+   `feat(goal <id>): <slug>`, fast-forward the working branch to the lane tip,
+   `chore(goals): complete <id>`, delete the lane and its branch, push (non-blocking),
+   surface needs-independent-review criteria exactly as step 4. The branch moves ONLY
+   by fast-forward to verified trees — strictly stronger than serial mode's
+   commit-then-maybe-reset.
+6. Report line + heartbeat per settled goal, exactly as Phase 4 (each settle = one
+   fire for the cross-fire brake). In parallel mode `current:` lists the live lane
+   ids (e.g. `current: 131+134`).
+
+**Failure rulings (every scenario, decided in advance):**
+
+- **Rebase conflict at integration** — the touch-set prediction was wrong. Never
+  resolve by guessing (the standing conflict rule). Discard the lane's commits,
+  delete the lane, KEEP the goal claimed, and re-run it serially from the new branch
+  HEAD as a fresh implementer spawn (worst case = today's serial cost). Surface
+  needs-you class `parallel-conflict`. TWO mispredictions in one run → degrade the
+  rest of the run to serial (self-throttle) and say so in the report.
+- **Arm A fails on the integrated tree though the lane's own gate passed** (semantic
+  interference, no textual conflict) — ONE integration-repair spawn in the rebased
+  lane scoped to the failing commands' output, re-run Arm A; still failing → block
+  the goal with reason `integration interference`, delete the lane, continue the
+  wave (needs-you class `integration interference`). The environment brake still
+  applies if the failure is infrastructure-shaped.
+- **Flaky test at integration** — the step-3 flake protocol applies unchanged
+  (isolated re-run once; never a repair, never a second retry).
+- **A lane implementer dies transiently** (stream death, empty return) — the
+  Re-entrancy transient rules apply per lane; other lanes are unaffected. A lane
+  respawn continues from the lane's current state.
+- **CONTRACT_AMBIGUOUS / NEEDS_CONTEXT / BLOCKED / GOAL_UNREACHABLE from a lane** —
+  identical routing to serial mode (escalation ladder, contract-defect classes);
+  ladder re-spawns continue in the lane; a goal that blocks discards its lane.
+- **Lockfile churn from parallel installs** — the brief's stray-churn rule already
+  reverts it; a goal that legitimately changes dependencies never shares a wave
+  (conflict domain 3).
+- **Crash / usage-limit death mid-wave** — recovery is derivable with no new state:
+  `git worktree list` + `lane/<id>` branch names ARE the lane ledger
+  (status-only-in-index holds; nothing new is written to the queue). See Phase 1.
+- **Crash between fast-forward and the `complete` flip** — Phase 1's existing
+  detection: a `feat(goal <id>)` commit on the branch for an `in_progress` entry →
+  flip to complete, no re-gate.
+- **Token burn** — a wave spends the same tokens per goal, faster; that is the point
+  of a window-timed drain. `config.budget` always outranks the wave size.
+
 ## Phase 1 — finish in-flight goals
 
 Before claiming anything new, settle every `in_progress` entry — finished work beats new work.
 
-**Single-`in_progress` invariant (data-loss guard).** A healthy queue has at most ONE
-`in_progress` entry (Phase 1 runs before Phase 2, one claim per run). If you find MORE than one
-`in_progress` on the current branch, do NOT settle them one at a time: the branch is linear, so
-an older goal's `gate_base` is an ancestor of a newer goal's claim + work, and a
-`git reset --hard <older gate_base>` on a FAIL would rewind past the newer claim and silently
-destroy its committed work. STOP, roll back nothing, and surface
+**Single-`in_progress` invariant (data-loss guard) — lane-aware since v9.0.0.** In
+serial operation a healthy queue has at most ONE `in_progress` entry. FIRST check for
+lanes: an `in_progress` entry whose `lane/<id>` branch exists (check
+`git branch --list 'lane/*'` and `git worktree list`) is a parallel-mode claim — its
+work lives in the lane, not on the branch, so the reset-past-newer-work hazard does not
+exist for it. Settle each lane-backed entry through the Parallel-mode lifecycle from its
+furthest checkpoint: lane has commits → run its in-lane gate and integrate (one at a
+time); lane empty → respawn its implementer in the lane (transient-death budget
+applies); lane branch listed but its worktree directory missing → recreate the worktree
+at the branch tip. For entries with NO lane, the serial guard is unchanged: MORE than
+one lane-less `in_progress` on a linear branch means a `git reset --hard` on the older
+one could destroy the newer one's committed work — STOP, roll back nothing, and surface
 `multiple in_progress claims — manual review` under needs-you as class
-`multiple in_progress`. (This state only arises from a
+`multiple in_progress`. (That state only arises from a
 crash between claims, a manual index edit, or a prior buggy run; resume once a human resolves
-it.) When exactly one `in_progress` exists, proceed:
+it.) When exactly one lane-less `in_progress` exists, proceed:
 
 `gate_base` is not stored in `index.yaml`, so on a fresh session recover it from git: it is the
 SHA of the goal's claim commit on the current branch,
@@ -644,8 +775,11 @@ previous goal fully settles (Invocation).
 
 ## Phase 3 — spawn the implementer (depth 1, foreground)
 
-One Agent per claimed goal, `run_in_background: false`, NO worktree — it works in THIS
-checkout on the current branch. Set the spawn's `model` parameter to the goal's resolved
+One Agent per claimed goal, `run_in_background: false`. In serial mode (default): NO
+worktree — it works in THIS checkout on the current branch. In parallel mode the same
+brief applies with only the Workspace paragraph substituted per the Parallel-mode
+lifecycle (the implementer works in its lane), and all wave spawns go out foreground in
+ONE message. Set the spawn's `model` parameter to the goal's resolved
 implementer model (Implementer-model resolution above; `inherit` = omit the parameter).
 Brief (fill in `<id>`, `<SLUG>` = the repo dir name — same as the Phase 4 heartbeat —
 and the resolved skill lists):
@@ -914,7 +1048,8 @@ as "nothing done" to a human. Every number carries its label. The counts come fr
 after this iteration's mutations:
 - `done` = completed · `ready` = not_started with all `depends_on` completed (claimable now) ·
   `blocked` = `blocked` status or not_started with an unmet dependency · `current` = the goal
-  being worked this fire (or none) · `last` = the most recently gated goal and its verdict
+  being worked this fire (or none; in parallel mode the live lane ids, `+`-joined —
+  e.g. `current: 131+134` — per the Parallel-mode lifecycle) · `last` = the most recently gated goal and its verdict
   (a goal settled this fire WITHOUT a gate run — a live BLOCKED / GOAL_UNREACHABLE /
   CONTRACT_AMBIGUOUS short-circuit — reports `<id> FAIL` here; needs-you carries the detail).
   A gated `last` also names its review decision — `<id> PASS (reviewed)` or

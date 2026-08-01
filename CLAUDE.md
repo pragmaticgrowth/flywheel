@@ -132,9 +132,22 @@ in the implementer's own context is NEVER the fallback: an honest
 `Fresh-check: not run (no fresh-context mechanism available)` escalates the orchestrator's
 own review to the full panel, and is explicitly not a compliance miss.
 
-- **dispatch** — factory orchestrator for the docs/goals queue: works ONE
-  ready goal per run on the branch that's currently checked out — no PRs, no
-  worktrees, no `goal/<id>` branches, no parallel implementation. Per goal it
+- **dispatch** — factory orchestrator for the docs/goals queue: serial
+  one-goal-at-a-time on the currently checked-out branch by default — no PRs,
+  no remote or `goal/<id>` branches; since v9.0.0 an opt-in `--parallel [K]`
+  batch mode (Claude Code only, default K=2, cap 4) builds provably-disjoint
+  goals concurrently in disposable LOCAL worktree lanes
+  (`~/.local/state/pg-dispatch/<SLUG>/lanes/<id>`, local branch `lane/<id>`,
+  deleted at settle) under admission control (disjoint `touches:` globs — a
+  goal without `touches:` is never co-scheduled; no dep path; conflict
+  domains like lockfile/migrations/CI/config always exclusive; same base)
+  while INTEGRATING strictly one at a time: rebase lane onto branch HEAD,
+  re-run Arm A on the integrated lane tree, squash, fast-forward the branch —
+  the branch only ever advances to gate-verified trees; a rebase conflict
+  means a mispredicted touch-set → discard the lane, re-run serially,
+  needs-you `parallel-conflict` (two in one run degrade the run to serial);
+  post-rebase Arm A failure → one integration-repair, else `integration
+  interference`. In serial mode per goal it
   records the pre-claim clean
   HEAD as `anchor`, commits the claim, records the post-claim HEAD as
   `gate_base`, spawns ONE foreground implementer that commits its work
@@ -267,14 +280,23 @@ own review to the full panel, and is explicitly not a compliance miss.
   to provision — the gate is local. The probe checks settings in `.claude/`.
 ## Queue design invariants (research-backed; one-goal-at-a-time dispatch model, 2026-06-28; batch flags 2026-07-24)
 
-- **One-goal-AT-A-TIME dispatch model** (v4.1.x; restated for v6.1.0's batch
-  flags — the invariant was never "one per run"): dispatch works ready goals
+- **One-goal-INTEGRATES-at-a-time dispatch model** (v4.1.x; restated for
+  v6.1.0's batch flags; restated precisely in v9.0.0 — the invariant was
+  never "one per run", and v9.0.0 shows it was never about build concurrency
+  either: it is "at most one goal integrates at a time, the branch only ever
+  advances to gate-verified trees, every verdict rendered on the tree the
+  branch is about to become"): serial mode (default) works ready goals
   strictly sequentially,
   committing work DIRECTLY on the branch that's checked out — no PRs, no
-  worktrees, no `goal/<id>` branches, no parallel implementation. A flagless
+  remote branches, no worktrees. A flagless
   run works one goal; `--count N` / `--unlimited` extend the run to a
   sequential batch of the same fully-settled cycles (each goal claims → gates
-  → settles before the next claim; budget outranks flags). Each
+  → settles before the next claim; budget outranks flags); `--parallel [K]`
+  (v9.0.0, Claude Code only) adds lane-model build concurrency behind the
+  SAME serialized, locally-gated integration (see the dispatch bullet above —
+  admission control, in-lane gate, integration lock, fast-forward-only
+  branch movement; the v3 scar covered PR/CI/remote integration machinery,
+  none of which returns). Each
   goal is bracketed by two anchors: `anchor` (the pre-claim clean HEAD) and
   `gate_base` (HEAD right after the claim commit). The implementer commits on
   the branch; then the orchestrator runs the LOCAL gate over the

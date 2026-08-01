@@ -13,6 +13,63 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [9.0.0] — 2026-08-01
+
+**Parallel build lanes behind the same serial gate.** Part B of the
+parallel-dispatch design spec
+(`docs/superpowers/specs/2026-08-01-parallel-dispatch-design.md`). Last week's
+forensics showed the dispatch cycle strictly serial end to end; this release
+adds `--parallel [K]` — the merge-queue architecture, localized — while
+restating the core invariant more precisely than v4 ever did: **at most one
+goal INTEGRATES at a time, the branch only ever advances to gate-verified
+trees, and every verdict is rendered on the tree the branch is about to
+become.**
+
+- **`/dispatch --parallel [K]`** (batch mode, Claude Code only; default
+  `config.parallel.max_lanes` = 2, hard cap 4): provably-disjoint ready goals
+  build concurrently in disposable LOCAL worktree lanes
+  (`~/.local/state/pg-dispatch/<SLUG>/lanes/<id>`, local branch `lane/<id>`,
+  never pushed, deleted at settle). Wave implementers spawn foreground in ONE
+  message — the proven lens-panel concurrency mechanism, never
+  background-then-poll.
+- **Admission control**: goals share a wave only with disjoint `touches:`
+  globs (no `touches:` → never co-scheduled), no dependency path, no
+  conflict-domain membership (dependency changes, migrations/schema,
+  generated artifacts, CI/global config are always exclusive), disjoint live
+  dev-server surfaces, same `base:`. Anything uncertain runs alone.
+- **Serialized verified integration**: per goal — rebase the lane onto the
+  current branch HEAD, re-run Arm A (pg_validate + `config.verify`) inside
+  the rebased lane (the exact tree the branch is about to become — where
+  cross-goal interference is actually caught), squash to `feat(goal NNN)`,
+  fast-forward the branch. The branch moves ONLY by fast-forward to verified
+  trees — strictly stronger than serial mode's commit-then-maybe-reset.
+- **Failure rulings decided in advance**: rebase conflict = mispredicted
+  touch-set → discard the lane, re-run the goal serially (worst case = the
+  old serial cost), needs-you class `parallel-conflict`, two mispredictions
+  degrade the run to serial; post-rebase Arm A failure → one
+  integration-repair in the lane, else block as `integration interference`;
+  lane transient deaths, contract stops, lockfile churn, crash recovery, and
+  budget interaction each have an explicit ruling in the new Parallel-mode
+  section.
+- **Lane-aware recovery**: Phase 1's multiple-`in_progress` data-loss guard
+  is now lane-aware — a claim whose `lane/<id>` branch exists settles through
+  the lane lifecycle (`git worktree list` + lane branches ARE the ledger; no
+  new queue state, status-only-in-index holds); the strict guard remains for
+  lane-less claims, where the reset hazard is real.
+- **factory-doctor `lane-hygiene` probe** (+5 tests, suite at 220): WARNs on
+  orphan lanes/branches with no `in_progress` claim, stray lane directories,
+  or a lane branch missing its worktree — with exact cleanup commands.
+- **define-goal**: documents `config.parallel` (`max_lanes`, `setup`) and
+  names `touches:` as the parallel admission input — an accurate narrow glob
+  is now also what lets a goal build concurrently.
+- The v3 scar stays honored in what it actually proved: PR/CI/remote
+  integration machinery livelocked and none of it returns — lanes are local
+  build directories behind the same local gate. Droid stays serial until its
+  concurrent-Task + worktree behavior is live-verified (v7.0.0 doctrine).
+- RED-baselined against the v8.5.0 text: the old text errored on the flag,
+  had no admission rules, and mandated manual-review stops for lane-backed
+  claims.
+
 ## [8.5.0] — 2026-08-01
 
 **First-pass yield: stop paying for the second implementer.** Transcript

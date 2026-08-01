@@ -112,10 +112,15 @@ npm install + Chromium is a system-level change, never auto-run). On Windows the
 checks `symlink-privilege`: without Developer Mode or elevation, dispatch's bug-goal gate
 cannot link dep dirs into its base worktree and every `type: bug` goal returns INCONCLUSIVE —
 WARN carrying the enable-Developer-Mode fix (REPORT-only; an OS settings change is never
-auto-run). The probe also emits three
+auto-run). The probe also emits four
 REPORT-only loop-health checks (all read-only — never auto-fixed): `queue-liveness` (WARN naming
 any `in_progress` goal with no work commits on the branch after its claim commit — a stale claim /
-silent-death candidate dispatch will respawn or that needs unblocking), `goal-contracts`
+silent-death candidate dispatch will respawn or that needs unblocking), `lane-hygiene`
+(v9 parallel lane model: WARN naming any orphan `lane/<id>` branch or worktree with no
+matching `in_progress` claim, any stray directory under the runtime lanes dir, or a lane
+branch whose worktree is missing — the fix text carries the exact `git worktree remove` +
+`git branch -D` commands for orphans; INFO when no lanes exist or lanes match claims;
+dispatch, never this probe, mutates lanes), `goal-contracts`
 (WARN naming any active goal whose file lacks a checkable done-condition — tighten via
 `/define-goal` before dispatch picks it up), and `limit-resilience` (WARN when a dispatch loop
 demonstrably fires on this repo — heartbeat log lines exist — but no usage-limit rail is

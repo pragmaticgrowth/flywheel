@@ -313,6 +313,11 @@ config:
     - npm ci
     - npm run build
     - npm test
+  # parallel:            # optional — governs dispatch's opt-in --parallel lane mode only
+  #   max_lanes: 2       # concurrent build lanes (hard cap 4); serial runs ignore this
+  #   setup: pnpm install --prefer-offline   # per-lane dep setup command (worktrees
+  #                                          # need their own deps; lanes persist across
+  #                                          # fires to amortize it)
 goals:
   001-receipt-emails: {status: not_started, priority: high}
   002-rate-limit-api: {status: not_started, depends_on: [001-receipt-emails]}
@@ -500,7 +505,9 @@ verification commands the gate runs on the local branch diff — the same comman
 acceptance criteria, e.g. `["make test", "npm run lint"]`; omit and it auto-detects from the
 repo's `config.verify`, Makefile / `go.mod` / `package.json`). Omitting either is safe (the
 gate degrades gracefully), but `touches:` in particular turns scope checking from a coarse
-forbidden-path check into a real guard.
+forbidden-path check into a real guard — and it doubles as dispatch's parallel admission
+input: a goal without `touches:` is never co-scheduled into a `--parallel` wave (it runs
+alone), so an accurate narrow glob is also what lets a goal build concurrently.
 
 **`acceptance:` holds only the HEADLESS-runnable subset of the acceptance criteria.** The gate
 runs each `acceptance:` command on a fresh checkout with NO services started — it never boots

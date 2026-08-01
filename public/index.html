@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>flywheel v8.5.0 — plain-language wants in, verified commits out · Pragmatic Growth</title>
+<title>flywheel v9.0.0 — plain-language wants in, verified commits out · Pragmatic Growth</title>
 <meta name="description" content="The pragmatic-growth marketplace ships flywheel: a skills-first goal factory that turns plain-language wants into measurable contracts and gated commits, for Claude Code and Factory Droid.">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -249,7 +249,7 @@
       <a href="#install">Install</a>
     </nav>
     <div class="nav-actions">
-      <span class="ver-pill" title="Current flywheel version">v8.5.0</span>
+      <span class="ver-pill" title="Current flywheel version">v9.0.0</span>
       <a class="icon-btn" href="https://github.com/pragmaticgrowth/flywheel" target="_blank" rel="noopener" aria-label="GitHub repository">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.7.5.5 5.7.5 12a11.5 11.5 0 0 0 7.9 10.9c.6.1.8-.2.8-.5v-2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.4-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.6 18.3 5 18.3 5c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.6.8.5A11.5 11.5 0 0 0 23.5 12C23.5 5.7 18.3.5 12 .5Z"/></svg>
       </a>
@@ -326,7 +326,7 @@
         <svg class="arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></div>
       <div class="step reveal"><div class="n">03 · the queue</div><h3>Queue</h3><p>Goal files + <code>index.yaml</code> live in the repo. Status lives only in the index, so a goal is never worked twice.</p>
         <svg class="arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></div>
-      <div class="step reveal"><div class="n">04 · dispatch</div><h3>Work</h3><p>Works ready goals one at a time on the current branch — no worktrees, no PRs. One foreground implementer, backed by TDD and fresh review — then the orchestrator re-reviews the diff with its own independent reviewer.</p>
+      <div class="step reveal"><div class="n">04 · dispatch</div><h3>Work</h3><p>Works ready goals on the current branch — serial by default, or opt-in <code>--parallel</code> lanes that build disjoint goals concurrently while integrating strictly one at a time. No PRs. Each implementer is backed by TDD and fresh review — then the orchestrator re-reviews the diff with its own independent reviewer.</p>
         <svg class="arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></div>
       <div class="step reveal"><div class="n">05 · gate</div><h3>Verify</h3><p>Each goal's commit is kept only after an independent review and a local build+test gate pass; a failure rolls it back. CI is a non-blocking post-push check.</p></div>
     </div>
@@ -442,7 +442,7 @@ docs/goals/
           <div class="kv">
             <div><code>single source</code><span>Status lives only in <code>index.yaml</code>; dual-writing frontmatter drifts.</span></div>
             <div><code>claim protocol</code><span>Flip one entry to <code>in_progress</code> before working it, so a goal is never picked up twice.</span></div>
-            <div><code>direct-to-branch</code><span>The implementer commits straight to the checked-out branch — no worktrees, no <code>goal/&lt;id&gt;</code> branches.</span></div>
+            <div><code>verified-integration</code><span>The branch only ever advances to gate-verified trees — serial commits by default; <code>--parallel</code> builds in local lanes but still integrates one goal at a time.</span></div>
             <div><code>blocked ≠ lost</code><span>A blocked goal keeps a reason and is surfaced under <b>needs-you</b>, never re-dispatched into livelock.</span></div>
             <div><code>answerable</code><span>Every needs-you item names its command — <code>&lt;id&gt; — &lt;reason&gt; → &lt;what to run&gt;</code>. A contract defect resolves with <code>/define-goal --amend &lt;id&gt;</code>.</span></div>
             <div><code>human judgement</code><span>Criteria marked <code>needs independent review</code> are surfaced on a PASS as what to run and what to look for — an observation, never a completion gate.</span></div>

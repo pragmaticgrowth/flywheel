@@ -397,3 +397,29 @@ if __name__ == "__main__":
     fns = [g for n, g in sorted(globals().items()) if n.startswith("test_")]
     for fn in fns: fn(); print("ok ", fn.__name__)
     print(f"\n{len(fns)} passed")
+
+
+# --- lane-hygiene (v9 parallel lane model) ---
+
+def test_lane_hygiene_no_lanes_is_info():
+    r = dc.lane_hygiene_check([], [], ["001-a"], [])
+    assert r["level"] == "INFO" and "no parallel lanes" in r["detail"]
+
+def test_lane_hygiene_consistent_lane_is_info():
+    r = dc.lane_hygiene_check(["001-a"], ["001-a"], ["001-a"], ["001-a"])
+    assert r["level"] == "INFO" and "consistent" in r["detail"]
+
+def test_lane_hygiene_orphan_branch_warns_with_fix():
+    r = dc.lane_hygiene_check(["009-old"], ["009-old"], [], ["009-old"])
+    assert r["level"] == "WARN"
+    assert "orphan" in r["detail"] and "009-old" in r["detail"]
+    assert "git worktree remove" in r["fix"]
+
+def test_lane_hygiene_missing_worktree_named_recreatable():
+    r = dc.lane_hygiene_check(["001-a"], [], ["001-a"], [])
+    assert r["level"] == "WARN"
+    assert "without a registered worktree" in r["detail"] and "recreates" in r["detail"]
+
+def test_lane_hygiene_stray_dir_warns():
+    r = dc.lane_hygiene_check([], [], ["001-a"], ["junk-dir"])
+    assert r["level"] == "WARN" and "stray" in r["detail"] and "junk-dir" in r["detail"]

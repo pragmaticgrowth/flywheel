@@ -383,6 +383,42 @@ def _external_scheduler_evidence():
     return False
 
 
+def lane_hygiene_check(lane_branches, worktree_lane_paths, in_progress_ids, lanes_dir_entries):
+    """Parallel-mode lane hygiene (v9.0.0 lane model). Pure function.
+
+    lane_branches: ids parsed from local `lane/<id>` branches.
+    worktree_lane_paths: ids of registered worktrees living under the lanes dir.
+    in_progress_ids: goal ids currently in_progress in the index.
+    lanes_dir_entries: directory names present under the runtime lanes dir.
+    All read-only observations; dispatch (not this probe) mutates lanes.
+    """
+    lane_branches = set(lane_branches or [])
+    worktree_lane_paths = set(worktree_lane_paths or [])
+    in_progress_ids = set(in_progress_ids or [])
+    lanes_dir_entries = set(lanes_dir_entries or [])
+    if not (lane_branches | worktree_lane_paths | lanes_dir_entries):
+        return {"check": "lane-hygiene", "level": "INFO",
+                "detail": "no parallel lanes present", "fix": ""}
+    probs = []
+    orphans = sorted((lane_branches | worktree_lane_paths) - in_progress_ids)
+    if orphans:
+        probs.append("orphan lane(s) with no in_progress claim: " + ", ".join(orphans))
+    missing_wt = sorted((lane_branches & in_progress_ids) - worktree_lane_paths)
+    if missing_wt:
+        probs.append("lane branch without a registered worktree (dispatch recreates it): "
+                     + ", ".join(missing_wt))
+    stray_dirs = sorted(lanes_dir_entries - worktree_lane_paths - lane_branches)
+    if stray_dirs:
+        probs.append("stray lane director(ies) not registered as worktrees: "
+                     + ", ".join(stray_dirs))
+    if not probs:
+        return {"check": "lane-hygiene", "level": "INFO",
+                "detail": "lanes consistent with in_progress claims", "fix": ""}
+    return {"check": "lane-hygiene", "level": "WARN", "detail": "; ".join(probs),
+            "fix": "orphans: git worktree remove <lanes-dir>/<id> && git branch -D lane/<id>; "
+                   "stray dirs: remove the directory; missing worktrees need nothing"}
+
+
 def working_tree_check(porcelain):
     if porcelain.strip():
         return {"check": "working-tree", "level": "WARN",
@@ -541,6 +577,24 @@ def run_checks(base, skip_verify_run=False):
             add("queue-liveness", "WARN" if stale else "INFO",
                 "; ".join(stale) if stale else "no stale in_progress claims",
                 "dispatch will respawn or it needs unblocking" if stale else "")
+            # parallel-lane hygiene (v9 lane model): observe lane/<id> branches,
+            # registered worktrees under the runtime lanes dir, and the dir itself
+            in_prog = [g for g, e in goals.items()
+                       if (e or {}).get("status") == "in_progress"]
+            _, br_out, _ = _run(["git", "branch", "--list", "lane/*", "--format=%(refname:short)"])
+            lane_brs = [b.strip()[len("lane/"):] for b in (br_out or "").splitlines()
+                        if b.strip().startswith("lane/")]
+            slug = os.path.basename(repo_root)
+            lanes_dir = os.path.expanduser(os.path.join("~", ".local", "state",
+                                                        "pg-dispatch", slug, "lanes"))
+            _, wt_out, _ = _run(["git", "worktree", "list", "--porcelain"])
+            wt_lanes = []
+            for line in (wt_out or "").splitlines():
+                if line.startswith("worktree ") and lanes_dir in line:
+                    wt_lanes.append(os.path.basename(line.split(" ", 1)[1].strip()))
+            dir_entries = (os.listdir(lanes_dir)
+                           if os.path.isdir(lanes_dir) else [])
+            C.append(lane_hygiene_check(lane_brs, wt_lanes, in_prog, dir_entries))
             # goal contracts: active goals must carry a checkable done-condition
             gc = []
             for gid, e in goals.items():

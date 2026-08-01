@@ -5,7 +5,7 @@ A skills-first plugin marketplace for [Claude Code](https://claude.com/claude-co
 and [Factory Droid](https://factory.ai), from Pragmatic Growth.
 
 [![Website](https://img.shields.io/badge/site-flywheel.pragmaticgrowth.com-6366f1)](https://flywheel.pragmaticgrowth.com)
-[![Version](https://img.shields.io/badge/version-8.5.0-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-9.0.0-8b5cf6)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
 > 🌐 **Full docs:** **<https://flywheel.pragmaticgrowth.com>**
@@ -21,8 +21,10 @@ keep an unattended agent loop from going off the rails.
 You say *“I want the pricing page to load in under 1.2 seconds.”* The plugin
 investigates your codebase, turns that into a **measurable contract** (what
 “done” means, how to verify it), drops it into a **queue that lives in your
-repo**, and then — when you’re ready — works that queue **one goal at a time**:
-a foreground implementer commits directly on your current branch using TDD and
+repo**, and then — when you’re ready — works that queue: serially one goal at
+a time by default, or with opt-in **parallel build lanes** that still integrate
+one verified goal at a time.
+A foreground implementer commits its work using TDD and
 a lightweight subagent review loop (independent read-only lenses), the orchestrator
 independently reviews the diff (a fresh adversarial second view — the implementer never
 grades its own work) and runs a local
@@ -169,18 +171,30 @@ never implementation.
 
 ### dispatch — work the queue
 
-The orchestrator. It works ready goals **one at a time** on the currently
-checked-out branch — no PRs, no worktrees, no parallel implementers. By default
+The orchestrator. It works ready goals on the currently checked-out branch —
+serial **one at a time** by default, with no PRs and no remote branches. The
+core invariant: **at most one goal integrates at a time, and the branch only
+ever advances to gate-verified trees.** By default
 one goal per run; use
 `/loop /dispatch` to repeat that cycle until the queue is drained, or size the
 run directly:
 
 ```bash
-/dispatch               # next ready goal, then stop
-/dispatch 087           # exactly goal 087 (solo mode)
-/dispatch --count 3     # up to 3 ready goals, sequentially
-/dispatch --unlimited   # drain the queue (attended) — budget & brakes still apply
+/dispatch                    # next ready goal, then stop
+/dispatch 087                # exactly goal 087 (solo mode)
+/dispatch --count 3          # up to 3 ready goals, sequentially
+/dispatch --unlimited        # drain the queue (attended) — budget & brakes still apply
+/dispatch --unlimited --parallel 3   # drain with up to 3 concurrent build lanes
 ```
+
+`--parallel [K]` (v9.0.0, Claude Code only, default 2 lanes, cap 4) builds
+provably-disjoint goals **concurrently in disposable local worktree lanes** —
+admission-controlled by each goal's `touches:` globs, dependency chains, and
+always-exclusive conflict domains (lockfiles, migrations, CI/config) — while
+still **integrating strictly one goal at a time**: each lane is rebased onto
+the branch head, the deterministic gate re-runs on that exact integrated tree,
+and the branch fast-forwards only to verified states. A rebase conflict never
+gets guessed through — the lane is discarded and the goal re-runs serially.
 
 Batch runs repeat the same fully-settled per-goal cycle; a blocked goal doesn't
 stop the batch, `config.budget` always outranks the flags, and an environment
