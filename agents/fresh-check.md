@@ -14,7 +14,11 @@ message names your lens; run ONLY that lens, thoroughly:
   the outcome is false.
 - **tests-overbuild** — the proving tests are real (they would fail on regression and
   assert behavior, not mocks or the implementation mirrored back), and the diff contains
-  no scope creep beyond the goal.
+  no scope creep beyond the goal. Hunt the measured vacuous shapes by name: errors
+  swallowed inside a proving loop (catch-and-continue), a sweep hand-capped below its
+  claimed coverage, input pre-sorted/pre-narrowed so the swept variable cannot vary, the
+  subject mocked out of its own test, and a full-confidence claim ("observed",
+  "guaranteed", a 1.0-confidence fact) with no precondition check behind it.
 - **stray-regressions** — only intended files are touched; no stray, generated, lockfile,
   or formatter churn; nothing in the diff plausibly breaks the existing baseline.
 

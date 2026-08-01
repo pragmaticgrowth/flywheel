@@ -459,7 +459,13 @@ factory's real repos (2026-07-28, 158 measured claim→settle cycles) put the me
 at ~57 minutes — and every multi-hour outlier (13–18h worst cases) was an oversized
 contract, not a slow implementer. A want that fails the one-sitting test is not "a big
 goal", it is an unsplit chain: cut it along its independently shippable seams into
-`depends_on`-ordered goals with Interfaces notes. When the seams genuinely don't exist
+`depends_on`-ordered goals with Interfaces notes. **Bundled findings are the same
+violation in disguise**: a goal that closes more than two independent findings or root
+causes from an audit/bug document fails the one-sitting test no matter how short its
+criteria list reads (repair forensics 2026-08-01: a goal bundling 9 audit findings cost
+2 repair passes + 2 re-checks; sibling one-finding goals gated with zero repairs) —
+route documents of findings through batch mode, one finding per goal,
+`depends_on`-ordered. When the seams genuinely don't exist
 (one atomic migration), keep it whole but say so in Context — the size is then a fact,
 not an oversight. Every dependent
 goal in a chain gets an **Interfaces** note in its Context: the exact names its dependency
@@ -483,7 +489,9 @@ Repo-wide skills belong in `config.skills` instead; for a frontend repo, suggest
 `agent-browser` to `config.skills` when every (or most) goal would list it.
 
 Populate two more frontmatter fields that serve as quality hints for the local gate (both
-optional, but fill them when recon located the surfaces — they make validation far stronger):
+optional, but fill them when recon located the surfaces — they make validation far
+stronger; for a feature/bug goal that ran recon, an empty `touches:` is a drafting miss,
+not a style choice):
 `touches:` (path globs of the surfaces this goal changes — convert the surfaces recon
 located in Context — e.g. routes/UI/schema/jobs — into concrete globs like
 `["apps/orders/**", "frontend/src/orders/**"]`; gives the gate a real scope allowlist so it
@@ -597,7 +605,12 @@ contract, not approve it —
 - **Size (one-sitting test)**: does the goal fit one implementer sitting — one
   subsystem, one drivable surface, ~≤5 acceptance criteria? A draft that spans multiple
   subsystems/surfaces or piles up criteria is flagged **contract-blocking** with the
-  proposed split seams (each independently shippable, `depends_on`-ordered). A Context
+  proposed split seams (each independently shippable, `depends_on`-ordered). A goal
+  whose Context/source bundles MORE THAN TWO independent findings or root causes is the
+  same contract-blocking violation regardless of how few criteria the draft lists — a
+  3-line `pnpm test` acceptance list does not shrink 9 root causes into one sitting
+  (measured: 9-findings-in-one-goal → 2 repair passes + 2 re-checks; one-finding
+  siblings → zero) — the split is one finding per goal. A Context
   note stating why the work is atomic downgrades only the SPAN trigger to advisory (the
   seams genuinely don't exist); it never excuses a piled-up criteria list — criteria
   bloat on an atomic goal is its own finding (merge or cut criteria, don't split the

@@ -13,6 +13,55 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [8.5.0] — 2026-08-01
+
+**First-pass yield: stop paying for the second implementer.** Transcript
+forensics over the last week (11 dispatch sessions; two Sonnet deep-reads
+classifying every repair trigger) showed repair passes consuming **40.1% of
+dispatch wall-clock — as much as implementation itself** (38 repair spawns vs
+29 implementations), and the causes were overwhelmingly real defects of a few
+repeating shapes, not reviewer pedantry. This release encodes those shapes as
+rules (Part A of the parallel-dispatch design spec,
+`docs/superpowers/specs/2026-08-01-parallel-dispatch-design.md`):
+
+- **Claims and proofs are gated before commit** (dispatch implementer brief,
+  Quality loop step 4): every full-confidence claim must name its
+  precondition check; every generic-coverage proving test gets ONE mutation
+  probe (break the behavior, watch the test fail, restore); no
+  catch-and-continue in proving loops, no hand-capped or pre-narrowed
+  "universal" sweeps. The gate-reviewer and fresh-check briefs hunt the same
+  shapes by name.
+- **Bundled findings are an unsplit chain** (define-goal one-sitting rule +
+  red-team Size check): a goal closing >2 independent findings/root-causes is
+  contract-blocking regardless of how short its criteria list reads —
+  measured: a 9-findings goal cost 2 repair passes + 2 re-checks while
+  one-finding siblings gated with zero repairs.
+- **Flake protocol at the gate** (bounded, logged, never a repair): a verify
+  failure on a test the diff doesn't touch gets ONE isolated re-run;
+  isolated-pass = flake (logged; second occurrence → needs-you
+  `recurring lesson`), isolated-fail = real FAIL. A session had burned three
+  re-gate cycles on tests that passed 4/4 in isolation.
+- **Lens tier pin**: fresh-check lenses spawn on the medium tier
+  (`model: sonnet`) instead of inheriting the implementer's heavy pin —
+  measured across 68 lens runs, a heavy lens costs ~2× for the same verdicts;
+  lens verdicts are corroborating evidence, never the gate verdict. The
+  verdict-rendering roles (gate-reviewer, re-checks, red-team) stay on the
+  session model with their v8.4.0 budgets.
+- **Lens delivery is retry-once, never wait**: a silent lens is respawned
+  once as the generic type, immediately — real sessions burned ~45 minutes
+  pinging panels that never delivered.
+- **Repair self-sweep**: the repair brief's receiving-review rules add
+  "sweep your own repair diff for new instances of the defect classes you
+  just fixed" — a real repair reintroduced a just-fixed defect class in a
+  different file and cost a full duplicate implementer cycle.
+- **Stream-death recognition**: a spawn that dies mid-stream (idle timeout,
+  empty/errored tool result) is a transient death mid-fire too — respawn
+  under the existing ~3-attempt budget instead of re-diagnosing the goal.
+
+All rules RED-baselined: the pre-change text left every scenario undecided or
+decided it the other way (the 9-findings bundle passed the old Size check;
+the old gate went straight to repair on a flake).
+
 ## [8.4.0] — 2026-07-29
 
 **Review agents get a budget, and the gate stops reporting one violation at a

@@ -126,7 +126,8 @@ runs your session model. This split keeps judgment on strong models: the orchest
 stays on the session model for claim/gate/review calls, features and bugs default to a
 `heavy` stamp (define-goal's rubric), and only rote mechanical goals run lighter
 implementers. Neither field is yours to override, and neither ever applies to review
-read-only agents — those always inherit the session model.
+read-only agents — those always inherit the session model (one carve-out: the
+implementer's fresh-check LENSES pin the medium tier — see Named review agents).
 
 **Named review agents (plugin-shipped).** The plugin ships three read-only agent
 definitions for the factory's review roles: gate-reviewer (the orchestrator's
@@ -140,9 +141,13 @@ discipline — so a spawn prompt carries only the per-goal specifics (repo/branc
 range, goal file, checklist, evidence to challenge). None pins a `model:` in its
 definition, so each resolves by the runtime's normal inheritance: an orchestrator-spawned
 `gate-reviewer` or `contract-red-team` inherits the session model — never pass them a
-model or complexity parameter (the review-agents rule above) — and an implementer-spawned
-`fresh-check` lens inherits the implementer's own resolved model, which is fine: the
-definitions leave model choice entirely to the spawn context. Review cost is controlled
+model or complexity parameter (the review-agents rule above). The ONE exception is the
+implementer-spawned `fresh-check` lens: the implementer pins it to the medium tier
+(`model: sonnet` on Claude Code) instead of letting its own heavy pin cascade —
+measured 2026-08-01 across 68 real lens runs, a heavy-tier lens costs ~2× the tokens
+of a medium one for the same verdicts, and lens verdicts are corroborating evidence,
+never the gate verdict, so the cheaper tier is safe exactly there. For the
+verdict-rendering roles, review cost is controlled
 by the BUDGET in each role's brief, never by pinning review agents to a cheaper tier —
 the gate is the only merge gate, and the same brief must hold on whatever model the
 session runs. That matters because an unbudgeted brief does not cost the same everywhere:
@@ -293,8 +298,12 @@ where it left off:
    same unmeasurable check. A final report declaring `CONTRACT_AMBIGUOUS` routes identically
    as class `contract defect (ambiguous)` (reason `contract defect: <criterion> ambiguous`) —
    a respawn guesses at the same fork. Otherwise respawn — but distinguish a transient infrastructure
-   death (connection closed mid-response, parse error, 529 overloaded: NOT a work failure)
-   from a logic blocker. A transient death is not a "fail" toward the no-progress rule; don't
+   death (connection closed mid-response, parse error, 529 overloaded, a stream-idle
+   timeout, a spawn whose tool result comes back empty or as a raw API error: NOT a work
+   failure) from a logic blocker. The same recognition applies MID-FIRE to a spawn that
+   dies under you — respawn it under the same ~3-attempt budget immediately instead of
+   re-diagnosing the goal (a measured stream-idle death cost ~1h40m of near-duplicate
+   repair work because it went unrecognized). A transient death is not a "fail" toward the no-progress rule; don't
    let it burn the respawn budget — retry it, up to ~3 transient respawns per goal per session,
    after which a goal that still can't make any commit progress IS blocked (named
    `blocked: repeated transient death`) so it can't livelock. Only a real blocker in the final
@@ -428,7 +437,11 @@ For each claimed goal, in order:
    reviewer runs even when they look
    clean. Its brief: try to REFUTE the work, not confirm it — (a) contract conformance:
    any acceptance criterion unmet or met vacuously; (b) test realness: proving tests assert
-   real behavior, not tautologies or mirrors of the implementation; (c) scope: changes
+   real behavior, not tautologies or mirrors of the implementation — hunt the measured
+   vacuous shapes by name: errors swallowed inside a proving loop, a sweep hand-capped
+   below its claimed coverage, input pre-sorted/pre-narrowed so the swept variable cannot
+   vary, the subject mocked out of its own test, and a full-confidence claim with no
+   precondition check behind it; (c) scope: changes
    beyond the goal's surfaces, or criteria quietly narrowed. Two calibration rules go in
    the brief: report half-believed findings too, marked uncertain, instead of silently
    dropping them — the orchestrator is the verifier, and a finder that self-censors
@@ -504,6 +517,15 @@ For each claimed goal, in order:
    A's output file (commands still running → wait on that task; never grade a partial
    gate). Show the command output. Every `config.verify` command must exit 0, exactly
    as before — the overlap moves wall-clock, never the bar.
+   **Flake protocol (bounded, logged — never a repair).** When a verify command fails on
+   a test the diff does not touch and the goal's surfaces do not reach, re-run THAT test
+   once in isolation before rendering the verdict: an isolated pass is a flake — count
+   the command as passed, name the flake in the fire's report, and on the second flake
+   in one session (same or different test) surface a needs-you `recurring lesson`
+   proposing quarantine/deflake; an isolated fail is a real FAIL. One retry maximum,
+   never a repair spawn for a flake — a measured session burned three full re-gate
+   cycles on flaky tests that passed 4/4 in isolation. A failure in anything the diff
+   DOES touch gets no retry: that is the gate working.
 4. PASS → `git reset --soft <gate_base> && git commit -m "feat(goal <id>): <slug>"` (squash to
    one), then `chore(goals): complete <id>`; push if a remote exists (non-blocking).
    **Then, on every PASS, surface the goal's subjective criteria.** define-goal marks a
@@ -699,6 +721,18 @@ Quality loop — keep it lightweight, but do not skip it:
    For a behavior change with a drivable surface (CLI, endpoint, UI), also run at least one
    off-happy-path probe at that surface — malformed input, empty value, double-run — and
    record what it showed; acceptance commands alone replay the happy path.
+   **Claims and proofs are gated before commit** — repair-cause forensics (2026-08-01,
+   ~43 verified gate findings) traced most repair passes to exactly three shapes, so each
+   is a hard pre-commit check, not advice: (a) any full-confidence claim your code or
+   report makes (an "observed"/"guaranteed"/"byte-identical"/"all cases" assertion, a
+   1.0-confidence fact) must name the precondition check that makes it true — no check in
+   the code means downgrade the claim or add the check; (b) every proving test that
+   claims generic or sweeping coverage gets ONE mutation probe before it ships: break the
+   covered behavior once (reverse the tiebreak, corrupt a byte, reorder the input), watch
+   the test FAIL, restore — a sweep that cannot be made to fail proves nothing (this is
+   TDD's red step applied to the test itself); (c) never swallow errors inside a proving
+   loop (catch-and-continue), and never hand-cap or pre-narrow a sweep whose name claims
+   it is universal.
 5. Fresh check: for non-trivial work (more than a one-file mechanical edit), review the diff
    against the goal contract in fresh read-only windows — not one generalist reviewer but a
    small panel of independent lenses
@@ -709,7 +743,17 @@ Quality loop — keep it lightweight, but do not skip it:
    concurrently and return synchronously. Never spawn lenses as background agents you must
    poll — background children end your turn the moment you stop calling tools, and
    sleep-loop waiting has produced discarded verdicts and false "no findings" claims on
-   real runs. Never use the built-in Explore type (Claude Code) or `explorer` (Droid)
+   real runs. On Claude Code pass `model: sonnet` (the medium tier) on EVERY lens
+   spawn — your own resolved tier must not cascade into the panel: measured across 68
+   real lens runs (2026-08-01), a heavy-tier lens costs ~2× the tokens of a medium one
+   for the same verdicts, and lens verdicts are corroborating evidence, never the gate
+   verdict. **Lens delivery is retry-once, never wait**: a lens that returns without a
+   verdict is respawned ONCE, immediately, as the generic type with the lens brief
+   inline — never ping, poll, or wait a second round on a silent lens (real sessions
+   burned ~45 minutes pinging panels that never delivered); if the respawn also returns
+   nothing, record that lens as `not delivered` in your Fresh-check line and move on —
+   the orchestrator escalates to its own panel.
+   Never use the built-in Explore type (Claude Code) or `explorer` (Droid)
    for review (search agents; `explorer` can't run commands). Use
    the plugin's fresh-check agent (`flywheel:fresh-check` on Claude Code, `fresh-check`
    on Droid) when the runtime lists it (read-only
@@ -796,10 +840,13 @@ After the implementer returns, run the independent review and the gate yourself
 same resolved implementer model, fed the COMPLETE gate findings in one spawn — including any
 verified Critical/Important
 findings from the independent review); a second identical FAIL → roll back + block.
-The repair brief appends three receiving-review rules: verify each finding against the
+The repair brief appends four receiving-review rules: verify each finding against the
 code before changing anything; a finding you can disprove gets a one-line rebuttal with
-evidence in the report instead of a "fix" — the orchestrator adjudicates it; and after
-fixes, re-run the tests covering the amended code and append the results to the report
+evidence in the report instead of a "fix" — the orchestrator adjudicates it; after
+fixes, sweep your OWN repair diff once for new instances of the exact defect classes you
+just fixed — a real repair reintroduced a just-fixed defect class in a different file
+and cost a full duplicate implementer cycle (~4h, 2026-07-31) — and re-run the tests
+covering the amended code, appending both results to the report
 file — the focused re-check reads evidence, it does not re-run your tests.
 Adjudicating a rebuttal: verify it against the code and the cited evidence yourself —
 confirmed false → drop the finding from the re-check scope (note it in the report);

@@ -57,7 +57,12 @@ through three lenses and give a verdict per lens:
   sort orders, thresholds hiding inside a "layout" diff).
 - **(b) Test realness** — would each new or changed test fail on a real regression? Hunt
   tautologies, mirrors of the implementation, assertions on mocks instead of rendered
-  behavior, and `.only`/`.skip` escapes.
+  behavior, and `.only`/`.skip` escapes — plus the measured vacuous shapes by name:
+  errors swallowed inside a proving loop (catch-and-continue), a sweep hand-capped below
+  its claimed coverage, input pre-sorted/pre-narrowed so the swept variable cannot vary,
+  the subject mocked out of its own test, and a full-confidence claim ("observed",
+  "guaranteed", "byte-identical", a 1.0-confidence fact) with no precondition check
+  behind it.
 - **(c) Scope** — changes beyond the goal's surfaces, stray or generated files, forbidden
   edits, new dependencies, criteria the diff silently redefines.
 
