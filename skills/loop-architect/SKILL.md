@@ -56,8 +56,8 @@ a loop composes.)
 | Work until a verifiable end state is true | `/goal` (Claude Code; a separate small-fast-model evaluator — default Haiku — checks after every turn) |
 | Poll/babysit on a cadence while a session is open | `/loop <interval> <skill-or-prompt>` |
 | Recurring default maintenance for this repo | bare `/loop` + a `.claude/loop.md` |
-| A backlog of shippable changes worked unattended | docs/goals queue — fill with `define-goal`, then repeat `/dispatch` (one ready goal per run on the checked-out branch; `/loop /dispatch` drains over repeated fires) |
-| Drain must survive account usage-limit stops (subscription 5-hour/weekly windows) | Window-timed attended drains: `/dispatch --unlimited` (or `--count N`) started right after a limit reset, repeated per window — the limit-proof shape around the backlog row; in-session `/loop` dies silently at the limit (see Step 5 limit-proofing) |
+| A backlog of shippable changes worked unattended | docs/goals queue — fill with `define-goal`, then `/dispatch` (v10.0.0: a flagless run DRAINS the queue on the checked-out branch; `/loop /dispatch` only re-drains as new goals arrive) |
+| Drain must survive account usage-limit stops (subscription 5-hour/weekly windows) | Window-timed attended drains: `/dispatch` (drains by default since v10.0.0; `--count N` to size it) started right after a limit reset, repeated per window — the limit-proof shape around the backlog row; in-session `/loop` dies silently at the limit (see Step 5 limit-proofing) |
 | Must run with the laptop closed | Routine (`/schedule`; cloud; schedule / API / GitHub triggers) |
 | Needs local files, machine on, no session open | Desktop scheduled task |
 | React to external events (CI, chat) instead of polling | Channels (`--channels`) or Routine API trigger |
@@ -229,7 +229,8 @@ not an error the loop can handle from inside. Rails, in order of leverage (owner
 
 - **Drain the window, don't trickle into it.** The limit-proof shape is a window-timed
   ATTENDED drain: at (or right after) a limit reset, start ONE interactive session and run
-  `/dispatch --unlimited` (or `--count N` sized to the window) so the batch front-loads
+  `/dispatch` (a flagless run drains by default since v10.0.0; `--count N` sizes it to
+  the window when you want a cap) so the run front-loads
   work into the quota that just refreshed instead of a `/loop` trickling fires into a
   window that then throttles mid-goal. Dispatch's per-goal cycles are settled and
   idempotent, so a batch the limit kills mid-goal costs nothing: the next window's drain

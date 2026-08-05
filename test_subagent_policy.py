@@ -16,6 +16,16 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 AGENTS = sorted((ROOT / "agents").glob("*.md"))
 DISPATCH = ROOT / "skills" / "dispatch" / "SKILL.md"
+DISPATCH_REFS = sorted((ROOT / "skills" / "dispatch" / "references").glob("*.md"))
+
+
+def dispatch_full_text() -> str:
+    """SKILL.md plus its references/ files — v10.0.0 moved the implementer brief,
+    parallel mode, and escalation/repair into reference files Read on demand; the
+    doctrine must exist in the combined text the orchestrator/implementer receives."""
+    return " ".join(
+        " ".join(f.read_text().split()) for f in [DISPATCH, *DISPATCH_REFS]
+    )
 
 # Valid on at least one harness. Droid: Read/LS/Grep/Glob/Create/Edit/ApplyPatch/Execute/
 # WebSearch/FetchUrl. Claude Code: Bash + the read tools. Anything outside this set risks
@@ -95,7 +105,7 @@ def test_agents_do_not_depend_on_a_message_tool_for_delivery():
 def test_dispatch_documents_the_droid_nesting_limit():
     """Droid subagents have no Task tool, so the implementer panel needs a real
     per-harness path rather than an impossible mandate."""
-    text = " ".join(DISPATCH.read_text().split())
+    text = dispatch_full_text()
     assert "cannot spawn its own subagents" in text, (
         "dispatch must state Droid's nested-spawn limit"
     )
@@ -104,7 +114,7 @@ def test_dispatch_documents_the_droid_nesting_limit():
 
 def test_dispatch_forbids_self_review_as_the_panel_fallback():
     """Self-review is the maker grading its own work — the exact failure the panel prevents."""
-    text = " ".join(DISPATCH.read_text().split())
+    text = dispatch_full_text()
     assert "not run (no fresh-context mechanism available)" in text, (
         "dispatch must give implementers an honest 'not run' verdict instead of self-review"
     )

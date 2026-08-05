@@ -298,7 +298,7 @@ def limit_resilience_check(active_goals, heartbeat_lines, signal_configured, sch
     # — no hook fires on the limit banner. Recognized rails: a StopFailure hook
     # (rate_limit matcher) arming an external signal, or a pre-existing OS scheduler
     # (still detected as a rail where one exists, though the recommended pattern is
-    # window-timed attended drains — /dispatch --unlimited after each reset).
+    # window-timed attended drains — /dispatch (drains by default) after each reset).
     # WARN only when a loop demonstrably fires on this repo (heartbeat lines exist)
     # yet no rail is present.
     if not active_goals:
@@ -316,8 +316,9 @@ def limit_resilience_check(active_goals, heartbeat_lines, signal_configured, sch
             "detail": "a dispatch loop fires on this repo but nothing survives an account "
                       "usage-limit stop (5-hour/weekly window): in-session loops die at the "
                       "limit and no hook fires on the banner",
-            "fix": "drain in window-timed attended batches: run /dispatch --unlimited (or "
-                   "--count N) right after each limit reset (statusline "
+            "fix": "drain in window-timed attended batches: run /dispatch right after each "
+                   "limit reset (a flagless run drains by default since v10.0.0; "
+                   "--unlimited is the explicit alias, --count N caps it) (statusline "
                    "rate_limits.*.resets_at gives the clock) instead of an open /loop; "
                    "optionally add a StopFailure hook (rate_limit matcher) as a mid-turn "
                    "death signal — see loop-architect Step 5 limit-proofing"}

@@ -10,8 +10,9 @@ architecture — one harness-neutral **execution-tier vocabulary
 `heavy|medium|light`** plus one small harness-mapping block per skill,
 instead of the v4.x dual-branch prose).
 The repo publishes ONE plugin from the `pragmatic-growth` marketplace:
-`flywheel` v8.0.0. (The `html-artifacts`, `autoresearch`, and `human-writing`
-plugins were **removed** from the marketplace in v8.0.0, owner decision
+`flywheel` v10.0.0.
+(The `html-artifacts`, `autoresearch`, `human-writing` plugins were **removed**
+from the marketplace in v8.0.0, owner decision
 2026-07-25 — the marketplace is the goal-factory only now; git history keeps
 them recoverable.) No MCP
 servers, no commands, no hooks, no build step. ONE scoped exception to the
@@ -133,7 +134,9 @@ in the implementer's own context is NEVER the fallback: an honest
 own review to the full panel, and is explicitly not a compliance miss.
 
 - **dispatch** — factory orchestrator for the docs/goals queue: serial
-  one-goal-at-a-time on the currently checked-out branch by default — no PRs,
+  one-goal-AT-A-TIME on the currently checked-out branch, and since v10.0.0 a
+  flagless run DRAINS the queue by default (keeps claiming ready goals until
+  empty; `--count N` limits the run, `--unlimited` is a compat alias) — no PRs,
   no remote or `goal/<id>` branches; since v9.0.0 an opt-in `--parallel [K]`
   batch mode (Claude Code only, default K=2, cap 4) builds provably-disjoint
   goals concurrently in disposable LOCAL worktree lanes
@@ -212,7 +215,8 @@ own review to the full panel, and is explicitly not a compliance miss.
   death`) instead of wall-clock age, so an account usage-limit pause (no fires
   → no lines) resumes a claim rather than mislabeling it dead. v6.1.0
   (superpowers full-plugin deep-read): invocation grammar —
-  `/dispatch` works the next ready goal (unchanged default); `/dispatch <id>`
+  `/dispatch` worked the next ready goal (SUPERSEDED in v10.0.0: flagless now
+  drains); `/dispatch <id>`
   formalizes solo mode with claim guards (completed/in_progress reported,
   unmet deps → needs-you, id beats a batch flag); `--count N` /
   `--unlimited` run an in-session sequential batch of the same settled
@@ -233,6 +237,25 @@ own review to the full panel, and is explicitly not a compliance miss.
   receiving-review discipline: verify-then-fix, rebut-with-evidence (the
   orchestrator adjudicates — confirmed-false findings drop from the re-check,
   upheld ones return as open failures), covering tests re-run and appended.
+  v10.0.0 (the smooth-drain release, forensics-backed 2026-08-06 — 19 real
+  sessions audited): flagless = drain; the per-goal cycle is NEVER a
+  confirmation point (invented permission-asks like "want me to run the
+  repair?" are compliance misses); SETTLE TRIAGE closes the completion leak —
+  every concern/out-of-scope finding/"needs a new goal" item is repaired,
+  dismissed with reasoning, or captured as a committed line in
+  `docs/goals/inbox.md` (dispatch appends, define-goal converts and removes;
+  capture-only, no statuses — status-only-in-index holds); the implementer's
+  fresh-check defaults to ONE medium-tier contract-conformance lens (full 2–3
+  panel only for >3-file / test-logic / architecture diffs); repair round 1
+  warm-resumes the goal's own implementer where the harness supports it (fresh
+  spawn else — and on Droid); and the skill went on a diet — parallel mode, the
+  implementer brief, and escalation/repair now live in
+  `skills/dispatch/references/*.md`, Read on demand (SKILL.md ~850→ resident
+  core only). define-goal v10: `touches:` is REQUIRED on recon-backed
+  feature/bug goals (red-team contract-blocking; greenfield opt-out via a
+  Context note) and a new Inbox-intake section converts dispatch's captured
+  follow-ups into real goals (batch mode at ~5+, converted lines deleted in
+  the same commit as the index entry).
 - **goals-status** (v5.2.0; simplified in v6.0.0) — read-only view of the
   docs/goals queue. Prints
   every OPEN goal — `in_progress`, `blocked`, `not_started` — with its title and
@@ -289,8 +312,8 @@ own review to the full panel, and is explicitly not a compliance miss.
   strictly sequentially,
   committing work DIRECTLY on the branch that's checked out — no PRs, no
   remote branches, no worktrees. A flagless
-  run works one goal; `--count N` / `--unlimited` extend the run to a
-  sequential batch of the same fully-settled cycles (each goal claims → gates
+  run DRAINS the queue since v10.0.0 (v6.1.0–v9.x it worked one goal);
+  `--count N` caps the run at N of the same fully-settled cycles (each goal claims → gates
   → settles before the next claim; budget outranks flags); `--parallel [K]`
   (v9.0.0, Claude Code only) adds lane-model build concurrency behind the
   SAME serialized, locally-gated integration (see the dispatch bullet above —

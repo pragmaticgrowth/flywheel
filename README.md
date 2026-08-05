@@ -5,7 +5,7 @@ A skills-first plugin marketplace for [Claude Code](https://claude.com/claude-co
 and [Factory Droid](https://factory.ai), from Pragmatic Growth.
 
 [![Website](https://img.shields.io/badge/site-flywheel.pragmaticgrowth.com-6366f1)](https://flywheel.pragmaticgrowth.com)
-[![Version](https://img.shields.io/badge/version-9.0.0-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-10.0.0-8b5cf6)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
 > 🌐 **Full docs:** **<https://flywheel.pragmaticgrowth.com>**
@@ -76,7 +76,7 @@ want a review surface — flywheel just doesn't require one.)
 |---|---|---|
 | **ideate** | Fuzzy idea → a user-approved design through open dialogue, then handed to define-goal. Never writes goals or code. | `/ideate` · *“I have an idea…”* |
 | **define-goal** | Plain-language want → a measurable, red-teamed goal contract (or a whole document of them). Never writes code. | `/define-goal …` · or just say *“I want…”* |
-| **dispatch** | The factory orchestrator: works ready goals one at a time — claim, implement with TDD + fresh checks, independent-review-backed local gate, keep or roll back. Default one goal; flags run a batch. | `/dispatch` · `/dispatch 005` · `/dispatch --count 3` · `/dispatch --unlimited` |
+| **dispatch** | The factory orchestrator: works ready goals one at a time — claim, implement with TDD + fresh checks, independent-review-backed local gate, keep or roll back. **Drains the queue by default** (v10.0.0); `--count N` limits the run. | `/dispatch` · `/dispatch 005` · `/dispatch --count 3` · `/dispatch --parallel 3` |
 | **goals-status** | Read-only view of the open queue: every `in_progress` / `blocked` / `not_started` goal with its title + brief (completed hidden). | `/goals-status` |
 | **loop-architect** | Designs the *loop contract* (prompt + verification + stop conditions) for autonomous, scheduled, or remote runs. | *“keep working on X”* · setting up a `/loop`, routine, or cron |
 | **factory-doctor** | One-pass preflight/doctor for the repo + machine. Auto-fixes everything local; reports the rest with exact fixes. | `/factory-doctor` |
@@ -174,17 +174,16 @@ never implementation.
 The orchestrator. It works ready goals on the currently checked-out branch —
 serial **one at a time** by default, with no PRs and no remote branches. The
 core invariant: **at most one goal integrates at a time, and the branch only
-ever advances to gate-verified trees.** By default
-one goal per run; use
-`/loop /dispatch` to repeat that cycle until the queue is drained, or size the
-run directly:
+ever advances to gate-verified trees.** Since v10.0.0 a flagless run
+**drains the queue** — it keeps working ready goals, one fully-settled cycle
+after another, until the queue is empty or a brake fires; `/loop /dispatch`
+only re-drains as new goals arrive:
 
 ```bash
-/dispatch                    # next ready goal, then stop
+/dispatch                    # drain: keep working ready goals until the queue is empty
 /dispatch 087                # exactly goal 087 (solo mode)
-/dispatch --count 3          # up to 3 ready goals, sequentially
-/dispatch --unlimited        # drain the queue (attended) — budget & brakes still apply
-/dispatch --unlimited --parallel 3   # drain with up to 3 concurrent build lanes
+/dispatch --count 3          # up to 3 ready goals, then stop (--count 1 = single-goal fire)
+/dispatch --parallel 3       # drain with up to 3 concurrent build lanes
 ```
 
 `--parallel [K]` (v9.0.0, Claude Code only, default 2 lanes, cap 4) builds
@@ -196,9 +195,9 @@ the branch head, the deterministic gate re-runs on that exact integrated tree,
 and the branch fast-forwards only to verified states. A rebase conflict never
 gets guessed through — the lane is discarded and the goal re-runs serially.
 
-Batch runs repeat the same fully-settled per-goal cycle; a blocked goal doesn't
-stop the batch, `config.budget` always outranks the flags, and an environment
-brake stops a batch when two consecutive goals fail with the same
+A drain repeats the same fully-settled per-goal cycle; a blocked goal doesn't
+stop the run, `config.budget` always outranks the flags, and an environment
+brake stops a run when two consecutive goals fail with the same
 infrastructure-shaped cause (pointing you at `/factory-doctor` instead of
 burning the queue). The count meters **claims**: settling a goal that was
 already in flight when the run started neither consumes a unit nor licenses
@@ -250,6 +249,18 @@ the criterion text echoed back. It is an observation, not a gate: the PASS still
 completes the goal, so an unattended drain is never blocked waiting on you. A
 goal with no such criteria surfaces nothing.
 
+**Nothing survives as prose (settle triage, v10.0.0).** Before any goal
+settles, every loose end the cycle produced — a `DONE_WITH_CONCERNS` concern,
+a real-but-out-of-scope reviewer finding, a "needs a new goal" discovery — is
+either repaired now, dismissed with stated reasoning, or **captured as one
+committed line in `docs/goals/inbox.md`**. A goal is not "complete" while a
+loose end is unclassified, and captured items don't evaporate with the chat:
+`/define-goal` reads the inbox and converts items into real queued goals
+(removing the converted lines). The per-goal cycle itself is never a
+confirmation point — dispatch never stops mid-run to ask "want me to run the
+repair?"; everything a human must know lands in needs-you or the inbox and the
+run continues.
+
 ### goals-status — see what's open
 
 A read-only glance at the queue. `/goals-status` prints every goal that is
@@ -293,8 +304,8 @@ stop condition is unclear, it asks a short calibration round before writing the
 copy-pasteable setup. For long runs on subscription plans it also designs
 **usage-limit proofing**: a 5-hour/weekly limit blocks every turn until reset
 and kills an in-session `/loop` with no hook fired, so the limit-proof shape is
-**window-timed attended drains** — start `/dispatch --unlimited` (or
-`--count N`) right after each limit reset and let the batch drain the window,
+**window-timed attended drains** — start `/dispatch` (drains by default; or
+`--count N`) right after each limit reset and let the run drain the window,
 reading the reset clock from the statusline `rate_limits.*.resets_at` fields
 (optionally a `StopFailure` hook as a mid-turn death signal). The factory runs
 in-subscription and in-session — no headless `claude -p` scheduling.
@@ -436,7 +447,7 @@ config:
 | `model` | `inherit` | Repo-wide **default** execution tier for spawned **code** agents (`inherit`/`heavy`/`medium`/`light`; legacy `opus`/`sonnet`/`haiku` values read as heavy/medium/light aliases). Each goal's frontmatter `model:` — stamped by define-goal from a contract-tightness rubric (heavy default for features/bugs, medium for mechanical work) — overrides it per goal. On Claude Code the tier pins the model; on Factory Droid it sets the Task `complexity`. The depth-vs-quota trade. Recon gather agents run on the medium tier; the orchestrator, synthesis, and review agents always stay on the current session model. |
 | `skills` | — | Repo-wide skills every implementer must use (e.g. your TDD or review skills). |
 | `verify` | — | Ordered list of local build + test commands. Run by the dispatch orchestrator after each implementation; PASS keeps the squash commit, FAIL rolls it back. |
-| `budget` | none | `max_goals_per_session` / `max_iterations` ceilings the loop can’t exceed — the external brake on a long run. It always outranks a batch flag: `--unlimited` still stops at the cap. |
+| `budget` | none | `max_goals_per_session` / `max_iterations` ceilings the loop can’t exceed — the external brake on a long run. It always outranks the run: even a full drain stops at the cap. |
 
 ---
 
@@ -471,7 +482,7 @@ and the three review agents become custom droids.
 /factory-doctor                              # 1. make sure the repo + machine are ready
 /ideate what if signups had a referral loop  # (optional) explore a fuzzy idea into a design
 /define-goal I want the API p95 latency under 200ms   # 2. capture a want → queued contract
-/dispatch                                    # 3. work one ready goal (--count N / --unlimited for more)
+/dispatch                                    # 3. drain the queue (--count N to limit the run)
 ```
 
 That’s the whole arc: preflight, capture, work. Add more goals any time —
@@ -524,13 +535,13 @@ or test command — which is a setup gap, not a code failure: run `/factory-doct
 
 ## Running it autonomously
 
-`/dispatch` works one ready goal and stops; `--count N` / `--unlimited` run an
+`/dispatch` drains the queue by default (v10.0.0); `--count N` runs an
 attended sequential batch of the same cycle. Each settled goal reports
 **progress-first**:
 `6/8 done ████████████████░░░░ · ready 0 · blocked 2`.
 
-If you want the queue to keep moving without re-running manually, `/loop
-/dispatch` keeps firing the same one-goal cycle. Use `config.budget` as the
+If you want newly-added goals picked up without re-running manually, `/loop
+/dispatch` re-drains on a cadence. Use `config.budget` as the
 burnstop — an external ceiling the loop **cannot edit itself**, so a flaky queue
 can’t burn indefinitely. When the budget is hit (or the queue drains), dispatch
 stops and surfaces the reason. Let **loop-architect** design the loop contract
@@ -540,7 +551,7 @@ One caveat for long runs on subscription plans: a **usage limit** (5-hour
 or weekly window) blocks every turn until reset and silently kills an
 in-session `/loop` — no hook fires, and the CLI has no built-in auto-resume.
 The limit-proof shape is **window-timed attended drains**: start
-`/dispatch --unlimited` right after each reset (the statusline
+`/dispatch` right after each reset (the statusline
 `rate_limits.*.resets_at` fields give the clock) and let the batch drain the
 window — each cycle is idempotent, so a batch killed mid-goal costs nothing;
 the next drain’s Phase 1 settles the in-flight goal first. Dispatch’s

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>flywheel v9.0.0 — plain-language wants in, verified commits out · Pragmatic Growth</title>
+<title>flywheel v10.0.0 — plain-language wants in, verified commits out · Pragmatic Growth</title>
 <meta name="description" content="The pragmatic-growth marketplace ships flywheel: a skills-first goal factory that turns plain-language wants into measurable contracts and gated commits, for Claude Code and Factory Droid.">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -249,7 +249,7 @@
       <a href="#install">Install</a>
     </nav>
     <div class="nav-actions">
-      <span class="ver-pill" title="Current flywheel version">v9.0.0</span>
+      <span class="ver-pill" title="Current flywheel version">v10.0.0</span>
       <a class="icon-btn" href="https://github.com/pragmaticgrowth/flywheel" target="_blank" rel="noopener" aria-label="GitHub repository">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.7.5.5 5.7.5 12a11.5 11.5 0 0 0 7.9 10.9c.6.1.8-.2.8-.5v-2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.4-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.6 18.3 5 18.3 5c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.6.8.5A11.5 11.5 0 0 0 23.5 12C23.5 5.7 18.3.5 12 .5Z"/></svg>
       </a>
@@ -301,7 +301,7 @@
 <span class="c"># 2 · check what's open at any time</span><br>
 <span class="u">&gt;</span> /goals-status<br>
 <span class="m">  goals-status</span> ▸ <b>3 open</b> · 1 in progress · 0 blocked · 2 not started<br><br>
-<span class="c"># 3 · work one ready goal — or --count 3 / --unlimited for a batch</span><br>
+<span class="c"># 3 · drain the queue — every ready goal, one verified cycle at a time (--count N to limit)</span><br>
 <span class="u">&gt;</span> /dispatch<br>
 <span class="m">  dispatch</span> ▸ <b>6/8 done</b> <span class="bar">████████████████░░░░</span><br>
 <span class="c">           working goal 014 · ready 1 · blocked 0</span><br>
@@ -365,7 +365,7 @@
         <div class="skill-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2.4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></svg></div>
         <div class="skill-main">
           <h3>dispatch</h3>
-          <p>The factory orchestrator. Works ready goals one at a time — the next goal, an exact goal (<code>/dispatch 087</code>), or a sequential batch (<code>--count 3</code>, <code>--unlimited</code>; the count meters new claims) — commits straight to your branch, and keeps only what passes the gate's two overlapped arms: an independent second-view review running alongside the local build+test commands, both in hand before any verdict. Everything it hands back to you names the command that resolves it; it only asks a live question when the run is provably attended. Orchestrates only.</p>
+          <p>The factory orchestrator. Works ready goals one at a time and, since v10.0.0, <strong>drains the queue by default</strong> — a flagless run keeps working until the queue is empty (<code>/dispatch 087</code> scopes to one goal, <code>--count N</code> caps the run; the count meters new claims) — commits straight to your branch, and keeps only what passes the gate's two overlapped arms: an independent second-view review running alongside the local build+test commands, both in hand before any verdict. Nothing survives as prose: every concern or discovered defect is repaired, dismissed with reasoning, or captured as a committed line in <code>docs/goals/inbox.md</code> for define-goal to convert. Everything it hands back to you names the command that resolves it; the cycle itself is never a confirmation point. Orchestrates only.</p>
         </div>
         <span class="cmd">/dispatch</span>
       </article>
@@ -383,7 +383,7 @@
         <div class="skill-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v4h-4"/></svg></div>
         <div class="skill-main">
           <h3>loop-architect</h3>
-          <p>Designs the loop contract — prompt + verification + stop conditions — asking only the calibration needed so a long run converges and stops. Includes usage-limit proofing: window-timed attended drains (<code>/dispatch --unlimited</code> right after each reset) that survive the account’s 5-hour/weekly limit windows without headless scheduling.</p>
+          <p>Designs the loop contract — prompt + verification + stop conditions — asking only the calibration needed so a long run converges and stops. Includes usage-limit proofing: window-timed attended drains (<code>/dispatch</code> — a drain by default — right after each reset) that survive the account’s 5-hour/weekly limit windows without headless scheduling.</p>
         </div>
         <span class="cmd">loop-architect</span>
       </article>

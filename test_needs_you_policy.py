@@ -52,7 +52,10 @@ def test_dispatch_maps_every_blocker_class_to_a_resolving_command():
 def test_dispatch_names_the_class_at_every_emission_site():
     # Each site names its class so a reader (and goal 003) can look the
     # resolving command up in the one table.
-    text = read_unwrapped("skills/dispatch/SKILL.md")
+    text = read_unwrapped("skills/dispatch/SKILL.md") + " " + " ".join(
+        " ".join(f.read_text().split())
+        for f in sorted((ROOT / "skills" / "dispatch" / "references").glob("*.md"))
+    )
     for marker in (
         "class `environment brake`",
         "class `conflict`",
@@ -78,14 +81,14 @@ def test_dispatch_attended_question_rule_requires_all_three_conditions():
     assert "Attended-only interactive questions" in text
     for condition in (
         "invoked `/dispatch` conversationally in this session",
-        "no batch flag (`--count`/`--unlimited`) is active",
+        "single-goal-scoped",
         "not `/loop`, `claude -p`, or `droid exec`",
         "ALL THREE",
     ):
         assert condition in text, f"attended rule missing: {condition}"
     # Defaults: unknown → do not ask; a batch run never asks.
     assert "unknown or unverifiable" in text and "do NOT ask" in text
-    assert "A batch run NEVER asks" in text
+    assert "A drain or multi-goal run NEVER asks" in text
     # Bounded: one round, at most 2 questions, options + recommended default.
     assert "ONE round, at most 2 questions" in text
     assert "recommended default" in text

@@ -27,12 +27,35 @@ decision logs, or resume files beyond the goal file itself.
 | `/define-goal <want>` (also just *"I want…"*) | Shape the want into a contract and pick a destination — run-now line or queued goal file (today's default). |
 | `/define-goal <document>` | Batch mode: extract many items, one approval table, many goal files. |
 | `/define-goal --amend 004` (also `4`, `004-slug`, or *"fix goal 004's contract"*) | Amend mode: repair a **blocked** goal's defective contract in place and requeue it (see "Amend mode" below). |
+| `/define-goal` (bare, or "convert the inbox") with a non-empty `docs/goals/inbox.md` | Inbox intake: convert dispatch's captured follow-ups into real goals (see "Inbox intake" below). |
 
 Argument rules: `--amend` needs an id — `--amend` with no id, or an id matching no index
 entry, reports the usage line above plus the near-miss ids and stops (never falls through to
 defining a new goal). An id combined with a want or a document → the id wins; note the
 ignored text. `--amend` on a goal whose index status is not `blocked` is refused (Amend
 mode, step 1) — it is never a way to edit a live contract.
+
+## Inbox intake — convert dispatch's captured follow-ups
+
+`docs/goals/inbox.md` is dispatch's settle-triage capture file (v10.0.0): one `- [ ]`
+line per discovered defect or follow-up that was real but outside its source goal's
+contract, each with a date, source goal id, type guess, one-line description, and an
+evidence pointer. It exists because real 2026-08 forensics showed follow-ups surfaced
+only as chat prose were NEVER queued — the inbox is the tracked half of "fully
+complete".
+
+Whenever this skill is invoked in a repo whose inbox has unconverted lines, say so
+("inbox has N captured follow-ups") and — unless the user's want is unrelated and
+urgent — offer converting them this session. Conversion IS goal definition, not a
+shortcut: each line gets the normal treatment (recon where it touches an existing
+system — the evidence pointer is recon's starting point, not its substitute; type
+shaping; contract review; tier stamp). At ~5+ items run it as batch mode with the inbox
+lines as the item list and one approval table. After a goal file + index entry is
+written (user-approved as usual), DELETE the converted line from `inbox.md` in the same
+commit as the index entry — a converted line left behind double-tracks the same work; a
+line the user declines to convert stays checked off as `- [x] declined: <reason>`.
+Dispatch appends to the inbox; this skill is the only thing that converts or removes
+lines.
 
 ## Brief first, then artifact
 
@@ -493,10 +516,13 @@ mandated by `dispatch`'s brief — don't repeat them.
 Repo-wide skills belong in `config.skills` instead; for a frontend repo, suggest moving
 `agent-browser` to `config.skills` when every (or most) goal would list it.
 
-Populate two more frontmatter fields that serve as quality hints for the local gate (both
-optional, but fill them when recon located the surfaces — they make validation far
-stronger; for a feature/bug goal that ran recon, an empty `touches:` is a drafting miss,
-not a style choice):
+Populate two more frontmatter fields that serve as quality hints for the local gate.
+Since v10.0.0, `touches:` is REQUIRED on every recon-backed feature/bug goal — recon
+located the surfaces, so the globs exist; a missing `touches:` there is a contract
+defect the red-team review blocks on, not a drafting miss (it silently exiles the goal
+from `--parallel` waves, which is exactly how a queue built today fails to build
+concurrently tomorrow). `acceptance:` stays optional; genuinely greenfield goals with no
+locatable surfaces may omit `touches:` with a one-line note in Context saying why:
 `touches:` (path globs of the surfaces this goal changes — convert the surfaces recon
 located in Context — e.g. routes/UI/schema/jobs — into concrete globs like
 `["apps/orders/**", "frontend/src/orders/**"]`; gives the gate a real scope allowlist so it
@@ -606,7 +632,10 @@ contract, not approve it —
   browser check + `agent-browser` in `skills:`; chore → suite-green-before-and-after
   plus the one mechanical check.
 - **Gate fit**: `touches:` globs cover the surfaces recon located without
-  over-constraining; nothing dev-server-dependent sits in `acceptance:` (headless-only).
+  over-constraining; a recon-backed feature/bug draft with NO `touches:` at all is
+  **contract-blocking** (v10.0.0 — parallel admission and the gate's scope allowlist
+  both need it; only a stated greenfield/no-surfaces note in Context downgrades this to
+  advisory); nothing dev-server-dependent sits in `acceptance:` (headless-only).
 - **Termination**: the `/goal` line is transcript-provable and under the 4,000-char cap,
   the turn cap is present and sized, and the If-blocked / GOAL_UNREACHABLE path exists.
 - **Size (one-sitting test)**: does the goal fit one implementer sitting — one

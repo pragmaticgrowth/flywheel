@@ -127,7 +127,7 @@ demonstrably fires on this repo — heartbeat log lines exist — but no usage-l
 present: no `StopFailure` hook (the probe checks settings in `.claude/` and `.factory/`,
 project + user scope) and no pre-existing OS scheduler (still detected as a rail where
 one exists). Its `fix` field carries loop-architect Step 5's current guidance:
-window-timed attended drains — `/dispatch --unlimited` right after each limit reset —
+window-timed attended drains — `/dispatch` (drains by default since v10.0.0) right after each limit reset —
 rather than headless scheduling. INFO-only when no
 loop has fired here or a rail is detected). The `verify` check WARNs if `config.verify` is
 absent and there are active goals — copy its `fix` (add a `verify:` list to `index.yaml`). The

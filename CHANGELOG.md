@@ -13,6 +13,65 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [10.0.0] — 2026-08-06
+
+**The smooth-drain release: drain by default, never ask mid-cycle, and nothing
+survives as prose.** Forensics-backed (design spec:
+`docs/specs/2026-08-06-v10-smooth-drain-design.md`): after evaluating and
+rejecting a migration to superpowers plan execution (it has no queue index, no
+done-markers, no cross-plan admission control, and a human-attended merge
+menu — it would rebuild `index.yaml` on day one and reproduce the v3 scar),
+two transcript-forensics passes over 19 real dispatch sessions (2026-07-23 →
+2026-08-06) found the actual pain: 7 runs ended "stopping after this one goal"
+with ready goals queued, 6 runs invented permission-asks the skill never
+requires, and one 30-goal drain ended with 55 needs-you follow-ups — including
+3 production-impacting defects and 6 explicit "needs a new goal" items — of
+which ZERO existed in any queue six days later. v10 closes all three.
+
+- **BREAKING — drain by default.** Flagless `/dispatch` now keeps working
+  ready goals, one fully-settled cycle after another, until the queue drains
+  or a brake fires (the old one-goal fire is `--count 1`; `--unlimited` stays
+  as a compat alias). `--parallel` without `--count` waves through the drain.
+  Budget, environment brake, and every stop condition unchanged and still
+  outrank the run.
+- **The cycle is never a confirmation point** (new hard rule). Claim, spawn,
+  repair, re-gate, squash, complete, block, push — all execute without asking;
+  "want me to run the repair?" is a named compliance miss. The attended-only
+  question rule narrows to single-goal-scoped runs (solo / `--count 1`).
+- **Settle triage — nothing survives as prose.** Before any goal settles,
+  every loose end (DONE_WITH_CONCERNS concerns, real-but-out-of-scope reviewer
+  findings, "needs a new goal" discoveries, recurring-lesson proposals) is
+  repaired now, dismissed with stated reasoning, or CAPTURED as one committed
+  line in `docs/goals/inbox.md` (`chore(goals): inbox <id>`). A goal is not
+  `completed` while a loose end is unclassified. The report line grows an
+  `inbox:` field; a drained run's closing line points at `/define-goal`.
+- **define-goal: inbox intake + `touches:` requirement.** A new Inbox-intake
+  section converts captured follow-ups into real goals (full treatment — recon,
+  red-team, tier stamp; batch mode at ~5+; converted lines deleted in the same
+  commit as the index entry). `touches:` is now REQUIRED on recon-backed
+  feature/bug goals — the red-team Gate-fit check upgrades a missing field from
+  drafting-miss to contract-blocking (greenfield opt-out via a Context note) —
+  so `--parallel` admission actually co-schedules the queues define-goal builds.
+- **Single-lens fresh check by default.** The implementer's panel defaults to
+  ONE medium-tier contract-conformance lens; the full 2–3-lens panel only for
+  diffs spanning >3 files, changing test logic, or touching
+  architecture/public interfaces. The orchestrator's independent gate reviewer
+  is unchanged — the second view stays.
+- **Warm repair round.** Repair round 1 resumes the goal's own implementer
+  where the harness can continue a named agent (Claude Code); fresh omnibus
+  spawn otherwise (and on Droid). Still exactly one repair round, then block.
+- **Skill diet.** dispatch/SKILL.md 1,125 → ~850 lines: parallel mode, the
+  canonical implementer brief, and escalation/repair moved verbatim-plus-edits
+  to `skills/dispatch/references/{parallel-mode,implementer-brief,escalation-and-repair}.md`,
+  resolved via `$DISPATCH_REFS` (derived from the `$PGVALIDATE` find) and Read
+  only when the path is hit.
+- Tested per repo doctrine: a 12-scenario GREEN dry-run against the new text
+  (all decided, citations checked, zero dangling references) and a 7-scenario
+  RED baseline against `git show HEAD:` (every changed rule proven to decide
+  differently, every new rule proven previously undecided). Full pytest suite:
+  188 passed. loop-architect, factory-doctor, README, site, and CLAUDE.md
+  updated to the drain default in the same change.
+
 ## [9.0.0] — 2026-08-01
 
 **Parallel build lanes behind the same serial gate.** Part B of the

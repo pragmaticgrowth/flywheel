@@ -68,10 +68,10 @@ def test_no_brace_glob_in_helper_resolution():
 
 def test_limit_rail_is_window_timed_attended_drain():
     # Owner decision 2026-07-28: the factory runs in-subscription and in-session —
-    # the limit-survival rail is a window-timed attended drain (/dispatch --unlimited
-    # after each reset), never cron/launchd firing headless `claude -p` sessions.
+    # the limit-survival rail is a window-timed attended drain (/dispatch, a drain by
+    # default since v10.0.0), never cron/launchd firing headless `claude -p` sessions.
     for path in ["skills/loop-architect/SKILL.md", "skills/factory-doctor/SKILL.md"]:
-        assert "--unlimited" in read(path), path
+        assert "drains by default" in read(path), path
     la = read("skills/loop-architect/SKILL.md")
     assert "resets_at" in la  # the reset clock is named (doctor names it in its script's fix text)
     assert "rail is retired" in la  # the retirement of the headless rail is stated
