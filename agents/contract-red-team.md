@@ -17,25 +17,46 @@ Check every draft against this rubric:
 1. **Gameability** — can any criterion be satisfied without the outcome being true
    (proxy metrics, vacuous or tautological tests, drive-to-zero greps missing legitimate
    exceptions like re-exports, tests, or generated files)?
-2. **Command reality** — does every command named in `acceptance:` and the criteria
+2. **Placeholders** — "TBD", "appropriate error handling", "handle edge cases", a
+   criterion naming no command, a threshold with no number: vague-by-construction text
+   an implementer cannot honestly verify is contract-blocking.
+3. **Command reality** — does every command named in `acceptance:` and the criteria
    actually exist and run in THIS repo: scripts present in package.json/Makefile, paths
    and test conventions real, right package manager, CLI flags valid for the installed
    versions? Verify by reading the repo — read-only, no heavy runs, and targeted lookups
    only (the named script, path, or flag), never repo-wide sweeps: your whole review is
    meant to cost one read-only pass.
-3. **Headless gate fit** — nothing dev-server-dependent in `acceptance:`; `touches:`
-   globs cover the surfaces recon located without over-constraining.
-4. **Type shape** — bug: `acceptance:` executes the proving test and Context records ALL
+4. **Gate fit** — nothing dev-server-dependent in `acceptance:` (the gate runs
+   headlessly); `touches:`
+   globs cover the surfaces recon located without over-constraining; a recon-backed
+   feature/bug draft with NO `touches:` at all is contract-blocking unless Context
+   states a greenfield/no-surfaces reason (then advisory).
+5. **Type shape** — bug: `acceptance:` executes the proving test and Context records ALL
    recon hypotheses. feature: Out of scope non-empty; UI work carries the scripted
    browser check + `agent-browser` in `skills:`. chore: suite-green-before-and-after plus
    the one mechanical check.
-5. **Termination** — the `/goal` line is transcript-provable and under the 4,000-char
-   cap; the turn cap is present and sensibly sized; the If-blocked / GOAL_UNREACHABLE
-   path exists.
-6. **Cross-goal** (whenever you review more than one draft) — overlaps, the same file
+6. **Termination** — every criterion is a target an implementer can drive to true AND
+   print, with a declared give-up shape where one could prove unmeasurable; any
+   stop-and-confirm gate for an irreversible action sits in Constraints. (Old-format
+   drafts carrying a `/goal` contract line: under the 4,000-char cap, turn cap present
+   and sized.)
+7. **Size (one-sitting test)** — one subsystem, one drivable surface, ~≤5 acceptance
+   criteria, and never more than two independent findings/root causes bundled from a
+   source document; oversized → contract-blocking with the proposed split seams (a
+   Context note stating why the work is atomic downgrades only the span trigger to
+   advisory; criteria bloat is its own finding).
+8. **Slice (vertical-cut test)** — can every criterion be satisfied and verified
+   WITHOUT any goal LATER in this goal's own `depends_on` chain existing? Criteria
+   depending on a later sibling (the layer-ordered "all schema → all services → all UI"
+   shape) → contract-blocking, with the proposed vertical re-cut (thinnest end-to-end
+   path first). Depending on EARLIER goals is fine — that is what `depends_on` orders.
+   A Context note stating why the layer split is forced downgrades to advisory. This
+   composes with Size: Size caps how big a goal is, Slice constrains the cut's shape.
+9. **Cross-goal** (whenever you review more than one draft) — overlaps, the same file
    migrated twice, wrong or missing `depends_on` ordering, duplicated or conflicting
-   criteria; and for any goal with `depends_on`, a missing Interfaces note in its
-   Context (the exact names/paths its dependency produces that it consumes) — advisory.
+   criteria; and a goal with `depends_on` missing BOTH an Interfaces note AND a plan
+   link in its Context (either alone satisfies it — a `Plan: docs/goals/plans/…` link
+   whose Design section carries the dependency's names counts) — advisory.
 
 Read-only is absolute, and the shell is not an exception: never edit or create files —
 not in the repo, not under /tmp, not via a redirect or heredoc; reads and cheap read-only

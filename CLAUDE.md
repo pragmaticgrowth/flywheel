@@ -10,7 +10,7 @@ architecture — one harness-neutral **execution-tier vocabulary
 `heavy|medium|light`** plus one small harness-mapping block per skill,
 instead of the v4.x dual-branch prose).
 The repo publishes ONE plugin from the `pragmatic-growth` marketplace:
-`flywheel` v10.0.0.
+`flywheel` v11.0.0.
 (The `html-artifacts`, `autoresearch`, `human-writing` plugins were **removed**
 from the marketplace in v8.0.0, owner decision
 2026-07-25 — the marketplace is the goal-factory only now; git history keeps
@@ -39,25 +39,35 @@ plain-language → autonomous-execution pipeline around a file-based goal queue
 /goals-status`, with `loop-architect` and `factory-doctor` as the rails. There
 is no `plugins/` directory — the repo root IS the flywheel plugin.
 
-- **ideate** (v6.1.0, adapted from superpowers' brainstorming after the
-  2026-07-24 full-plugin deep-read) — the pipeline's front door: explores a
-  fuzzy idea into a user-approved design through open dialogue. Context
-  orientation first (1–2 read-only subagents max; on the medium tier as of
-  v6.2.0 — gather work, same routing as define-goal recon; medium maps to
-  `general-purpose` + `model: sonnet` on Claude Code and to `explorer` +
-  `complexity: medium` on Droid), split-first
-  scope check (decomposition before detail questions — pieces map 1:1 onto
-  goals + `depends_on`), option-based question rounds with NO round cap (the
-  attended stage; define-goal keeps its two-round cap), 2–3 approaches with a
-  recommendation, design presented in sections scaled to complexity, inline
-  self-review (placeholders, contradictions, two-readable requirements).
-  HARD GATE: its only terminal states are invoking define-goal with the
-  approved design or the user parking the idea — it never writes goal files,
-  index entries, or code. Multi-goal chains get ONE design brief at
-  `docs/goals/briefs/YYYY-MM-DD-<topic>.md` (the one sanctioned planning
-  artifact beyond goal files; never carries acceptance criteria or status),
-  linked from each chain goal's Context; single-goal outcomes stay fileless.
-  Already-shaped wants skip it entirely.
+- **ideate** (v11.0.0 — rewritten around the PLAN, the factory's design tier,
+  after the 2026-08-12 riptide/RPI deep-read + estate forensics; originally
+  adapted from superpowers' brainstorming, 2026-07-24) — the pipeline's front
+  door: explores a fuzzy idea and writes an approved plan at
+  `docs/goals/plans/YYYY-MM-DD-<topic>.md` (template:
+  `skills/ideate/references/plan-template.md`; replaces the v6-era design
+  brief — existing `docs/goals/briefs/` links stay valid). Context orientation
+  first (1–2 read-only subagents max, medium tier — `general-purpose` +
+  `model: sonnet` on Claude Code, `explorer` + `complexity: medium` on Droid),
+  then a VERTICAL-SLICE scope check (each piece independently verifiable
+  end-to-end; "if a piece cannot be verified without a LATER piece existing,
+  it is not a slice"; pieces map 1:1 onto goals + `depends_on`). Question
+  diet: design forks become the plan's Open-questions section (options +
+  recommendation each; ONLY the owner resolves; "go with your recommendations"
+  resolves all at once with provenance recorded; resolved questions keep their
+  why forever) — at most ONE AskUserQuestion round during exploration, and the
+  plan presentation is the single approval touch. The plan is code-shaped at
+  signature altitude (exact signatures with bodies elided, file-tree diff,
+  call flows only where non-obvious — never function bodies) with
+  takeaway-stating headers. Dispatch checks phases off as their goals
+  complete, so the plan doubles as the progress view. HARD GATE: its only
+  terminal states are invoking define-goal with the approved plan or the user
+  parking the idea — it never writes goal files, index entries, or code.
+  Single-goal outcomes stay fileless; already-shaped wants skip it entirely;
+  re-invoking on a planned idea iterates the same plan file. Grounding: the
+  2026-08-12 forensics (335 measured cycles) showed blocked-goal
+  amend-thrash — design forks surfacing at dispatch time — cost 10–85 hours
+  per goal, the estate's dominant wall-clock tail; the plan resolves forks
+  where they cost minutes.
 - **define-goal** — plain-language wants → measurable goal contracts.
   Two destinations: a copy-pasteable `/goal` line to run now, or a queued
   goal file (`docs/goals/NNN-slug.md` + `index.yaml` entry). Includes
@@ -120,7 +130,24 @@ is no `plugins/` directory — the repo root IS the flywheel plugin.
   unsplit `depends_on` chain and splitting is contract-blocking (unless
   Context states why it's atomic, then advisory); grounded in 2026-07-28
   cycle forensics (158 cycles, median ~57 min; every 13–18h outlier was an
-  oversized contract).
+  oversized contract). v11.0.0 (the plan release, forensics-backed
+  2026-08-12): plan-backed wants get a FAST PATH — zero question rounds (the
+  plan is the interview; the one exception is a red-team finding or plan gap
+  opening a genuine fork), recon narrowed to verify-and-complete, phases as
+  the batch item list, `Plan: docs/goals/plans/<file> — Phase <N>` in each
+  chain goal's Context replacing per-goal Interfaces prose; non-plan wants get
+  the QUESTION DIET (skip the round when every candidate question has a
+  confident recommended default — state assumptions in the one draft
+  confirmation instead); the GOAL-FILE DIET cuts `## If blocked` and
+  `## Goal contract` from queued files (both live once in dispatch's
+  implementer brief; the `/goal` line is run-now-only; old-format files stay
+  valid; target ≤60 lines — corpus-measured 75–85 % ceremony before); the
+  red-team adds a SLICE check (criteria unverifiable without a LATER goal in
+  the same chain = horizontal cut → contract-blocking; stated forced-layer
+  reason downgrades to advisory) and `agents/contract-red-team.md` caught up
+  to the Placeholders/Size checks; amend mode takes the clearly-recommended
+  reading without a question round unless the fork is a true owner decision
+  (spend, data loss, irreversible/externally-visible).
 **Harness note (v8.2.0; depth corrected v8.3.0):** on Claude Code a subagent can spawn
 further subagents (Agent nests — official docs put the default nesting depth at 3 layers
 below the main conversation, not the 5 previously claimed here; dispatch's
@@ -136,8 +163,11 @@ own review to the full panel, and is explicitly not a compliance miss.
 - **dispatch** — factory orchestrator for the docs/goals queue: serial
   one-goal-AT-A-TIME on the currently checked-out branch, and since v10.0.0 a
   flagless run DRAINS the queue by default (keeps claiming ready goals until
-  empty; `--count N` limits the run, `--unlimited` is a compat alias) — no PRs,
-  no remote or `goal/<id>` branches; since v9.0.0 an opt-in `--parallel [K]`
+  empty; `--count N` limits the run, `--unlimited` is a compat alias; since
+  v11.0.0 a flagless drain auto-enters lane mode when `config.parallel`
+  exists — see the v11 tail of this bullet — and `--serial` forces
+  one-at-a-time) — no PRs,
+  no remote or `goal/<id>` branches; since v9.0.0 a `--parallel [K]`
   batch mode (Claude Code only, default K=2, cap 4) builds provably-disjoint
   goals concurrently in disposable LOCAL worktree lanes
   (`~/.local/state/pg-dispatch/<SLUG>/lanes/<id>`, local branch `lane/<id>`,
@@ -255,7 +285,23 @@ own review to the full panel, and is explicitly not a compliance miss.
   feature/bug goals (red-team contract-blocking; greenfield opt-out via a
   Context note) and a new Inbox-intake section converts dispatch's captured
   follow-ups into real goals (batch mode at ~5+, converted lines deleted in
-  the same commit as the index entry).
+  the same commit as the index entry). v11.0.0 (the plan release): a flagless
+  drain AUTO-PARALLELIZES — when `config.parallel` exists (standing opt-in),
+  the harness is Claude Code, and ≥2 ready goals are co-schedulable, the drain
+  runs `--parallel` waves (K = `config.parallel.max_lanes`, else 2; admission
+  control and the integration lock unchanged); new `--serial` flag forces
+  one-at-a-time. CONCERNS DIET: DONE_WITH_CONCERNS is legal ONLY for a concern
+  qualifying the goal's own contract — honored scope boundaries and
+  pre-existing failures go to the report file, discovered follow-ups to a
+  `Follow-ups:` report heading that settle triage captures (measured pre-v11:
+  ~30 % of reports carried the status, mostly scope discipline reading as
+  unfinished work). PLAN AWARENESS: the implementer brief anchors on the
+  goal's Acceptance criteria (old files' Goal-contract section = same
+  content), Reads the goal's linked plan before starting, and treats a plan
+  Open-question the goal trips over as a CONTRACT_AMBIGUOUS stop; on a
+  plan-backed PASS the settle commit checks the phase off in the plan
+  (display mirror only — index.yaml stays the sole status authority; Phase 0's
+  doctor pass re-syncs drift plan-follows-index, `chore(goals): plan-sync`).
 - **goals-status** (v5.2.0; simplified in v6.0.0) — read-only view of the
   docs/goals queue. Prints
   every OPEN goal — `in_progress`, `blocked`, `not_started` — with its title and
@@ -315,7 +361,9 @@ own review to the full panel, and is explicitly not a compliance miss.
   run DRAINS the queue since v10.0.0 (v6.1.0–v9.x it worked one goal);
   `--count N` caps the run at N of the same fully-settled cycles (each goal claims → gates
   → settles before the next claim; budget outranks flags); `--parallel [K]`
-  (v9.0.0, Claude Code only) adds lane-model build concurrency behind the
+  (v9.0.0, Claude Code only; since v11.0.0 a flagless drain auto-enters lane
+  mode when `config.parallel` exists and ≥2 ready goals are co-schedulable,
+  `--serial` opting out) adds lane-model build concurrency behind the
   SAME serialized, locally-gated integration (see the dispatch bullet above —
   admission control, in-lane gate, integration lock, fast-forward-only
   branch movement; the v3 scar covered PR/CI/remote integration machinery,

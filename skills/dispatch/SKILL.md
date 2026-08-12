@@ -1,7 +1,7 @@
 ---
 name: dispatch
-description: Factory dispatcher — use when the user says "/dispatch" (optionally with a goal id, --count N, --unlimited, or --parallel), "run the factory", wants the docs/goals queue worked, or wants to work one specific queued goal in this session ("work goal 005", "/dispatch 005"). Works in any repo with a docs/goals/ queue. Works ready goals on the currently checked-out branch — serial one-at-a-time, and by default DRAINS the queue (keeps working ready goals until empty; --count N limits the run, a goal id scopes it to one); the opt-in --parallel mode builds provably-disjoint goals concurrently in local worktree lanes while still integrating them strictly ONE at a time behind the same local gate — no pull requests, no remote branches, never two writers in one tree. Orchestrates only — never implements in its own context; the phase procedure lives in the skill body, never in this description.
-argument-hint: "[goal-id] [--count N | --unlimited] [--parallel [K]]"
+description: Factory dispatcher — use when the user says "/dispatch" (optionally with a goal id, --count N, --unlimited, --parallel, or --serial), "run the factory", wants the docs/goals queue worked, or wants to work one specific queued goal in this session ("work goal 005", "/dispatch 005"). Works in any repo with a docs/goals/ queue. Works ready goals on the currently checked-out branch and by default DRAINS the queue (keeps working ready goals until empty; --count N limits the run, a goal id scopes it to one); parallel lane mode builds provably-disjoint goals concurrently in local worktree lanes while still integrating them strictly ONE at a time behind the same local gate — entered via --parallel, or automatically on a flagless drain when the queue's config.parallel block exists (--serial forces one-at-a-time) — no pull requests, no remote branches, never two writers in one tree. Orchestrates only — never implements in its own context; the phase procedure lives in the skill body, never in this description.
+argument-hint: "[goal-id] [--count N | --unlimited] [--parallel [K] | --serial]"
 ---
 
 # Dispatch — the factory orchestrator
@@ -13,11 +13,12 @@ skills — never re-derive what a skill already encodes. The queue is `docs/goal
 (see `define-goal` for the format).
 
 Dispatch works ready goals **on the currently checked-out branch** (e.g. `staging`).
-Execution is serial, one goal AT A TIME — and since v10.0.0 the flagless default is a
+Integration is serial, one goal AT A TIME — and since v10.0.0 the flagless default is a
 DRAIN: keep working ready goals, one fully-settled cycle after another, until the queue
-is empty or a stop condition fires (`--count N` is the opt-in limiter; `--parallel`,
-Claude Code only, builds provably-disjoint goals concurrently in local worktree lanes —
-references/parallel-mode.md). Per goal: claim it, spawn a single foreground implementer that
+is empty or a stop condition fires (`--count N` is the opt-in limiter; lane mode —
+Claude Code only, entered via `--parallel` or auto-entered on a flagless drain when
+`config.parallel` exists (Invocation) — builds provably-disjoint goals concurrently in
+local worktree lanes: references/parallel-mode.md). Per goal: claim it, spawn a single foreground implementer that
 commits its work (on this branch in serial mode; in its lane in parallel mode), run a
 LOCAL gate yourself, and on PASS keep one squashed commit — on FAIL roll the goal back so
 the branch never carries unverified work. No pull requests, no remote or `goal/<id>`
@@ -36,22 +37,23 @@ background implementers you poll — stays banned.
 A single `/dispatch` now drains the queue; `/loop /dispatch` exists only to keep
 re-draining as NEW goals arrive.
 
-## Invocation — `/dispatch [<goal-id>] [--count N] [--parallel [K]]`
+## Invocation — `/dispatch [<goal-id>] [--count N | --unlimited] [--parallel [K] | --serial]`
 
 | Invocation | Behavior |
 |---|---|
-| `/dispatch` | **Drain — the v10.0.0 default:** keep working ready goals, sequentially, until the queue drains or a stop condition below fires. |
+| `/dispatch` | **Drain — the v10.0.0 default:** keep working ready goals until the queue drains or a stop condition below fires. **Auto-parallel (v11.0.0):** when the queue's `config.parallel` block exists (the repo owner's standing opt-in), the harness is Claude Code, and ≥2 ready goals are co-schedulable under the untouched admission rules, the drain runs them as `--parallel` waves (K = `config.parallel.max_lanes`, else 2); otherwise — no `config.parallel`, Droid, or nothing co-schedulable — it works sequentially exactly as before. `--serial` forces sequential for this run. |
 | `/dispatch 087` (also `87`, `087-slug`, or "work goal 087") | Solo mode: work exactly that goal (see Solo mode below). |
 | `/dispatch --count N` | Work up to N ready goals, then stop (N ≥ 1). `--count 1` is the pre-v10 single-goal fire — use it when one goal is deliberately all you want. |
 | `/dispatch --unlimited` | Explicit alias of the flagless drain default (kept for compatibility and for loop prompts that spell intent out). |
 | `/dispatch --parallel [K]` (combinable with `--count`) | Lane concurrency: build up to K provably-disjoint goals at once in local worktree lanes (default K = `config.parallel.max_lanes`, else 2; hard cap 4), integrating strictly one at a time. Claude Code only — on Droid the flag is noted in the report and the run proceeds serially. See references/parallel-mode.md. |
 
-Argument rules: a goal id combined with `--count`/`--unlimited`/`--parallel` → the id
-wins; note the ignored flag in the report. `--count` without a valid N ≥ 1, or an
-unknown flag → report the usage line above and run the drain default. `--parallel`
+Argument rules: a goal id combined with `--count`/`--unlimited`/`--parallel`/`--serial`
+→ the id wins; note the ignored flag in the report. `--count` without a valid N ≥ 1, or
+an unknown flag → report the usage line above and run the drain default. `--parallel`
 without `--count` waves through the drain default (keep claiming co-schedulable waves
-until the queue drains). The count meters CLAIMS exactly as below — lanes change where
-work builds, never how much is claimed.
+until the queue drains); `--serial` disables auto-parallel for the run (and beats
+`--parallel` if both are given — note it). The count meters CLAIMS exactly as below —
+lanes change where work builds, never how much is claimed.
 
 **A drain repeats the same settled cycle — it changes nothing about safety.** The
 invariant was never "one goal per run"; it is one goal AT A TIME, on one branch, behind
@@ -185,7 +187,8 @@ a review role: review needs to run commands (tests, builds), which `explorer` ca
 - One goal INTEGRATES at a time, in this session, on the current branch. Serial mode
   (the default): the next claim waits for the current goal to fully settle (the
   Invocation flags size the run; default one goal), work commits land directly on the
-  branch, and there are NO worktrees. Parallel mode (`--parallel` only): up to K
+  branch, and there are NO worktrees. Parallel mode (`--parallel`, or auto-entered on a
+  flagless drain per Invocation): up to K
   co-schedulable goals build concurrently in local lanes per the Parallel-mode section —
   but integration stays strictly serial and the branch only ever advances to
   gate-verified trees. In BOTH modes: no pull requests, no remote or `goal/<id>`
@@ -405,7 +408,12 @@ or ad-hoc `jq` — grep probes on the queue invent phantom statuses and miscount
 extra verification round every fire. Cheap doctor pass, flagged in the report rather than
 silently fixed: every entry has its goal file and vice versa; no circular `depends_on`; no
 `depends_on` pointing at a missing entry; warn when a goal and its dependency declare
-different `base` branches.
+different `base` branches. Plan-mirror re-sync (the one doctor fix applied, not just
+flagged): for each of flywheel's plan files (`docs/goals/plans/*.md` — not the
+superpowers plan notes above) whose phases link to queue goals, a checkbox
+that disagrees with the index is rewritten to match the index — plan follows index,
+never the reverse — committed `chore(goals): plan-sync` only when something actually
+drifted.
 
 On any environment failure you can't handle (missing tooling, an unrunnable `config.verify`
 command, a queue the claim protocol can't write), stop the iteration and surface it under
@@ -568,6 +576,15 @@ For each claimed goal, in order:
    DOES touch gets no retry: that is the gate working.
 4. PASS → `git reset --soft <gate_base> && git commit -m "feat(goal <id>): <slug>"` (squash to
    one), then `chore(goals): complete <id>`; push if a remote exists (non-blocking).
+   **Plan mirror (v11.0.0, plan-backed goals only).** If the goal's Context carries a
+   `Plan:` link, flip that phase's `- [ ]` to `- [x]` in the plan file INSIDE the same
+   `chore(goals): complete <id>` commit, and when that flip checks the plan's last
+   open phase, also stamp its frontmatter `status: done`. This is a DISPLAY mirror —
+   the one document the owner actually reads shows the chain's progress — never a
+   second status authority: `index.yaml` remains the only source of truth, the mirror
+   is re-synced by Phase 0's doctor pass in the plan-follows-index direction only,
+   and a missing/unwritable plan file is a one-line note in the fire's report, never
+   a settle blocker.
    **Then, on every PASS, surface the goal's subjective criteria.** define-goal marks a
    criterion no command can settle **needs independent review** and tells the goal author it
    reaches a human under needs-you at integration — so after the squash, re-read

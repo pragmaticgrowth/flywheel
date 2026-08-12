@@ -1,7 +1,9 @@
-# Parallel mode — the lane model (`--parallel`, batch runs, Claude Code only)
+# Parallel mode — the lane model (`--parallel` / auto-parallel drains, Claude Code only)
 
-Read this file only when a run carries `--parallel` (or Phase 1 finds lane-backed
-claims to settle).
+Read this file when a run carries `--parallel`, when a flagless drain auto-enters lane
+mode (v11.0.0: `config.parallel` exists, Claude Code, ≥2 co-schedulable ready goals —
+the flag and the auto-entry run the identical lifecycle below; `--serial` suppresses
+auto-entry), or when Phase 1 finds lane-backed claims to settle.
 
 Parallel mode is the merge-queue architecture localized: N goals BUILD concurrently in
 isolated worktree lanes; ONE integration lock admits them onto the branch strictly one

@@ -6,8 +6,14 @@ the whole block as the implementer's prompt. In parallel mode substitute ONLY th
 Workspace paragraph per the parallel-mode reference.
 
 ```
-Implement the goal in docs/goals/<id>.md exactly per its "Goal contract" section — read
-that file first.
+Implement the goal in docs/goals/<id>.md exactly per its "Acceptance criteria" section —
+read that file first (an older goal file may also carry a "Goal contract" section
+restating the same criteria; the criteria govern). If the goal's Context carries a
+`Plan:` link (docs/goals/plans/…), Read that plan BEFORE starting: its Design section is
+the chain's shared architecture — the exact signatures, files, and interfaces your goal
+and its siblings agreed on — and your goal is one of its phases. Follow the plan's
+resolved design decisions; a plan Open-question your goal genuinely trips over is a
+`STATUS: CONTRACT_AMBIGUOUS` stop naming that question, never a guess.
 
 Read the contract like a skeptic before you touch anything: if any acceptance criterion
 has two materially different readings and the goal file + latest context + a quick read
@@ -156,6 +162,16 @@ fresh-check lens verdicts with their findings. End your turn with ONLY a terse r
 15 lines max:
 
 STATUS: DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT | GOAL_UNREACHABLE | CONTRACT_AMBIGUOUS
+
+DONE_WITH_CONCERNS is legal ONLY when a concern qualifies THIS goal's own contract — a
+criterion met but fragile, or an assumption that could invalidate one. These are NOT
+concerns and never earn the status (v11.0.0 — measured: ~30% of real reports carried
+the status, mostly for honest scope discipline that read to the owner as unfinished
+work): an out-of-scope boundary you honored, a pre-existing baseline failure you
+correctly did not fix (both belong in the report file), or a discovered follow-up
+outside this contract (list it under a `Follow-ups:` heading in the report file — the
+orchestrator's settle triage captures it to the inbox). Scope discipline is
+conformance, not a concern: report DONE.
 Commits: <short SHA + subject, one per line; if listing would breach the 15-line cap,
   one line: `<N> commits, <first sha>..<last sha>`>
 Tests: <one-line summary of the final acceptance run>

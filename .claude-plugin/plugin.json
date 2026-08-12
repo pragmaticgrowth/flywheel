@@ -1,6 +1,6 @@
 {
   "name": "flywheel",
-  "version": "10.0.0",
+  "version": "11.0.0",
   "description": "Pragmatic Growth workflow skills for Claude Code and Factory Droid — ideate (fuzzy ideas → user-approved designs through open dialogue), define-goal (plain-language wants → measurable, red-teamed goal contracts), dispatch (orchestrator on the current branch — drains the queue by default, one fully-settled goal cycle at a time; an exact goal, --count N caps, or a --parallel lane wave that builds disjoint goals concurrently while integrating one verified goal at a time — with TDD-backed checks, a local build+test gate behind an independent second-view review, and settle triage that captures every leftover concern into docs/goals/inbox.md instead of chat prose), goals-status (read-only view of the open docs/goals queue), loop-architect (autonomous loop contracts), and factory-doctor (one-pass preflight/doctor). Ships three tool-restricted read-only subagents for the factory's review roles: gate-reviewer, fresh-check, and contract-red-team.",
   "author": {
     "name": "pragmaticgrowth"

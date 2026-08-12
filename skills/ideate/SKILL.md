@@ -1,38 +1,47 @@
 ---
 name: ideate
-description: Use when the user has an idea or early want that isn't ready to define — "I have an idea", "what if we", "let's think through X", "/ideate" — or when goal definition stalls because the want needs design exploration first. Explores intent and design through dialogue; never implements and never writes goal files or queue entries (that's define-goal).
+description: Use when the user has an idea or early want that isn't ready to define — "I have an idea", "what if we", "let's think through X", "/ideate" — or when goal definition stalls because the want needs design exploration first. Explores intent and design through dialogue and writes the plan (docs/goals/plans/) that define-goal contracts from; never implements and never writes goal files or queue entries (that's define-goal).
 argument-hint: "[the idea to explore]"
 ---
 
-# Ideate — explore an idea into an approved design
+# Ideate — explore an idea into an approved plan
 
 ## Overview
 
-Turn a fuzzy want into a design the user has approved, then hand that design to
-`define-goal` to become measurable goal contracts. This is the pipeline's front door:
+Turn a fuzzy want into a PLAN the user has approved, then hand it to `define-goal`
+to become goal contracts. This is the pipeline's front door:
 
 ```
 /ideate  →  /define-goal  →  /dispatch  →  /goals-status
-(explore)   (contract)       (execute+gate)  (observe)
+(plan)      (contract)       (execute+gate)  (observe)
 ```
 
-Ideation is dialogue, not paperwork: understand the current system, ask what actually
-matters, propose real alternatives, and converge on a design the user recognizes as
-what they meant. The user may not be an engineer — plain language throughout.
+The plan (v11.0.0) is the factory's design tier: one document that resolves design
+forks BEFORE contracts exist. Forensics across this factory's real repos
+(2026-08-12) found the dominant cycle-time tail was never implementation — it was
+contract defects surfacing at dispatch time: goals blocked on two-readable criteria
+took 10–85 hours of block→amend→requeue thrash, with the owner dragged into every
+round. Both of the estate's currently-blocked goals are design forks ("derive-it or
+author-it") that a plan's Open-questions section settles in one attended minute.
+The plan moves that resolution to the cheapest possible place.
 
-A want that is already shaped ("add rate limiting to /api/orders, 429 over 100
-req/min") skips this skill entirely — send it straight to `define-goal`; ideating on
-it is ceremony. Conversely, when a define-goal question round reveals the want is
-really a design problem (answers keep re-opening what to build rather than pinning it
-down), hand off here instead of burning define-goal's two capped rounds on design
-questions.
+The user may not be an engineer — plain language with them; the plan's Design
+section carries the precision.
 
-**HARD GATE.** The ONLY terminal states of this skill are (a) invoking `define-goal`
-with the approved design, or (b) the user parking or dropping the idea. Never write
-goal files, `index.yaml` entries, or code; never scaffold; never implement "just the
-obvious part"; never draft goal contracts here to skip define-goal's contract review
-and confirmation. This holds regardless of how simple the idea seems — simple ideas
-are where unexamined assumptions waste the most work.
+**When a plan, when not.** A plan is for work that will become a CHAIN (2+ goals)
+or a design-heavy single goal. An already-shaped want ("add rate limiting to
+/api/orders, 429 over 100 req/min") skips this skill entirely — send it straight
+to `define-goal`; ideating on it is ceremony. A simple single-goal outcome
+explored here stays fileless: the design flows into that goal's Context and no
+plan file is written. When a define-goal question round reveals the want is really
+a design problem (answers keep re-opening what to build), hand off here.
+
+**HARD GATE.** The ONLY terminal states of this skill are (a) invoking
+`define-goal` with the approved plan (or fileless design), or (b) the user parking
+or dropping the idea. Never write goal files, `index.yaml` entries, or code; never
+scaffold; never implement "just the obvious part"; never draft goal contracts here
+to skip define-goal's contract review. This holds regardless of how simple the
+idea seems.
 
 ## The process
 
@@ -44,100 +53,126 @@ Orient in the current system before asking anything — files, docs, recent comm
 where similar features already live. For a bigger unknown, spawn 1–2 read-only
 subagents on the medium tier — Claude Code: `general-purpose` with `model: sonnet`
 (never the built-in Explore type, whose model cannot be pinned); Droid: `explorer`
-with `complexity: medium` — orientation is gather work, routed like define-goal's
-recon search agents, reporting
-`path:line` summaries, never file dumps. The judgment stays with you: weighing what
-they found, the approaches, and the design all happen in your session-model context. This is orientation, not recon: enough to
-ask good questions and propose grounded approaches. define-goal's recon still runs
-later, narrowed by what you found — the handoff tells it what you already located so
-it verifies rather than re-derives.
+with `complexity: medium` — reporting `path:line` summaries, never file dumps. The
+judgment stays with you: weighing what they found, the approaches, and the design
+happen in your session-model context. define-goal's recon still runs later,
+narrowed by what you found.
 
-### 2. Scope check — before any detail question
+### 2. Scope check — vertical slices, before any detail question
 
-If the idea spans multiple independently shippable pieces, surface the decomposition
-FIRST: the pieces, how they relate, what order to build them. A question round spent
-refining a piece that then splits is a wasted interrupt (the same reason define-goal
-asks its split question first). The decomposition maps 1:1 onto future goals and
-their `depends_on` chain — say so in plain language ("this is really three
+If the idea spans multiple independently shippable pieces, surface the
+decomposition FIRST — and cut it VERTICALLY. Each piece must be independently
+verifiable end-to-end on its own. A decomposition ordered by layer — "all schema,
+then all services, then all API, then all UI" — is horizontal: it produces nothing
+testable until the last piece and every piece's verification depends on a later
+one. Cut through the layers instead: the thinnest end-to-end path first, then
+widen. The test: **if a piece cannot be verified without a LATER piece existing,
+it is not a slice — re-cut.** The decomposition maps 1:1 onto future goals and
+their `depends_on` chain; say so in plain language ("this is really three
 deliverables; the second needs the first").
 
-### 3. Clarifying dialogue
+### 3. Explore — questions become the plan, not an interview
 
-One AskUserQuestion round at a time, 1–2 questions per round; each question carries
-concrete options with a recommended default (open-ended only when options would
-mislead). Keep the dialogue going while answers still change the design; stop the
-moment the next question wouldn't. There is no round cap here — this is the attended,
-conversational stage; the two-round cap belongs to define-goal's interview, not this
-dialogue. Spend every question on purpose, constraints, or success criteria — never
-on detail the repo can answer.
+Derive everything the repo can answer yourself. For genuine design forks, do NOT
+run serial question rounds: record each fork as an **Open question** in the plan —
+options, one recommendation with its why — and keep designing on the recommended
+branch. At most ONE AskUserQuestion round (1–2 questions) during exploration, and
+only for a fork so load-bearing that the design cannot be written at all without
+the answer. Everything else waits for the single approval touch in step 5. This is
+the question diet the owner's own usage demanded: "don't ask me questions, you
+decide" appears across every repo's sessions — the recommendation-plus-record
+pattern gives them the decision without the interrogation.
 
-YAGNI ruthlessly: propose cutting features from every design. A cut piece can always
-be ideated later as its own goal.
+YAGNI ruthlessly: propose cutting features from every design. A cut piece can
+always be ideated later. Genuinely different approaches (2–3, recommendation
+first) belong in the dialogue when the fork is architectural; the losing approach
+and why it lost gets one line in the plan's Design or Open-questions section.
 
-### 4. Propose 2–3 approaches
+### 4. Write the plan
 
-Present genuinely different approaches with trade-offs, recommendation first with the
-reasoning. One approach means you stopped thinking early; four means you are
-delegating the design back to the user.
+For a chain (2+ goals) or design-heavy work: write the plan file per
+`references/plan-template.md` (Read it — the template is canonical) to
+`docs/goals/plans/YYYY-MM-DD-<topic>.md`. The template's two writing rules govern
+everything you write in it:
 
-### 5. Present the design
+- **Headers state the takeaway** — "Sessions persist to Postgres before the
+  daemon acks", never "Session storage".
+- **Code-shaped where it touches existing code, at signature altitude** — exact
+  type/method signatures with bodies elided, a created/modified file-tree diff
+  with one line of responsibility each, a call-flow sketch only where control
+  flow is non-obvious. Never function bodies: if implementations appear, the plan
+  has dropped a level.
 
-Sections scaled to their complexity — a few sentences for a simple idea; for a
-genuinely large design, checkpoint section by section ("does this look right so
-far?"). Cover what applies: the outcome in the user's terms, architecture and
-components, data flow, error handling, and — always — how it will be verified (name
-real commands and drivable surfaces where you can; this feeds define-goal's
-acceptance criteria directly). When a comparison is genuinely clearer shown than
-told and a rich-artifact skill is available in the session, use it; never require it.
+For a simple single-goal outcome: no file — present the same content inline,
+scaled down.
+
+### 5. Present — ONE approval touch
+
+Present the plan once: what we're doing, the design's takeaway headers, the
+phases, and the Open questions with your recommendations. The user then either
+answers any subset, says "go with your recommendations" (which resolves ALL open
+questions — record each as resolved with that provenance), asks for changes, or
+parks the idea. Iterate only on what they push back on; do not re-present
+sections they didn't question. A plan may proceed to define-goal with questions
+still OPEN — an unresolved design question is information, not a blocker, and a
+goal that later trips over one has somewhere to point.
 
 ### 6. Self-review, inline
 
-Before handoff, re-read the design with fresh eyes:
+Before handoff, re-read the plan with fresh eyes:
 
 - **Placeholders:** any "TBD", "handle edge cases", "appropriate X"? Fix them.
 - **Consistency:** do sections contradict each other?
 - **Ambiguity:** could a requirement be read two materially different ways?
   Two-readable requirements come back as `CONTRACT_AMBIGUOUS` stops at dispatch
   time — kill them here, the cheapest place.
-- **Scope:** one goal or a chain? (Feeds the handoff below.)
+- **Slices:** does any phase fail the slice test (unverifiable without a later
+  phase)? Re-cut it now — define-goal's red-team blocks horizontal cuts.
+- **Headers:** does every heading state its takeaway?
 
 Fix inline and move on — no re-review loop.
 
 ### 7. Handoff to define-goal
 
-On the user's approval, invoke `define-goal` with the approved design: the
-outcome(s), the decomposition with the interfaces between pieces, the files and
-constraints you located, and the verification story. Single piece → normal
-define-goal flow. Multiple pieces → define-goal batch mode with the decomposition as
-the item list. define-goal still runs its own (narrowed) recon, contract review,
-model stamping, and confirmation — the design is input, never a bypass.
+On approval, stamp the plan's frontmatter `status: approved` (a plan may still
+carry OPEN questions — approval is about the design, not every fork), then
+invoke `define-goal` with the plan (or the fileless design). A plan
+is the interview already done: define-goal's plan-backed fast path runs ZERO
+question rounds, narrows recon to verify-and-complete, uses the phases as the
+batch item list, and links the plan from each goal's Context. define-goal still
+runs its own contract review and confirmation — the plan is input, never a
+bypass.
 
-## Design brief file — multi-goal chains only
+## Iterating an existing plan
 
-For a chain (2+ goals), write ONE short design brief to
-`docs/goals/briefs/YYYY-MM-DD-<topic>.md` (create the directory if needed) and have
-define-goal link it from each chain goal's Context. Dispatch implementers see only
-their own goal file; the brief is the shared background a chain needs. Keep it under
-a page: outcome, decomposition, interfaces, key decisions with their why. The goal
-files remain the contracts — the brief never carries acceptance criteria or status.
-For a single-goal outcome, no file: the design flows into that goal's Context and the
-conversation ends. (This brief is the one sanctioned planning artifact beyond goal
-files; define-goal's own no-artifacts rule is untouched.)
+Re-invoking this skill on an idea that already has a plan file UPDATES that plan
+in place (same path, never a second file): fold in what changed, move
+newly-answered questions to RESOLVED with their why, add new open questions, and
+re-present only the changed sections for the same single approval touch. Never
+rewrite resolved questions — they are the design's decision history.
 
 ## Red flags — stop and get back on the path
 
-- Writing a goal file, index entry, or code "while it's fresh" → HARD GATE violation.
-- "Too simple to need the dialogue" → the design can be three sentences, but present
-  it and get approval.
-- Asking a question the repo can answer → read the repo; save the user's attention
-  for purpose, constraints, and success.
-- Refining details of a piece before the split question is settled.
-- Presenting one approach as inevitable.
-- A design section that says "TBD" or "we'll figure that out during implementation".
+- Writing a goal file, index entry, or code "while it's fresh" → HARD GATE
+  violation.
+- A second AskUserQuestion round during exploration → the fork belongs in Open
+  questions with a recommendation.
+- Asking a question the repo can answer → read the repo.
+- A layer-ordered decomposition presented as phases → horizontal cut; re-cut
+  vertically before presenting.
+- A heading that names a topic instead of stating its takeaway.
+- Function bodies in the Design section → wrong altitude; delete the bodies,
+  keep the signatures.
+- A design section that says "TBD" or "we'll figure that out during
+  implementation".
+- Resolving an open question yourself without the user's answer or their
+  "go with your recommendations".
 
 ## Related skills
 
-- Shaped want, or design approved → **define-goal** (single or batch mode).
-- Recurring/unattended execution of the result → **loop-architect** (reached through
-  define-goal, which owns the goal contract).
-- Working the resulting queue → **dispatch**.
+- Shaped want, or plan approved → **define-goal** (single or batch mode; the
+  plan-backed fast path).
+- Recurring/unattended execution of the result → **loop-architect** (reached
+  through define-goal, which owns the goal contract).
+- Working the resulting queue → **dispatch** (it flips the plan's phase
+  checkboxes as goals complete — the plan doubles as the progress view).

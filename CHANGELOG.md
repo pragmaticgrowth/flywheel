@@ -13,6 +13,87 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [11.0.0] — 2026-08-12
+
+**The plan release: riptide's design tier on flywheel's autonomous gate.**
+Forensics-backed (design spec:
+`docs/superpowers/specs/2026-08-12-plan-tier-v11-design.md`): a full read of
+HumanLayer's RPI plugins — including a real RPI design-discussion run against
+the owner's own romy repo — plus git/transcript forensics across the factory's
+7 real repos (386 goals ever, 335 measured claim→settle cycles, 109 implementer
+reports, 598 owner prompts) found the real cycle-time killer was never the
+53-minute median cycle: it was design forks surfacing at dispatch time as
+blocked goals, which then cost 10–85 HOURS of block→amend→requeue thrash with
+the owner dragged into every round. Goal files measured 75–85 % ceremony
+(median 115–160 lines, ~25–30 of real intent); ~30 % of implementer reports
+ended DONE_WITH_CONCERNS, mostly honest scope discipline reading as unfinished
+work; and "don't ask me, you decide" was the owner's standing objection across
+every repo's sessions. v11 moves quality ceremony from per-goal to per-plan and
+puts the whole pipeline on a question diet. RPI's execution tier (human-gated
+per-phase pauses, 4+ documents per effort) was evaluated and rejected — the
+gate stays autonomous.
+
+- **NEW — the plan artifact** (`docs/goals/plans/YYYY-MM-DD-<topic>.md`,
+  template at `skills/ideate/references/plan-template.md`): one design document
+  per chain with a code-shaped Design section (exact signatures with bodies
+  elided, created/modified file diff, call flows only where non-obvious —
+  "header files, not function bodies"), takeaway-stating headers, vertical-
+  slice Phases mapping 1:1 onto goals, and an **Open questions** section where
+  every design fork waits with options + a recommendation — only the owner
+  resolves, "go with your recommendations" resolves all at once, and every
+  resolved question keeps its one-line why forever. Plans replace ideate's
+  design briefs (existing `docs/goals/briefs/` links stay valid).
+- **ideate rewritten around the plan** — ONE approval touch: exploration forks
+  become Open questions instead of serial AskUserQuestion rounds (at most one
+  round, only for a fork that blocks writing the design at all); the vertical-
+  slice rule governs decomposition ("if a piece cannot be verified without a
+  LATER piece existing, it is not a slice"); re-invoking ideate on a planned
+  idea iterates the same plan file.
+- **define-goal: plan-backed fast path** — a want backed by an approved plan
+  gets ZERO question rounds (the plan is the interview), recon narrowed to
+  verify-and-complete, phases as the batch item list, and a `Plan:` link in
+  each goal's Context replacing per-goal Interfaces prose. Non-plan wants get
+  the question diet: a round is skipped whenever every candidate question has
+  a confident recommended default (assumptions stated in the one draft
+  confirmation instead). Amend mode takes the clearly-recommended reading
+  without a question round unless the fork is a true owner decision (spend,
+  data loss, irreversible/externally-visible behavior).
+- **BREAKING — goal-file diet.** Queued goal files drop `## If blocked` and
+  `## Goal contract` (identical boilerplate + a restatement of the criteria;
+  both live once in dispatch's implementer brief, which every spawn receives).
+  Target ≤60 lines. The `/goal` line remains the run-now destination's
+  artifact. Old-format goal files stay valid everywhere; `pg_validate.py`
+  reads only frontmatter and is unaffected.
+- **Red-team Slice check** (define-goal rubric + `agents/contract-red-team.md`,
+  which also catches up to the Placeholders/Size checks): a goal whose criteria
+  cannot be verified without a LATER goal in its own chain is a horizontal cut
+  → contract-blocking with the proposed vertical re-cut; a stated
+  forced-layer-split reason downgrades to advisory.
+- **dispatch: auto-parallel drains.** A flagless drain enters lane mode
+  automatically when the queue's `config.parallel` block exists (the standing
+  opt-in), the harness is Claude Code, and ≥2 ready goals are co-schedulable —
+  admission control, the integration lock, and every parallel ruling
+  unchanged; new `--serial` flag forces one-at-a-time.
+- **dispatch: concerns diet.** DONE_WITH_CONCERNS is legal ONLY when a concern
+  qualifies the goal's own contract; honored out-of-scope boundaries and
+  pre-existing baseline failures go to the report file, discovered follow-ups
+  to a `Follow-ups:` heading that settle triage captures to the inbox — scope
+  discipline is conformance, reported DONE.
+- **dispatch: plan mirror.** Completing a plan-backed goal checks its phase off
+  in the plan file (same settle commit) and stamps `status: done` when the last
+  phase checks — display only, `index.yaml` stays the sole status authority,
+  Phase 0's doctor pass re-syncs drift plan-follows-index.
+- **Implementer brief:** anchors on the goal's Acceptance criteria (old files'
+  Goal-contract section acknowledged as the same content), and Reads the
+  linked plan before starting — a plan Open-question the goal trips over is a
+  CONTRACT_AMBIGUOUS stop naming that question, never a guess.
+- Tested per repo doctrine: five subagent dry-runs with RED baselines against
+  the v10 text (slice check blocks the horizontal fixture and passes the
+  vertical one; plan-backed wants get zero rounds; the concerns scenario is
+  forced to DONE; ideate's one-touch resolution records owner provenance;
+  auto-parallel engages only with `config.parallel`) — all five PASS, each
+  confirming the old text decided differently or left the case undecided.
+
 ## [10.0.0] — 2026-08-06
 
 **The smooth-drain release: drain by default, never ask mid-cycle, and nothing

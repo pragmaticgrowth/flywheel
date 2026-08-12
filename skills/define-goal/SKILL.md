@@ -57,23 +57,34 @@ line the user declines to convert stays checked off as `- [x] declined: <reason>
 Dispatch appends to the inbox; this skill is the only thing that converts or removes
 lines.
 
-## Brief first, then artifact
+## Plan first, then artifact
 
 When the want is still an idea being explored rather than stated — the user is asking
 "what if / what should we build", and answers to your first questions keep re-opening
 what to build instead of pinning it down — route to the `ideate` skill first (when
-available): it converges the design in open dialogue and returns here with an approved
-design. Don't burn this skill's two capped question rounds on design exploration. An
-already-shaped want proceeds here directly — never bounce it to ideate. If ideate is
-unavailable and the want is still design-shaped, hold the design conversation inline
-here first (the two-round cap governs the contract interview, not that design
-convergence), then contract as usual.
-**Invoked from ideate:** treat the approved design as the brief — don't re-ask what the
-dialogue already settled (question rounds cover only the gaps the design leaves, still
-capped at two). Recon narrows to verifying and completing what ideate located rather
-than re-deriving it. A multi-piece design enters batch mode with the decomposition as
-the item list; when ideate wrote a design brief file (`docs/goals/briefs/…`), link it
-from each chain goal's Context alongside that goal's own Interfaces note.
+available): it converges the design and returns here with an approved PLAN
+(`docs/goals/plans/YYYY-MM-DD-<topic>.md`, v11.0.0 — the factory's design tier). Don't
+burn this skill's question rounds on design exploration. An already-shaped want
+proceeds here directly — never bounce it to ideate. If ideate is unavailable and the
+want is still design-shaped, hold the design conversation inline here first (the
+two-round cap governs the contract interview, not that design convergence), then
+contract as usual.
+
+**Plan-backed fast path (invoked from ideate, or a want covered by an existing
+approved plan): ZERO question rounds.** The plan IS the interview — its Open-questions
+section holds the settled forks (and any still-OPEN ones, which you carry into the
+affected goal's Context rather than re-asking). Recon narrows to verifying and
+completing what the plan located rather than re-deriving it. The plan's Phases enter
+batch mode as the item list, one goal per phase, `depends_on` following the phase
+order. Link the plan from each chain goal's Context — `Plan:
+docs/goals/plans/<file> — Phase <N>` — and let the plan's code-shaped Design section
+serve as the chain's Interfaces note (add a per-goal Interfaces line only for a name
+the plan doesn't already state). The single owner touch is the normal draft
+confirmation / batch approval table; if a red-team finding or a plan gap opens a
+genuine fork the plan doesn't answer, that is the ONE case a plan-backed goal may ask
+— one targeted round, 1–2 questions, options with a recommended default.
+(Pre-v11 design briefs at `docs/goals/briefs/…` stay valid wherever linked; new chains
+get plans.)
 
 Start by extracting a short brief from the user's words and current repo context:
 desired outcome, target repo/system/environment, success evidence, scope/out of scope,
@@ -81,20 +92,27 @@ urgency, and any action that could be irreversible or externally visible. Ask on
 proactive question round (max 4 questions) only when missing information would change the
 outcome, validator, scope, risk gate, or destination — each question with concrete options
 and a recommended default (AskUserQuestion renders them as choices; the user can always
-type their own). Order the round split-first: when the want might span multiple
-independently shippable pieces, the split question comes before any detail question — a
-round spent refining details of a want that then splits is a wasted interrupt. One round
-is the default, not a hard cap: when a round-1 answer (or a contract-review finding)
-materially changes the outcome, validator, or scope — a genuine fork between two
-readings — ask ONE more targeted round (1–2 questions) rather than stating an assumption;
-define time is the attended, cheapest place to resolve what would otherwise come back
-from dispatch as a `CONTRACT_AMBIGUOUS` blocked goal. Two rounds total is the hard cap,
-whichever trigger spends the second — never a third; past it, fall back to the
-assumption/conservative-validator rule below. A review-finding-triggered round feeds its
-answer into the review's fix step (the contract review itself still runs ONCE — never a
-review loop). If repo/context already answers it,
-state the assumption and proceed; if the user cannot answer, choose the conservative binary
-validator available and include the uncertainty in the goal's If blocked/stop condition.
+type their own). **Skip the round entirely when every candidate question has a confident
+recommended default** (v11.0.0 question diet — the owner's standing instruction across
+real sessions is "you decide"): take each default, and state the assumptions as one short
+list in the draft confirmation instead — the confirmation is the single owner touch, and
+an owner who disagrees with an assumption corrects it there at the same cost as an
+answer. Ask only the questions whose answer you genuinely cannot recommend (a true fork:
+spend, data loss, an irreversible or externally-visible behavior choice, or two readings
+with no principled winner). Order any round split-first: when the want might span
+multiple independently shippable pieces, the split question comes before any detail
+question — a round spent refining details of a want that then splits is a wasted
+interrupt. When a round-1 answer (or a contract-review finding) materially changes the
+outcome, validator, or scope — a genuine fork between two readings — ask ONE more
+targeted round (1–2 questions) rather than stating an assumption; define time is the
+attended, cheapest place to resolve what would otherwise come back from dispatch as a
+`CONTRACT_AMBIGUOUS` blocked goal. Two rounds total is the hard cap, whichever trigger
+spends the second — never a third; past it, fall back to the assumption/conservative-
+validator rule below. A review-finding-triggered round feeds its answer into the review's
+fix step (the contract review itself still runs ONCE — never a review loop). If
+repo/context already answers it, state the assumption and proceed; if the user cannot
+answer, choose the conservative binary validator available and include the uncertainty in
+the goal's stop condition. (Plan-backed wants skip all rounds — see "Plan first".)
 
 Do not let the clarification loop replace the artifact. After the brief, recon, the
 contract review (queue destination), and any approval required for file writes, finish
@@ -174,9 +192,11 @@ commands and print final acceptance outputs before finishing.
    validation, scope, risk gate, or destination;
    reject pure activity goals ("make progress", "keep investigating") until sharpened. A
    criterion that can't be made objectively measurable still needs a declared give-up
-   condition (GOAL_UNREACHABLE after N attempts — see "If blocked") so the contract
-   terminates even if the target is never hit; confirm the target is one the implementer can
-   drive to true AND print, not an asymptote or an unmeasurable absolute.
+   shape (the implementer brief's ~3-honest-attempts GOAL_UNREACHABLE rule covers the
+   general case; write a goal-specific give-up line into Constraints only when this goal
+   needs a tighter one) so the contract terminates even if the target is never hit;
+   confirm the target is one the implementer can drive to true AND print, not an
+   asymptote or an unmeasurable absolute.
 4. Heuristics: bugs → success is defined as reproduction first (a failing test the
    implementer writes — recon never reproduces), fix second; tests → exact command
    + pass condition; performance → metric, threshold, method, run count; research → the
@@ -277,7 +297,8 @@ Recon details:
 - **Irreversible / externally-visible actions**: if recon finds the goal's surface includes
   an action that can't be undone or that reaches the outside world (a prod migration, sending
   real emails/notifications, deleting records, spending on a paid API), record it and add a
-  "stop and confirm before <action>" line to the goal file's Constraints and Goal contract —
+  "stop and confirm before <action>" line to the goal file's Constraints (and the run-now
+  `/goal` line, when that is the destination) —
   embed the gate in the contract, don't rely on environment gating alone. For stateful
   external writes, add an idempotency note (a retried "create" double-acts — guard it with an
   existence/idempotency check). Scope a goal by what it can destroy, not only by what it
@@ -336,7 +357,8 @@ config:
     - npm ci
     - npm run build
     - npm test
-  # parallel:            # optional — governs dispatch's opt-in --parallel lane mode only
+  # parallel:            # optional — dispatch's parallel lane mode: explicit --parallel,
+  #                      # and (v11.0.0) its presence auto-parallelizes flagless drains
   #   max_lanes: 2       # concurrent build lanes (hard cap 4); serial runs ignore this
   #   setup: pnpm install --prefer-offline   # per-lane dep setup command (worktrees
   #                                          # need their own deps; lanes persist across
@@ -429,9 +451,12 @@ model: heavy    # execution tier for dispatch: inherit | heavy | medium | light 
 
 ## Context / why
 <source (request or report excerpt), plus code areas you located>
-<if this goal has a `depends_on` entry in index.yaml: an **Interfaces** note — the exact
-names the dependency produces that this goal consumes (functions, routes, schema, paths,
-commands)>
+<if the goal comes from a plan: `Plan: docs/goals/plans/<file> — Phase <N>` — the
+implementer reads the plan's Design section and its phase before starting, so the
+plan replaces per-goal re-derived interface prose>
+<if this goal has a `depends_on` entry and NO plan link: an **Interfaces** note — the
+exact names the dependency produces that this goal consumes (functions, routes,
+schema, paths, commands)>
 
 ## Acceptance criteria
 - [ ] <observable behavior 1>
@@ -443,40 +468,40 @@ commands)>
 - [ ] <subjective criterion, if any> — **needs independent review** (surfaced to a human
   under needs-you at integration, never the implementer's self-grade)
 
-Each criterion is proven by the command's actual final-run output appearing in the
-transcript — an assertion that "it passed" is a claim, not proof. This generalizes the
-screenshot rule to every acceptance criterion.
-
 ## Constraints (hard rules)
 <repo hard rules from CLAUDE.md, verbatim>
 - Never push protected branches.
 - <if recon found an irreversible/externally-visible action: "Stop and confirm before
   <action>", and make stateful external writes idempotent>
 
-
 ## Out of scope
 <bullets>
-
-## If blocked
-Stop and report attempted paths, evidence, the blocker, and what would unlock you.
-If the same acceptance command fails the same way twice in a row, or after ~3 honest
-attempts a criterion can be neither satisfied nor shown measurable (a flaky,
-non-deterministic, or contradictory check), declare GOAL_UNREACHABLE with evidence (which
-criterion, why unmeasurable, last measurement) and stop — never retry the identical failing
-approach. The orchestrator treats GOAL_UNREACHABLE as a contract defect (a needs-you
-amendment), not a work failure. Hitting the turn cap before completion is different — a
-budget stop, not a contract defect: stop and report the same way, with reason "turn cap
-reached (<N>)" and the remaining criteria.
-
-## Goal contract
-/goal <acceptance criteria restated as one transcript-verifiable condition: exact commands
-+ expected outputs, and the constraints above.> Before stopping on success, re-print the
-final acceptance-command outputs (the evaluator reads a recency-truncated transcript).
-Stop when every criterion verifiably passes,
-or when blocked or a criterion proves unreachable (follow "If blocked", declaring
-GOAL_UNREACHABLE with its evidence if a check can be neither satisfied nor measured) —
-never grind past a blocker. Stop after <N> turns.
 ```
+
+**That is the whole file (v11.0.0 goal-file diet — target ≤60 lines).** Corpus
+forensics (2026-08-12, 385 goal files) measured the pre-v11 template at 115–160
+median lines of which only ~25–30 were unique intent. Two former sections are CUT
+from queued goal files because they were system rules duplicated into every file,
+not goal content — and both already bind every implementer via dispatch's canonical
+implementer brief, which every spawn receives:
+
+- `## If blocked` — the stop/report rules, the ~3-honest-attempts
+  GOAL_UNREACHABLE rule, and the never-retry-the-identical-failure rule live in
+  the brief verbatim. A goal needs an If-blocked line ONLY when it has a
+  goal-specific stop condition (e.g. recon's "stop and confirm before <action>"
+  gate — which belongs in Constraints anyway).
+- `## Goal contract` — the `/goal` line is the RUN-NOW destination's artifact,
+  never the queue's: dispatch's implementer works from the Acceptance criteria
+  directly, so a queued `/goal` paragraph was a compressed restatement of the
+  section above it (and its 4,000-char cap once rejected a real owner goal).
+  Run-now destinations still emit the `/goal` line per "Goal command facts" —
+  in the reply, not in a file.
+
+Two implicit rules move with the brief, stated once here and never per-file: each
+criterion is proven by the command's actual final-run output appearing in the
+transcript (an assertion that "it passed" is a claim, not proof), and pre-v11 goal
+files that still carry the cut sections stay valid everywhere — dispatch,
+the gate, and the red-team read old and new shapes alike.
 
 Titles are plain language ("Customers get a receipt email after payment"), not jargon.
 One goal = one independently shippable change; split an ambitious want only when the parts
@@ -496,10 +521,13 @@ route documents of findings through batch mode, one finding per goal,
 `depends_on`-ordered. When the seams genuinely don't exist
 (one atomic migration), keep it whole but say so in Context — the size is then a fact,
 not an oversight. Every dependent
-goal in a chain gets an **Interfaces** note in its Context: the exact names its dependency
-produces that this goal consumes (functions, routes, schema/table names, file paths,
-commands) — a dependent goal's implementer sees only its own goal file, and re-discovering
-a sibling's surface burns its window or, worse, gets guessed.
+goal in a chain gets its dependency's interfaces in Context: a plan-backed chain links
+the plan (`Plan: docs/goals/plans/<file> — Phase <N>` — its code-shaped Design section
+carries the exact names once, already reviewed); a plan-less chain writes an
+**Interfaces** note per goal — the exact names its dependency produces that this goal
+consumes (functions, routes, schema/table names, file paths, commands). Either way, a
+dependent goal's implementer sees only its own goal file plus what it links, and
+re-discovering a sibling's surface burns its window or, worse, gets guessed.
 Tight scoping is the cheapest brake: the optional `size:` hint (S|M|L) lets `dispatch`
 and any budget cap size a run — a goal whose acceptance is one mechanical check should
 read as `S`.
@@ -578,21 +606,20 @@ behavior criteria; a chore's full-suite check replaces the owning-package one):
   test suite green before AND after, plus the one mechanical check that proves the chore
   itself (dependency version, lint-rule count, migration applied).
 
-The Goal contract section is the implementer's completion condition — `dispatch` hands the
-whole file to its implementer, and the user can run it directly via `claude -p "/goal …"`.
-Keep the contract line under the 4,000-char cap (reference the file's sections instead of
-restating when long), and phrase UI evidence as transcript-visible output (the screenshot
-capture command's output), never as the attachment itself — the evaluator only reads text,
-and only the RECENT transcript (see "Goal command facts"), which is why the template's
-closing-turn recap of the final acceptance outputs is part of the contract, not politeness.
-The closing turn cap (`Stop after <N> turns`) is not optional — official guidance bounds
-every goal with a turn or time clause. Size `<N>` to the goal (roughly 10 for an `S`, 20
-for an `M`, 30 for an `L`): generous enough for setup + TDD + verification, small enough
-that a wedged goal dies by cap instead of by budget. The "If blocked" ~3-honest-attempts
-rule still fires first when one specific check is stuck. Enforcement differs by
-destination: run-now `/goal` has the evaluator enforce the cap; in the queue destination
-the implementer self-enforces it as its attempt/iteration budget (dispatch's no-progress
-rule and `config.budget` back it up).
+The completion condition differs by destination. **Queue:** the Acceptance criteria
+section IS the contract — `dispatch` hands the file to its implementer, whose brief
+carries the stop rules, the proof-by-final-run-output rule, and the attempt budget
+(dispatch's no-progress rule and `config.budget` back it up); no `/goal` line is
+written. **Run-now:** compose the `/goal` line in the reply per "Goal command facts".
+Keep it under the 4,000-char cap (reference the file's sections instead of restating
+when long), phrase UI evidence as transcript-visible output (the screenshot capture
+command's output), never as the attachment itself — the evaluator only reads text, and
+only the RECENT transcript — and have the runner re-print the final
+acceptance-command outputs before stopping. The run-now closing turn cap (`Stop after
+<N> turns`) is not optional — official guidance bounds every goal with a turn or time
+clause; size `<N>` to the goal (roughly 10 for an `S`, 20 for an `M`, 30 for an `L`):
+generous enough for setup + TDD + verification, small enough that a wedged goal dies
+by cap instead of by budget.
 
 ## Contract review — red-team the draft before it queues (queue destination only)
 
@@ -636,8 +663,11 @@ contract, not approve it —
   **contract-blocking** (v10.0.0 — parallel admission and the gate's scope allowlist
   both need it; only a stated greenfield/no-surfaces note in Context downgrades this to
   advisory); nothing dev-server-dependent sits in `acceptance:` (headless-only).
-- **Termination**: the `/goal` line is transcript-provable and under the 4,000-char cap,
-  the turn cap is present and sized, and the If-blocked / GOAL_UNREACHABLE path exists.
+- **Termination**: every criterion is a target an implementer can drive to true AND
+  print (transcript-provable), with a declared give-up shape for any that could prove
+  unmeasurable; any goal-specific stop-and-confirm gate recon found sits in
+  Constraints. (Old-format drafts carrying a `/goal` contract line: it stays under
+  the 4,000-char cap with a sized turn cap.)
 - **Size (one-sitting test)**: does the goal fit one implementer sitting — one
   subsystem, one drivable surface, ~≤5 acceptance criteria? A draft that spans multiple
   subsystems/surfaces or piles up criteria is flagged **contract-blocking** with the
@@ -652,9 +682,20 @@ contract, not approve it —
   bloat on an atomic goal is its own finding (merge or cut criteria, don't split the
   work). Oversized goals are the factory's dominant cycle-time tail; splitting is the
   fix, not a bigger turn cap.
+- **Slice (vertical-cut test, v11.0.0)**: can every acceptance criterion of this goal
+  be satisfied and verified WITHOUT any goal that comes LATER in its own
+  `depends_on` chain existing? A goal whose criteria depend on a later sibling — the
+  signature shape of a layer-ordered ("horizontal") decomposition: all schema, then
+  all services, then all UI — is **contract-blocking**, with the proposed re-cut
+  (the thinnest end-to-end path first, then widen; each slice independently
+  verifiable). Depending on EARLIER goals is fine — that is what `depends_on`
+  orders. A Context note stating why the layer split is forced (e.g. one atomic
+  migration feeding everything) downgrades this to advisory. This check composes
+  with Size: Size caps how big a goal is, Slice constrains what shape the cut is.
 - **Cross-goal** (whenever reviewing more than one draft): overlaps, the same file
   migrated twice, wrong or missing `depends_on` ordering, duplicated or conflicting
-  criteria, and a dependent goal missing its Interfaces note (advisory).
+  criteria, and a dependent goal missing both an Interfaces note and a plan link
+  (advisory).
 
 The brief carries a BUDGET: ~15 tool calls for one draft, ~5 per additional draft in a
 batch. Passing it means the reviewer has started designing the goal instead of reviewing
@@ -710,14 +751,23 @@ Run the steps in this order:
    authoritative and the report as corroborating evidence, and say which you used. Read
    whatever repo code the defective criterion names; a criterion is often ambiguous only
    until you look.
-3. **ONE question round, plain language.** Present the defect the way the user would say it
-   — the criterion, the two (or more) readings dispatch's implementer could not choose
-   between, what each would mean for the finished work — with options and a **recommended
-   default** (AskUserQuestion; max 2–3 questions). ONE round: the reason already named the
-   defect, so this is a choice, not an interview. The user can't decide → take the
-   conservative reading, state it, and write it into the amendment note. A `needs context`
-   block (the reason is an unanswered implementer ask, not a defective criterion) asks for
-   that missing fact instead — the same one round, same options-with-a-default shape.
+3. **Recommended reading first; a question round only for true owner forks** (v11.0.0
+   question diet — measured 2026-08-12: block→amend chains cost 10–85 hours wall-clock,
+   and every question round in the chain is another owner round-trip inside that tail).
+   When the block reason, the goal file, the repo code, and the linked plan (if any —
+   its Open-questions section often already resolved this exact fork) make one reading
+   clearly recommendable, TAKE it: rewrite on that reading, record it in the amendment
+   note, and let step 7's confirmation be the single owner touch. Ask a question round
+   (AskUserQuestion; max 2–3 questions, options with a **recommended default**, plain
+   language — the criterion, the readings, what each means for the finished work) ONLY
+   when the fork is a true owner decision: spend, data loss, an irreversible or
+   externally-visible behavior choice, or two readings with no principled winner. ONE
+   round either way — the reason already named the defect, so this is a choice, not an
+   interview. The user can't decide → take the conservative reading, state it, and
+   write it into the amendment note. A `needs context` block (the reason is an
+   unanswered implementer ask, not a defective criterion) supplies that missing fact
+   the same way: from the repo/plan when it's discoverable, from one question round
+   when only the owner holds it.
 4. **Rewrite ONLY the criteria the reason identifies as defective** — or, for a
    `needs context` block, only the missing fact, added to Context. Everything else in the
    goal file stays byte-for-byte: the id, title, type, `depends_on`, working criteria, Out
@@ -748,9 +798,10 @@ Run the steps in this order:
    a defect that no longer exists. Push is optional backup, exactly as elsewhere in this
    skill. Then point at the next step: `/dispatch <id>`.
 
-Never auto-amend: this mode is always human-invoked and always asks before rewriting.
-Never amend a goal another session has claimed (step 1 refuses `in_progress`). Never edit
-`docs/goals/` for any goal other than the one named.
+Never auto-amend: this mode is always human-invoked, and the amended contract is always
+confirmed before it requeues (step 7 — the single owner touch; step 3 decides whether a
+question round precedes it). Never amend a goal another session has claimed (step 1
+refuses `in_progress`). Never edit `docs/goals/` for any goal other than the one named.
 
 ## Implementer tier — decide it last
 
@@ -834,7 +885,7 @@ cheaper and simpler — the platform docs' own threshold.
 ## Related skills
 
 - Fuzzy idea that needs design exploration before contracting → **ideate** (it hands
-  the approved design back to this skill).
+  the approved plan back to this skill — the plan-backed fast path above).
 - Recurring or unattended run rather than a single goal → design the contract with
   **loop-architect**.
 - Working the queue → **dispatch** (run `/dispatch`, or *"work goal NNN"* for one goal).

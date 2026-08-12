@@ -5,7 +5,7 @@ A skills-first plugin marketplace for [Claude Code](https://claude.com/claude-co
 and [Factory Droid](https://factory.ai), from Pragmatic Growth.
 
 [![Website](https://img.shields.io/badge/site-flywheel.pragmaticgrowth.com-6366f1)](https://flywheel.pragmaticgrowth.com)
-[![Version](https://img.shields.io/badge/version-10.0.0-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-11.0.0-8b5cf6)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
 > 🌐 **Full docs:** **<https://flywheel.pragmaticgrowth.com>**
@@ -74,9 +74,9 @@ want a review surface — flywheel just doesn't require one.)
 
 | Skill | One line | Invoke with |
 |---|---|---|
-| **ideate** | Fuzzy idea → a user-approved design through open dialogue, then handed to define-goal. Never writes goals or code. | `/ideate` · *“I have an idea…”* |
-| **define-goal** | Plain-language want → a measurable, red-teamed goal contract (or a whole document of them). Never writes code. | `/define-goal …` · or just say *“I want…”* |
-| **dispatch** | The factory orchestrator: works ready goals one at a time — claim, implement with TDD + fresh checks, independent-review-backed local gate, keep or roll back. **Drains the queue by default** (v10.0.0); `--count N` limits the run. | `/dispatch` · `/dispatch 005` · `/dispatch --count 3` · `/dispatch --parallel 3` |
+| **ideate** | Fuzzy idea → an approved **plan** (v11.0.0): one code-shaped design document with vertical-slice phases and open questions only you can resolve — in ONE approval touch. Never writes goals or code. | `/ideate` · *“I have an idea…”* |
+| **define-goal** | Plain-language want → a measurable, red-teamed goal contract (or a whole document of them). Plan-backed wants get **zero question rounds**. Never writes code. | `/define-goal …` · or just say *“I want…”* |
+| **dispatch** | The factory orchestrator: claim, implement with TDD + fresh checks, independent-review-backed local gate, keep or roll back. **Drains the queue by default** (v10.0.0) and **auto-parallelizes** disjoint goals when `config.parallel` is set (v11.0.0); `--count N` limits, `--serial` forces one-at-a-time. | `/dispatch` · `/dispatch 005` · `/dispatch --count 3` · `/dispatch --parallel 3` |
 | **goals-status** | Read-only view of the open queue: every `in_progress` / `blocked` / `not_started` goal with its title + brief (completed hidden). | `/goals-status` |
 | **loop-architect** | Designs the *loop contract* (prompt + verification + stop conditions) for autonomous, scheduled, or remote runs. | *“keep working on X”* · setting up a `/loop`, routine, or cron |
 | **factory-doctor** | One-pass preflight/doctor for the repo + machine. Auto-fixes everything local; reports the rest with exact fixes. | `/factory-doctor` |
@@ -86,33 +86,44 @@ etc. Skills also activate **automatically** when
 your message matches what they’re for, so most of the time you don’t type the
 name at all.
 
-### ideate — explore an idea into a design
+### ideate — explore an idea into a plan
 
 The pipeline's front door for **fuzzy ideas**. When you don't yet know exactly
-what you want built — "what if we…", "I have an idea…" — ideate runs an open
-design dialogue instead of jumping to a contract:
+what you want built — "what if we…", "I have an idea…" — ideate designs first
+and writes a **plan** (`docs/goals/plans/YYYY-MM-DD-topic.md`, v11.0.0), the
+factory's design tier. Forensics across real factory repos showed the true
+cycle-time killer was never implementation — it was design forks surfacing
+mid-execution as blocked goals that took 10–85 hours of amend round-trips. The
+plan resolves those forks up front, where they cost minutes:
 
-- **Context first.** It orients in your repo (read-only) before asking anything,
-  so questions go to purpose, constraints, and success — never to things the
-  code already answers.
-- **Split before detail.** If the idea is really several independently shippable
-  pieces, it surfaces that decomposition before refining any one piece — the
-  pieces map 1:1 onto future goals and their `depends_on` chain.
-- **Real alternatives.** 2–3 approaches with trade-offs, recommendation first.
-  No round cap — the dialogue runs while answers still change the design.
-- **Hard gate.** Its only exit is handing the approved design to define-goal
-  (single goal, or batch mode for a chain). It never writes goal files, queue
-  entries, or code. Multi-goal chains get one short design brief in
-  `docs/goals/briefs/` that every chain goal links from its Context.
+- **Context first.** It orients in your repo (read-only) before asking anything.
+- **Vertical slices.** The decomposition must cut end-to-end paths, never
+  layers: if a piece can't be verified without a LATER piece existing, it isn't
+  a slice. Each phase maps 1:1 onto a future goal.
+- **Code-shaped design.** Where the work touches existing code, the plan
+  carries exact signatures (bodies elided), a created/modified file diff, and
+  call flows only where non-obvious — every heading states its takeaway, so
+  skimming the headers alone gives you the design's actual claims.
+- **Open questions, ONE approval touch.** Design forks become an
+  `## Open questions` section — options, a recommendation each — instead of a
+  question interrogation. You answer any subset, or say **"go with your
+  recommendations"** and every question resolves at once, each keeping its
+  one-line why forever. That presentation is the single touchpoint.
+- **A living document.** As dispatch completes each phase's goal, it checks the
+  phase off in the plan — one file shows the whole effort's progress.
+- **Hard gate.** Its only exit is handing the approved plan to define-goal.
+  It never writes goal files, queue entries, or code.
 
 An already-shaped want ("add rate limiting, 429 over 100 req/min") skips ideate
-entirely — that goes straight to define-goal.
+entirely — that goes straight to define-goal. Simple single-goal ideas stay
+fileless. (Pre-v11 design briefs in `docs/goals/briefs/` stay valid where
+linked.)
 
 ### define-goal — capture wants as contracts
 
 The contract writer — and the direct entrance for already-shaped wants. Give it
 a sentence, a paragraph, a whole bug-report
-document, or an ideate-approved design, and it produces **goal contracts** —
+document, or an ideate-approved plan, and it produces **goal contracts** —
 never implementation.
 
 - **Recon first, by default.** Before writing a single success criterion, it
@@ -121,16 +132,27 @@ never implementation.
   the medium tier (fast, strong tool use); the synthesis step and the contract
   itself stay on your session model, so the judgment never runs cheap. “The
   description sounded clear” is the failure mode this replaces.
-- **Brief first, then a real artifact.** If outcome, environment, validator,
-  scope, or risk is missing, it asks one concise question round, then finishes
-  with either a run-now command or a queued goal file — not open-ended advice.
+- **Plan-backed wants skip the interview entirely (v11.0.0).** When ideate
+  hands over an approved plan, define-goal runs **zero question rounds** — the
+  plan was the interview. The plan's phases become the goals (one each,
+  `depends_on` in phase order), every goal links the plan from its Context, and
+  the plan's code-shaped Design section replaces per-goal interface notes.
+- **Question diet everywhere else (v11.0.0).** A question round happens only
+  when a question has no confident recommended default; otherwise define-goal
+  takes the defaults and states its assumptions in the one draft confirmation
+  you were getting anyway. Goal files themselves went on a diet too: the two
+  boilerplate sections that repeated verbatim in every file now live once in
+  dispatch's implementer brief, cutting a typical goal file from ~150 lines to
+  under 60 with zero information lost.
 - **Red-teamed before it queues.** Every queued goal gets a **contract
   review**: one fresh read-only agent tries to break the drafted contract —
   gameable criteria, commands that don't exist in your repo, a bug goal whose
-  gate never runs the proving test, missing scope or termination, and an
+  gate never runs the proving test, missing scope or termination, an
   **oversized goal** (more than one implementer sitting — one subsystem, one
   drivable surface, roughly ≤5 criteria — gets split into a `depends_on`
-  chain unless the contract states why it's atomic) — before the
+  chain unless the contract states why it's atomic), and a **horizontal cut**
+  (v11.0.0 slice check: a goal whose criteria can't be verified without a
+  LATER goal in its own chain existing gets re-cut vertically) — before the
   model stamp and your confirmation. A contract defect caught here costs one
   read-only agent; the same defect at dispatch time costs a full implementer
   run plus a rollback.
@@ -171,29 +193,33 @@ never implementation.
 
 ### dispatch — work the queue
 
-The orchestrator. It works ready goals on the currently checked-out branch —
-serial **one at a time** by default, with no PRs and no remote branches. The
-core invariant: **at most one goal integrates at a time, and the branch only
-ever advances to gate-verified trees.** Since v10.0.0 a flagless run
-**drains the queue** — it keeps working ready goals, one fully-settled cycle
-after another, until the queue is empty or a brake fires; `/loop /dispatch`
-only re-drains as new goals arrive:
+The orchestrator. It works ready goals on the currently checked-out branch,
+with no PRs and no remote branches. The core invariant: **at most one goal
+integrates at a time, and the branch only ever advances to gate-verified
+trees.** Since v10.0.0 a flagless run **drains the queue** — it keeps working
+ready goals, one fully-settled cycle after another, until the queue is empty
+or a brake fires; `/loop /dispatch` only re-drains as new goals arrive:
 
 ```bash
-/dispatch                    # drain: keep working ready goals until the queue is empty
+/dispatch                    # drain — auto-parallel lanes when config.parallel is set (v11.0.0)
 /dispatch 087                # exactly goal 087 (solo mode)
 /dispatch --count 3          # up to 3 ready goals, then stop (--count 1 = single-goal fire)
-/dispatch --parallel 3       # drain with up to 3 concurrent build lanes
+/dispatch --parallel 3       # force lane mode with up to 3 concurrent build lanes
+/dispatch --serial           # force one-at-a-time for this run
 ```
 
-`--parallel [K]` (v9.0.0, Claude Code only, default 2 lanes, cap 4) builds
-provably-disjoint goals **concurrently in disposable local worktree lanes** —
+Lane mode (v9.0.0, Claude Code only, cap 4 lanes) builds provably-disjoint
+goals **concurrently in disposable local worktree lanes** —
 admission-controlled by each goal's `touches:` globs, dependency chains, and
 always-exclusive conflict domains (lockfiles, migrations, CI/config) — while
 still **integrating strictly one goal at a time**: each lane is rebased onto
 the branch head, the deterministic gate re-runs on that exact integrated tree,
 and the branch fast-forwards only to verified states. A rebase conflict never
 gets guessed through — the lane is discarded and the goal re-runs serially.
+Since v11.0.0 a flagless drain **enters lane mode automatically** when the
+queue's `config.parallel` block exists (your standing opt-in), the harness is
+Claude Code, and ≥2 ready goals are co-schedulable — `--serial` forces the old
+behavior; without `config.parallel` nothing changes.
 
 A drain repeats the same fully-settled per-goal cycle; a blocked goal doesn't
 stop the run, `config.budget` always outranks the flags, and an environment
@@ -260,6 +286,20 @@ loose end is unclassified, and captured items don't evaporate with the chat:
 confirmation point — dispatch never stops mid-run to ask "want me to run the
 repair?"; everything a human must know lands in needs-you or the inbox and the
 run continues.
+
+**"Done" means done (concerns diet, v11.0.0).** `DONE_WITH_CONCERNS` is legal
+only when a concern genuinely qualifies the goal's own contract — a criterion
+met but fragile. Honored scope boundaries, pre-existing baseline failures, and
+discovered follow-ups are *not* concerns (they go to the report file and the
+inbox), so a completed goal reads as completed instead of trailing a list of
+things it correctly didn't do. Measured before the change: ~30 % of real
+reports carried the status, mostly for honest scope discipline.
+
+**Plans are the progress view (v11.0.0).** When a goal came from an ideate
+plan, completing it checks that phase off in `docs/goals/plans/…` in the same
+settle commit — one document shows the whole chain's design, decisions, and
+progress. Display only: `index.yaml` stays the single status authority and
+dispatch re-syncs a drifted checkbox from the index.
 
 ### goals-status — see what's open
 
@@ -331,8 +371,8 @@ never implements goals.
 
 ```mermaid
 flowchart TD
-    you(["You — plain language"]) -->|fuzzy idea| id["ideate<br/>dialogue → approved design"]
-    id -->|approved design| dg
+    you(["You — plain language"]) -->|fuzzy idea| id["ideate<br/>dialogue → approved plan"]
+    id -->|approved plan| dg
     you -->|shaped want| dg["define-goal<br/>writes measurable contracts"]
     dg -->|queues| q[("docs/goals/ queue<br/>index.yaml + goal files")]
     q -->|claim next goal| dsp{{"dispatch · orchestrator"}}
@@ -480,7 +520,7 @@ and the three review agents become custom droids.
 
 ```bash
 /factory-doctor                              # 1. make sure the repo + machine are ready
-/ideate what if signups had a referral loop  # (optional) explore a fuzzy idea into a design
+/ideate what if signups had a referral loop  # (optional) explore a fuzzy idea into a plan
 /define-goal I want the API p95 latency under 200ms   # 2. capture a want → queued contract
 /dispatch                                    # 3. drain the queue (--count N to limit the run)
 ```
@@ -535,8 +575,9 @@ or test command — which is a setup gap, not a code failure: run `/factory-doct
 
 ## Running it autonomously
 
-`/dispatch` drains the queue by default (v10.0.0); `--count N` runs an
-attended sequential batch of the same cycle. Each settled goal reports
+`/dispatch` drains the queue by default (v10.0.0), auto-parallelizing
+co-schedulable goals when `config.parallel` is set (v11.0.0); `--count N` runs
+an attended batch of the same cycle. Each settled goal reports
 **progress-first**:
 `6/8 done ████████████████░░░░ · ready 0 · blocked 2`.
 
@@ -585,7 +626,10 @@ flywheel/
 │   ├── plugin.json        # flywheel plugin manifest
 │   └── marketplace.json   # the pragmatic-growth marketplace, listing flywheel alone
 ├── skills/
-│   ├── ideate/SKILL.md
+│   ├── ideate/
+│   │   ├── SKILL.md
+│   │   └── references/
+│   │       └── plan-template.md       # the plan artifact (v11.0.0) — code-shaped design + phases + open questions
 │   ├── define-goal/SKILL.md
 │   ├── dispatch/
 │   │   ├── SKILL.md

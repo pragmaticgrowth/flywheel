@@ -116,7 +116,9 @@ def test_amend_mode_specifies_its_ordered_steps():
         "reports the actual status",
         "~/.local/state/pg-dispatch/<SLUG>/reports/<id>-report.md",  # report read
         "missing or stale report is non-fatal",
-        "ONE question round",                               # one round
+        "ONE round either way",                             # one-round cap (v11: the
+                                                            # round itself is conditional
+                                                            # on a true owner fork)
         "ONLY the criteria the reason identifies as defective",
         "contract-red-team",                                # re-review
         "chore(goals): amend <id>",                         # requeue commit
