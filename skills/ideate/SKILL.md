@@ -51,9 +51,15 @@ Work through these in order; scale each step to the idea's size.
 
 Orient in the current system before asking anything — files, docs, recent commits,
 where similar features already live. For a bigger unknown, spawn 1–2 read-only
-subagents on the medium tier — Claude Code: `general-purpose` with `model: sonnet`
-(never the built-in Explore type, whose model cannot be pinned); Droid: `explorer`
-with `complexity: medium` — reporting `path:line` summaries, never file dumps. The
+subagents on the medium tier — Claude Code: the plugin's recon agents when the
+runtime lists them (`flywheel:recon-locator` for where things live,
+`flywheel:recon-analyzer` for how an area works, `flywheel:recon-patterns` for
+existing implementations to model the Design section on), each on the
+medium tier (`model: sonnet`) at spawn; else `general-purpose` on the same
+medium tier (`model: sonnet`) —
+never the built-in Explore type, whose model cannot be pinned. Droid:
+`explorer` with `complexity: medium` — reporting `path:line` summaries, never
+file dumps. The
 judgment stays with you: weighing what they found, the approaches, and the design
 happen in your session-model context. define-goal's recon still runs later,
 narrowed by what you found.

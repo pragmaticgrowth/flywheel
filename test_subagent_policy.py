@@ -57,7 +57,8 @@ def tool_list(path: Path) -> list:
 
 
 def test_agents_exist():
-    assert len(AGENTS) == 3, [p.name for p in AGENTS]
+    # v5.4.0: the three review roles; v11.1.0: the three recon roles (riptide-adapted).
+    assert len(AGENTS) == 6, [p.name for p in AGENTS]
 
 
 def test_every_agent_tool_id_is_valid_on_some_harness():

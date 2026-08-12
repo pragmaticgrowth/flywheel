@@ -262,10 +262,23 @@ Recon details:
   SEARCH subagents run on the medium tier (owner routing decision 2026-07-24: gathering —
   read, grep, trace, report — is strong-tool-use work the medium tier handles at
   near-parity; the judgment that guards contract quality lives in synthesis, which this
-  rule keeps on the stronger model). Harness mapping — Claude Code: spawn
-  `general-purpose` with `model: sonnet` (the medium tier); do NOT use the built-in
-  `Explore` type — its model cannot be pinned, and this rule needs the model explicit.
-  Droid: spawn `explorer` (read-only by construction) with `complexity: medium`. On
+  rule keeps on the stronger model). Harness mapping — Claude Code: spawn the
+  plugin's recon agents when the runtime lists them (v11.1.0, adapted from
+  HumanLayer's riptide codebase agents) — `flywheel:recon-locator` (WHERE things
+  live — surfaces, entry points, the raw material for `touches:` globs),
+  `flywheel:recon-analyzer` (HOW an area works — symptom trace, data/control flow,
+  config/wiring), `flywheel:recon-patterns` (existing implementations and test
+  shapes the new work should REUSE) — each on the medium tier (`model: sonnet`) at spawn
+  (the definitions pin no model; the medium-tier recon rule supplies it); the role
+  brief and output contract live in each definition, so the spawn prompt carries
+  only the angle, the area, and how to reach the system. Fallback when the runtime
+  doesn't list them: `general-purpose` on the same medium tier (`model: sonnet`), the angle's
+  contract stated inline. Never the built-in `Explore` type — its model cannot be
+  pinned, and this rule needs the model explicit.
+  Droid: spawn `explorer` (read-only by construction) with `complexity: medium` —
+  deliberately NOT the plugin agents there: whether a custom-droid spawn accepts
+  `complexity:` is unverified, and no Droid claim ships without live verification
+  (v7.0.0 doctrine). On
   either harness the gather agents are strictly READ-ONLY (report only — never edit,
   fix, or run heavy repro). The SYNTHESIS/judgment step (when you split one out to
   weigh evidence and rank hypotheses) stays on the current session model — never
@@ -285,9 +298,12 @@ Recon details:
 - **Angles, 2–4 per fan-out** — for a bug: symptom trace (error strings/log lines → the
   code that throws and handles them), data/control flow (entry point → failure area),
   recent-change scan (`git log`/`blame` on suspect areas), config/wiring (flags, env,
-  versions). For a feature on an existing system: the existing data sources, queries, and
-  components the new work should REUSE (not reinvent), where similar features live, surfaces
-  to touch (routes, UI, schema, jobs), constraints (migrations, auth, test layout).
+  versions) — analyzer-shaped work, plus one locator pass when the surfaces are
+  unknown. For a feature on an existing system: the existing data sources, queries, and
+  components the new work should REUSE (not reinvent) and how similar features are
+  tested (recon-patterns), where similar features live and the surfaces
+  to touch — routes, UI, schema, jobs (recon-locator), constraints — migrations, auth,
+  test layout (recon-analyzer).
 - **Contract per subagent**: return a summary, never file dumps — candidate files as
   `path:line`, a hypothesis WITH evidence, confidence, and what would confirm it.
 - **Synthesize in your context**: agreeing findings → the goal file's Context section and

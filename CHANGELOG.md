@@ -13,6 +13,43 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [11.1.0] — 2026-08-12
+
+**Recon gets named agents: riptide's codebase trio, flywheel-adapted.** Owner-
+delegated decision 2026-08-12 ("do we need [subagents] as riptide … you will
+decide"). The same anti-drift reasoning that created the three review agents in
+v5.4.0 (hand-composed briefs drifting across fires) applied verbatim to the
+understanding side: define-goal recon and ideate orientation composed their
+gather briefs from prose every session. Adapted from HumanLayer's riptide
+`codebase-locator` / `codebase-analyzer` / `codebase-pattern-finder`, keeping
+their documentarian doctrine (document what exists, never critique or
+recommend; rigid output shapes; `path:line` on every claim) under flywheel's
+agent constraints (read-only-by-tools on both harnesses, no model pin, narrow
+non-auto-triggering descriptions, generic-type fallback preserved).
+
+- **NEW `agents/recon-locator.md`** — WHERE things live: surfaces, entry
+  points, naming conventions; the raw material for `touches:` globs. Location
+  only, never reads contents (no Read in its allowlist).
+- **NEW `agents/recon-analyzer.md`** — HOW an area works: traced code paths,
+  data flow, wiring, all `path:line`. One flywheel addition to the riptide
+  doctrine: when briefed with a symptom, it reports candidate sites with
+  evidence + confidence as observed fact (define-goal's bug-recon contract) —
+  never fixes; the implementer's failing test arbitrates.
+- **NEW `agents/recon-patterns.md`** — existing implementations and test
+  shapes to REUSE, extracted with real code; feeds the plan's code-shaped
+  Design section.
+- **Wiring:** define-goal recon and ideate orientation spawn them on Claude
+  Code when the runtime lists them (`model: sonnet` passed at spawn — the
+  medium-tier recon rule; definitions pin nothing), with the
+  `general-purpose` + inline-brief fallback unchanged; dispatch implementers
+  prefer them for read-only exploration helpers. Droid recon deliberately
+  stays on `explorer` + `complexity: medium` (custom-droid + complexity is
+  unverified; v7.0.0 no-unverified-Droid-claims doctrine).
+- Policy suite extended to the six agents (dual-harness shell tools, no write
+  tools, no model pin — all green); routing dry-run + RED baseline confirms
+  the old text always chose the generic type and the new text prefers the
+  plugin agents with the fallback intact.
+
 ## [11.0.0] — 2026-08-12
 
 **The plan release: riptide's design tier on flywheel's autonomous gate.**

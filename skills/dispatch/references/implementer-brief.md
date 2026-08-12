@@ -74,7 +74,10 @@ Quality loop — keep it lightweight, but do not skip it:
    before implementation. Bug goals must reproduce the root cause first; upstream findings
    are hypotheses, not facts.
 3. Implement on the current branch only. You may use read-only helper subagents for
-   exploration and test-design; do not spawn parallel code-writing agents or agent-team
+   exploration and test-design — on Claude Code prefer the plugin's recon agents when
+   the runtime lists them (`flywheel:recon-locator` / `recon-analyzer` /
+   `recon-patterns`, `model: sonnet`), else generic read-only types; do not spawn
+   parallel code-writing agents or agent-team
    teammates (a teammate is a second implementer lane by another name). Workflow
    mode is allowed only for bounded read-only fan-out or review when there are ~5+ independent
    checks; never use it to implement across branches or survive the session.

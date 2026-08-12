@@ -16,11 +16,18 @@ from the marketplace in v8.0.0, owner decision
 2026-07-25 — the marketplace is the goal-factory only now; git history keeps
 them recoverable.) No MCP
 servers, no commands, no hooks, no build step. ONE scoped exception to the
-skills-only rule, as of v5.4.0: THREE plugin agent definitions
-(root `agents/` — the factory's read-only review roles `gate-reviewer`,
-`fresh-check`, `contract-red-team`; added by owner-delegated decision
-2026-07-16 after transcript forensics on real dispatch runs showed
-hand-composed review briefs drifting across fires. Each carries the role
+skills-only rule: SIX plugin agent definitions under root `agents/` — the
+factory's read-only REVIEW roles `gate-reviewer`, `fresh-check`,
+`contract-red-team` (v5.4.0, owner-delegated decision 2026-07-16 after
+transcript forensics on real dispatch runs showed hand-composed review briefs
+drifting across fires) plus the read-only RECON/orientation roles
+`recon-locator`, `recon-analyzer`, `recon-patterns` (v11.1.0, owner-delegated
+decision 2026-08-12 — adapted from HumanLayer's riptide codebase agents for the
+same anti-drift reason: recon briefs were hand-composed per session; spawned by
+define-goal recon, ideate orientation, and implementer exploration on Claude
+Code with the medium tier — `model: sonnet` — passed at spawn; on Droid recon
+stays on `explorer` + `complexity: medium`, custom-droid + complexity being
+unverified). Each carries the role
 brief + output contract as its system prompt and a tool allowlist with no
 write-capable tools (the list names both harnesses' shell tools, `Bash` + `Execute` — each harness silently
 ignores the other's; live-verified on Droid 2026-07-25 — and ONLY tool IDs one of the two
@@ -31,7 +38,7 @@ the skills always keep a generic-type-with-inline-brief fallback
 (`general-purpose` on Claude Code, `worker` on Droid; spawn plugin agents as
 `flywheel:<name>` on Claude Code, bare `<name>` on Droid), and
 the built-in Explore type (Claude Code) and `explorer` (Droid) are banned
-for review roles).
+for review roles.
 `flywheel` has six skills under root
 `skills/` (three ship deterministic Python helpers in `scripts/`), forming a
 plain-language → autonomous-execution pipeline around a file-based goal queue
@@ -428,9 +435,13 @@ own review to the full panel, and is explicitly not a compliance miss.
   run on the medium tier (v6.2.0, owner routing decision 2026-07-24 — gather
   is strong-tool-use work; the prior always-inherit rule guarded against
   shallow recon, and that guard now lives in the gather/judge split instead).
-  On Claude Code use the `general-purpose` type with `model: sonnet` and
+  On Claude Code spawn the plugin recon agents when listed
+  (`flywheel:recon-locator|recon-analyzer|recon-patterns`, each on the
+  medium tier — `model: sonnet` — at spawn, v11.1.0), else `general-purpose`
+  on the same medium tier (`model: sonnet`);
   never the built-in Explore type (its model cannot be pinned); on Droid use
-  `explorer` with `complexity: medium`. Strictly read-only either way. The
+  `explorer` with `complexity: medium` (never the plugin agents there —
+  custom-droid + complexity unverified). Strictly read-only either way. The
   synthesis/judgment agent — and the contract writing itself — ALWAYS stays
   on the current session model; a per-run explicit user ask is the only
   override for the gather tier. `config.model`
@@ -486,7 +497,7 @@ place; `git show v7.0.0:plugins/<name>` recovers any of them intact.
 ```
 .claude-plugin/plugin.json        # root flywheel plugin manifest — the ONLY plugin
 .claude-plugin/marketplace.json   # marketplace — name: pragmatic-growth, lists flywheel alone
-agents/<name>.md                  # three flywheel plugin agents — read-only factory review roles: gate-reviewer, fresh-check, contract-red-team (v5.4.0)
+agents/<name>.md                  # six flywheel plugin agents — read-only review roles: gate-reviewer, fresh-check, contract-red-team (v5.4.0) + recon roles: recon-locator, recon-analyzer, recon-patterns (v11.1.0, adapted from riptide)
 skills/<name>/SKILL.md            # six flywheel skills (ideate, define-goal, dispatch, goals-status, loop-architect, factory-doctor)
 skills/<name>/scripts/*.py        # dispatch/pg_validate.py (local gate), factory-doctor/doctor_checks.py, goals-status/goals_status.py (read-only queue view)
 CHANGELOG.md                      # canonical, git-tracked version history
@@ -503,8 +514,9 @@ re-add a site, a deploy config, or a docs-sync mandate without an explicit ask.
 
 - **Skills-first (formerly skills-only).** Don't add MCP servers, commands,
   agents, or hooks here without an explicit ask. ONE exception to date: the
-  three root `agents/` definitions (the factory's read-only review roles,
-  owner-delegated decision 2026-07-16). Keep it minimal: plugin agents
+  six root `agents/` definitions (three read-only review roles, owner-delegated
+  decision 2026-07-16; three read-only recon/orientation roles adapted from
+  riptide, owner-delegated decision 2026-08-12). Keep it minimal: plugin agents
   must stay read-only-by-tools on BOTH harnesses (no Edit/Write/Create/
   ApplyPatch/Agent/Task; the allowlist names both shell tools `Bash` +
   `Execute` since each harness silently drops unknown names), pin no
