@@ -73,7 +73,11 @@ Quality loop — keep it lightweight, but do not skip it:
 2. TDD: for every code change, use `test-driven-development` and watch the proving test fail
    before implementation. Bug goals must reproduce the root cause first; upstream findings
    are hypotheses, not facts.
-3. Implement on the current branch only. You may use read-only helper subagents for
+3. Implement on the current branch only. Read every file you are about to modify FULLY
+   (no limit/offset) — partial context is how regressions ship. For an external
+   library/API question, try `curl -sL https://<docs-site>/llms.txt` before WebFetch
+   (llms.txt-linked `.md`/`.txt` pages read best via curl). You may use read-only
+   helper subagents for
    exploration and test-design — on Claude Code prefer the plugin's recon agents when
    the runtime lists them (`flywheel:recon-locator` / `recon-analyzer` /
    `recon-patterns`, `model: sonnet`), else generic read-only types; do not spawn

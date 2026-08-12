@@ -41,7 +41,7 @@ re-draining as NEW goals arrive.
 
 | Invocation | Behavior |
 |---|---|
-| `/dispatch` | **Drain — the v10.0.0 default:** keep working ready goals until the queue drains or a stop condition below fires. **Auto-parallel (v11.0.0):** when the queue's `config.parallel` block exists (the repo owner's standing opt-in), the harness is Claude Code, and ≥2 ready goals are co-schedulable under the untouched admission rules, the drain runs them as `--parallel` waves (K = `config.parallel.max_lanes`, else 2); otherwise — no `config.parallel`, Droid, or nothing co-schedulable — it works sequentially exactly as before. `--serial` forces sequential for this run. |
+| `/dispatch` | **Drain — the v10.0.0 default:** keep working ready goals until the queue drains or a stop condition below fires. **Auto-parallel (v11.0.0):** when the queue's `config.parallel` block exists (the repo owner's standing opt-in), the harness is Claude Code, and ≥2 ready goals are co-schedulable under the untouched admission rules, the drain runs them as `--parallel` waves (K = `config.parallel.max_lanes`, else 2); otherwise — no `config.parallel`, Droid, or nothing co-schedulable — it works sequentially exactly as before. `--serial` forces sequential for this run; `config.parallel.auto: false` (v11.2.0) is the PERSISTENT opt-out — it keeps the block's tuning for explicit `--parallel` runs while flagless drains stay sequential (the knob exists because pre-v11 queues configured `parallel:` when it only tuned the flag). |
 | `/dispatch 087` (also `87`, `087-slug`, or "work goal 087") | Solo mode: work exactly that goal (see Solo mode below). |
 | `/dispatch --count N` | Work up to N ready goals, then stop (N ≥ 1). `--count 1` is the pre-v10 single-goal fire — use it when one goal is deliberately all you want. |
 | `/dispatch --unlimited` | Explicit alias of the flagless drain default (kept for compatibility and for loop prompts that spell intent out). |
@@ -301,7 +301,9 @@ The index is the claim ledger. A claim is a status flip committed BEFORE impleme
 
 1. Read `docs/goals/index.yaml` from the working tree (must be clean — dirty → stop and report).
 2. Flip exactly one entry to `in_progress` and `git commit -m "chore(goals): claim <id>"`
-   (queue commits are always their own commit, never fused with code).
+   (queue commits are always their own commit, never fused with code — sole sanctioned
+   exception: the plan-mirror edit rides `chore(goals): complete <id>`, Working a goal
+   step 4).
 3. Push is OPTIONAL (backup only) and never gated. Sequential mode is single-session; if you
    ever run two dispatch sessions on one local queue they race on index.yaml — don't.
 
@@ -409,11 +411,13 @@ extra verification round every fire. Cheap doctor pass, flagged in the report ra
 silently fixed: every entry has its goal file and vice versa; no circular `depends_on`; no
 `depends_on` pointing at a missing entry; warn when a goal and its dependency declare
 different `base` branches. Plan-mirror re-sync (the one doctor fix applied, not just
-flagged): for each of flywheel's plan files (`docs/goals/plans/*.md` — not the
-superpowers plan notes above) whose phases link to queue goals, a checkbox
-that disagrees with the index is rewritten to match the index — plan follows index,
-never the reverse — committed `chore(goals): plan-sync` only when something actually
-drifted.
+flagged): the goal→phase mapping lives in GOAL files, never in plans — scan the
+`Plan: docs/goals/plans/<file> — Phase <N>` Context lines of goal files in
+`docs/goals/` AND `docs/goals/done/` (archived goals still anchor their phase),
+resolve each goal's status from `index.yaml`/`archive.yaml`, and rewrite any plan
+checkbox that disagrees — plan follows index, never the reverse — stamping
+`status: done` on a plan whose phases are now all checked; committed
+`chore(goals): plan-sync` only when something actually drifted.
 
 On any environment failure you can't handle (missing tooling, an unrunnable `config.verify`
 command, a queue the claim protocol can't write), stop the iteration and surface it under
@@ -578,13 +582,13 @@ For each claimed goal, in order:
    one), then `chore(goals): complete <id>`; push if a remote exists (non-blocking).
    **Plan mirror (v11.0.0, plan-backed goals only).** If the goal's Context carries a
    `Plan:` link, flip that phase's `- [ ]` to `- [x]` in the plan file INSIDE the same
-   `chore(goals): complete <id>` commit, and when that flip checks the plan's last
-   open phase, also stamp its frontmatter `status: done`. This is a DISPLAY mirror —
-   the one document the owner actually reads shows the chain's progress — never a
-   second status authority: `index.yaml` remains the only source of truth, the mirror
-   is re-synced by Phase 0's doctor pass in the plan-follows-index direction only,
-   and a missing/unwritable plan file is a one-line note in the fire's report, never
-   a settle blocker.
+   `chore(goals): complete <id>` commit (the claim protocol's one sanctioned
+   exception), appending `· as-built: matched` — or one line naming the deviation,
+   from the gate review already in hand (v11.2.0) — and stamping frontmatter
+   `status: done` when the last open phase checks. A DISPLAY mirror only:
+   `index.yaml` stays the sole status authority, Phase 0's doctor pass re-syncs
+   drift plan-follows-index, and a missing/unwritable plan file is a one-line
+   report note, never a settle blocker.
    **Then, on every PASS, surface the goal's subjective criteria.** define-goal marks a
    criterion no command can settle **needs independent review** and tells the goal author it
    reaches a human under needs-you at integration — so after the squash, re-read
@@ -669,13 +673,14 @@ worktree and are unaffected). `factory-doctor` preflights this
 the POSIX shell; auto-resolution already skips the WSL launcher stub) and
 `PG_VALIDATE_TIMEOUT` (seconds per acceptance command, default 1800).
 
-## Parallel mode — the lane model (`--parallel`, Claude Code only)
+## Parallel mode — the lane model (`--parallel` / auto-parallel drains, Claude Code only)
 
 The full lane model — admission control, the lane lifecycle, the serialized
 integration lock, and every failure ruling — lives at
 `$DISPATCH_REFS/parallel-mode.md`. Read that file BEFORE claiming a wave whenever a run
-carries `--parallel`, and whenever Phase 1 finds lane-backed claims
-(`git branch --list 'lane/*'`) to settle. The one-paragraph version: N goals BUILD
+carries `--parallel`, whenever a flagless drain auto-enters lane mode (Invocation:
+`config.parallel` present without `auto: false`), and whenever Phase 1 finds
+lane-backed claims (`git branch --list 'lane/*'`) to settle. The one-paragraph version: N goals BUILD
 concurrently in disposable local worktree lanes; admission requires provably-disjoint
 `touches:` (a goal without `touches:` runs alone) and excludes conflict domains
 (lockfile, migrations, CI, global config); integration stays strictly serial — rebase
@@ -857,7 +862,9 @@ limit-resilience probe warns when this loop has no way to survive a usage-limit 
 ## Hygiene
 
 When `completed` entries crowd the index (~20+), move their files to `docs/goals/done/`
-and their entries to `docs/goals/archive.yaml` in one `chore(goals): archive` commit. The
+and their entries to `docs/goals/archive.yaml` in one `chore(goals): archive` commit —
+and move any plan stamped `status: done` to `docs/goals/plans/done/` in the same commit
+(finished plans otherwise accumulate beside live ones). The
 queue commit is always its own step (see the claim protocol). Agents read the whole index
 every iteration — keep it small.
 

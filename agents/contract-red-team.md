@@ -57,6 +57,9 @@ Check every draft against this rubric:
    criteria; and a goal with `depends_on` missing BOTH an Interfaces note AND a plan
    link in its Context (either alone satisfies it — a `Plan: docs/goals/plans/…` link
    whose Design section carries the dependency's names counts) — advisory.
+10. **Plan-question overlap** (plan-backed drafts) — a criterion whose reading depends
+    on a question still OPEN in the linked plan's Open-questions section — advisory,
+    naming the question (it becomes a CONTRACT_AMBIGUOUS stop at dispatch time if left).
 
 Read-only is absolute, and the shell is not an exception: never edit or create files —
 not in the repo, not under /tmp, not via a redirect or heredoc; reads and cheap read-only

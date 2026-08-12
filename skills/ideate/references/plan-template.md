@@ -1,4 +1,4 @@
-# The plan template (canonical — ideate step 5)
+# The plan template (canonical — ideate step 4)
 
 Write plans to `docs/goals/plans/YYYY-MM-DD-<topic>.md` (create the directory if
 needed). Fill every section; sections marked *(code-shaped)* apply when the work
@@ -50,6 +50,10 @@ Key discoveries:
 - <observable outcome 1>
 - <observable outcome 2>
 
+Post-ship signal (optional): <the metric, log line, or behavior to check AFTER this
+ships that says it actually worked — distinct from the acceptance criteria that gate
+the merge — or "none: too small to measure">.
+
 ## What we're NOT doing
 
 <Mandatory, never empty — explicit exclusions prevent scope sprawl. Name the
@@ -77,6 +81,15 @@ modified  src/a/b.ts        — <one line>
 ### <Call-flow sketch — ONLY where control flow is non-obvious>
 
 <entry → step → step, or a small mermaid flowchart>
+
+### Patterns to follow
+
+<The existing codebase patterns the implementation should imitate — from
+recon-patterns findings where recon ran: each a `path:line`, a short snippet where
+the shape matters, and one line on why it's the house pattern (incl. how similar
+things are TESTED). This is where recon-patterns output lands so every phase's
+implementer inherits it; omit the section only when the work is genuinely
+greenfield.>
 
 ## Open questions
 

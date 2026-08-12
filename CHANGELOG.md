@@ -13,6 +13,64 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [11.2.0] — 2026-08-12
+
+**The audit release: an adversarial second pass over v11, plus riptide's last
+free wins.** A strong-model auditor red-teamed everything shipped today (no
+Critical findings; 6 Important, all fixed here) and a second riptide sweep
+catalogued 16 remaining mechanisms — five adopted, eleven skipped with stated
+reasons (final-answer templates conflict with the owner's answer-first rules;
+document-precedence chains solve the multi-artifact drift a one-plan
+architecture doesn't have; PR/worktree-config/commit skills solve problems the
+squash-per-goal lane model already eliminated).
+
+Audit fixes:
+
+- **define-goal stopped teaching the pre-v10 model** — the "one ready goal per
+  run / don't imply a drain" queue bullet now states the v10 drain +
+  v11 auto-parallel truth (it actively mis-advised users).
+- **Auto-parallel gets a persistent opt-out**: `config.parallel.auto: false`
+  keeps lane mode flag-only while preserving the block's tuning — pre-v11
+  queues configured `parallel:` when it only tuned the explicit flag, and a
+  plugin update silently changing flagless behavior needed a knob, not just
+  the per-run `--serial`. README's config example now shows the block.
+- **Amends resolve plan questions at the source**: when a blocked goal's
+  defect traces to a still-OPEN plan question, amend mode now flips that plan
+  question to RESOLVED (same reading, same provenance, same commit) —
+  otherwise every sibling goal trips the same fork, recreating the exact
+  thrash the plan tier kills. The red-team gains a matching advisory
+  Plan-question-overlap check (a criterion riding an OPEN question is caught
+  at review, not at dispatch).
+- **Plan-mirror mapping specified**: the goal→phase mapping lives in goal
+  files' `Plan:` Context lines — Phase 0's re-sync scans `docs/goals/` AND
+  `docs/goals/done/`, resolves status from index + archive, and now also
+  stamps `status: done`; Hygiene archives done plans to
+  `docs/goals/plans/done/`; the claim-protocol convention names its one
+  sanctioned exception (the mirror riding the complete commit).
+- **AGENTS.md refreshed** (six agents, plan tier, drain + lane reality — it
+  still said "no worktrees, no parallel implementers") and a stale-reference
+  sweep: escalation-and-repair now routes DONE_WITH_CONCERNS to settle triage
+  explicitly, plan-template header says step 4, ideate's CLAUDE.md bullet
+  routes orientation to the recon agents, depth-cap comment corrected to 3.
+
+Riptide adoptions (the five with real gaps):
+
+- **`Patterns to follow` section in the plan template** — recon-patterns
+  output finally has a home the whole chain inherits (the sweep's best-ROI
+  find).
+- **`llms.txt`-first external research** (define-goal recon + implementer
+  brief): `curl -sL <docs-site>/llms.txt` before WebFetch for library/API
+  questions.
+- **Read-files-FULLY** (no limit/offset) extended from recon-analyzer to the
+  implementer brief's own edits.
+- **As-built notes on the plan mirror**: flipping a phase checkbox appends
+  `· as-built: matched` or a one-line deviation from the gate review already
+  in hand — the plan stays a truthful record, not a progress bar.
+- **Post-ship signal** (optional plan-template line): the metric to check
+  AFTER shipping, distinct from merge-gating acceptance criteria; and
+  ideate's presentation step folds in show-me's smallest-adequate-view
+  doctrine instead of shipping a seventh skill.
+
 ## [11.1.0] — 2026-08-12
 
 **Recon gets named agents: riptide's codebase trio, flywheel-adapted.** Owner-

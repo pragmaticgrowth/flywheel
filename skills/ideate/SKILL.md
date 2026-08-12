@@ -115,7 +115,10 @@ scaled down.
 ### 5. Present — ONE approval touch
 
 Present the plan once: what we're doing, the design's takeaway headers, the
-phases, and the Open questions with your recommendations. The user then either
+phases, and the Open questions with your recommendations. When showing beats
+telling, use the smallest adequate view — pseudocode, a call tree, a file tree,
+a small mermaid diagram — never a bigger artifact than the point needs
+(riptide's show-me doctrine, folded in here). The user then either
 answers any subset, says "go with your recommendations" (which resolves ALL open
 questions — record each as resolved with that provenance), asks for changes, or
 parks the idea. Iterate only on what they push back on; do not re-present

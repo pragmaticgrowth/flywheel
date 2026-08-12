@@ -325,6 +325,11 @@ Recon details:
   recon investigates the REAL system, not an empty local tree — and have acceptance commands
   target that same place. Never hardcode this into the skill; read it from the want and the
   repo each time.
+- External-library questions (an API's real behavior, a framework's config surface):
+  before WebFetch, try `curl -sL https://<docs-site>/llms.txt` — many doc sites ship an
+  llms.txt index whose linked `.md`/`.txt` pages read far better via curl than a
+  rendered fetch (riptide-verified technique). Cite the doc URL in the findings like a
+  `path:line`.
 - Recon is recon: read-only, no fixes, no heavy repro — the implementer does that.
 
 ## Pick the destination
@@ -374,7 +379,9 @@ config:
     - npm run build
     - npm test
   # parallel:            # optional — dispatch's parallel lane mode: explicit --parallel,
-  #                      # and (v11.0.0) its presence auto-parallelizes flagless drains
+  #                      # and (v11.0.0) its presence auto-parallelizes flagless drains;
+  #                      # set `auto: false` inside it to keep lane mode flag-only
+  #                      # (v11.2.0 — the persistent opt-out; --serial is per-run)
   #   max_lanes: 2       # concurrent build lanes (hard cap 4); serial runs ignore this
   #   setup: pnpm install --prefer-offline   # per-lane dep setup command (worktrees
   #                                          # need their own deps; lanes persist across
@@ -394,7 +401,7 @@ Defaults when unspecified: the repo's default branch, `model: inherit`, no repo 
 no `verify` (dispatch auto-detects from Makefile / `go.mod` / `package.json`).
 `config.model` is only the repo-wide FALLBACK for spawned code agents — the primary model
 knob is the per-goal frontmatter `model:` field this skill stamps on every goal (see
-"Implementer model — decide it last" below); leave `config.model` at `inherit` unless the
+"Implementer tier — decide it last" below); leave `config.model` at `inherit` unless the
 repo owner intentionally chooses a fixed repo-wide alias. Neither ever applies to recon
 subagents. A per-goal `base:` field on an index entry overrides `config.base` (epic
 branches).
@@ -411,9 +418,10 @@ Rules that keep the queue safe:
 - Confirm the draft (title + acceptance criteria) with the user before writing; batch mode
   uses its approval table instead. Queued drafts are confirmed after their contract review
   (see "Contract review" below).
-- Dispatch works one ready goal per run on the checked-out branch. If the user wants the
-  whole queue worked unattended, the contract should point them to `/loop /dispatch`; do not
-  imply one `/dispatch` invocation drains every ready goal.
+- A flagless `/dispatch` DRAINS the queue on the checked-out branch (v10.0.0) —
+  auto-parallelizing co-schedulable goals when `config.parallel` exists (v11.0.0);
+  `--count N` sizes a run, a goal id scopes it to one. `/loop /dispatch` exists only to
+  re-drain as NEW goals arrive.
 - **Reserve the ID(s) BEFORE writing goal files** — the define-goal analog of dispatch's LOCAL
   claim: mint the slot and commit it before writing files, so a concurrent session can't force
   a rename + cross-ref rewrite of files you already wrote. The reservation is LOCAL, matching
@@ -712,6 +720,10 @@ contract, not approve it —
   migrated twice, wrong or missing `depends_on` ordering, duplicated or conflicting
   criteria, and a dependent goal missing both an Interfaces note and a plan link
   (advisory).
+- **Plan-question overlap** (plan-backed drafts, v11.2.0): a criterion whose reading
+  depends on a question still OPEN in the linked plan — advisory, naming the question;
+  resolving it now (one owner touch at the confirmation) is cheaper than the
+  CONTRACT_AMBIGUOUS stop it becomes at dispatch time.
 
 The brief carries a BUDGET: ~15 tool calls for one draft, ~5 per additional draft in a
 batch. Passing it means the reviewer has started designing the goal instead of reviewing
@@ -796,7 +808,12 @@ Run the steps in this order:
    `**Amended <date>:** <the defect> → <the resolved reading>` — so the next implementer
    reads the settled fork instead of re-opening it. One line per amendment, appended; never
    rewrite or delete an earlier note (the notes are the goal's decision history, and git
-   holds the rest).
+   holds the rest). **And when the defect traces to a still-OPEN question in the goal's
+   linked plan (v11.2.0): resolve it AT THE SOURCE too** — move that plan question to
+   RESOLVED with the same reading and provenance, in the same commit as the goal-file
+   edit. An amendment that settles the fork only in one goal's note leaves every sibling
+   goal to trip over the same OPEN question — exactly the block→amend thrash the plan
+   tier exists to kill.
 6. **Re-run the contract red-team on the amended draft** (Contract review above — the
    `contract-red-team` agent when the runtime lists it, else the generic type with the
    rubric inline). Same one round, same rules: verify each finding, fix the

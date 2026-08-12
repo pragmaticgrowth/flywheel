@@ -10,7 +10,7 @@ architecture — one harness-neutral **execution-tier vocabulary
 `heavy|medium|light`** plus one small harness-mapping block per skill,
 instead of the v4.x dual-branch prose).
 The repo publishes ONE plugin from the `pragmatic-growth` marketplace:
-`flywheel` v11.0.0.
+`flywheel` v11.2.0.
 (The `html-artifacts`, `autoresearch`, `human-writing` plugins were **removed**
 from the marketplace in v8.0.0, owner decision
 2026-07-25 — the marketplace is the goal-factory only now; git history keeps
@@ -53,8 +53,9 @@ is no `plugins/` directory — the repo root IS the flywheel plugin.
   `docs/goals/plans/YYYY-MM-DD-<topic>.md` (template:
   `skills/ideate/references/plan-template.md`; replaces the v6-era design
   brief — existing `docs/goals/briefs/` links stay valid). Context orientation
-  first (1–2 read-only subagents max, medium tier — `general-purpose` +
-  `model: sonnet` on Claude Code, `explorer` + `complexity: medium` on Droid),
+  first (1–2 read-only subagents max — the plugin recon agents when listed,
+  else `general-purpose`, either way the medium tier `model: sonnet` on Claude
+  Code; `explorer` + `complexity: medium` on Droid),
   then a VERTICAL-SLICE scope check (each piece independently verifiable
   end-to-end; "if a piece cannot be verified without a LATER piece existing,
   it is not a slice"; pieces map 1:1 onto goals + `depends_on`). Question
@@ -297,7 +298,9 @@ own review to the full panel, and is explicitly not a compliance miss.
   the harness is Claude Code, and ≥2 ready goals are co-schedulable, the drain
   runs `--parallel` waves (K = `config.parallel.max_lanes`, else 2; admission
   control and the integration lock unchanged); new `--serial` flag forces
-  one-at-a-time. CONCERNS DIET: DONE_WITH_CONCERNS is legal ONLY for a concern
+  one-at-a-time per run, and `config.parallel.auto: false` (v11.2.0) is the
+  persistent opt-out for pre-v11 queues that configured `parallel:` when it
+  only tuned the explicit flag. CONCERNS DIET: DONE_WITH_CONCERNS is legal ONLY for a concern
   qualifying the goal's own contract — honored scope boundaries and
   pre-existing failures go to the report file, discovered follow-ups to a
   `Follow-ups:` report heading that settle triage captures (measured pre-v11:

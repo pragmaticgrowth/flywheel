@@ -4,7 +4,7 @@
 A skills-first plugin for [Claude Code](https://claude.com/claude-code) and
 [Factory Droid](https://factory.ai), from Pragmatic Growth.
 
-[![Version](https://img.shields.io/badge/version-11.1.0-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-11.2.0-8b5cf6)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
 ---
@@ -101,6 +101,9 @@ config:
     - pnpm test
   budget:                 # optional ceiling for long unattended runs
     max_goals_per_session: 1
+  parallel:               # optional — enables dispatch's concurrent build lanes;
+    max_lanes: 2          #   its PRESENCE also auto-parallelizes flagless drains
+    auto: true            #   (set auto: false to keep lane mode flag-only)
 ```
 
 `model` sets the repo-wide default tier for code agents; each goal's own

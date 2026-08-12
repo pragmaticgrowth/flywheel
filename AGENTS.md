@@ -25,7 +25,7 @@ handful of stdlib-Python helper scripts the skills shell out to.
 .claude-plugin/marketplace.json   # lists one plugin; root plugin.json = flywheel version
 skills/<name>/SKILL.md            # 6 flywheel skills (root plugin)
 skills/<name>/scripts/*.py        # deterministic helpers + their pytest files
-agents/*.md                       # 3 read-only review subagents (gate-reviewer, fresh-check, contract-red-team)
+agents/*.md                       # 6 read-only subagents — review: gate-reviewer, fresh-check, contract-red-team · recon: recon-locator, recon-analyzer, recon-patterns
 README.md                         # short public overview — GitHub is the only surface (no website)
 ```
 
@@ -36,15 +36,21 @@ autoresearch, and human-writing sibling plugins were removed (recoverable via
 **The pipeline.** The six flywheel skills compose into one flow around a file-based
 queue that lives in *target* repos (`docs/goals/index.yaml` + `docs/goals/NNN-slug.md`):
 
-`ideate` (fuzzy idea → approved design) → `define-goal` (design → measurable, red-teamed
-goal contract; stamps a per-goal `model:` execution tier — `heavy|medium|light|inherit`,
-legacy opus/sonnet/haiku read as aliases) → `dispatch` (works ready goals one at a
-time) → `goals-status` (read-only queue view). `loop-architect` designs the unattended
+`ideate` (fuzzy idea → approved PLAN at `docs/goals/plans/` — code-shaped design,
+vertical-slice phases, owner-resolved open questions; v11) → `define-goal` (plan/want →
+measurable, red-teamed goal contract; plan-backed wants get zero question rounds;
+stamps a per-goal `model:` execution tier — `heavy|medium|light|inherit`,
+legacy opus/sonnet/haiku read as aliases) → `dispatch` (drains ready goals by
+default, auto-parallel lanes when `config.parallel` opts in) → `goals-status`
+(read-only queue view). `loop-architect` designs the unattended
 cadence; `factory-doctor` preflights the environment.
 
 **Dispatch's execution model** (the part that requires reading several files to grasp):
-one goal at a time, committed **directly on the currently checked-out branch** — no PRs,
-no worktrees, no parallel implementers. Each goal is bracketed by two anchors: `anchor`
+one goal INTEGRATES at a time, committed **directly on the currently checked-out
+branch** — no PRs, no remote branches. Building may parallelize: `--parallel` (or a
+flagless drain with `config.parallel` present) builds provably-disjoint goals in
+disposable local worktree lanes, still integrating strictly one at a time behind the
+same gate. Each goal is bracketed by two anchors: `anchor`
 (pre-claim clean HEAD) and `gate_base` (HEAD after the claim commit). One foreground
 implementer commits; then the orchestrator runs the LOCAL gate over `gate_base..HEAD` —
 an independent fresh adversarial reviewer, then `skills/dispatch/scripts/pg_validate.py`,
@@ -66,7 +72,8 @@ live in `CLAUDE.md` — read it before changing skill mechanics.
 ## Conventions
 
 - **Skills-first.** Don't add MCP servers, commands, hooks, or new agents without an
-  explicit ask. The three `agents/` definitions are the one standing exception; they
+  explicit ask. The six `agents/` definitions (three review roles, three riptide-adapted
+  recon roles) are the one standing exception; they
   stay read-only-by-tools on both harnesses (no Edit/Write/Create/ApplyPatch/Agent/Task;
   the allowlist names both shell tools `Bash` + `Execute`, and only tool IDs one of the two
   harnesses actually defines — an unknown ID is a validation error on Droid), pin no

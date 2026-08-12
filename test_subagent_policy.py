@@ -4,7 +4,8 @@ Two platform facts drive these tests:
 
 1. Droid subagents CANNOT spawn subagents ("a subagent cannot spawn its own subagents
    (the Task tool is not available to it)" — docs.factory.ai custom-droids). Claude Code
-   subagents CAN (Agent nests, cap depth=5). Dispatch's implementer panel therefore needs
+   subagents CAN (Agent nests; default cap 3 layers below the main conversation, per the
+   v8.3.0 correction). Dispatch's implementer panel therefore needs
    an explicit per-harness path, and the fallback must never be self-review.
 2. Tool IDs differ per harness. Claude Code uses `Bash`; Droid uses `Execute` and validates
    `tools:` entries against a fixed table, where an unknown ID is a validation error.

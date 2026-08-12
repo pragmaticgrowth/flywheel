@@ -3,6 +3,11 @@
 Read this file when an implementer returns any status other than a clean `DONE`, or
 when the gate verdict is anything other than PASS.
 
+One status routes elsewhere: `DONE_WITH_CONCERNS` is not an escalation — its concerns
+are settle-triage input (SKILL.md, Settle triage: repair now / dismiss with reasoning /
+capture to the inbox), and only a concern that invalidates one of THIS goal's own
+acceptance criteria enters the repair path below as a gate finding.
+
 ## FAIL_FIXABLE — the repair round (warm first)
 
 A `FAIL_FIXABLE` verdict gets ONE repair round, fed the COMPLETE verified findings list
