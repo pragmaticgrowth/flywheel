@@ -6,8 +6,8 @@ recorded here. The primary release version matches the `flywheel` plugin's
 (`vX.Y.Z`) and linked to its release commit on GitHub.
 
 This file is the canonical, git-tracked source of truth for the version
-history. (The public site at <https://flywheel.pragmaticgrowth.com> no longer
-carries a changelog section — this file is the single source.)
+history, alongside the GitHub Releases page. (The public site was retired on
+2026-08-12 — GitHub is the only surface now.)
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 

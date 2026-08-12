@@ -8,7 +8,6 @@ No build step, no package manager. Python 3 + pytest is the whole toolchain.
 python3 -m pytest -q                                  # full suite (repo root; discovers script tests too)
 python3 -m pytest -q skills/dispatch/scripts/test_pg_validate.py          # one file
 python3 -m pytest -q skills/goals-status/scripts/test_goals_status.py -k index_unreadable   # one test
-wrangler deploy                                       # redeploy the public site (needs CLOUDFLARE_API_TOKEN)
 ```
 
 `docs/goals/index.yaml` declares `verify: python3 -m pytest -q` — that is the gate
@@ -27,7 +26,7 @@ handful of stdlib-Python helper scripts the skills shell out to.
 skills/<name>/SKILL.md            # 6 flywheel skills (root plugin)
 skills/<name>/scripts/*.py        # deterministic helpers + their pytest files
 agents/*.md                       # 3 read-only review subagents (gate-reviewer, fresh-check, contract-red-team)
-public/index.html                 # the public site, self-contained; deployed via wrangler.jsonc
+README.md                         # short public overview — GitHub is the only surface (no website)
 ```
 
 As of v8.0.0 the marketplace ships **flywheel only** — the html-artifacts,
@@ -77,14 +76,16 @@ live in `CLAUDE.md` — read it before changing skill mechanics.
 - **Portability.** Skills run in arbitrary repos — never embed user-specific absolute
   paths (`/Users/...`). Resolve helpers via `$CLAUDE_PLUGIN_ROOT` (Droid aliases it),
   then the `~/.claude/plugins` glob, then the `~/.factory/plugins/cache` glob.
-- **Docs move with the skills.** Changing what a skill does, how it's invoked, plugin
-  boundaries, install, or the queue/config model means updating `README.md` AND
-  `public/index.html` in the SAME change. Stale docs = stale ship.
-- **Every version bump is a release.** Bump the root `plugin.json`, add a
-  `## [X.Y.Z] — <date>` block to `CHANGELOG.md` (canonical history — never delete),
-  bump the site `.ver-pill`/`<title>` and the README version badge, then annotated tag
-  `vX.Y.Z` + `gh release create` with notes taken from that changelog section.
-  Site/changelog-only edits do NOT need a plugin version bump.
+- **Docs stay minimal.** There is no website (deleted 2026-08-12 — owner decision;
+  `git show v11.0.0:public/index.html` recovers it). `README.md` is a SHORT public
+  overview: update it only when a user-facing fact changes (a skill's purpose,
+  invocation, install, or the config model), and never grow it into a manual.
+  Mechanics and rationale belong in `CLAUDE.md`. No full-doc-sync ritual.
+- **Every version bump is a release — and nothing else.** Bump the root
+  `plugin.json`, add a `## [X.Y.Z] — <date>` block to `CHANGELOG.md` (canonical
+  history — never delete), then annotated tag `vX.Y.Z` + `gh release create` with
+  notes taken from that changelog section. Docs/changelog-only edits do NOT need a
+  plugin version bump.
 - **Push every time.** Commit AND push (`origin main`) on every completed unit of work —
   pre-authorized, no need to ask. End turns with a clean `git status` and no unpushed
   commits or tags; the installed plugin refreshes from GitHub, so unpushed = unshipped.

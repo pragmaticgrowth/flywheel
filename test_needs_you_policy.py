@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parent
 
 LINE_SHAPE = "<id or item> — <reason> → <what to run>"
 
-INVARIANT_DOCS = ["README.md", "public/index.html", "CLAUDE.md", "AGENTS.md"]
+INVARIANT_DOCS = ["README.md", "CLAUDE.md", "AGENTS.md"]
 
 
 def read(path: str) -> str:
@@ -143,9 +143,8 @@ def test_immutable_contracts_invariant_is_narrowed_everywhere():
                 assert "amend" in line.lower(), (
                     f"{path}:{i}: 'immutable contracts' without the --amend exception"
                 )
-    assert hits == 4, f"expected 4 invariant sites, found {hits}"
+    assert hits == 3, f"expected 3 invariant sites, found {hits}"
 
 
 def test_public_docs_describe_the_amend_mode():
-    for path in ["README.md", "public/index.html"]:
-        assert "--amend" in read(path), f"{path}: --amend mode undocumented"
+    assert "--amend" in read("README.md"), "README.md: --amend mode undocumented"

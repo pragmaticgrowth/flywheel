@@ -48,7 +48,7 @@ def test_removed_plugin_trees_are_gone():
 def test_active_docs_do_not_advertise_removed_plugins():
     # History files (CHANGELOG, docs/superpowers/**) keep their references; the
     # active docs must not offer a plugin nobody can install.
-    for path in ["README.md", "CLAUDE.md", "public/index.html"]:
+    for path in ["README.md", "CLAUDE.md"]:
         text = read(path).lower()
         for name in REMOVED_PLUGINS:
             for i, line in enumerate(text.splitlines(), 1):
@@ -61,6 +61,6 @@ def test_active_docs_do_not_advertise_removed_plugins():
 def test_public_docs_advertise_a_single_plugin_marketplace():
     marketplace = json.loads(read(".claude-plugin/marketplace.json"))
     assert len(marketplace["plugins"]) == 1
-    for path in ["README.md", "CLAUDE.md", "public/index.html"]:
+    for path in ["README.md", "CLAUDE.md"]:
         text = read(path).lower()
         assert "one plugin" in text, f"{path}: expected 'one plugin'"

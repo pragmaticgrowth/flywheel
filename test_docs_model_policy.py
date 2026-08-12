@@ -18,7 +18,6 @@ def read(path: str) -> str:
 ACTIVE_DOCS = [
     "CLAUDE.md",
     "README.md",
-    "public/index.html",
     "skills/define-goal/SKILL.md",
     "skills/dispatch/SKILL.md",
     "skills/ideate/SKILL.md",

@@ -489,11 +489,15 @@ place; `git show v7.0.0:plugins/<name>` recovers any of them intact.
 agents/<name>.md                  # three flywheel plugin agents — read-only factory review roles: gate-reviewer, fresh-check, contract-red-team (v5.4.0)
 skills/<name>/SKILL.md            # six flywheel skills (ideate, define-goal, dispatch, goals-status, loop-architect, factory-doctor)
 skills/<name>/scripts/*.py        # dispatch/pg_validate.py (local gate), factory-doctor/doctor_checks.py, goals-status/goals_status.py (read-only queue view)
-CHANGELOG.md                      # canonical, git-tracked version history (site carries no on-page changelog)
-public/index.html                 # the public site (flywheel.pragmaticgrowth.com) — self-contained, themed
-public/Logo*Black.svg             # Pragmatic Growth brand marks (icon + wordmark)
-wrangler.jsonc                    # Cloudflare Workers static-assets deploy config for the site
+CHANGELOG.md                      # canonical, git-tracked version history
+README.md                         # short public overview (what it is, install, quick start)
 ```
+
+There is no website. The public landing/docs site
+(`public/`, `wrangler.jsonc`, flywheel.pragmaticgrowth.com on Cloudflare) was
+DELETED on 2026-08-12 by owner decision — GitHub is the only surface now.
+`git show v11.0.0:public/index.html` recovers it if ever needed. Never
+re-add a site, a deploy config, or a docs-sync mandate without an explicit ask.
 
 ## Rules
 
@@ -554,46 +558,25 @@ wrangler.jsonc                    # Cloudflare Workers static-assets deploy conf
   change behavior, not just read well (adopted from superpowers'
   RED-baseline doctrine, 2026-07-17).
 
-## Public site, changelog & releases (flywheel.pragmaticgrowth.com)
+## Docs & releases (deliberately minimal — owner decision 2026-08-12)
 
-The marketplace has a public landing/docs site at **https://flywheel.pragmaticgrowth.com**,
-served from Cloudflare (Workers static assets, Pragmatic Growth account). It is
-part of this repo — `public/index.html` (self-contained, light/dark, no external
-deps) plus the brand SVGs in `public/`, with `wrangler.jsonc` at the root.
+There is no website and no full-doc-sync ritual. A change updates the docs it
+actually invalidates, nothing more.
 
-- **Keep the docs current with the skills.** Whenever you change what a skill
-  does, how it's invoked, the plugin boundaries, the install commands, or the
-  queue/config model,
-  update BOTH `public/index.html` AND `README.md` to match in the SAME change.
-  The site and README both document the flywheel
-  workflow skills, the docs/goals pipeline, the
-  config model, and install — drift in either is a
-  shipped-but-wrong doc, same severity as a stale SKILL.md.
-- **Versioned changelog (CHANGELOG.md is the single source).** `CHANGELOG.md`
-  (repo root) is the canonical, git-tracked history. The public site carries NO
-  on-page changelog timeline (removed in the site-simplify pass — canonical
-  history lives in `CHANGELOG.md` plus the GitHub Releases page). On every
-  `plugin.json` version bump: add a `## [X.Y.Z] — <date>` block + a commit link to
-  `CHANGELOG.md`, bump the site's `.ver-pill` and `<title>` in `public/index.html`,
-  and bump the README's version badge (`version-X.Y.Z`). Never delete history.
-- **Tag AND release every version in GitHub (this repo manages its own
-  Releases page).** Each version bump gets BOTH an annotated git tag `vX.Y.Z`
-  on its bump commit (`git tag -a vX.Y.Z <sha> -m "…"`, `git push --tags`) AND a
-  GitHub Release created from that tag. Generate the release notes from the
-  version's `CHANGELOG.md` section — the block between `## [X.Y.Z]` and the next
-  `## ` — not the bare tag message:
-  `gh release create vX.Y.Z --title "vX.Y.Z — <headline>" --notes-file <section> --verify-tag --latest`.
-  Pass `--latest` only on the newest version; historical backfills use
-  `--latest=false`. Releases are how a reader browses version history on GitHub,
-  so one release per version, notes mirroring the changelog, newest = Latest.
-  The full backfill (v1.0.0 → current) already exists; on each new bump just add
-  the one new release.
-- **Redeploy after changes.** From the repo root, with `CLOUDFLARE_API_TOKEN`
-  set: `wrangler deploy`. The custom domain `flywheel.pragmaticgrowth.com` is bound
-  in `wrangler.jsonc` (the `pragmaticgrowth.com` zone is in the same account), so
-  a deploy redeploys to the same URL. Push the repo too — the site source is
-  tracked here, single source of truth.
-- The site is **content only** — bumping a plugin's own `plugin.json` version is
-  NOT required just to ship a site/changelog edit (installed plugins don't
-  depend on the site). Bump a plugin manifest only for actual skill changes, and
-  when you do, that's the trigger to add the changelog entry + tag above.
+- **README stays SHORT.** It is a public overview only — what flywheel is,
+  install, quick start, the six skills in one line each, the queue/gate/config
+  shape. Update it ONLY when one of those user-facing facts changes (a skill's
+  purpose, invocation, install command, or the config model). Internal
+  mechanics, rationale, and history go in `CLAUDE.md`/`AGENTS.md`, never in the
+  README. Do not grow it back into a manual — brevity is the spec.
+- **Version bumps: `plugin.json` + `CHANGELOG.md` + tag + release. That's all.**
+  `CHANGELOG.md` is the canonical, git-tracked history (never delete history):
+  add a `## [X.Y.Z] — <date>` block with a commit link. Then an annotated tag on
+  the bump commit (`git tag -a vX.Y.Z <sha> -m "…"`, `git push --tags`) and a
+  GitHub Release generated from that changelog section, not the tag message:
+  `gh release create vX.Y.Z --title "vX.Y.Z — <headline>" --notes-file <section> --verify-tag --latest`
+  (`--latest` only on the newest version; backfills use `--latest=false`).
+  Releases are how the version history is browsed now that the site is gone.
+  Bump the README badge only when you're already editing the README.
+- **Bump only for real skill changes.** A docs-only or changelog-only edit does
+  NOT need a `plugin.json` version bump — installed plugins don't depend on it.
