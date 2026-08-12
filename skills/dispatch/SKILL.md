@@ -417,7 +417,10 @@ flagged): the goal→phase mapping lives in GOAL files, never in plans — scan 
 resolve each goal's status from `index.yaml`/`archive.yaml`, and rewrite any plan
 checkbox that disagrees — plan follows index, never the reverse — stamping
 `status: done` on a plan whose phases are now all checked; committed
-`chore(goals): plan-sync` only when something actually drifted.
+`chore(goals): plan-sync` only when something actually drifted. The sync (and
+the settle mirror) edit checkbox/status text ONLY — a plan's `artifact:`
+presentation page belongs to ideate's approval touches and is never republished
+by dispatch.
 
 On any environment failure you can't handle (missing tooling, an unrunnable `config.verify`
 command, a queue the claim protocol can't write), stop the iteration and surface it under

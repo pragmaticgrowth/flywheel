@@ -27,6 +27,9 @@ status: open          # open (draft) | approved (ideate stamps it at the owner's
                       #   (dispatch stamps it when the last phase checks)
 repo: <repo name>
 branch: <working branch>
+# artifact: <url>    # optional — the plan's presentation page (SKILL.md step 5:
+#                    # published/updated ONLY at ideate's approval touches;
+#                    # dispatch's mirror and define-goal's amends never touch it)
 ---
 
 # <Plan title — a takeaway, not a label>

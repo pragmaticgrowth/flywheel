@@ -13,6 +13,36 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [11.3.0] — 2026-08-13
+
+**The plan page: a human reading surface for the factory's one approval
+moment.** Owner decision 2026-08-13 ("markdown file is nonreadable for
+humans... create artifact for human"). The plan is where the owner's judgment
+enters the factory, and corpus forensics showed owners read plain-language
+paragraphs, not repo markdown — so the approval touch now gets a designed
+page.
+
+- **ideate step 5**: when the session's tools include the Artifact tool
+  (built into Claude Code ≥2.1.183; needs a claude.ai login; can be disabled;
+  absent on Droid and headless runs), a plan-file design is ALSO published as
+  a designed artifact page — owner-language summary, the Design section with
+  real diagrams, each Open question as options + recommendation, the phases —
+  stamped "design for approval · <date> — the repo plan file is canonical".
+  The presentation leads with the link; approval still happens
+  in-conversation. The URL is recorded in plan frontmatter `artifact:` and
+  ideate iterations republish the SAME page.
+- **Deliberately NOT a live twin.** One publish per approval touch; dispatch's
+  phase mirror and define-goal's amends never republish the page (stated in
+  all three places). Live progress lives in the plan file, `/goals-status`,
+  and dispatch's report lines. Research grounding: riptide's own precedent is
+  one-shot, size-gated HTML (its plan phase ships none — its platform
+  auto-renders markdown, which flywheel doesn't have); a live twin would bolt
+  publish ceremony onto the plan's four mostly-unattended write moments and
+  cannot exist on Droid.
+- **Fallback is the norm, not a degraded mode**: without the tool, the chat
+  presentation is exactly the pre-v11.3 behavior — nothing else changes,
+  matching the repo's standing conditional-tool pattern (the Workflow rule).
+
 ## [11.2.0] — 2026-08-12
 
 **The audit release: an adversarial second pass over v11, plus riptide's last

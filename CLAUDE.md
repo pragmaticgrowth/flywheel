@@ -10,7 +10,7 @@ architecture — one harness-neutral **execution-tier vocabulary
 `heavy|medium|light`** plus one small harness-mapping block per skill,
 instead of the v4.x dual-branch prose).
 The repo publishes ONE plugin from the `pragmatic-growth` marketplace:
-`flywheel` v11.2.0.
+`flywheel` v11.3.0.
 (The `html-artifacts`, `autoresearch`, `human-writing` plugins were **removed**
 from the marketplace in v8.0.0, owner decision
 2026-07-25 — the marketplace is the goal-factory only now; git history keeps
@@ -71,7 +71,18 @@ is no `plugins/` directory — the repo root IS the flywheel plugin.
   terminal states are invoking define-goal with the approved plan or the user
   parking the idea — it never writes goal files, index entries, or code.
   Single-goal outcomes stay fileless; already-shaped wants skip it entirely;
-  re-invoking on a planned idea iterates the same plan file. Grounding: the
+  re-invoking on a planned idea iterates the same plan file. v11.3.0 (owner
+  decision 2026-08-13): when the session's tools include the Artifact tool
+  (built into Claude Code ≥2.1.183, needs a claude.ai login, can be disabled,
+  absent on Droid/headless), step 5 ALSO publishes the plan as a designed
+  artifact page — the owner's reading surface for the approval touch — with
+  the URL recorded in plan frontmatter `artifact:` so iterations update the
+  SAME page; ONE publish per approval touch, approval stays in-conversation,
+  the markdown plan file stays canonical, and dispatch/define-goal never
+  republish the page (deliberately NOT a live twin — the drift/ceremony
+  analysis is in the 2026-08-13 session; riptide's own precedent is one-shot,
+  size-gated HTML, never a living twin). Chat presentation is the norm and
+  the fallback wherever the tool is absent. Grounding: the
   2026-08-12 forensics (335 measured cycles) showed blocked-goal
   amend-thrash — design forks surfacing at dispatch time — cost 10–85 hours
   per goal, the estate's dominant wall-clock tail; the plan resolves forks

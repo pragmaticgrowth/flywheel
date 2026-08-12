@@ -118,7 +118,29 @@ Present the plan once: what we're doing, the design's takeaway headers, the
 phases, and the Open questions with your recommendations. When showing beats
 telling, use the smallest adequate view — pseudocode, a call tree, a file tree,
 a small mermaid diagram — never a bigger artifact than the point needs
-(riptide's show-me doctrine, folded in here). The user then either
+(riptide's show-me doctrine, folded in here).
+
+**The plan page (v11.3.0 — only when the session's tools include the Artifact
+tool).** For a plan-FILE design (chains — never fileless single-goal outcomes),
+also publish the plan as a designed artifact page and lead the presentation
+with its link: the owner-language summary, the Design section rendered with
+real diagrams, each Open question as its options + your recommendation, and
+the phases. Follow the built-in artifact design guidance that loads with the
+tool; stamp the page "design for approval · <date> — the repo plan file is
+canonical and carries live progress". Approval still happens IN THIS
+CONVERSATION exactly as below — the page is a reading surface, never a second
+approval channel. Record the published URL in the plan frontmatter `artifact:`
+field so a later iteration updates the SAME page. Boundaries that keep this
+honest: ONE publish per approval touch; the page is the design as approved,
+never a live dashboard — dispatch's phase mirror and define-goal's amends
+never republish it (live progress lives in the plan file, `/goals-status`,
+and dispatch's report lines). The Artifact tool is a Claude Code feature that
+requires a claude.ai login, can be disabled, and does not exist on Droid or
+in headless runs — when it is absent, present in chat exactly as below and
+skip nothing else: the chat presentation is the norm and the fallback, never
+a degraded mode.
+
+The user then either
 answers any subset, says "go with your recommendations" (which resolves ALL open
 questions — record each as resolved with that provenance), asks for changes, or
 parks the idea. Iterate only on what they push back on; do not re-present
@@ -158,7 +180,11 @@ Re-invoking this skill on an idea that already has a plan file UPDATES that plan
 in place (same path, never a second file): fold in what changed, move
 newly-answered questions to RESOLVED with their why, add new open questions, and
 re-present only the changed sections for the same single approval touch. Never
-rewrite resolved questions — they are the design's decision history.
+rewrite resolved questions — they are the design's decision history. If the
+plan's frontmatter carries an `artifact:` URL and the session has the Artifact
+tool, republish the updated plan to that SAME URL as part of re-presenting
+(never a second page); no tool in this session → chat presentation as usual,
+and the URL stays for the next session that has it.
 
 ## Red flags — stop and get back on the path
 

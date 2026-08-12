@@ -4,7 +4,7 @@
 A skills-first plugin for [Claude Code](https://claude.com/claude-code) and
 [Factory Droid](https://factory.ai), from Pragmatic Growth.
 
-[![Version](https://img.shields.io/badge/version-11.2.0-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-11.3.0-8b5cf6)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
 ---
@@ -56,7 +56,7 @@ Update later with `/plugin marketplace update pragmatic-growth`, or
 
 | Skill | What it does |
 |---|---|
-| **ideate** | Fuzzy idea → an approved **plan** with vertical-slice phases and open questions only you can answer. Never writes goals or code. |
+| **ideate** | Fuzzy idea → an approved **plan** with vertical-slice phases and open questions only you can answer. On Claude Code it also publishes the plan as a designed artifact page for the approval read (the repo file stays canonical). Never writes goals or code. |
 | **define-goal** | Plain-language want → a measurable, red-teamed goal contract in the queue (or a whole document of them). `--amend <id>` repairs a blocked goal's contract and requeues it. Never writes code. |
 | **dispatch** | The orchestrator: claim, implement with TDD, review, gate, keep or roll back. Drains the queue by default; `--count N` limits the run, `--serial` forces one goal at a time, `--parallel [K]` builds disjoint goals concurrently. |
 | **goals-status** | Read-only view of what's open — in progress, blocked, not started. |
