@@ -74,7 +74,12 @@ contract as usual.
 approved plan): ZERO question rounds.** The plan IS the interview — its Open-questions
 section holds the settled forks (and any still-OPEN ones, which you carry into the
 affected goal's Context rather than re-asking). Recon narrows to verifying and
-completing what the plan located rather than re-deriving it. The plan's Phases enter
+completing what the plan located rather than re-deriving it — and when that
+verification finds a plan error (a Verify path that doesn't exist, a command that
+doesn't parse), FIX THE PLAN in the same commit as the goal files, not just the
+goal's own `acceptance:` (v11.3.1 — the first field batch silently corrected a
+wrong test directory in the goal file while the plan kept the broken path; the
+plan is the document the owner reads, so it never keeps a defect the goals fixed). The plan's Phases enter
 batch mode as the item list, one goal per phase, `depends_on` following the phase
 order. Link the plan from each chain goal's Context — `Plan:
 docs/goals/plans/<file> — Phase <N>` — and let the plan's code-shaped Design section
@@ -502,7 +507,11 @@ schema, paths, commands)>
 <bullets>
 ```
 
-**That is the whole file (v11.0.0 goal-file diet — target ≤60 lines).** Corpus
+**That is the whole file (v11.0.0 goal-file diet — target ≤60 lines for a simple
+goal; evidence-dense contracts legitimately run to ~100–120).** First-field-batch
+calibration (romy 077–080, 2026-08-13: 92–115 lines each with zero fat — all
+load-bearing trap documentation and settled-decision notes): LENGTH ALONE IS NEVER
+A DEFECT — duplicated boilerplate and restated system rules are. Corpus
 forensics (2026-08-12, 385 goal files) measured the pre-v11 template at 115–160
 median lines of which only ~25–30 were unique intent. Two former sections are CUT
 from queued goal files because they were system rules duplicated into every file,
@@ -531,7 +540,11 @@ Titles are plain language ("Customers get a receipt email after payment"), not j
 One goal = one independently shippable change; split an ambitious want only when the parts
 ship and verify independently, ordering with `depends_on` for sequencing.
 **The one-sitting rule.** A well-cut goal is ONE implementer sitting: one subsystem, one
-drivable surface, and roughly ≤5 acceptance criteria. Cycle-time forensics across this
+drivable surface, and roughly ≤5 SUBSTANTIVE acceptance criteria — a combined
+mechanical-command bullet (test + typecheck in one line) and a mandatory
+**needs independent review** bullet for a production-only check do not count
+against the five (first-field-batch calibration 2026-08-13: every correctly-built
+goal with a post-deploy check lands on 6 bullets by construction). Cycle-time forensics across this
 factory's real repos (2026-07-28, 158 measured claim→settle cycles) put the median goal
 at ~57 minutes — and every multi-hour outlier (13–18h worst cases) was an oversized
 contract, not a slow implementer. A want that fails the one-sitting test is not "a big
@@ -693,7 +706,9 @@ contract, not approve it —
   Constraints. (Old-format drafts carrying a `/goal` contract line: it stays under
   the 4,000-char cap with a sized turn cap.)
 - **Size (one-sitting test)**: does the goal fit one implementer sitting — one
-  subsystem, one drivable surface, ~≤5 acceptance criteria? A draft that spans multiple
+  subsystem, one drivable surface, ~≤5 substantive acceptance criteria (a combined
+  mechanical-command bullet and a mandatory needs-independent-review production
+  check don't count)? A draft that spans multiple
   subsystems/surfaces or piles up criteria is flagged **contract-blocking** with the
   proposed split seams (each independently shippable, `depends_on`-ordered). A goal
   whose Context/source bundles MORE THAN TWO independent findings or root causes is the

@@ -153,6 +153,11 @@ goal that later trips over one has somewhere to point.
 Before handoff, re-read the plan with fresh eyes:
 
 - **Placeholders:** any "TBD", "handle edge cases", "appropriate X"? Fix them.
+- **Verify commands are real (v11.3.1):** every file path named in a phase's
+  Verify line exists — check each with `test -f` (or the equivalent) before
+  presenting. A copy-pasteable command that points at a wrong path ships a
+  defect into the plan (first field batch shipped `test/unit/…` for a file
+  living in `test/integration/`).
 - **Consistency:** do sections contradict each other?
 - **Ambiguity:** could a requirement be read two materially different ways?
   Two-readable requirements come back as `CONTRACT_AMBIGUOUS` stops at dispatch

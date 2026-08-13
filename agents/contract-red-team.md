@@ -40,8 +40,11 @@ Check every draft against this rubric:
    stop-and-confirm gate for an irreversible action sits in Constraints. (Old-format
    drafts carrying a `/goal` contract line: under the 4,000-char cap, turn cap present
    and sized.)
-7. **Size (one-sitting test)** — one subsystem, one drivable surface, ~≤5 acceptance
-   criteria, and never more than two independent findings/root causes bundled from a
+7. **Size (one-sitting test)** — one subsystem, one drivable surface, ~≤5 SUBSTANTIVE
+   acceptance criteria (a combined mechanical-command bullet and a mandatory
+   needs-independent-review production check don't count toward five; goal-file
+   LENGTH alone is never a finding — duplicated boilerplate is), and never more
+   than two independent findings/root causes bundled from a
    source document; oversized → contract-blocking with the proposed split seams (a
    Context note stating why the work is atomic downgrades only the span trigger to
    advisory; criteria bloat is its own finding).

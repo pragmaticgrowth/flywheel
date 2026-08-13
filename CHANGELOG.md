@@ -13,6 +13,32 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [11.3.1] — 2026-08-13
+
+**First-field-batch calibration.** The plan tier's first real run (romy,
+2026-08-13, the agent-turn-context-cost chain: idea → approved plan + artifact
+page + 4 red-teamed queued goals in 36 minutes, ONE owner touch, zero question
+rounds, 8 contract-blocking defects caught pre-queue, a recorded pre-approval
+self-correction from live measurement) validated the design end-to-end and
+surfaced three guidance miscalibrations, fixed here:
+
+- **Length is never a defect.** The ≤60-line goal-file target undershot
+  evidence-dense contracts (the field batch ran 92–115 lines with zero fat —
+  all load-bearing trap documentation). Recalibrated: ≤60 for simple goals,
+  ~100–120 legitimate for dense ones; duplicated boilerplate, not length, is
+  the smell (define-goal + red-team agent).
+- **Criteria counting fixed.** "~≤5 acceptance criteria" now counts SUBSTANTIVE
+  criteria — a combined mechanical-command bullet and the mandatory
+  needs-independent-review bullet for a production-only check are exempt
+  (every correctly-built goal with a post-deploy check lands on 6 by
+  construction; all four field goals did).
+- **Plan Verify lines are checked and repaired.** ideate's self-review now
+  `test -f`s every path in a phase's Verify line before presenting (the field
+  plan shipped `test/unit/…` for a file in `test/integration/`), and
+  define-goal's plan-backed recon fixes a plan error it finds in the same
+  commit as the goal files instead of silently correcting only the goal's
+  `acceptance:`.
+
 ## [11.3.0] — 2026-08-13
 
 **The plan page: a human reading surface for the factory's one approval
