@@ -13,6 +13,37 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [11.4.0] — 2026-08-13
+
+**The dialogue release — ideate asks again.** Owner decision 2026-08-13: the
+factory-wide question diet ("don't ask me questions, you decide") stands in
+every skill EXCEPT ideate, where the owner wants to shape the idea in
+brainstorm-style dialogue. ideate's at-most-ONE-AskUserQuestion-round cap is
+retired and replaced with a progressive exploration dialogue:
+
+- **Owner-language option questions.** Every question is an AskUserQuestion
+  with 2–4 concrete options, the recommended option first and labeled
+  "(Recommended)", `multiSelect` where choices aren't mutually exclusive; free
+  text stays the built-in "Other" escape hatch. Questions cover intent,
+  audience, scope, taste — never implementation.
+- **Progressive rounds, usefulness-capped.** One short round (1–2 questions)
+  at a time, each shaped by the previous answer; no fixed round cap — stop
+  when answers stop changing the design. The plan presentation stays the
+  single approval touch.
+- **Answers trigger fresh recon.** When an answer names or implies territory
+  the current context doesn't cover, ideate spawns step 1's read-only recon
+  agents again BEFORE the next round or any design writing — never asks the
+  owner to explain what the repo can tell, never designs on unseen ground.
+- **Technical forks stay out of the dialogue.** Implementation forks still
+  land in the plan's Open-questions section (options + recommendation, owner
+  resolves at the plan); genuinely different directions enter the dialogue
+  only when they change what the owner GETS, translated to owner language.
+
+RED-baseline-tested per repo policy: the pre-change text FORBADE a second
+question round, never addressed mid-dialogue re-orientation, and mandated no
+question format; the new text decides all three (dry-run citations recorded on
+both sides).
+
 ## [11.3.1] — 2026-08-13
 
 **First-field-batch calibration.** The plan tier's first real run (romy,

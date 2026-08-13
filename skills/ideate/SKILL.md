@@ -77,22 +77,45 @@ it is not a slice — re-cut.** The decomposition maps 1:1 onto future goals and
 their `depends_on` chain; say so in plain language ("this is really three
 deliverables; the second needs the first").
 
-### 3. Explore — questions become the plan, not an interview
+### 3. Explore — a progressive dialogue, not an interrogation
 
-Derive everything the repo can answer yourself. For genuine design forks, do NOT
-run serial question rounds: record each fork as an **Open question** in the plan —
-options, one recommendation with its why — and keep designing on the recommended
-branch. At most ONE AskUserQuestion round (1–2 questions) during exploration, and
-only for a fork so load-bearing that the design cannot be written at all without
-the answer. Everything else waits for the single approval touch in step 5. This is
-the question diet the owner's own usage demanded: "don't ask me questions, you
-decide" appears across every repo's sessions — the recommendation-plus-record
-pattern gives them the decision without the interrogation.
+Derive everything the repo can answer yourself — never ask the owner a question
+the repo answers. For what the repo CANNOT answer, this is the ONE skill in the
+pipeline where asking is the tool, not a failure (owner decision 2026-08-13: the
+factory-wide question diet — "don't ask me questions, you decide" — stands in
+every other skill; here the owner wants to shape the idea in dialogue). Three
+rules govern the dialogue:
+
+- **Owner-language questions only.** Ask about intent, audience, scope, taste —
+  what it should do, who it's for, what matters, what to cut — in plain
+  language. Every question goes through AskUserQuestion as 2–4 concrete options
+  with your recommended option FIRST, labeled "(Recommended)"; `multiSelect`
+  when the choices aren't mutually exclusive. Free text is the built-in "Other"
+  escape hatch, never the question's default shape.
+- **Progressive, not a batch interview.** One short round (1–2 questions) at a
+  time; let each answer shape the next round. There is no fixed round cap — the
+  cap is usefulness: stop when a round's answers stop changing the design, and
+  leave the rest to the approval touch in step 5.
+- **Re-orient when an answer opens new ground.** When an answer names or
+  implies territory your current context doesn't cover — a flow, system,
+  constraint, or repo area orientation never read — spawn recon again (step 1's
+  agents, tiers, and read-only rules) BEFORE the next round or any design
+  writing. Never ask the owner to explain what the repo can tell you; never
+  keep designing on ground you haven't seen.
+
+TECHNICAL forks stay out of the dialogue. A fork about implementation —
+derive-it or author-it, storage choice, library pick — becomes an **Open
+question** in the plan (options, one recommendation with its why), and you keep
+designing on the recommended branch; ask one mid-dialogue only if the design
+cannot be written at all without the answer, and even then translate it to
+owner language. The owner decides those at the plan, recommendation in front
+of them.
 
 YAGNI ruthlessly: propose cutting features from every design. A cut piece can
-always be ideated later. Genuinely different approaches (2–3, recommendation
-first) belong in the dialogue when the fork is architectural; the losing approach
-and why it lost gets one line in the plan's Design or Open-questions section.
+always be ideated later. Genuinely different DIRECTIONS (2–3, recommendation
+first) — forks that change what the owner gets, not how it's built — belong in
+the dialogue in owner language; the losing direction and why it lost gets one
+line in the plan's Design or Open-questions section.
 
 ### 4. Write the plan
 
@@ -195,8 +218,14 @@ and the URL stays for the next session that has it.
 
 - Writing a goal file, index entry, or code "while it's fresh" → HARD GATE
   violation.
-- A second AskUserQuestion round during exploration → the fork belongs in Open
-  questions with a recommendation.
+- A batch interview — every question fired up front in one round → progressive:
+  one short round, then let the answer shape the next.
+- A technical fork asked mid-dialogue (jargon, implementation choices) → Open
+  questions with a recommendation; the dialogue stays in the owner's language.
+- A question without options and a recommended default → shape it before
+  asking.
+- Designing past an answer that named territory your context doesn't cover →
+  spawn step 1's recon again first.
 - Asking a question the repo can answer → read the repo.
 - A layer-ordered decomposition presented as phases → horizontal cut; re-cut
   vertically before presenting.

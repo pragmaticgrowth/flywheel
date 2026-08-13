@@ -58,12 +58,21 @@ is no `plugins/` directory — the repo root IS the flywheel plugin.
   Code; `explorer` + `complexity: medium` on Droid),
   then a VERTICAL-SLICE scope check (each piece independently verifiable
   end-to-end; "if a piece cannot be verified without a LATER piece existing,
-  it is not a slice"; pieces map 1:1 onto goals + `depends_on`). Question
-  diet: design forks become the plan's Open-questions section (options +
-  recommendation each; ONLY the owner resolves; "go with your recommendations"
-  resolves all at once with provenance recorded; resolved questions keep their
-  why forever) — at most ONE AskUserQuestion round during exploration, and the
-  plan presentation is the single approval touch. The plan is code-shaped at
+  it is not a slice"; pieces map 1:1 onto goals + `depends_on`). Exploration
+  dialogue (v11.4.0, owner decision 2026-08-13 — ideate is the ONE skill where
+  asking is the tool; the factory-wide "don't ask me questions" diet stands in
+  every OTHER skill, and the prior at-most-ONE-round cap is retired here):
+  PROGRESSIVE brainstorm-style rounds — plain owner-language questions only,
+  each an AskUserQuestion with 2–4 options, recommended option first,
+  multiSelect where non-exclusive; one short round (1–2 questions) at a time
+  with no fixed cap (stop when answers stop changing the design); an answer
+  that opens territory the current context doesn't cover triggers fresh recon
+  (step 1's agents) BEFORE the next round or any design writing. TECHNICAL
+  forks stay out of the dialogue: they become the plan's Open-questions
+  section (options + recommendation each; ONLY the owner resolves; "go with
+  your recommendations" resolves all at once with provenance recorded;
+  resolved questions keep their why forever), and the plan presentation stays
+  the single approval touch. The plan is code-shaped at
   signature altitude (exact signatures with bodies elided, file-tree diff,
   call flows only where non-obvious — never function bodies) with
   takeaway-stating headers. Dispatch checks phases off as their goals
