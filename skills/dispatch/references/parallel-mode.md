@@ -49,7 +49,12 @@ remaining budget allows.
    `lane/<id>` is LOCAL, never pushed, deleted at settle — a disposable build
    directory, not v3's remote PR branch. If `config.parallel.setup` is set (e.g.
    `pnpm install --prefer-offline`), run it in the lane; lanes persist across fires to
-   amortize setup, and factory-doctor reports orphans.
+   amortize setup, and factory-doctor reports orphans. A fresh worktree contains NO
+   gitignored local files: if the suite needs one (a `.dev.vars`, a local env file),
+   copy it from the main checkout at lane creation or add it to
+   `config.parallel.setup` — a missing local secret fails as auth errors that read
+   exactly like a real regression and burns a full gate cycle (measured on a real
+   lane 2026-08-13: 6 failures in the lane, 7/7 green once `.dev.vars` was copied).
 3. Spawn ALL wave implementers foreground in ONE message (the lens-panel concurrency
    pattern — concurrent, returning synchronously; never background-then-poll). Each
    brief is the canonical implementer brief (references/implementer-brief.md) with ONE
@@ -67,11 +72,21 @@ remaining budget allows.
    A goal is integration-ready when its lane gate has no open findings.
 5. **Integration lock — strictly serial, one goal at a time, in wave order of
    readiness**: rebase `lane/<id>` onto the CURRENT branch HEAD (later wave members
-   replay over freshly integrated work), then re-run Arm A (pg_validate over the
+   replay over freshly integrated work). If the rebased range carries ANY commit
+   touching `docs/goals/**`, restore those paths to the branch's copy before gating
+   (`git checkout <branch> -- docs/goals/` in the lane) — queue state is written
+   ONLY by the orchestrator on the branch, never through a lane. Then re-run Arm A
+   (pg_validate over the
    rebased range + every `config.verify` command) INSIDE the rebased lane — this
    verifies the exact tree the branch is about to become, which is where cross-goal
-   interference is caught. PASS → squash the lane's commits to one
-   `feat(goal <id>): <slug>`, fast-forward the working branch to the lane tip,
+   interference is caught. PASS → collapse the lane to one commit IN THE LANE
+   (`git reset --soft <branch-HEAD>` then commit as `feat(goal <id>): <slug>`), and
+   fast-forward the working branch to the lane tip from the main checkout
+   (`git merge --ff-only lane/<id>`). NEVER `git merge --squash` (v11.4.1): it
+   re-merges the lane against the branch and can conflict on files the rebase
+   already settled — on 2026-08-13 exactly that put conflict markers INTO a
+   committed `index.yaml`; the rebase-then-ff-only path cannot conflict by
+   construction. Then
    `chore(goals): complete <id>`, delete the lane and its branch, push (non-blocking),
    surface needs-independent-review criteria exactly as the canonical sequence's
    step 4. The branch moves ONLY
@@ -83,7 +98,18 @@ remaining budget allows.
 
 **Failure rulings (every scenario, decided in advance):**
 
-- **Rebase conflict at integration** — the touch-set prediction was wrong. Never
+- **Conflict on `docs/goals/**` at integration** — NOT a touch-set misprediction:
+  implementers never write the queue, so the conflict means queue commits rode
+  into the lane range. Take the BRANCH's copy of the conflicted queue paths,
+  never the lane's: mid-rebase that is
+  `git checkout <branch> -- docs/goals/ && git add docs/goals/ &&
+  git rebase --continue` (a queue commit emptied by this resolves with
+  `git rebase --skip`); after a clean rebase it is step 5's restore. Then
+  continue integration. Absolute rule regardless of file: a tree with conflict markers is
+  NEVER committed — any `<<<<<<<` in `git status`/`git diff` output means stop,
+  restore, re-integrate; markers committed into `index.yaml` corrupt the queue
+  every later fire reads.
+- **Rebase conflict at integration** (goal-work files) — the touch-set prediction was wrong. Never
   resolve by guessing (the standing conflict rule). Discard the lane's commits,
   delete the lane, KEEP the goal claimed, and re-run it serially from the new branch
   HEAD as a fresh implementer spawn (worst case = today's serial cost). Surface

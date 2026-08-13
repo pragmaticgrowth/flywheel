@@ -203,7 +203,13 @@ own review to the full panel, and is explicitly not a compliance miss.
   goal without `touches:` is never co-scheduled; no dep path; conflict
   domains like lockfile/migrations/CI/config always exclusive; same base)
   while INTEGRATING strictly one at a time: rebase lane onto branch HEAD,
-  re-run Arm A on the integrated lane tree, squash, fast-forward the branch —
+  re-run Arm A on the integrated lane tree, squash, fast-forward the branch
+  (v11.4.1, from two real field failures 2026-08-13: collapse IN the lane +
+  `git merge --ff-only` only — `git merge --squash` is banned, it re-merges
+  what the rebase settled and put conflict markers into a committed
+  index.yaml; `docs/goals/**` in a lane range is always restored to the
+  branch copy, a conflict-markered tree is never committed, and lanes copy
+  needed gitignored local files like `.dev.vars` at creation) —
   the branch only ever advances to gate-verified trees; a rebase conflict
   means a mispredicted touch-set → discard the lane, re-run serially,
   needs-you `parallel-conflict` (two in one run degrade the run to serial);

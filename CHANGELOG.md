@@ -13,6 +13,34 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [11.4.1] — 2026-08-13
+
+**Lane-integration hardening — two real field failures closed.** A session
+audit across the estate's two active factories (2026-08-13) found the same
+parallel-mode defect independently in both: the integration step's
+"squash + fast-forward" prose was implemented as `git merge --squash`, which
+re-merges the lane against the branch and conflicted on
+`docs/goals/index.yaml` — in one repo committing conflict markers into the
+queue file (self-caught before push). `references/parallel-mode.md` now:
+
+- **Names the exact integration commands** — collapse IN the rebased lane
+  (`git reset --soft <branch-HEAD>` + commit), then `git merge --ff-only`
+  from the main checkout; `git merge --squash` is explicitly banned.
+- **Rules the queue-file conflict class** — `docs/goals/**` in a lane range is
+  never a touch-set misprediction: restore to the BRANCH's copy (exact
+  mid-rebase and post-rebase command sequences given) and continue; a tree
+  containing conflict markers is NEVER committed, any `<<<<<<<` means stop and
+  re-integrate.
+- **Warns that fresh worktrees carry no gitignored local files** — a missing
+  `.dev.vars` fails as auth errors that read exactly like a real regression
+  (measured: 6 lane failures, 7/7 green once copied); copy needed local files
+  at lane creation or via `config.parallel.setup`.
+
+RED/GREEN dry-run tested: the pre-change text left the integration commands,
+the queue-conflict ruling, and the gitignored-file trap all undecided; the new
+text decides each, and the one ambiguity the GREEN pass flagged (mid-rebase
+mechanics) was closed before shipping.
+
 ## [11.4.0] — 2026-08-13
 
 **The dialogue release — ideate asks again.** Owner decision 2026-08-13: the
