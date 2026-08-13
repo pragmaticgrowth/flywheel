@@ -4,7 +4,7 @@
 A skills-first plugin for [Claude Code](https://claude.com/claude-code) and
 [Factory Droid](https://factory.ai), from Pragmatic Growth.
 
-[![Version](https://img.shields.io/badge/version-11.3.0-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-11.5.0-8b5cf6)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
 ---
@@ -18,8 +18,8 @@ repo** (`docs/goals/`), and then works that queue: an implementer commits with
 TDD on your branch, an independent reviewer plus your build/test commands gate
 the diff, and only work that passes is kept — failures roll back cleanly.
 
-The `pragmatic-growth` marketplace ships **one plugin** — `flywheel` — with six
-skills and six read-only subagents: three reviewers (`gate-reviewer`,
+The `pragmatic-growth` marketplace ships **one plugin** — `flywheel` — with
+seven skills and six read-only subagents: three reviewers (`gate-reviewer`,
 `fresh-check`, `contract-red-team`) and three recon roles (`recon-locator`,
 `recon-analyzer`, `recon-patterns`) that ground every contract and plan in how
 the code actually works. No MCP servers, no hooks, no daemons, no build step.
@@ -50,6 +50,7 @@ Update later with `/plugin marketplace update pragmatic-growth`, or
 /ideate what if signups had a referral loop           #    (optional) explore a fuzzy idea
 /define-goal I want the API p95 latency under 200ms   # 2. capture a want as a contract
 /dispatch                                             # 3. work the queue
+/process-inbox                                        # 4. triage what dispatch captured along the way
 ```
 
 ## The skills
@@ -59,6 +60,7 @@ Update later with `/plugin marketplace update pragmatic-growth`, or
 | **ideate** | Fuzzy idea → an approved **plan** with vertical-slice phases and open questions only you can answer. On Claude Code it also publishes the plan as a designed artifact page for the approval read (the repo file stays canonical). Never writes goals or code. |
 | **define-goal** | Plain-language want → a measurable, red-teamed goal contract in the queue (or a whole document of them). `--amend <id>` repairs a blocked goal's contract and requeues it. Never writes code. |
 | **dispatch** | The orchestrator: claim, implement with TDD, review, gate, keep or roll back. Drains the queue by default; `--count N` limits the run, `--serial` forces one goal at a time, `--parallel [K]` builds disjoint goals concurrently. |
+| **process-inbox** | Triage sweep for the follow-ups dispatch captures in `docs/goals/inbox.md`: re-verifies every item against current code, converts the real ones via define-goal, batch-fixes the trivial ones, deletes the dead ones. Only spend/irreversible items wait for you. |
 | **goals-status** | Read-only view of what's open — in progress, blocked, not started. |
 | **loop-architect** | Designs the loop contract (prompt + verification + stop conditions) for unattended runs. |
 | **factory-doctor** | One-pass preflight/doctor. Auto-fixes everything local, reports the rest with exact fixes. |
@@ -125,7 +127,7 @@ Every cycle is idempotent, so a run killed mid-goal costs nothing.
 ```
 flywheel/
 ├── .claude-plugin/        # plugin manifest + the pragmatic-growth marketplace
-├── skills/                # the six skills (+ their Python helpers)
+├── skills/                # the seven skills (+ their Python helpers)
 ├── agents/                # six read-only roles: 3 reviewers + 3 recon
 ├── CHANGELOG.md           # canonical version history
 ├── CLAUDE.md              # contributor guide — design invariants, release flow

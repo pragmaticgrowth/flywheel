@@ -23,7 +23,7 @@ handful of stdlib-Python helper scripts the skills shell out to.
 
 ```
 .claude-plugin/marketplace.json   # lists one plugin; root plugin.json = flywheel version
-skills/<name>/SKILL.md            # 6 flywheel skills (root plugin)
+skills/<name>/SKILL.md            # 7 flywheel skills (root plugin)
 skills/<name>/scripts/*.py        # deterministic helpers + their pytest files
 agents/*.md                       # 6 read-only subagents — review: gate-reviewer, fresh-check, contract-red-team · recon: recon-locator, recon-analyzer, recon-patterns
 README.md                         # short public overview — GitHub is the only surface (no website)
@@ -33,7 +33,7 @@ As of v8.0.0 the marketplace ships **flywheel only** — the html-artifacts,
 autoresearch, and human-writing sibling plugins were removed (recoverable via
 `git show v7.0.0:plugins/<name>`).
 
-**The pipeline.** The six flywheel skills compose into one flow around a file-based
+**The pipeline.** The seven flywheel skills compose into one flow around a file-based
 queue that lives in *target* repos (`docs/goals/index.yaml` + `docs/goals/NNN-slug.md`):
 
 `ideate` (fuzzy idea → approved PLAN at `docs/goals/plans/` — code-shaped design,

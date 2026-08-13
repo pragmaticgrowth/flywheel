@@ -54,8 +54,13 @@ lines as the item list and one approval table. After a goal file + index entry i
 written (user-approved as usual), DELETE the converted line from `inbox.md` in the same
 commit as the index entry — a converted line left behind double-tracks the same work; a
 line the user declines to convert stays checked off as `- [x] declined: <reason>`.
-Dispatch appends to the inbox; this skill is the only thing that converts or removes
-lines.
+Dispatch appends to the inbox; lines are converted or removed only by this skill or
+by `/process-inbox` (v11.5.0) — the attended triage front door that re-verifies every
+item against current code first (measured ~20% dead on a stale inbox), drops
+disproved/dead lines itself with a recorded why, fixes the genuinely mechanical ones
+directly, and hands THIS skill only the confirmed convert list. Items arriving from
+it are pre-verified: recon narrows to verify-and-complete, and the contract review
+and approval table run unchanged.
 
 ## Plan first, then artifact
 

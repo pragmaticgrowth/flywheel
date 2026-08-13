@@ -13,6 +13,40 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [11.5.0] — 2026-08-13
+
+**The seventh skill: `/process-inbox`.** Owner ask 2026-08-13: one command that
+clears `docs/goals/inbox.md` the best-practice way, instead of hand-written
+prompts every time. The skill codifies the measured field pattern (romy,
+2026-08-13: 101 captured items → 31 goals, 20 dead lines deleted, 3 settled by
+production queries — after every item was re-verified against current code):
+
+- **Verify-first law.** Every open item is re-checked against CURRENT code by
+  read-only subagents (clustered by file/subsystem, ~8 concurrent;
+  `flywheel:recon-analyzer` else `general-purpose` on the medium tier;
+  `explorer` + `complexity: medium` on Droid) before any routing — the
+  measured dead rate on a stale inbox is ~20%, and an evidence pointer is
+  where verification starts, never its substitute.
+- **Six-bucket triage** on the session model: CONVERT (folded per the measured
+  rules, handed to define-goal's inbox intake pre-verified — recon narrowed to
+  verify-and-complete, red-team + approval unchanged), FIX-NOW (mechanical
+  no-behavior-change only, one `chore(inbox): direct fixes` commit gated by
+  `config.verify`; any failure reverts the batch and demotes to CONVERT),
+  DROP (deleted with a recorded why in the inbox's own `## Triaged` ledger),
+  PRODUCTION-CHECK (run read-only now, or hand the exact query to needs-you),
+  KEEP (reason appended), OWNER (spend/data-loss/irreversible — presented with
+  a recommendation, never acted on; the only bucket that waits for a human).
+- **Hard boundaries.** Never writes goal files or index entries (define-goal's
+  job), never implements non-trivial work (dispatch's), never touches
+  unprocessed lines. Dispatch's drained-queue pointer now reads
+  `inbox: N captured → /process-inbox`, and define-goal's intake names the new
+  front door.
+
+RED/GREEN dry-run tested per repo policy: against the pre-change skill set
+(define-goal's intake alone) the verify-first fan-out, the direct-fix lane, and
+disproved-item handling were all undecided; the new text decides each with
+citations.
+
 ## [11.4.1] — 2026-08-13
 
 **Lane-integration hardening — two real field failures closed.** A session

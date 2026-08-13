@@ -381,7 +381,7 @@ finds no ready goals AND needs-you is empty. Exactly ONE closing line ends the r
 both: a run that worked ≥1 goal closes with Phase 4's final summary line (`stopped:
 drained`, inbox pointer per Phase 4); a run that finds the queue already drained at start
 (zero goals worked) emits `factory drained — <done>/<total> done` instead (appending
-` · inbox: <N> captured → /define-goal` when `docs/goals/inbox.md` has unconverted
+` · inbox: <N> captured → /process-inbox` when `docs/goals/inbox.md` has unconverted
 items — conversion is the next visible action, never a buried footnote) and stops. A terminal stop still runs Phase 4 first — the drained fire reports and heartbeats
 before stopping. A later `/dispatch` (or `/loop`) re-run picks up newly-added goals — a `/define-goal` +
 `/dispatch` resumes from wherever the queue now stands.
@@ -819,7 +819,7 @@ emitted after EACH settled goal, and one final summary line closes the run:
 `[dispatch] worked <n>: <id PASS|FAIL, …> · stopped: <count reached|drained|budget exhausted|environment brake>`
 (the summary line itself appends no extra heartbeat — heartbeats are per-goal-cycle).
 When the run stops with a non-empty inbox, the summary's last words are the conversion
-pointer — `inbox: <N> captured → /define-goal` — so captured follow-ups are the next
+pointer — `inbox: <N> captured → /process-inbox` — so captured follow-ups are the next
 visible action, never a buried footnote. This summary line is the run's ONE closing
 line; Phase 0's `factory drained` line replaces it only when the run worked zero goals
 (the queue was already drained at start — see the terminal stop, Phase 0).

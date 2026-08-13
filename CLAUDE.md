@@ -39,11 +39,13 @@ the skills always keep a generic-type-with-inline-brief fallback
 `flywheel:<name>` on Claude Code, bare `<name>` on Droid), and
 the built-in Explore type (Claude Code) and `explorer` (Droid) are banned
 for review roles.
-`flywheel` has six skills under root
+`flywheel` has seven skills under root
 `skills/` (three ship deterministic Python helpers in `scripts/`), forming a
 plain-language → autonomous-execution pipeline around a file-based goal queue
 (`docs/goals/` in target repos): `/ideate → /define-goal → /dispatch →
-/goals-status`, with `loop-architect` and `factory-doctor` as the rails. There
+/goals-status`, with `loop-architect` and `factory-doctor` as the rails and
+`process-inbox` closing the loop from dispatch's captured follow-ups back into
+define-goal. There
 is no `plugins/` directory — the repo root IS the flywheel plugin.
 
 - **ideate** (v11.0.0 — rewritten around the PLAN, the factory's design tier,
@@ -358,6 +360,33 @@ own review to the full panel, and is explicitly not a compliance miss.
   brace-glob chain aborted under zsh with `no matches found`. Strictly
   read-only — never claims, changes, or implements a goal (that's
   `dispatch`) and never writes `index.yaml`.
+- **process-inbox** (v11.5.0, owner ask 2026-08-13 — "one command so the best
+  thing is done without writing manual prompts") — the attended triage sweep
+  for dispatch's `docs/goals/inbox.md` capture file, codifying the measured
+  field pattern (romy 2026-08-13: 101 items → 31 goals, 20 dead lines deleted,
+  3 settled by production queries). VERIFY-FIRST law: every item re-checked
+  against current code by read-only subagents before any routing
+  (`flywheel:recon-analyzer` else `general-purpose`, medium tier
+  `model: sonnet`, on Claude Code; `explorer` + `complexity: medium` on Droid;
+  clustered by file/subsystem, ~8 concurrent; measured ~20% dead rate on a
+  stale inbox — evidence pointers are where verification starts, never its
+  substitute), then SIX-BUCKET triage on the session model: CONVERT (folding
+  rules — one-function captures fold into one goal, caption classes split by
+  FILE, >2 independent findings per goal costs more repair rounds than it
+  saves; handed to define-goal's inbox intake pre-verified, recon narrowed to
+  verify-and-complete, red-team + approval unchanged), FIX-NOW (mechanical
+  no-behavior-change only, at dispatch's review-skip bar judged from the diff;
+  ONE `chore(inbox): direct fixes` commit gated by `config.verify` — any
+  failure reverts the whole batch and demotes to CONVERT), DROP
+  (disproved/gone — deleted with a one-line why in the inbox's own
+  `## Triaged` ledger section), PRODUCTION-CHECK (run read-only now or hand
+  the exact query to needs-you), KEEP (reason appended to the line), OWNER
+  (spend/data-loss/irreversible/externally-visible — presented with a
+  recommendation, never acted on; the ONLY bucket that waits for a human — no
+  other question rounds). Hard boundaries: never writes goal files or index
+  entries (define-goal's), never implements non-trivial work (dispatch's),
+  never touches unprocessed lines. Dispatch's drained-queue pointer names it
+  (`inbox: N captured → /process-inbox`).
 - **loop-architect** — designs loop contracts (prompt + verification +
   stop conditions) for autonomous /goal, /loop, routine, or remote runs;
   names `docs/goals/index.yaml` the canonical factory ledger. Includes
@@ -527,7 +556,7 @@ place; `git show v7.0.0:plugins/<name>` recovers any of them intact.
 .claude-plugin/plugin.json        # root flywheel plugin manifest — the ONLY plugin
 .claude-plugin/marketplace.json   # marketplace — name: pragmatic-growth, lists flywheel alone
 agents/<name>.md                  # six flywheel plugin agents — read-only review roles: gate-reviewer, fresh-check, contract-red-team (v5.4.0) + recon roles: recon-locator, recon-analyzer, recon-patterns (v11.1.0, adapted from riptide)
-skills/<name>/SKILL.md            # six flywheel skills (ideate, define-goal, dispatch, goals-status, loop-architect, factory-doctor)
+skills/<name>/SKILL.md            # seven flywheel skills (ideate, define-goal, dispatch, process-inbox, goals-status, loop-architect, factory-doctor)
 skills/<name>/scripts/*.py        # dispatch/pg_validate.py (local gate), factory-doctor/doctor_checks.py, goals-status/goals_status.py (read-only queue view)
 CHANGELOG.md                      # canonical, git-tracked version history
 README.md                         # short public overview (what it is, install, quick start)
@@ -605,7 +634,7 @@ There is no website and no full-doc-sync ritual. A change updates the docs it
 actually invalidates, nothing more.
 
 - **README stays SHORT.** It is a public overview only — what flywheel is,
-  install, quick start, the six skills in one line each, the queue/gate/config
+  install, quick start, the seven skills in one line each, the queue/gate/config
   shape. Update it ONLY when one of those user-facing facts changes (a skill's
   purpose, invocation, install command, or the config model). Internal
   mechanics, rationale, and history go in `CLAUDE.md`/`AGENTS.md`, never in the
