@@ -125,7 +125,11 @@ remaining budget allows.
   (isolated re-run once; never a repair, never a second retry).
 - **A lane implementer dies transiently** (stream death, empty return) — the
   Re-entrancy transient rules apply per lane; other lanes are unaffected. A lane
-  respawn continues from the lane's current state.
+  respawn continues from the lane's current state. Death needs evidence first
+  (Re-entrancy's two-sample rule, v11.6.0): a spawn that has not RETURNED is never
+  declared dead on one silent probe — check twice with real minutes between and
+  require zero new lane commits between; a respawn onto a live lane agent is two
+  writers in one lane (three false dead-calls measured in one real 2026-08-15 run).
 - **CONTRACT_AMBIGUOUS / NEEDS_CONTEXT / BLOCKED / GOAL_UNREACHABLE from a lane** —
   identical routing to serial mode (escalation ladder, contract-defect classes);
   ladder re-spawns continue in the lane; a goal that blocks discards its lane.

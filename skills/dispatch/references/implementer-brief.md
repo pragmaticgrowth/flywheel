@@ -73,7 +73,15 @@ Quality loop — keep it lightweight, but do not skip it:
 2. TDD: for every code change, use `test-driven-development` and watch the proving test fail
    before implementation. Bug goals must reproduce the root cause first; upstream findings
    are hypotheses, not facts.
-3. Implement on the current branch only. Read every file you are about to modify FULLY
+3. Implement on the current branch only. **Commit working increments as you go**: after
+   each green TDD cycle or completed checklist step, commit the passing state — the
+   orchestrator squashes the whole goal to one commit at integration, so increment
+   commits cost nothing and vanish from history. Never hold the goal's work
+   uncommitted until the end: a session death with an uncommitted tree loses the work
+   or leaves a half-edited checkout the next session must reverse-engineer (measured
+   2026-08-15/16: of three real mid-run deaths, the two goals whose implementers had
+   committed were recovered cleanly; the one that hadn't left 8 files of orphaned
+   half-work). Read every file you are about to modify FULLY
    (no limit/offset) — partial context is how regressions ship. For an external
    library/API question, try `curl -sL https://<docs-site>/llms.txt` before WebFetch
    (llms.txt-linked `.md`/`.txt` pages read best via curl). You may use read-only
@@ -158,7 +166,8 @@ Skills are mandatory — invoke each via the Skill tool:
    result — element/text/count — not just a page-load) and attach the screenshot as evidence;
    a screenshot with no assertion is not verification.
 
-Finish: before committing, review your diff and stage only the files you meant to change —
+Finish: before your final commit, review the FULL diff of your work (every increment
+commit plus anything staged) and stage only the files you meant to change —
 revert stray lockfile / dependency-manager / formatter churn, or any file you didn't intend
 to touch, that the toolchain introduced (never `git add -A` blind). Commit your intended
 files on the current branch. Then write your FULL report to

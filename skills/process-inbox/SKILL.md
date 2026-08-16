@@ -21,7 +21,11 @@ a weeks-old inbox is ~20% dead — code deleted since capture, fixed in passing,
 disproved on a closer read. An item's evidence pointer is where verification
 STARTS, never a substitute for reading the code as it stands today. Converting an
 unverified item queues phantom work; deleting an unverified item loses a real
-defect.
+defect. ONE exception (v11.6.0): a line a PREVIOUS sweep already stamped
+`KEEP <date>:` is not re-verified — it retires to the ledger (step 1), already
+adjudicated once. (Since dispatch v11.6.0 the settle-time capture bar admits only
+live defects, new work, and owner decisions — latent/nit findings stay in report
+files — so a fresh inbox arrives lean; older inboxes still carry the pre-bar mix.)
 
 **Boundaries.** This skill never writes goal files or index entries (define-goal
 does, behind its contract review), never implements non-trivial work (dispatch
@@ -34,7 +38,15 @@ waits for a human.
 ### 1. Read and cluster
 
 Read `docs/goals/inbox.md`; count open `- [ ]` items (zero → report "inbox
-empty" and stop). Cluster items by the file/subsystem their evidence points at,
+empty" and stop). **Retire stamped keeps first (v11.6.0 — KEEP is one-cycle
+parole, not residence):** any open line whose tail already carries a
+`KEEP <date>:` stamp from a PREVIOUS sweep skips verification and triage
+entirely — it retires to the `## Triaged` ledger in step 5. It was adjudicated
+once; its full detail lives in the source report file and git history, and if it
+ever becomes live, a fresh dispatch capture re-surfaces it. Measured 2026-08-16:
+a sweep re-verified 28 previously-adjudicated lines at real subagent cost and
+changed almost none of them. OWNER lines stay untouched either way. Then cluster
+the remaining unstamped items by the file/subsystem their evidence points at,
 folding obvious duplicates (two captures naming the same function and the same
 change are ONE item). Aim for one cluster per verification subagent, ~5–15 items
 each.
@@ -62,11 +74,16 @@ triage is yours.
 ### 3. Triage — every item into exactly ONE bucket
 
 - **CONVERT** — confirmed and worth a factory cycle. Folding rules (measured):
-  captures that are one change to one function fold into ONE goal; a broad
-  caption-/comment-class splits by FILE, and a file still carrying more than
-  two independent findings splits again — the repair-cost rule wins ties (a
-  goal closing more than two independent findings costs more repair rounds
-  than it saves).
+  captures that are one change to one function fold into ONE goal; a cluster
+  still carrying more than two independent findings splits — the repair-cost
+  rule wins ties (a goal closing more than two independent findings costs more
+  repair rounds than it saves). **One class never converts (v11.6.0):
+  caption/comment-wording items** — a test name or comment overclaiming what
+  its assertion pins, doc phrasing — go FIX-NOW or DROP, never to a goal:
+  measured on the first field batch (romy goal 106), four of five findings in a
+  caption-class goal resolved by narrowing the wording, so the factory cycle
+  bought no coverage; define-goal's intake refuses the class for the same
+  reason.
 - **FIX-NOW** — confirmed, and genuinely mechanical with no behavior change: a
   wrong comment or caption, a stale doc sentence, a dead constant, a
   typo-class rename. The bar is dispatch's review-skip bar, judged from the
@@ -113,10 +130,16 @@ Update `inbox.md` in one commit (`chore(goals): inbox triage YYYY-MM-DD`):
 
 - DELETE dropped lines and fixed lines; converted lines go with define-goal's
   own commits.
+- RETIRE previously-stamped KEEP lines (step 1): delete each from the open list
+  and record it in the `## Triaged` section as one line —
+  `retired keep: <gist> — <its original KEEP reason>` — so the adjudication
+  survives in the ledger and git without costing another verification pass.
 - Record the pass as a short `## Triaged YYYY-MM-DD` section: counts per
-  bucket, the notable folds, and one line of why per drop — the same ledger
-  shape the field passes left, so the file carries its own history.
-- KEEP lines stay `- [ ]` with the reason appended; OWNER lines stay untouched
+  bucket (retired keeps included), the notable folds, and one line of why per
+  drop — the same ledger shape the field passes left, so the file carries its
+  own history.
+- KEEP lines stamped THIS sweep stay `- [ ]` with `KEEP <date>: <reason>`
+  appended — they retire on the NEXT sweep; OWNER lines stay untouched
   until the owner decides.
 
 Push if the repo pushes on completion.
@@ -137,7 +160,13 @@ recommendation. Nothing else needs the owner's eyes.
   explanation → CONVERT.
 - A verification subagent asked to fix anything → read-only, always.
 - Asking the owner about any bucket except OWNER → triage is yours.
-- Deleting a KEEP or OWNER line, or editing lines outside the processed set.
+- Deleting an OWNER line, deleting a KEEP line stamped THIS sweep, or editing
+  lines outside the processed set (retiring a PREVIOUSLY-stamped KEEP to the
+  ledger is step 5's job, not a deletion).
+- Re-verifying or re-triaging a previously-stamped KEEP line → it retires
+  unread; KEEP is one-cycle parole.
+- Converting a caption/comment-wording item into a goal → FIX-NOW or DROP,
+  never CONVERT.
 - Skipping the verify fan-out because "the captures look obviously right" → the
   measured dead rate on a stale inbox is ~20%.
 

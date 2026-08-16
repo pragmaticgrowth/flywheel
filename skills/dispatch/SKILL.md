@@ -138,6 +138,18 @@ claims. Spawn-time mapping per harness:
   value set, live-verified 2026-07-25); `inherit` omits it. Implementers always spawn
   as the `worker` type regardless of tier.
 
+**Pin-failure fallback (v11.6.0).** A spawn (or mid-goal death) whose error names the
+MODEL or PROVIDER rather than the work — `unknown provider for model …`, `model not
+found`, a 4xx quoting the pinned id — is a pin this account/backend cannot serve
+right now, NOT a transient death: retry ONCE with the pin omitted (the agent inherits
+the session model), note `tier-fallback: <id> <tier> → session` in the fire's report,
+and continue the run. Never burn the ~3 transient respawns on an error that
+reproduces identically by construction (measured 2026-08-15: a drain at 28/39 died
+mid-run when a heavy pin's mapped model was rejected — `400 unknown provider for model claude-opus-5` —
+and respawning the same pin could only repeat it), and never substitute a LIGHTER
+pin — inherit-the-session-model is the only fallback, same rung as the escalation
+ladder's capability re-spawn.
+
 A non-`inherit` tier applies to EVERY code-writing agent you spawn for THAT goal — the
 implementer and any fix/repair agent alike; `inherit` means omit the mapping so the agent
 runs your session model. This split keeps judgment on strong models: the orchestrator
@@ -259,6 +271,7 @@ the `→` half.
 | `budget exhausted` | `budget exhausted (<n>/<cap> goals)` | raise or remove `config.budget.max_goals_per_session` in `docs/goals/index.yaml`, then `/dispatch` |
 | `base: mismatch` | a goal entry whose `base:` mismatches the started branch | `git checkout <base>` then `/dispatch <id>` |
 | `multiple in_progress` | `multiple in_progress claims — manual review` | manual review: pick the entry to keep, fix `index.yaml` by hand, then `/dispatch` |
+| `checkout busy` | a dispatch lock fresher than ~2h exists at run start — another session owns this checkout (Phase 0) | wait for that run to finish; or, if you know it is dead, delete `~/.local/state/pg-dispatch/<SLUG>/lock` and re-run `/dispatch` |
 | `conflict` | a local squash/merge conflict — two pieces of work changed the same logic | resolve the overlap by hand, or `/define-goal --amend <id>` to re-scope, then `/dispatch <id>` |
 | `parallel-conflict` | a lane's rebase conflicted at integration — the touch-set prediction was wrong (goal auto-requeued for a serial re-run) | fix the mispredicted `touches:` via `/define-goal --amend <id>` if it recurs; the re-run itself needs nothing |
 | `integration interference` | a lane's gate passed alone but Arm A failed on the integrated tree, and one integration-repair didn't fix it | `/dispatch <id>` serially once the interfering pair is understood, or `/define-goal --amend <id>` to re-scope |
@@ -305,7 +318,8 @@ The index is the claim ledger. A claim is a status flip committed BEFORE impleme
    exception: the plan-mirror edit rides `chore(goals): complete <id>`, Working a goal
    step 4).
 3. Push is OPTIONAL (backup only) and never gated. Sequential mode is single-session; if you
-   ever run two dispatch sessions on one local queue they race on index.yaml — don't.
+   ever run two dispatch sessions on one local queue they race on index.yaml — don't
+   (Phase 0's checkout lock now stops the second run at start, v11.6.0).
 
 Every status transition uses the same convention — one entry, its own commit:
 `chore(goals): claim|complete|block|archive <id>`. These four are dispatch's closed verb
@@ -340,7 +354,18 @@ where it left off:
    failure) from a logic blocker. The same recognition applies MID-FIRE to a spawn that
    dies under you — respawn it under the same ~3-attempt budget immediately instead of
    re-diagnosing the goal (a measured stream-idle death cost ~1h40m of near-duplicate
-   repair work because it went unrecognized). A transient death is not a "fail" toward the no-progress rule; don't
+   repair work because it went unrecognized).
+   **Death needs evidence — a terminal signal or two samples (v11.6.0).** An agent is
+   dead when its spawn RETURNED (a tool result — error or empty — ended the call) or
+   its completion notification says so. Absent that, silence is not death: a live
+   agent can sit idle mid-turn for minutes with nothing in the process list, so a
+   single probe — one `ps` scan, one glance at the tree — proves nothing. Before
+   respawning over an agent that has not returned, check twice with real minutes
+   between and require ZERO new commits or file activity between the checks; a
+   respawn onto a live agent puts two writers in one tree (measured 2026-08-15:
+   three false dead-calls in one parallel run — one target had been alive ~7h and
+   already merged).
+   A transient death is not a "fail" toward the no-progress rule; don't
    let it burn the respawn budget — retry it, up to ~3 transient respawns per goal per session,
    after which a goal that still can't make any commit progress IS blocked (named
    `blocked: repeated transient death`) so it can't livelock. Only a real blocker in the final
@@ -367,6 +392,21 @@ where it left off:
 3. **Finish before claiming** (Phase 1 before Phase 2) so finished work always settles first.
 
 ## Phase 0 — read the queue
+
+**Checkout lock — one dispatch per checkout (v11.6.0).** Before anything else, check
+`~/.local/state/pg-dispatch/<SLUG>/lock` (`<SLUG>` = the repo dir name, as in Phase 4).
+A lock whose timestamp is fresher than ~2 hours means another dispatch run owns this
+checkout: STOP without claiming and surface needs-you class `checkout busy` — never
+work alongside it (measured 2026-08-13/15: two live sessions in one tree cost a
+stash-clobbered implementer mid-run and a drain that ended on `a concurrent session
+wrote in this checkout`). Stale or absent → write the lock, one line —
+`<UTC timestamp> · <branch> · <one-word session note>` — re-write it at each per-goal
+cycle's claim AND settle (the settle re-write rides the Phase 4 heartbeat append),
+and DELETE it at every terminal stop. A crash leaves a lock behind; that is exactly
+what the ~2h staleness window absorbs, and the needs-you row names the manual
+override. Advisory by design: the claim protocol still guards the QUEUE — the lock
+guards the TREE, which the queue's commit ledger cannot see (uncommitted implementer
+work, live lanes).
 
 Confirm the working tree is clean (dirty or diverged → stop and report rather than stash
 silently). If `docs/goals/index.yaml` is missing, report "no goals queue — create goals with
@@ -645,17 +685,35 @@ committed artifacts survive. So, BEFORE a goal's settle commit, walk every loose
 this cycle produced — each `Concerns:` line of a DONE_WITH_CONCERNS report, every
 reviewer finding you verified real but out-of-scope, every "needs a new goal" /
 "follow-up" recommendation in the implementer's report, every recurring-lesson
-proposal — and give each item exactly ONE of these three dispositions:
+proposal — and give each item exactly ONE of these four dispositions:
 
 1. **Repair now** — it breaches THIS goal's own contract → it is a gate finding; route
    it FAIL_FIXABLE (`$DISPATCH_REFS/escalation-and-repair.md`). A DONE_WITH_CONCERNS
    whose concern invalidates an acceptance criterion is not a PASS.
 2. **Dismiss** — verified false, purely cosmetic, or already tracked → one line of
-   reasoning in the fire's report. A dismissal without reasoning is disposition 3.
-3. **Capture** — real but outside this goal's contract → append ONE line to
+   reasoning in the fire's report. A dismissal without reasoning is disposition 3 or 4.
+3. **Capture** — real, outside this goal's contract, AND over the capture bar →
+   append ONE line to
    `docs/goals/inbox.md` (create the file on first use) and commit it
    `chore(goals): inbox <id>`:
    `- [ ] <YYYY-MM-DD> <source-goal-id> <bug|feature|chore> — <one-line description> (evidence: <report path or path:line>)`
+   **The capture bar (v11.6.0) — exactly three shapes earn an inbox line:**
+   (a) a LIVE defect — wrong behavior reachable on current code; (b) genuinely
+   NEW work — missing wiring, a missing consumer, a feature gap the owner would
+   want built; (c) an OWNER decision — spend, data loss, anything irreversible
+   or externally visible.
+4. **Report-only** — real but under the bar: latent or unreachable-today
+   findings, fail-safe residuals, deliberate contract-mandated tradeoffs,
+   test-caption/comment-wording nits, watch items. One line in the fire's report
+   naming the item and this disposition; its full detail already lives in the
+   implementer's/reviewer's report file, which is its permanent home (git and
+   the report dir keep it findable). Measured 2026-08-13/16 across two real
+   repos (~70 settles): capture-everything appended ~1.5–2.5 inbox lines per
+   completed goal, over half of them adjudicated keep-grade nits at triage — the
+   live defects were buried among latent ones, re-verifying the exhaust cost
+   more than the findings were worth, and converted residue refilled the queue
+   with goals that bought no coverage. The bar keeps the inbox a queue of work,
+   not a review archive.
 
 A goal does NOT settle `completed` while any of its loose ends is unclassified — that
 is the definition of "complete" this factory ships. The inbox is capture-only: no
@@ -851,7 +909,8 @@ out every fire — new blocker content notifies again.
 cycle is one fire). APPEND a one-line heartbeat —
 `<UTC timestamp> · <done>/<total> · current <id or none> · drained <yes|no>` — to the runtime
 cache at `~/.local/state/pg-dispatch/<SLUG>/heartbeat` (`<SLUG>` = the repo dir name;
-`mkdir -p` first; after appending, trim the file to its newest ~50 lines). The log serves two
+`mkdir -p` first; after appending, trim the file to its newest ~50 lines) — and
+re-write the checkout lock's line (Phase 0) in the same step. The log serves two
 readers. (1) Liveness: a silently-dead orchestrator (a 500 / context-exhaustion mid-turn)
 emits nothing, so the next `/dispatch` — or an external watcher — compares the newest line's
 age to the expected cadence and treats a long silence as a dead-loop signal, turning silent

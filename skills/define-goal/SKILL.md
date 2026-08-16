@@ -60,7 +60,13 @@ item against current code first (measured ~20% dead on a stale inbox), drops
 disproved/dead lines itself with a recorded why, fixes the genuinely mechanical ones
 directly, and hands THIS skill only the confirmed convert list. Items arriving from
 it are pre-verified: recon narrows to verify-and-complete, and the contract review
-and approval table run unchanged.
+and approval table run unchanged. One class never converts, whoever brings it
+(v11.6.0): caption/comment-wording items — a test name or comment overclaiming
+what its assertion pins, doc phrasing — are fix-directly-or-drop material
+(`/process-inbox`'s FIX-NOW bar), never goals. Measured on a real caption-class
+goal: four of five findings resolved by narrowing the wording, so the factory
+cycle bought no coverage. Refuse such an item back to triage instead of
+contracting it.
 
 ## Plan first, then artifact
 
@@ -663,6 +669,51 @@ clause; size `<N>` to the goal (roughly 10 for an `S`, 20 for an `M`, 30 for an 
 generous enough for setup + TDD + verification, small enough that a wedged goal dies
 by cap instead of by budget.
 
+## Contract reality check — mechanical, before the red-team (queue destination only)
+
+Run these five checks yourself on every queued draft, BEFORE spawning the contract
+red-team — each is a cheap ls/grep, and each encodes a defect class that blocked
+CORRECT, finished work at gate time in real drains (2026-08-13/16 forensics, two
+repos: every one of the 10 blocked goals was one of these classes, not a work
+failure):
+
+1. **`touches:` closure — derive it from the contract's own text.** Every path the
+   criteria, Constraints, or Context name as needing an edit must be covered by a
+   `touches:` glob — including repo-mandated companions (a manifest/ledger regen a
+   criterion requires, the linked plan file on a plan-backed goal: dispatch's
+   plan-mirror edit and house plan-doc conventions otherwise fail the gate's
+   blast-radius check). Three goals in one real drain blocked because `touches:`
+   omitted a file the goal's own text required or sanctioned.
+2. **`touches:` existence.** Every glob must match at least one existing path
+   (glob it), OR the goal's Context declares it a new file (`new file: <path>`).
+   A glob matching nothing is a typo or an undeclared new file — the contract
+   must say which (a real goal blocked on `src/db/…` where the module lives at
+   `src/lib/…`; the delivered work was correct).
+3. **`acceptance:` runnability — reachable by the runner AS WRITTEN.** When a
+   command names a test path, confirm the runner it invokes actually covers that
+   path (the vitest/jest config `include`, the project/package filter, the
+   needed `--config` flag): a command that would match zero tests fails the gate
+   on an otherwise-green goal (a real goal shipped `pnpm vitest run test/node/…`
+   while the default config's include covered only `test/unit/**` +
+   `test/integration/**` — 13/13 green under the right runner, FAIL as written).
+   Static checks only — read the config, never run the suite.
+4. **Constraints scoping.** Paste a repo invariant into Constraints only when it
+   applies to the surfaces THIS goal touches (an OCC version-bump rule only for
+   tables that actually have a `version` column); otherwise cut it or mark it
+   "where applicable". An unsatisfiable pasted constraint forces the implementer
+   to document around it — measured on a real goal whose tables were
+   deliberately built without the column the boilerplate demanded.
+5. **Before/after criteria name their BEFORE.** A "no behavior change" /
+   "deep-equal before and after" criterion must say where the before comes
+   from — the suite green at the base commit and after, or a golden captured at
+   base. A single-tree test authored after the change structurally cannot prove
+   "unchanged" (measured: such a criterion was met by a characterization literal
+   tuned to the new behavior in the same diff).
+
+The red-team re-checks 1–3 (its Command-reality and Gate-fit items carry the same
+teeth) — but these are YOUR checks first: a defect the red-team must catch costs a
+finding round; a defect neither catches costs a full implementer run plus an amend.
+
 ## Contract review — red-team the draft before it queues (queue destination only)
 
 A contract defect discovered at dispatch time costs a full implementer run plus a
@@ -692,7 +743,11 @@ contract, not approve it —
   contract text is contract-blocking (an implementer cannot honestly verify it).
 - **Command reality**: does every command named in the acceptance criteria and
   `acceptance:` actually exist and run in THIS repo (script present in
-  package.json/Makefile, test paths exist, right package manager)? Verify by reading the
+  package.json/Makefile, test paths exist, right package manager) — AND is every
+  named test path REACHABLE by the runner the command invokes (the config's
+  `include`, the project/package filter, a needed `--config` flag)? A command
+  that would match zero tests as written is **contract-blocking**, not a
+  gate-time discovery. Verify by reading the
   repo — read-only, no heavy runs, targeted lookups only (does THIS script exist, is THIS
   path real, does THIS flag parse), never a repo-wide sweep and never running the thing
   to find out.
@@ -704,7 +759,20 @@ contract, not approve it —
   over-constraining; a recon-backed feature/bug draft with NO `touches:` at all is
   **contract-blocking** (v10.0.0 — parallel admission and the gate's scope allowlist
   both need it; only a stated greenfield/no-surfaces note in Context downgrades this to
-  advisory); nothing dev-server-dependent sits in `acceptance:` (headless-only).
+  advisory); each glob matches an existing path or a Context-declared new file (a
+  glob matching nothing is **contract-blocking** — typo or undeclared new file);
+  `touches:` covers every path the contract's OWN TEXT requires editing, including
+  repo-mandated companions like a required manifest regen or the linked plan file
+  (a criterion naming a file outside `touches:` is **contract-blocking** — real
+  drains blocked three correct goals exactly there); nothing dev-server-dependent
+  sits in `acceptance:` (headless-only).
+- **Constraints reality**: every repo invariant pasted into Constraints applies to
+  the surfaces this goal touches (a schema rule's columns exist on those tables) —
+  an unsatisfiable pasted constraint is **contract-blocking**, the implementer can
+  only document around it. And a before/after criterion ("no behavior change",
+  "deep-equal before and after") names where its BEFORE comes from (suite green at
+  base, a base-commit golden) — advisory when the chore-standard
+  suite-green-before-and-after shape already covers it.
 - **Termination**: every criterion is a target an implementer can drive to true AND
   print (transcript-provable), with a declared give-up shape for any that could prove
   unmeasurable; any goal-specific stop-and-confirm gate recon found sits in

@@ -23,14 +23,25 @@ Check every draft against this rubric:
 3. **Command reality** — does every command named in `acceptance:` and the criteria
    actually exist and run in THIS repo: scripts present in package.json/Makefile, paths
    and test conventions real, right package manager, CLI flags valid for the installed
-   versions? Verify by reading the repo — read-only, no heavy runs, and targeted lookups
+   versions — AND is every named test path REACHABLE by the runner the command
+   invokes (the config's `include`, the project/package filter, a needed
+   `--config` flag)? A command that would match zero tests as written is
+   contract-blocking, not a gate-time discovery (a real goal shipped
+   `pnpm vitest run test/node/…` the default config never covered — 13/13 green
+   under the right runner, FAIL as written). Verify by reading the repo — read-only, no heavy runs, and targeted lookups
    only (the named script, path, or flag), never repo-wide sweeps: your whole review is
    meant to cost one read-only pass.
 4. **Gate fit** — nothing dev-server-dependent in `acceptance:` (the gate runs
    headlessly); `touches:`
    globs cover the surfaces recon located without over-constraining; a recon-backed
    feature/bug draft with NO `touches:` at all is contract-blocking unless Context
-   states a greenfield/no-surfaces reason (then advisory).
+   states a greenfield/no-surfaces reason (then advisory); each glob matches an
+   existing path or a Context-declared new file (a glob matching nothing — typo or
+   undeclared new file — is contract-blocking); and `touches:` covers every path
+   the contract's OWN TEXT requires editing (criteria, Constraints, Context) plus
+   repo-mandated companions (a required manifest/ledger regen, the linked plan
+   file) — a criterion naming a file outside `touches:` is contract-blocking
+   (three correct goals in one real drain blocked exactly there).
 5. **Type shape** — bug: `acceptance:` executes the proving test and Context records ALL
    recon hypotheses. feature: Out of scope non-empty; UI work carries the scripted
    browser check + `agent-browser` in `skills:`. chore: suite-green-before-and-after plus
@@ -63,6 +74,14 @@ Check every draft against this rubric:
 10. **Plan-question overlap** (plan-backed drafts) — a criterion whose reading depends
     on a question still OPEN in the linked plan's Open-questions section — advisory,
     naming the question (it becomes a CONTRACT_AMBIGUOUS stop at dispatch time if left).
+11. **Constraints reality** — every repo invariant pasted into Constraints applies to
+    the surfaces this goal touches (a schema rule's columns exist on those tables):
+    an unsatisfiable pasted constraint is contract-blocking — the implementer can
+    only document around it. And a before/after criterion ("no behavior change",
+    "deep-equal before and after") names where its BEFORE comes from (suite green at
+    base, a base-commit golden) — a single-tree test authored after the change
+    cannot prove "unchanged" (advisory when the chore-standard
+    suite-green-before-and-after shape already covers it).
 
 Read-only is absolute, and the shell is not an exception: never edit or create files —
 not in the repo, not under /tmp, not via a redirect or heredoc; reads and cheap read-only

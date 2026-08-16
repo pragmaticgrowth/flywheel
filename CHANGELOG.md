@@ -13,6 +13,69 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [11.6.0] — 2026-08-16
+
+**The full-completion release.** Owner complaint 2026-08-16 ("these agents
+don't fully complete") investigated with a 3-day forensic sweep over every
+Claude + Droid session in two production repos (nonresidenttax + romy, Aug
+13–16). The data acquitted the implementers — 85%/94% clean DONE, every repair
+round resolved, zero goals blocked at snapshot — and convicted three other
+parties: contract authoring (all 10 blocked goals were `touches:`/acceptance
+contract defects on correct, finished work), the capture pipeline (~1.5–2.5
+inbox lines per completed goal, mostly keep-grade nits; romy's entire 27-goal
+queue was recycled review residue), and infrastructure (a shared-limit/model-pin
+death killed both repos' drains at the same minute; three false agent-dead
+calls in one run; two same-checkout session collisions). Five changes, each
+RED-baselined against the old text and GREEN-verified against the new:
+
+- **define-goal: the contract reality check** (new section, before the
+  red-team; `agents/contract-red-team.md` updated in lockstep). Five mechanical
+  checks on every queued draft: `touches:` closure (every path the contract's
+  own text requires editing — including the linked plan file and mandated
+  regens — must be covered), `touches:` existence (every glob matches a real
+  path or a Context-declared new file), `acceptance:` runnability (a named test
+  path must be reachable by the runner AS WRITTEN — config include, `--config`
+  flag, package filter; a command matching zero tests is contract-blocking
+  now, not a gate-time discovery), Constraints scoping (no unsatisfiable
+  pasted boilerplate — the OCC rule against tables with no `version` column),
+  and before/after criteria naming their BEFORE (a single-tree test authored
+  after the change cannot prove "no behavior change"). The red-team's
+  Command-reality and Gate-fit items carry the same teeth, plus a new
+  Constraints-reality item.
+- **dispatch: the settle-triage capture bar.** A fourth disposition,
+  **Report-only**, takes latent/unreachable-today findings, fail-safe
+  residuals, deliberate contract-mandated tradeoffs, and caption/wording
+  nits — they stay in the implementer's/reviewer's report file. Only three
+  shapes earn an inbox line: a LIVE defect, genuinely NEW work, or an OWNER
+  decision. The inbox is a queue of work again, not a review archive.
+- **dispatch: death resilience.** (1) Pin-failure fallback — a spawn error
+  naming the model/provider (`400 unknown provider for model claude-opus-5`
+  killed a 28/39 drain) retries ONCE with the pin omitted (session model)
+  instead of burning the ~3 transient respawns on an error that reproduces by
+  construction; never a lighter pin. (2) Death needs evidence — an agent that
+  has not returned is never declared dead on one silent probe (`ps` proves
+  nothing): two checks, real minutes apart, zero new commits between (three
+  false dead-calls measured in one parallel run, one respawning into a live
+  lane). (3) The implementer brief mandates committing working increments
+  after each green TDD cycle — squash makes them free, and the one
+  uncommitted-tree death left 8 files of orphaned half-work.
+- **dispatch: the checkout lock.** Phase 0 checks/writes
+  `~/.local/state/pg-dispatch/<SLUG>/lock` (~2h staleness window; fresh lock →
+  stop with new needs-you class `checkout busy`; refreshed with each
+  heartbeat, deleted at terminal stops). Advisory by design: the claim
+  protocol guards the QUEUE, the lock guards the TREE — uncommitted
+  implementer work and live lanes, which the commit ledger cannot see
+  (measured: a concurrent session `git stash`ed a running implementer's work;
+  another drain ended on "a concurrent session wrote in this checkout").
+- **process-inbox: KEEP is one-cycle parole + captions never convert.** A line
+  stamped `KEEP <date>:` by a previous sweep skips re-verification and retires
+  to the `## Triaged` ledger (a real sweep re-verified 28 already-adjudicated
+  lines at full subagent cost and changed almost none). Caption/comment-wording
+  items are FIX-NOW or DROP, never CONVERT — measured on romy goal 106, four
+  of five findings in a caption-class goal resolved by narrowing the wording,
+  buying no coverage for a full factory cycle; define-goal's inbox intake
+  refuses the class from any caller.
+
 ## [11.5.0] — 2026-08-13
 
 **The seventh skill: `/process-inbox`.** Owner ask 2026-08-13: one command that

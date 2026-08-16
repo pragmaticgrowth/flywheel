@@ -10,7 +10,7 @@ architecture — one harness-neutral **execution-tier vocabulary
 `heavy|medium|light`** plus one small harness-mapping block per skill,
 instead of the v4.x dual-branch prose).
 The repo publishes ONE plugin from the `pragmatic-growth` marketplace:
-`flywheel` v11.3.1.
+`flywheel` v11.6.0.
 (The `html-artifacts`, `autoresearch`, `human-writing` plugins were **removed**
 from the marketplace in v8.0.0, owner decision
 2026-07-25 — the marketplace is the goal-factory only now; git history keeps
@@ -177,7 +177,20 @@ is no `plugins/` directory — the repo root IS the flywheel plugin.
   reason downgrades to advisory) and `agents/contract-red-team.md` caught up
   to the Placeholders/Size checks; amend mode takes the clearly-recommended
   reading without a question round unless the fork is a true owner decision
-  (spend, data loss, irreversible/externally-visible).
+  (spend, data loss, irreversible/externally-visible). v11.6.0 (the 2026-08-16
+  drain forensics — every one of 10 blocked goals across two repos was a
+  contract-authoring defect, not a work failure): a mechanical CONTRACT
+  REALITY CHECK runs before the red-team on every queued draft — `touches:`
+  closure (every path the contract's own text requires, incl. plan files and
+  mandated regens, must be covered), `touches:` existence (every glob matches
+  a real path or a declared new file), `acceptance:` runnability (a named
+  test path must be reachable by the runner AS WRITTEN — config include,
+  `--config`, package filter), Constraints scoping (no unsatisfiable pasted
+  boilerplate), and before/after criteria naming their BEFORE; the red-team's
+  Command-reality/Gate-fit items carry the same teeth plus a new
+  Constraints-reality item (`agents/contract-red-team.md` updated in
+  lockstep), and inbox intake refuses caption/comment-wording items outright
+  (fix-directly-or-drop; a measured caption-class goal bought no coverage).
 **Harness note (v8.2.0; depth corrected v8.3.0):** on Claude Code a subagent can spawn
 further subagents (Agent nests — official docs put the default nesting depth at 3 layers
 below the main conversation, not the 5 previously claimed here; dispatch's
@@ -340,6 +353,25 @@ own review to the full panel, and is explicitly not a compliance miss.
   plan-backed PASS the settle commit checks the phase off in the plan
   (display mirror only — index.yaml stays the sole status authority; Phase 0's
   doctor pass re-syncs drift plan-follows-index, `chore(goals): plan-sync`).
+  v11.6.0 (the 2026-08-16 drain forensics: high completion but pile-up —
+  ~1.5–2.5 inbox lines per completed goal, mostly keep-grade nits; drains
+  killed by a shared-limit/model-pin infra death; three false agent-dead calls
+  in one run; two same-checkout session collisions): SETTLE-TRIAGE CAPTURE BAR —
+  a fourth disposition, Report-only, takes latent/unreachable-today findings,
+  fail-safe residuals, contract-mandated tradeoffs, and caption/wording nits
+  (they live in the report file); only live defects, genuinely new work, and
+  owner decisions earn an inbox line. PIN-FAILURE FALLBACK — a spawn error
+  naming the model/provider (`unknown provider for model …`) retries ONCE with
+  the pin omitted (session model), never burning transient respawns on an
+  error that reproduces by construction, never a lighter pin. DEATH NEEDS
+  EVIDENCE — an agent that has not returned is never declared dead on one
+  silent probe: two checks, real minutes apart, zero new commits between.
+  CHECKOUT LOCK — Phase 0 checks/writes `~/.local/state/pg-dispatch/<SLUG>/lock`
+  (~2h staleness; fresh lock → stop, needs-you `checkout busy`; refreshed with
+  the heartbeat, deleted at terminal stops — the lock guards the TREE, the
+  claim protocol still guards the queue). And the implementer brief mandates
+  COMMITTING WORKING INCREMENTS after each green TDD cycle (squash makes them
+  free; the uncommitted-tree death left 8 files of orphaned half-work).
 - **goals-status** (v5.2.0; simplified in v6.0.0) — read-only view of the
   docs/goals queue. Prints
   every OPEN goal — `in_progress`, `blocked`, `not_started` — with its title and
@@ -371,9 +403,10 @@ own review to the full panel, and is explicitly not a compliance miss.
   clustered by file/subsystem, ~8 concurrent; measured ~20% dead rate on a
   stale inbox — evidence pointers are where verification starts, never its
   substitute), then SIX-BUCKET triage on the session model: CONVERT (folding
-  rules — one-function captures fold into one goal, caption classes split by
-  FILE, >2 independent findings per goal costs more repair rounds than it
-  saves; handed to define-goal's inbox intake pre-verified, recon narrowed to
+  rules — one-function captures fold into one goal, >2 independent findings
+  per goal costs more repair rounds than it saves, caption/wording items
+  never convert as of v11.6.0; handed to define-goal's inbox intake
+  pre-verified, recon narrowed to
   verify-and-complete, red-team + approval unchanged), FIX-NOW (mechanical
   no-behavior-change only, at dispatch's review-skip bar judged from the diff;
   ONE `chore(inbox): direct fixes` commit gated by `config.verify` — any
@@ -386,7 +419,15 @@ own review to the full panel, and is explicitly not a compliance miss.
   other question rounds). Hard boundaries: never writes goal files or index
   entries (define-goal's), never implements non-trivial work (dispatch's),
   never touches unprocessed lines. Dispatch's drained-queue pointer names it
-  (`inbox: N captured → /process-inbox`).
+  (`inbox: N captured → /process-inbox`). v11.6.0: KEEP is ONE-CYCLE PAROLE —
+  a line stamped `KEEP <date>:` by a previous sweep skips verification and
+  retires to the `## Triaged` ledger (`retired keep: <gist> — <reason>`)
+  instead of being re-verified forever (a real sweep re-verified 28
+  already-adjudicated lines and changed almost none); and caption/
+  comment-wording items NEVER CONVERT — FIX-NOW or DROP only (the folding
+  rules' caption-split clause is gone; define-goal's intake refuses the class
+  too). Dispatch's v11.6.0 capture bar keeps fresh inboxes lean; pre-bar
+  inboxes still carry the old mix.
 - **loop-architect** — designs loop contracts (prompt + verification +
   stop conditions) for autonomous /goal, /loop, routine, or remote runs;
   names `docs/goals/index.yaml` the canonical factory ledger. Includes
