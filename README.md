@@ -19,7 +19,7 @@ TDD on your branch, an independent reviewer plus your build/test commands gate
 the diff, and only work that passes is kept — failures roll back cleanly.
 
 The `pragmatic-growth` marketplace ships **one plugin** — `flywheel` — with
-seven skills and six read-only subagents: three reviewers (`gate-reviewer`,
+eight skills and six read-only subagents: three reviewers (`gate-reviewer`,
 `fresh-check`, `contract-red-team`) and three recon roles (`recon-locator`,
 `recon-analyzer`, `recon-patterns`) that ground every contract and plan in how
 the code actually works. No MCP servers, no hooks, no daemons, no build step.
@@ -62,6 +62,7 @@ Update later with `/plugin marketplace update pragmatic-growth`, or
 | **dispatch** | The orchestrator: claim, implement with TDD, review, gate, keep or roll back. Drains the queue by default; `--count N` limits the run, `--serial` forces one goal at a time, `--parallel [K]` builds disjoint goals concurrently. |
 | **process-inbox** | One-command sweep for the follow-ups dispatch captures in `docs/goals/inbox.md`: re-verifies every item against current code, batch-fixes the trivial ones, deletes the dead ones, converts the real ones via define-goal, then drains the queue via dispatch — end to end by default (`--triage-only` stops at the handoff). Only spend/irreversible items wait for you. |
 | **goals-status** | Read-only view of what's open — in progress, blocked, not started. |
+| **show-me** | Visual explainer: "show me how X works / what would change" answered with the smallest diagram, tree, pseudocode, or diff that lands the point instead of prose. Read-only. |
 | **loop-architect** | Designs the loop contract (prompt + verification + stop conditions) for unattended runs. |
 | **factory-doctor** | One-pass preflight/doctor. Auto-fixes everything local, reports the rest with exact fixes. |
 
@@ -127,7 +128,7 @@ Every cycle is idempotent, so a run killed mid-goal costs nothing.
 ```
 flywheel/
 ├── .claude-plugin/        # plugin manifest + the pragmatic-growth marketplace
-├── skills/                # the seven skills (+ their Python helpers)
+├── skills/                # the eight skills (+ their Python helpers)
 ├── agents/                # six read-only roles: 3 reviewers + 3 recon
 ├── CHANGELOG.md           # canonical version history
 ├── CLAUDE.md              # contributor guide — design invariants, release flow

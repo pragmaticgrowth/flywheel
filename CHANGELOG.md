@@ -13,6 +13,22 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [11.8.0] — 2026-08-18
+
+**The visual explainer.** Owner ask 2026-08-18: adapt HumanLayer's `show-me`
+skill into the plugin. New eighth skill `show-me` — answers "how does X work /
+what talks to what / what would change" with the smallest view that lands the
+point (pseudocode, call tree, component tree, shallow file tree, Mermaid, or a
+shape-matched `diff`), prose kept brief. Adaptations from upstream: the
+`.humanlayer/tasks/` HTML-artifact convention is replaced by the Artifact tool
+behind the same availability gate ideate uses (absent → markdown in chat, never
+a written HTML file), everything else is plain markdown and identical on both
+harnesses, and the skill is explicitly read-only with data charts declared out
+of scope. TDD'd per house rules: RED baseline showed the unaided answer to
+"show me how dispatch handles one goal" was ~195 words of pure prose with no
+visual; GREEN run with the skill produced tree/Mermaid-shaped answers with the
+deciding bullet cited per choice.
+
 ## [11.7.0] — 2026-08-17
 
 **The one-command drain.** Owner ask 2026-08-17: "when I run process-inbox, fix

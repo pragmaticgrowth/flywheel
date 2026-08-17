@@ -39,13 +39,14 @@ the skills always keep a generic-type-with-inline-brief fallback
 `flywheel:<name>` on Claude Code, bare `<name>` on Droid), and
 the built-in Explore type (Claude Code) and `explorer` (Droid) are banned
 for review roles.
-`flywheel` has seven skills under root
+`flywheel` has eight skills under root
 `skills/` (three ship deterministic Python helpers in `scripts/`), forming a
 plain-language → autonomous-execution pipeline around a file-based goal queue
 (`docs/goals/` in target repos): `/ideate → /define-goal → /dispatch →
-/goals-status`, with `loop-architect` and `factory-doctor` as the rails and
+/goals-status`, with `loop-architect` and `factory-doctor` as the rails,
 `process-inbox` closing the loop from dispatch's captured follow-ups back into
-define-goal. There
+define-goal, and `show-me` as the one pipeline-adjacent explainer (v11.8.0,
+owner ask 2026-08-18 — adapted from HumanLayer's show-me). There
 is no `plugins/` directory — the repo root IS the flywheel plugin.
 
 - **ideate** (v11.0.0 — rewritten around the PLAN, the factory's design tier,
@@ -443,6 +444,19 @@ own review to the full panel, and is explicitly not a compliance miss.
   stop-at-handoff behavior with the approval table intact. The chaining does
   not blur boundaries — conversion and implementation still run inside
   define-goal's and dispatch's own machinery, reviews and gates unchanged.
+- **show-me** (v11.8.0, owner ask 2026-08-18 — adapted from HumanLayer's
+  show-me skill) — visual explainer for the current topic: answers
+  "how does X work / what talks to what / what would change" with the
+  smallest view that lands the point — pseudocode, call tree, component
+  tree, shallow file tree, Mermaid, or a shape-matched `diff` — prose kept
+  brief. RED-baselined 2026-08-18: the unaided answer to the same question
+  was ~195 words of pure prose. All output is plain markdown, identical on
+  both harnesses; the ONE harness-gated option is a focused HTML page via
+  the Artifact tool (same availability gate as ideate's plan artifact;
+  absent → markdown in chat is the fallback, never a written HTML file —
+  the upstream `.humanlayer/tasks/` artifact convention was replaced with
+  this). Strictly read-only — explains, never edits code or the queue; data
+  charts are out of scope (dataviz territory).
 - **loop-architect** — designs loop contracts (prompt + verification +
   stop conditions) for autonomous /goal, /loop, routine, or remote runs;
   names `docs/goals/index.yaml` the canonical factory ledger. Includes
@@ -612,7 +626,7 @@ place; `git show v7.0.0:plugins/<name>` recovers any of them intact.
 .claude-plugin/plugin.json        # root flywheel plugin manifest — the ONLY plugin
 .claude-plugin/marketplace.json   # marketplace — name: pragmatic-growth, lists flywheel alone
 agents/<name>.md                  # six flywheel plugin agents — read-only review roles: gate-reviewer, fresh-check, contract-red-team (v5.4.0) + recon roles: recon-locator, recon-analyzer, recon-patterns (v11.1.0, adapted from riptide)
-skills/<name>/SKILL.md            # seven flywheel skills (ideate, define-goal, dispatch, process-inbox, goals-status, loop-architect, factory-doctor)
+skills/<name>/SKILL.md            # eight flywheel skills (ideate, define-goal, dispatch, process-inbox, goals-status, loop-architect, factory-doctor, show-me)
 skills/<name>/scripts/*.py        # dispatch/pg_validate.py (local gate), factory-doctor/doctor_checks.py, goals-status/goals_status.py (read-only queue view)
 CHANGELOG.md                      # canonical, git-tracked version history
 README.md                         # short public overview (what it is, install, quick start)
@@ -690,7 +704,7 @@ There is no website and no full-doc-sync ritual. A change updates the docs it
 actually invalidates, nothing more.
 
 - **README stays SHORT.** It is a public overview only — what flywheel is,
-  install, quick start, the seven skills in one line each, the queue/gate/config
+  install, quick start, the eight skills in one line each, the queue/gate/config
   shape. Update it ONLY when one of those user-facing facts changes (a skill's
   purpose, invocation, install command, or the config model). Internal
   mechanics, rationale, and history go in `CLAUDE.md`/`AGENTS.md`, never in the
