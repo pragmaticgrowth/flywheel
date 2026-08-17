@@ -10,7 +10,7 @@ architecture — one harness-neutral **execution-tier vocabulary
 `heavy|medium|light`** plus one small harness-mapping block per skill,
 instead of the v4.x dual-branch prose).
 The repo publishes ONE plugin from the `pragmatic-growth` marketplace:
-`flywheel` v11.6.0.
+`flywheel` v11.7.0.
 (The `html-artifacts`, `autoresearch`, `human-writing` plugins were **removed**
 from the marketplace in v8.0.0, owner decision
 2026-07-25 — the marketplace is the goal-factory only now; git history keeps
@@ -427,7 +427,22 @@ own review to the full panel, and is explicitly not a compliance miss.
   comment-wording items NEVER CONVERT — FIX-NOW or DROP only (the folding
   rules' caption-split clause is gone; define-goal's intake refuses the class
   too). Dispatch's v11.6.0 capture bar keeps fresh inboxes lean; pre-bar
-  inboxes still carry the old mix.
+  inboxes still carry the old mix. v11.7.0 (owner decision 2026-08-17 — "one
+  command, come back to a cleared inbox"): FLAGLESS = DRAIN — a flagless run
+  goes end to end in one session: verify → triage → FIX-NOW batch → convert
+  through define-goal's inbox intake with the APPROVAL TABLE WAIVED (the drain
+  invocation is the standing approval; red-team unchanged and never waived —
+  an unfixable contract-blocking finding demotes the item to KEEP with the
+  finding as reason; a true owner fork returns it to the OWNER bucket
+  unconverted; assumptions go in the goal's Context, `provenance:
+  inbox-drain`) → then a normal flagless `/dispatch` drain (nothing
+  special-cased; older ready goals get worked too; captures appended DURING
+  the drain are next sweep's input). Mid-drain permission-asks are compliance
+  misses (dispatch v10's rule applied here); the report appends dispatch's
+  final line before the OWNER items. `--triage-only` restores the pre-v11.7
+  stop-at-handoff behavior with the approval table intact. The chaining does
+  not blur boundaries — conversion and implementation still run inside
+  define-goal's and dispatch's own machinery, reviews and gates unchanged.
 - **loop-architect** — designs loop contracts (prompt + verification +
   stop conditions) for autonomous /goal, /loop, routine, or remote runs;
   names `docs/goals/index.yaml` the canonical factory ledger. Includes

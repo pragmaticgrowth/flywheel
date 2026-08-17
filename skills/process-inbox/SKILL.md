@@ -1,7 +1,7 @@
 ---
 name: process-inbox
-description: Use when the user runs "/process-inbox" or asks to process, triage, clean up, or work through docs/goals/inbox.md — the follow-up capture file dispatch appends at settle time ("what's in the inbox", "convert the inbox", "deal with the captured follow-ups"). Triage only, through the factory's own rails — goal conversion stays in define-goal, non-trivial implementation stays in dispatch.
-argument-hint: ""
+description: Use when the user runs "/process-inbox" (optionally --triage-only) or asks to process, triage, clean up, or work through docs/goals/inbox.md — the follow-up capture file dispatch appends at settle time ("what's in the inbox", "convert the inbox", "deal with the captured follow-ups", "clear the inbox"). Flagless runs END TO END: verify, triage, fix the mechanical items, convert the real ones through define-goal's machinery, then drain the queue via dispatch — one command, cleared inbox. Always through the factory's own rails — goal conversion stays in define-goal's flow, non-trivial implementation stays behind dispatch's gate; --triage-only stops at the handoff.
+argument-hint: "[--triage-only]"
 ---
 
 # Process-inbox — verify, triage, and clear the captured follow-ups
@@ -11,10 +11,23 @@ argument-hint: ""
 `docs/goals/inbox.md` is dispatch's settle-triage capture file: one `- [ ]` line
 per discovered defect or follow-up that was real but outside its source goal's
 contract (date, source goal id, type guess, description, evidence pointer).
-Dispatch only ever APPENDS. This skill is the attended sweep that clears it, with
+Dispatch only ever APPENDS. This skill is the sweep that clears it, with
 the discipline the first large field pass proved out (romy, 2026-08-13: 101 items
 → 31 goals, 20 dead lines deleted, 3 settled by querying production — after EVERY
 item was re-verified against current code).
+
+**Flagless = drain (v11.7.0, owner decision 2026-08-17 — "one command, come back
+to a cleared inbox").** A flagless `/process-inbox` runs the WHOLE path in one
+session: verify → triage → FIX-NOW batch → convert through define-goal's inbox
+intake with the approval table waived (the drain invocation is the standing
+approval; the contract red-team still runs on every draft) → hand the queue to a
+normal flagless `/dispatch` drain. The run is never a confirmation point — an
+invented mid-drain permission-ask ("want me to convert these?", "should I start
+dispatch?") is a compliance miss, dispatch v10's rule applied here. The OWNER
+bucket is still the only thing that waits for a human, and it waits at the END
+of the report, never mid-run. `--triage-only` restores the pre-v11.7 behavior:
+stop after the ledger commit, present the convert list, queue nothing beyond
+what define-goal is separately asked to take.
 
 **The one law: verify before you route.** Captures age. The measured base rate on
 a weeks-old inbox is ~20% dead — code deleted since capture, fixed in passing, or
@@ -27,11 +40,14 @@ adjudicated once. (Since dispatch v11.6.0 the settle-time capture bar admits onl
 live defects, new work, and owner decisions — latent/nit findings stay in report
 files — so a fresh inbox arrives lean; older inboxes still carry the pre-bar mix.)
 
-**Boundaries.** This skill never writes goal files or index entries (define-goal
-does, behind its contract review), never implements non-trivial work (dispatch
-does, behind the gate), and never touches inbox lines outside the set it
-processed. No question rounds: the OWNER bucket below is the only thing that
-waits for a human.
+**Boundaries.** This skill never writes goal files or index entries in its own
+context (define-goal does, behind its contract review), never implements
+non-trivial work in its own context (dispatch does, behind the gate), and never
+touches inbox lines outside the set it processed. The drain does not blur this:
+it CHAINS those skills in sequence — their machinery, reviews, and gates run
+unchanged; only the per-batch approval touch is waived because the owner
+approved the whole drain by invoking it. No question rounds: the OWNER bucket
+below is the only thing that waits for a human.
 
 ## The process
 
@@ -116,10 +132,17 @@ triage is yours.
    `path:line` evidence; at ~5+ items that list IS define-goal's batch-mode
    item list. Items arrive pre-verified:
    define-goal's recon narrows to verify-and-complete (the plan-backed
-   pattern), its contract red-team and approval table run unchanged, and it
+   pattern), its contract red-team runs unchanged, and it
    deletes each converted line in the same commit as the index entry — exactly
-   its own intake rules. This skill writes no goal file and no index entry,
-   ever.
+   its own intake rules. **In a flagless drain the approval table is waived**
+   (define-goal's drain-waiver rule): assumptions that would have gone in the
+   confirmation are recorded in each goal's Context instead, and a
+   contract-blocking red-team finding that one repair pass can't fix demotes
+   that item to KEEP with the finding as its reason — never a mid-drain
+   question round. A true OWNER fork inside a conversion (spend, data loss,
+   irreversible/externally-visible) moves the item to the OWNER bucket
+   unconverted. Under `--triage-only` the approval table runs as before. This
+   skill writes no goal file and no index entry in its own context, ever.
 3. **PRODUCTION-CHECK:** run what is runnable read-only; re-triage each result
    through step 3's buckets — a result can land anywhere, including FIX-NOW
    or OWNER.
@@ -144,12 +167,26 @@ Update `inbox.md` in one commit (`chore(goals): inbox triage YYYY-MM-DD`):
 
 Push if the repo pushes on completion.
 
-### 6. Report
+### 6. Drain the queue (flagless runs only)
+
+Invoke `dispatch` flagless — the normal drain, exactly as if the owner had run
+`/dispatch`: it claims ready goals until the queue is empty, auto-entering lane
+mode where `config.parallel` says so, with every gate, budget cap, and brake it
+always has. Nothing is special-cased for inbox-born goals; if the queue held
+older ready goals, they get worked too — that is the factory working, not scope
+creep. New captures dispatch appends DURING this drain are next sweep's input,
+never this one's (the never-touch-unprocessed-lines rule). Under
+`--triage-only`, skip this step and end at the report with the convert-list
+handoff stated.
+
+### 7. Report
 
 One summary, counts first — `<N> items → <X> goals queued (<ids>) · <Y> fixed
 directly (<commit>) · <Z> dropped dead · <K> kept · <P> production checks ·
-<O> for you` — then each OWNER item in one plain-language line with your
-recommendation. Nothing else needs the owner's eyes.
+<O> for you` — then, on a flagless drain, dispatch's own final report line
+(`<done>/<total> done` + bar, blocked reasons, needs-you) — then each OWNER
+item in one plain-language line with your recommendation. Nothing else needs
+the owner's eyes.
 
 ## Red flags — stop and get back on the path
 
@@ -169,10 +206,18 @@ recommendation. Nothing else needs the owner's eyes.
   never CONVERT.
 - Skipping the verify fan-out because "the captures look obviously right" → the
   measured dead rate on a stale inbox is ~20%.
+- Pausing a flagless drain to ask permission ("shall I convert?", "start
+  dispatch?") → the drain invocation already answered; only OWNER items wait.
+- Running dispatch after `--triage-only`, or skipping the red-team because the
+  approval table is waived → the waiver covers the owner touch, never a review.
+- Re-triaging lines dispatch captured during this run's drain → next sweep's
+  input.
 
 ## Related skills
 
-- **define-goal** — owns conversion (contracts, red-team, approval, line
-  deletion); this skill is its verified front door.
-- **dispatch** — appends captures at settle time; works the converted goals.
+- **define-goal** — owns conversion (contracts, red-team, line deletion; the
+  approval table except under a drain's waiver); this skill is its verified
+  front door.
+- **dispatch** — appends captures at settle time; works the converted goals —
+  invoked directly as a flagless drain's final step.
 - **goals-status** — the queue view after conversion.

@@ -13,6 +13,35 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [11.7.0] — 2026-08-17
+
+**The one-command drain.** Owner ask 2026-08-17: "when I run process-inbox, fix
+them — I don't want to write new goals again." The approved shape keeps every
+quality rail and removes every owner touch except true owner decisions. Both
+skill edits RED-baselined against the old text (old: approval always ran, no
+dispatch step, no flag) and GREEN-verified on nine scenarios (all cited, CLEAN).
+
+- **process-inbox: flagless = end-to-end drain.** A flagless `/process-inbox`
+  now runs the whole path in one session: verify fan-out → triage → FIX-NOW
+  batch → convert through define-goal's inbox intake → a normal flagless
+  `/dispatch` drain of the queue (nothing special-cased for inbox-born goals;
+  older ready goals get worked too; captures appended during the drain are next
+  sweep's input). The run is never a confirmation point — mid-drain
+  permission-asks are named compliance misses — and the report appends
+  dispatch's final progress line before the OWNER items. New `--triage-only`
+  flag restores the old stop-at-handoff behavior.
+- **define-goal: the drain waiver.** When the convert list arrives from a
+  flagless process-inbox drain, the approval table / draft confirmation is
+  waived — the drain invocation is the standing approval, and dispatch's gate
+  remains the second view. The waiver covers the owner touch ONLY: the contract
+  red-team still reviews every draft (an unfixable contract-blocking finding
+  demotes the item to KEEP with the finding as its reason — never queued around
+  the review), tier stamps and intake rules stand, assumptions are recorded in
+  the goal's Context (`provenance: inbox-drain`), and a true owner fork
+  (spend, data loss, irreversible/externally-visible) returns to the drain's
+  OWNER bucket unconverted. `--triage-only` handoffs and direct invocations
+  keep the approval table as before.
+
 ## [11.6.0] — 2026-08-16
 
 **The full-completion release.** Owner complaint 2026-08-16 ("these agents

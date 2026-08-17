@@ -60,7 +60,19 @@ item against current code first (measured ~20% dead on a stale inbox), drops
 disproved/dead lines itself with a recorded why, fixes the genuinely mechanical ones
 directly, and hands THIS skill only the confirmed convert list. Items arriving from
 it are pre-verified: recon narrows to verify-and-complete, and the contract review
-and approval table run unchanged. One class never converts, whoever brings it
+runs unchanged. **Drain waiver (v11.7.0, owner decision 2026-08-17):** when the
+convert list arrives from a flagless `/process-inbox` DRAIN, the approval table /
+draft confirmation is WAIVED — the owner approved the whole drain by invoking it,
+and dispatch's gate remains the second view. The waiver covers the owner touch
+ONLY: the red-team still reviews every draft (contract-blocking findings still
+block — an unfixable one sends the item back to triage as KEEP with the finding
+as its reason, it is never queued around the review), tier stamps and every
+intake rule stand, and assumptions that would have gone in the confirmation are
+recorded in the goal's Context with `provenance: inbox-drain`. A true owner fork
+(spend, data loss, irreversible/externally-visible) is never resolved under the
+waiver — the item returns to the drain's OWNER bucket unconverted. A
+`--triage-only` handoff or any direct invocation keeps the approval table as
+before. One class never converts, whoever brings it
 (v11.6.0): caption/comment-wording items — a test name or comment overclaiming
 what its assertion pins, doc phrasing — are fix-directly-or-drop material
 (`/process-inbox`'s FIX-NOW bar), never goals. Measured on a real caption-class

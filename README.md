@@ -50,7 +50,7 @@ Update later with `/plugin marketplace update pragmatic-growth`, or
 /ideate what if signups had a referral loop           #    (optional) explore a fuzzy idea
 /define-goal I want the API p95 latency under 200ms   # 2. capture a want as a contract
 /dispatch                                             # 3. work the queue
-/process-inbox                                        # 4. triage what dispatch captured along the way
+/process-inbox                                        # 4. clear what dispatch captured — triage, convert, and drain in one run
 ```
 
 ## The skills
@@ -60,7 +60,7 @@ Update later with `/plugin marketplace update pragmatic-growth`, or
 | **ideate** | Fuzzy idea → an approved **plan** with vertical-slice phases and open questions only you can answer. On Claude Code it also publishes the plan as a designed artifact page for the approval read (the repo file stays canonical). Never writes goals or code. |
 | **define-goal** | Plain-language want → a measurable, red-teamed goal contract in the queue (or a whole document of them). `--amend <id>` repairs a blocked goal's contract and requeues it. Never writes code. |
 | **dispatch** | The orchestrator: claim, implement with TDD, review, gate, keep or roll back. Drains the queue by default; `--count N` limits the run, `--serial` forces one goal at a time, `--parallel [K]` builds disjoint goals concurrently. |
-| **process-inbox** | Triage sweep for the follow-ups dispatch captures in `docs/goals/inbox.md`: re-verifies every item against current code, converts the real ones via define-goal, batch-fixes the trivial ones, deletes the dead ones. Only spend/irreversible items wait for you. |
+| **process-inbox** | One-command sweep for the follow-ups dispatch captures in `docs/goals/inbox.md`: re-verifies every item against current code, batch-fixes the trivial ones, deletes the dead ones, converts the real ones via define-goal, then drains the queue via dispatch — end to end by default (`--triage-only` stops at the handoff). Only spend/irreversible items wait for you. |
 | **goals-status** | Read-only view of what's open — in progress, blocked, not started. |
 | **loop-architect** | Designs the loop contract (prompt + verification + stop conditions) for unattended runs. |
 | **factory-doctor** | One-pass preflight/doctor. Auto-fixes everything local, reports the rest with exact fixes. |
