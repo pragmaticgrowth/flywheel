@@ -767,9 +767,22 @@ window's avoidable blocks was a 6/7/8-class authoring defect):
    restorable", "reports non-zero X") must be proven true TODAY at authoring
    time — if it is not yet true, that capability is a `depends_on` PRIOR goal,
    not discovery work inside this one.
+9. **An absolute claim names the mechanism that enforces it.** When a criterion
+   asserts a "cannot", "impossible", or "never" — "so a caller CANNOT pass an id
+   that disagrees with the write" — the contract must name the mechanism that
+   makes it true (a branded type, a compile-time signature, a DB constraint) AND
+   confirm that mechanism is inside `touches:`. If the Constraints forbid the only
+   shape that delivers the absolute, the criterion is unsatisfiable BY
+   CONSTRUCTION: state the weaker, TRUE consequence instead ("the helper derives
+   the id from the same object it writes"). Distinct from check 4, which catches
+   an unsatisfiable pasted CONSTRAINT — this catches a criterion whose stated
+   CONSEQUENCE exceeds what its own Constraints permit. Measured: a real goal
+   shipped its operative half, and the gate reviewer still returned contract=FAIL
+   on the consequence clause, forcing the orchestrator to adjudicate the criterion
+   rather than the code.
 
-The red-team re-checks 1–3 and 6–8 (its Command-reality, Gate-fit, Drainability, and
-Premise items carry the same
+The red-team re-checks 1–3 and 6–9 (its Command-reality, Gate-fit, Drainability,
+Premise, and Absolute-claims items carry the same
 teeth — check 8's acceptance shape lives inside its Premise item) — but these are
 YOUR checks first: a defect the red-team must catch costs a
 finding round; a defect neither catches costs a full implementer run plus an amend.
@@ -850,6 +863,12 @@ contract, not approve it —
   asks the implementer to establish whether the goal's own premise is true is a
   research task wearing a contract); a live-network report or dashboard read in
   `acceptance:` (cannot fail at base / pass at head) is **contract-blocking** too.
+- **Absolute claims (v12.1.0)**: a criterion asserting a "cannot", "impossible", or
+  "never" names the mechanism enforcing it and that mechanism is inside `touches:` —
+  otherwise **contract-blocking**, fixed by stating the weaker, true consequence. Read
+  the criterion against the draft's OWN Constraints: an absolute whose only enforcing
+  shape those Constraints forbid is unsatisfiable by construction, and the implementer
+  can meet the operative half while the gate still fails the consequence clause.
 - **Size (one-sitting test)**: does the goal fit one implementer sitting — one
   subsystem, one drivable surface, ~≤5 substantive acceptance criteria (a combined
   mechanical-command bullet and a mandatory needs-independent-review production

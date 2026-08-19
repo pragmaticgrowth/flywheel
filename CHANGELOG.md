@@ -13,6 +13,51 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [12.1.0] — 2026-08-19
+
+**Two contract-scope defects the factory kept re-discovering, closed at the
+source.** Both were carried in romy's goal inbox as verified, unactionable
+plugin-side items; the first then bit a live drain the same day, which is what
+promoted them from notes to a release.
+
+- **A goal that BECOMES plan-backed during implementation no longer fails its
+  own gate.** The implementer brief mandates `writing-plans` for any change
+  spanning >2 files, so the plan doc is written *during* implementation and
+  cannot have been in the contract's `touches:` — define-goal can only stamp a
+  plan path for a goal already plan-backed at DRAFTING time. `pg_validate.py`'s
+  blast-radius arm therefore flagged a document the factory itself ordered the
+  implementer to write. Measured twice (2026-08-18, 2026-08-19); the second cost
+  a mid-drain contract amendment with every other arm green — typecheck, tests,
+  build and the independent review all passing. Plan docs are now exempt from
+  the out-of-scope check exactly as test paths already are, via a deliberately
+  narrow `is_plan_doc()`: markdown ONLY, and only under a path segment literally
+  named `plans` (covering `docs/goals/plans/`, a repo's own
+  `docs/superpowers/plans/`, and their `done/` archives). It can never reach
+  source, config, or a generated artifact — `src/plans/planner.ts`,
+  `plans/script.py` and `docs/plans-overview.md` all stay in scope, and a stray
+  non-plan doc outside `touches:` still fails the arm.
+
+- **A criterion asserting an absolute must name the mechanism that enforces
+  it.** When a criterion claims a "cannot", "impossible", or "never" — "so a
+  caller CANNOT pass an id that disagrees with the write" — the contract now has
+  to name the enforcing mechanism (a branded type, a signature, a DB constraint)
+  and confirm it sits inside `touches:`; where the draft's own Constraints
+  forbid the only shape that would deliver the absolute, the criterion is
+  unsatisfiable by construction and must state the weaker, TRUE consequence
+  instead. Measured on a real goal that shipped its operative half while the
+  gate reviewer still returned contract=FAIL on the consequence clause, leaving
+  the orchestrator to adjudicate the criterion rather than the code. Lands as
+  define-goal's mechanical reality check 9 and as item 14 in the
+  `contract-red-team` agent, so it fires both before drafting and on the draft.
+  Deliberately distinguished from the existing Constraints-reality check: that
+  one catches an unsatisfiable pasted CONSTRAINT, this one a criterion whose
+  stated CONSEQUENCE outruns its own Constraints.
+
+New `test_contract_scope_policy.py` (10 tests) pins both, including the negative
+cases that keep the plan-doc exemption from becoming a hole. Suite 62 → 72,
+green; the three tests that guard the load-bearing behavior were mutation-probed
+red before shipping.
+
 ## [12.0.0] — 2026-08-19
 
 **The self-healing drain — no avoidable needs-you, no essays.** Owner mandate

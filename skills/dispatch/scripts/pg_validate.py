@@ -70,6 +70,18 @@ def blast_radius(changed_paths, touches):
         # branches above), or every correct TDD goal FAIL_FIXABLEs on its own regression test.
         if is_test_path(p):
             continue
+        # Plan docs are EXPECTED to land outside `touches` for the same structural
+        # reason: the implementer brief MANDATES `writing-plans` for any change
+        # spanning >2 files, so the plan is written DURING implementation and cannot
+        # have existed when the contract declared its surfaces. define-goal can only
+        # stamp the plan path for a goal already plan-backed at DRAFTING time; a goal
+        # that BECOMES plan-backed had no way to declare it. Without this exemption
+        # such a goal FAIL_FIXABLEs on a doc the factory told it to write, with every
+        # other arm green — measured twice on real drains (2026-08-18, 2026-08-19).
+        # Markdown under a plans/ directory only: never code, so the scope guard keeps
+        # its teeth everywhere that matters.
+        if is_plan_doc(p):
+            continue
         if touches and not _any_match(p, touches):
             violations.append(f"changed path outside declared surfaces: {p}")
     if violations:
@@ -356,6 +368,21 @@ def is_test_path(p):
     if base.endswith("_test.go") or base.endswith("_spec.rb") or base.endswith("Test.java"):
         return True
     return False
+
+
+def is_plan_doc(p):
+    """A markdown plan doc under a plans/ directory.
+
+    Covers both conventions the factory writes: `docs/goals/plans/` (ideate's
+    design tier) and a repo's own `writing-plans` output (e.g.
+    `docs/superpowers/plans/`), plus their `done/` archives. Deliberately narrow —
+    `.md` only, and only under a path segment literally named `plans` — so this
+    can never exempt source, config, or a generated artifact.
+    """
+    low = p.lower()
+    if not low.endswith(".md"):
+        return False
+    return low.startswith("plans/") or "/plans/" in low
 
 
 def _changed_test_files(base_ref, head_ref="HEAD"):

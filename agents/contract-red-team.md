@@ -95,6 +95,15 @@ Check every draft against this rubric:
     base, a base-commit golden) — a single-tree test authored after the change
     cannot prove "unchanged" (advisory when the chore-standard
     suite-green-before-and-after shape already covers it).
+14. **Absolute claims** — a criterion asserting a "cannot", "impossible", or "never"
+    ("so a caller CANNOT pass an id that disagrees with the write") must name the
+    mechanism that enforces the absolute, and that mechanism must be inside
+    `touches:`. Read the claim against the draft's OWN Constraints: when they forbid
+    the only shape that would deliver it, the criterion is unsatisfiable by
+    construction and is contract-blocking — the implementer meets the operative half
+    and the gate still fails the consequence clause. The fix is to state the weaker,
+    TRUE consequence. Distinct from item 13: that one catches an unsatisfiable pasted
+    CONSTRAINT, this one a criterion whose stated CONSEQUENCE outruns its Constraints.
 
 Read-only is absolute, and the shell is not an exception: never edit or create files —
 not in the repo, not under /tmp, not via a redirect or heredoc; reads and cheap read-only
