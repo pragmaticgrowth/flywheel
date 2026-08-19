@@ -10,7 +10,7 @@ architecture — one harness-neutral **execution-tier vocabulary
 `heavy|medium|light`** plus one small harness-mapping block per skill,
 instead of the v4.x dual-branch prose).
 The repo publishes ONE plugin from the `pragmatic-growth` marketplace:
-`flywheel` v11.7.0.
+`flywheel` v12.0.0.
 (The `html-artifacts`, `autoresearch`, `human-writing` plugins were **removed**
 from the marketplace in v8.0.0, owner decision
 2026-07-25 — the marketplace is the goal-factory only now; git history keeps
@@ -192,6 +192,23 @@ is no `plugins/` directory — the repo root IS the flywheel plugin.
   Constraints-reality item (`agents/contract-red-team.md` updated in
   lockstep), and inbox intake refuses caption/comment-wording items outright
   (fix-directly-or-drop; a measured caption-class goal bought no coverage).
+  v12.0.0 (the 2026-08-19 forensics — ~37 needs-you items in 3 days, ~3 genuinely
+  the owner's): the reality check grows to EIGHT — Drainability (no criterion may
+  need a human's word mid-goal; the old recon rule that MANDATED "stop and confirm"
+  gates on irreversible criteria-path actions is inverted to a split rule — the
+  reversible half queues, the irreversible act goes to the owner with the evidence;
+  two real goals blocked by construction on that shape), Premise (the justifying
+  claim verified against a primary artifact, dated, refutation-tested for bugs — a
+  misread aggregate became a goal that burned a heavy run disproving itself), and
+  acceptance fail-at-base/pass-at-head (live-network reports are evidence, never
+  acceptance; not-yet-true capabilities are `depends_on` priors). Amend mode gains
+  the DRAIN WAIVER (dispatch's Self-heal invokes it in-run: red-team unchanged, no
+  question rounds, confirmation waived, owner forks still stop — the blanket
+  "never auto-amend" is retired) and RETIRE (premise disproven / already true →
+  `chore(goals): retire <id>`, entry to archive with reason, file to done/ — there
+  is nothing to amend). Inbox intake also refuses aggregate-only premises (KEEP
+  `premise unconfirmed`) and verifies named mechanisms live. Red-team items 11–12
+  (Drainability, Premise) added in lockstep.
 **Harness note (v8.2.0; depth corrected v8.3.0):** on Claude Code a subagent can spawn
 further subagents (Agent nests — official docs put the default nesting depth at 3 layers
 below the main conversation, not the 5 previously claimed here; dispatch's
@@ -373,6 +390,32 @@ own review to the full panel, and is explicitly not a compliance miss.
   claim protocol still guards the queue). And the implementer brief mandates
   COMMITTING WORKING INCREMENTS after each green TDD cycle (squash makes them
   free; the uncommitted-tree death left 8 files of orphaned half-work).
+  v12.0.0 — the self-healing-drain release (2026-08-19 forensics over 3 days,
+  both field repos, both harnesses: ~37 needs-you items of which ~3 genuinely
+  needed the owner; report lines followed perfectly but wrapped in 2,000–4,100
+  chars of prose; five "say the word" closers cost ~18h idle; one 4-lane Droid
+  emulation burned 293 poll calls and the account balance): SELF-HEAL — every
+  run routes contract-defect blocks (new AND the existing blocked backlog)
+  through define-goal's amend machinery in-run under a drain waiver (red-team
+  unchanged, one amend-and-re-claim per goal per run, owner forks still stop),
+  and RETIRES disproven-premise goals (`retire`, the fifth claim verb — terminal,
+  archive-bound). TWO CHANNELS — `needs-you:` is decisions only; observations
+  (CI red, recurring lesson, needs-independent-review, retirements) move to
+  `fyi:`, and reasons cap at ~120 chars (the full text stays in index/report
+  files). OUTPUT ENVELOPE — the settle turn IS the report line, the closing turn
+  is line + summary + bullets and nothing else ("the fire's report" always means
+  the report FILE); the summary ends `all complete` or `outstanding: <n> for
+  you`. DECLARATIVE STALLS are the permission-ask miss in statement form (incl.
+  the closing turn — no offers). SHIP STEP — a terminal stop runs the repo's own
+  pre-authorized publish path; unshipped is not done (a run reported 21/21 done
+  over 30 unpushed commits in a push-is-deploy repo). Dirty trees are
+  quarantine-committed and worked past (after a live-writer check), not refused.
+  A user-invoked flagless drain that ends drained with inbox lines CHAINS into
+  /process-inbox once (loop-guarded). Infra class widened: billing/auth/overload
+  errors get the pin-omitted retry then a CLEAN settle (lock released) instead
+  of a mid-wave hang; Droid `--parallel` is refused out loud (poll-loop
+  emulation banned); Droid spawns pass `await: true`; a warm resume that
+  replays with zero new commits disables warm resume for the run.
 - **goals-status** (v5.2.0; simplified in v6.0.0) — read-only view of the
   docs/goals queue. Prints
   every OPEN goal — `in_progress`, `blocked`, `not_started` — with its title and
@@ -444,6 +487,18 @@ own review to the full panel, and is explicitly not a compliance miss.
   stop-at-handoff behavior with the approval table intact. The chaining does
   not blur boundaries — conversion and implementation still run inside
   define-goal's and dispatch's own machinery, reviews and gates unchanged.
+  v12.0.0 (the 2026-08-19 forensics — the same 5 OWNER items re-presented
+  across 4 sessions until one owner instruction dissolved them, 4 of 5 via a
+  single read-only production query): the OWNER BAR — OWNER requires a PROVEN
+  consequence, not a matching topic: run the read-only blast-radius check
+  (the SELECT, the secret/bucket listing) BEFORE routing, attach it; an empty
+  target is not a data-loss decision, a code edit behind the factory's gate is
+  never OWNER, "for convention's sake" is CONVERT/FIX-NOW. Carried-over OWNER
+  lines are RE-ADJUDICATED against the bar each sweep (parking-lot ban), a
+  CONVERT item's named mechanism is verified live (a measured recommendation
+  would have paged nobody), and the report is a hard envelope — counts line +
+  dispatch's line + one line per OWNER item, `<O>` equal to the lines printed,
+  nothing else.
 - **show-me** (v11.8.0, owner ask 2026-08-18 — adapted from HumanLayer's
   show-me skill) — visual explainer for the current topic: answers
   "how does X work / what talks to what / what would change" with the
@@ -520,9 +575,14 @@ own review to the full panel, and is explicitly not a compliance miss.
   sole exception: immutable to implementers and while a goal is claimable, editable only
   by an amend on a `blocked` goal, which repairs the defective criteria in place, records
   a one-line amendment note, and requeues via `chore(goals): amend <id>`.
-- Statuses: `not_started | in_progress | completed | blocked` — blocked
+- Statuses: `not_started | in_progress | completed | blocked | retired` — blocked
   (with reason) is required to avoid re-dispatch livelock. `completed`
   only when the gate has PASSED and the goal's commit is on the branch.
+  `retired` (v12.0.0) is the terminal disposition for a goal whose premise the
+  evidence disproved or whose outcome is already true — minted only by dispatch's
+  Self-heal pass or define-goal's amend flow (`chore(goals): retire <id>`: entry to
+  `archive.yaml` with reason, file to `done/`, one commit); never requeued, never
+  re-reported, satisfied as a dependency.
 - `index.yaml` `config:` block: `base` (the branch goals are worked on;
   per-goal `base:` override allowed), `model` (inherit|heavy|medium|light —
   the repo-wide DEFAULT execution tier for code agents dispatch spawns;
@@ -543,7 +603,7 @@ own review to the full panel, and is explicitly not a compliance miss.
   prove "no behavior change" (suite green before and after) plus one
   mechanical check.
 - Claim protocol is LOCAL: every status write is flip ONE entry → commit
-  (`chore(goals): claim|complete|block|archive <id>` from dispatch, plus
+  (`chore(goals): claim|complete|block|archive|retire <id>` from dispatch, plus
   define-goal's `amend <id>` requeue of a blocked goal). One entry per commit,
   status-only-in-index; no push, no push-arbitration — the single session
   owns the branch. NNN minting is local too (a collision renumbers the NEW

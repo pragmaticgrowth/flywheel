@@ -78,7 +78,15 @@ what its assertion pins, doc phrasing — are fix-directly-or-drop material
 (`/process-inbox`'s FIX-NOW bar), never goals. Measured on a real caption-class
 goal: four of five findings resolved by narrowing the wording, so the factory
 cycle bought no coverage. Refuse such an item back to triage instead of
-contracting it.
+contracting it. **Two more intake refusals (v12.0.0), enforcing reality-check
+items 7–8 at the door:** an item whose factual premise rests only on an
+aggregate/inferred reading (a metric table, a count nobody re-derived) is not
+converted until the premise is confirmed against a primary artifact — refuse it
+back to triage as KEEP `premise unconfirmed` (a converted misread aggregate
+became a blocked goal that burned a heavy implementer run disproving itself);
+and an item whose fix names a specific mechanism (an alert channel, a queue, a
+secret) has that mechanism verified live, read-only, before it enters the
+contract.
 
 ## Plan first, then artifact
 
@@ -338,12 +346,22 @@ Recon details:
   acceptance criteria (for bugs, "failing test reproducing the root cause" is the first
   criterion). Conflicting hypotheses → record both in the goal file and let the
   implementer's failing test arbitrate — don't guess a winner.
-- **Irreversible / externally-visible actions**: if recon finds the goal's surface includes
-  an action that can't be undone or that reaches the outside world (a prod migration, sending
-  real emails/notifications, deleting records, spending on a paid API), record it and add a
-  "stop and confirm before <action>" line to the goal file's Constraints (and the run-now
-  `/goal` line, when that is the destination) —
-  embed the gate in the contract, don't rely on environment gating alone. For stateful
+- **Irreversible / externally-visible actions — SPLIT, never gate (v12.0.0)**: if recon
+  finds an action that can't be undone or that reaches the outside world (a prod
+  migration, sending
+  real emails/notifications, deleting records, spending on a paid API) on the path the
+  acceptance criteria REQUIRE, the goal must not contain it: a contract that needs a
+  human's mid-goal word is unsatisfiable by construction in a drain (dispatch drains
+  never ask — two real goals, authored two days apart, blocked on exactly this shape,
+  and one burned a full heavy implementer spawn to arrive at a question). Split at
+  authoring time: the reversible/investigative half — enumerate, verify, measure,
+  prepare — queues as the goal, and the irreversible act itself goes to the owner as
+  an OWNER item (inbox line or needs-you) that the queued half's evidence feeds, with
+  the exact command and a recommendation. A "stop and confirm before <action>"
+  Constraints line remains legal ONLY for actions the criteria do NOT require —
+  defense-in-depth against scope drift, never a gate on the goal's own path. (Run-now
+  `/goal` destinations may keep the interactive gate — the user is present there.)
+  For stateful
   external writes, add an idempotency note (a retried "create" double-acts — guard it with an
   existence/idempotency check). Scope a goal by what it can destroy, not only by what it
   should do.
@@ -523,8 +541,10 @@ schema, paths, commands)>
 ## Constraints (hard rules)
 <repo hard rules from CLAUDE.md, verbatim>
 - Never push protected branches.
-- <if recon found an irreversible/externally-visible action: "Stop and confirm before
-  <action>", and make stateful external writes idempotent>
+- <if recon found an irreversible/externally-visible action OUTSIDE the criteria path:
+  "Stop and confirm before <action>" — an action the criteria REQUIRE never gets this
+  gate, it splits out of the goal instead (recon rules); make stateful external writes
+  idempotent>
 
 ## Out of scope
 <bullets>
@@ -683,11 +703,12 @@ by cap instead of by budget.
 
 ## Contract reality check — mechanical, before the red-team (queue destination only)
 
-Run these five checks yourself on every queued draft, BEFORE spawning the contract
-red-team — each is a cheap ls/grep, and each encodes a defect class that blocked
+Run these eight checks yourself on every queued draft, BEFORE spawning the contract
+red-team — each is cheap, and each encodes a defect class that blocked
 CORRECT, finished work at gate time in real drains (2026-08-13/16 forensics, two
 repos: every one of the 10 blocked goals was one of these classes, not a work
-failure):
+failure; checks 6–8 added from the 2026-08-19 forensics, where every one of the
+window's avoidable blocks was a 6/7/8-class authoring defect):
 
 1. **`touches:` closure — derive it from the contract's own text.** Every path the
    criteria, Constraints, or Context name as needing an edit must be covered by a
@@ -721,9 +742,36 @@ failure):
    base. A single-tree test authored after the change structurally cannot prove
    "unchanged" (measured: such a criterion was met by a characterization literal
    tuned to the new behavior in the same diff).
+6. **Drainability — no criterion needs a human's word.** If any acceptance
+   criterion cannot be driven to true without an owner approval or an attended
+   touch mid-goal (a "stop and confirm" gate on the criteria path, an "owner
+   accepted that" clause), the contract is defective: split it per the recon
+   rules — the reversible half queues, the irreversible act goes to the owner
+   with the evidence. Dispatch drains never ask; a goal shaped like this blocks
+   by construction (two real goals did, two days apart).
+7. **Premise — the justifying claim was verified against a primary artifact.**
+   When the Context's reason-this-goal-exists is a measurement or an inference
+   (a metric read off an aggregate, a "15 exact duplicates" count, "X is never
+   recorded"), re-run the underlying check NOW and record the result and its
+   date in Context; for bug goals, one recon agent must have tried to REFUTE
+   the premise (its verdict goes in Context). A premise resting only on an
+   aggregate or on someone's assertion is contract-blocking until confirmed —
+   a real goal queued on a misread aggregate burned a heavy implementer run
+   proving its own premise false, and a second's "duplicate count" was 10/15
+   wrong on a five-minute read.
+8. **Acceptance can fail-at-base and pass-at-head.** A live-network report, a
+   dashboard read, or any command whose outcome does not depend on this repo's
+   code at HEAD is EVIDENCE for the report file, never an `acceptance:` entry
+   (a real goal's live-report acceptance produced a guaranteed INCONCLUSIVE
+   gate). And a criterion asserting an existing capability ("confirmed
+   restorable", "reports non-zero X") must be proven true TODAY at authoring
+   time — if it is not yet true, that capability is a `depends_on` PRIOR goal,
+   not discovery work inside this one.
 
-The red-team re-checks 1–3 (its Command-reality and Gate-fit items carry the same
-teeth) — but these are YOUR checks first: a defect the red-team must catch costs a
+The red-team re-checks 1–3 and 6–8 (its Command-reality, Gate-fit, Drainability, and
+Premise items carry the same
+teeth — check 8's acceptance shape lives inside its Premise item) — but these are
+YOUR checks first: a defect the red-team must catch costs a
 finding round; a defect neither catches costs a full implementer run plus an amend.
 
 ## Contract review — red-team the draft before it queues (queue destination only)
@@ -787,9 +835,21 @@ contract, not approve it —
   suite-green-before-and-after shape already covers it.
 - **Termination**: every criterion is a target an implementer can drive to true AND
   print (transcript-provable), with a declared give-up shape for any that could prove
-  unmeasurable; any goal-specific stop-and-confirm gate recon found sits in
-  Constraints. (Old-format drafts carrying a `/goal` contract line: it stays under
+  unmeasurable; a goal-specific stop-and-confirm gate sits in Constraints ONLY for
+  actions the criteria do not require. (Old-format drafts carrying a `/goal`
+  contract line: it stays under
   the 4,000-char cap with a sized turn cap.)
+- **Drainability (v12.0.0)**: a criterion that cannot be driven to true without an
+  owner approval or attended touch mid-goal — a stop-and-confirm gate on the
+  criteria path, an "owner accepted that" clause — is **contract-blocking**: the
+  goal blocks by construction in a drain; propose the split (reversible half
+  queues, the irreversible act goes to the owner with the evidence).
+- **Premise (v12.0.0)**: the Context's justifying claim is verified against a
+  primary artifact with a dated result — a premise resting only on an aggregate, an
+  assertion, or an unrefuted inference is **contract-blocking** (a criterion that
+  asks the implementer to establish whether the goal's own premise is true is a
+  research task wearing a contract); a live-network report or dashboard read in
+  `acceptance:` (cannot fail at base / pass at head) is **contract-blocking** too.
 - **Size (one-sitting test)**: does the goal fit one implementer sitting — one
   subsystem, one drivable surface, ~≤5 substantive acceptance criteria (a combined
   mechanical-command bullet and a mandatory needs-independent-review production
@@ -919,6 +979,28 @@ Run the steps in this order:
    rubric inline). Same one round, same rules: verify each finding, fix the
    contract-blocking ones. A contract that just failed at dispatch time earns the second
    view more than a fresh draft does.
+**Retire instead of amend when there is nothing to amend (v12.0.0).** When step 2's
+evidence shows the goal's PREMISE is false or its outcome already true — the defect
+does not exist on current code, the metric was a misread aggregate, the capability
+already ships — no rewrite can produce a valid contract: the goal is RETIRED, not
+amended. Flip the entry to `status: retired` with `reason: retired: <premise
+disproven | already true> — <one-line evidence>`, move the entry to `archive.yaml`
+and the goal file to `docs/goals/done/` in one `chore(goals): retire <id>` commit
+(dispatch's fifth verb — its Self-heal section does the same in-run). Retired is
+terminal: never requeued, never re-reported. A prior session, lacking the verb,
+invented "closed as superseded"; another left a disproven goal `blocked` pointing
+at an amend that could not exist.
+
+**Drain waiver (v12.0.0 — dispatch's Self-heal route).** When this mode is invoked
+by a dispatch run's Self-heal pass (the invocation is the standing approval — the
+same v11.7.0 waiver precedent as process-inbox drains), step 3 never asks (take the
+clearly recommended or conservative reading and record it in the amendment note)
+and step 7's owner confirmation is WAIVED — the red-team of step 6 runs UNCHANGED,
+and both commits carry `provenance: dispatch-self-heal` in the amendment note. A
+true owner fork — spend, data loss, irreversible or externally visible — is never
+resolved under the waiver: the goal stays `blocked` and the fork goes back to
+dispatch as the needs-you item, with a recommendation.
+
 7. **Confirm with the user, then write and requeue in TWO commits** — the contract edit and
    the status write never share a commit (queue writes are always their own commit, exactly
    as `reserve`/`add` split them above). Show the amended criteria and the amendment note.
@@ -931,9 +1013,14 @@ Run the steps in this order:
    a defect that no longer exists. Push is optional backup, exactly as elsewhere in this
    skill. Then point at the next step: `/dispatch <id>`.
 
-Never auto-amend: this mode is always human-invoked, and the amended contract is always
+Interactive amends keep the confirmation: outside dispatch's Self-heal route, the
+amended contract is always
 confirmed before it requeues (step 7 — the single owner touch; step 3 decides whether a
-question round precedes it). Never amend a goal another session has claimed (step 1
+question round precedes it). The Self-heal drain waiver above is the ONE sanctioned
+auto path — red-team never waived, owner forks always stop (v12.0.0 retired the
+blanket "never auto-amend" rule: 3-day forensics measured the human-only amend as
+the single largest needs-you class, ~10 minutes of factory work per item parked on
+the owner). Never amend a goal another session has claimed (step 1
 refuses `in_progress`). Never edit `docs/goals/` for any goal other than the one named.
 
 ## Implementer tier — decide it last

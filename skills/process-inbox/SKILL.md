@@ -61,7 +61,14 @@ entirely — it retires to the `## Triaged` ledger in step 5. It was adjudicated
 once; its full detail lives in the source report file and git history, and if it
 ever becomes live, a fresh dispatch capture re-surfaces it. Measured 2026-08-16:
 a sweep re-verified 28 previously-adjudicated lines at real subagent cost and
-changed almost none of them. OWNER lines stay untouched either way. Then cluster
+changed almost none of them. **OWNER lines carried over from a previous sweep are
+RE-ADJUDICATED against the v12.0.0 OWNER bar (step 3), never re-listed as-is:** run
+the blast-radius check the bar demands; a line that fails the bar re-triages into a
+normal bucket this sweep (which usually means it gets converted or fixed), and only
+a line that still clears it — a proven, still-live consequence — is re-presented,
+with its check attached. The same five OWNER lines were re-printed verbatim across
+three sweeps until the owner cleared them in one instruction; a parking lot is not
+a bucket. Then cluster
 the remaining unstamped items by the file/subsystem their evidence points at,
 folding obvious duplicates (two captures naming the same function and the same
 change are ONE item). Aim for one cluster per verification subagent, ~5–15 items
@@ -89,7 +96,12 @@ triage is yours.
 
 ### 3. Triage — every item into exactly ONE bucket
 
-- **CONVERT** — confirmed and worth a factory cycle. Folding rules (measured):
+- **CONVERT** — confirmed and worth a factory cycle. **Mechanism check (v12.0.0):**
+  an item whose fix names a specific mechanism — an alert channel, a queue, a
+  binding, a secret — gets that mechanism verified LIVE (read-only) before it enters
+  a contract; a measured item's recommended `sendOpsAlert` fix would have paged
+  nobody (`ALERT_WEBHOOK_URL` unset in both environments), and only the session that
+  checked caught it. Folding rules (measured):
   captures that are one change to one function fold into ONE goal; a cluster
   still carrying more than two independent findings splits — the repair-cost
   rule wins ties (a goal closing more than two independent findings costs more
@@ -114,9 +126,25 @@ triage is yours.
 - **KEEP** — real but deliberately not actionable yet: needs a measurement
   first, blocked on a pending decision, unreachable at current caps. Stays
   captured, reason appended to its line.
-- **OWNER** — spend, data deletion, anything irreversible or externally
-  visible. Present it with a recommendation; never act on it. This is the only
-  bucket that waits for a human.
+- **OWNER** — a decision that is provably the human's: it spends money, deletes or
+  exposes data that EXISTS today, or is irreversible/externally visible outside the
+  repo's own gated path. **The bar (v12.0.0) — a proven consequence, not a matching
+  topic.** Before anything is routed OWNER, run the read-only check that sizes the
+  blast radius — the `SELECT` on the table the deletion would touch, the secret/bucket
+  listing the alert depends on, the count of affected rows — and attach the check and
+  its result to the item. An empty or absent target is NOT a data-loss decision —
+  the item then re-triages as ordinary work (a still-real preventive fix CONVERTs,
+  a dissolved claim DROPs); a
+  change confined to code behind the factory's own gate is NEVER an owner item
+  (shipping is what the factory is for); "for convention's sake", "worth your
+  attention", and "recommend X" are CONVERT or FIX-NOW. An item whose own
+  recommendation is a code edit the gate can verify is not an owner item. Measured
+  2026-08-16/19: five items topic-matched into OWNER, sat through three sweeps, and
+  four of the five dissolved under one read-only production query — the fifth's
+  recommended fix was itself WRONG (`sendOpsAlert` would have paged nobody; only the
+  override session checked). The bucket wasn't deferring risk, it was accumulating it.
+  Present each surviving item with a recommendation; never act on it. This is the only
+  bucket that waits for a human — and only items that clear the bar may wait.
 
 ### 4. Act, in this order
 
@@ -185,8 +213,13 @@ One summary, counts first — `<N> items → <X> goals queued (<ids>) · <Y> fix
 directly (<commit>) · <Z> dropped dead · <K> kept · <P> production checks ·
 <O> for you` — then, on a flagless drain, dispatch's own final report line
 (`<done>/<total> done` + bar, blocked reasons, needs-you) — then each OWNER
-item in one plain-language line with your recommendation. Nothing else needs
-the owner's eyes.
+item in one plain-language line with your recommendation. **That is the ENTIRE
+message (v12.0.0):** the counts line, dispatch's line, one line per OWNER item —
+no "What happened" section, no tables, no caveats, no epilogue; the detail lives
+in the committed `## Triaged` ledger. `<O>` must EQUAL the number of OWNER lines
+printed below it (a measured report said "6 for you" and listed 5). "Nothing else
+needs the owner's eyes" is a hard envelope, not advice — the measured violations
+ran to ~3,000 characters.
 
 ## Red flags — stop and get back on the path
 
@@ -212,6 +245,12 @@ the owner's eyes.
   approval table is waived → the waiver covers the owner touch, never a review.
 - Re-triaging lines dispatch captured during this run's drain → next sweep's
   input.
+- Routing an item to OWNER without the read-only blast-radius check attached →
+  run the check first; topic-matching is not the bar.
+- Re-presenting a carried-over OWNER line without re-adjudicating it against the
+  bar → the bucket is a decision queue, never a parking lot.
+- A report with any section beyond the counts line, dispatch's line, and the
+  OWNER lines → the envelope is hard.
 
 ## Related skills
 

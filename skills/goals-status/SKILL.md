@@ -7,7 +7,9 @@ description: Use when the user runs "/goals-status" or asks what's in the docs/g
 
 Show the open work in a repo's `docs/goals` queue: every goal that is
 **in_progress**, **blocked**, or **not_started**, with its title and a one-line
-brief. Completed goals are hidden (just counted). Read-only — it never writes to
+brief. Completed goals are hidden (just counted), and so are `retired` goals
+(v12.0.0 — dispatch's terminal disposition for a disproven-premise goal; counted
+separately in the header, satisfied as a dependency). Read-only — it never writes to
 `docs/goals/` (dispatch owns queue state).
 
 ## Run

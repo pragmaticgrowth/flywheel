@@ -47,8 +47,9 @@ Check every draft against this rubric:
    browser check + `agent-browser` in `skills:`. chore: suite-green-before-and-after plus
    the one mechanical check.
 6. **Termination** — every criterion is a target an implementer can drive to true AND
-   print, with a declared give-up shape where one could prove unmeasurable; any
-   stop-and-confirm gate for an irreversible action sits in Constraints. (Old-format
+   print, with a declared give-up shape where one could prove unmeasurable; a
+   stop-and-confirm gate sits in Constraints ONLY for actions the criteria do not
+   require. (Old-format
    drafts carrying a `/goal` contract line: under the 4,000-char cap, turn cap present
    and sized.)
 7. **Size (one-sitting test)** — one subsystem, one drivable surface, ~≤5 SUBSTANTIVE
@@ -74,7 +75,19 @@ Check every draft against this rubric:
 10. **Plan-question overlap** (plan-backed drafts) — a criterion whose reading depends
     on a question still OPEN in the linked plan's Open-questions section — advisory,
     naming the question (it becomes a CONTRACT_AMBIGUOUS stop at dispatch time if left).
-11. **Constraints reality** — every repo invariant pasted into Constraints applies to
+11. **Drainability** — can every criterion be driven to true WITHOUT an owner
+    approval or attended touch mid-goal? A "stop and confirm before <action>" gate on
+    an action the criteria require, or an "owner accepted that" clause inside a
+    criterion, is contract-blocking: the dispatcher's drains never ask, so the goal
+    blocks by construction — propose the split (the reversible/investigative half
+    keeps the contract; the irreversible act goes to the owner with the evidence).
+12. **Premise** — is the Context's justifying claim verified against a primary
+    artifact with a dated result? A premise resting only on an aggregate metric, an
+    assertion, or an unrefuted inference is contract-blocking (a criterion asking the
+    implementer to establish whether the goal's own premise is true is a research
+    task, not a contract); an `acceptance:` command that cannot fail at base and pass
+    at head — a live-network report, a dashboard read — is contract-blocking too.
+13. **Constraints reality** — every repo invariant pasted into Constraints applies to
     the surfaces this goal touches (a schema rule's columns exist on those tables):
     an unsatisfiable pasted constraint is contract-blocking — the implementer can
     only document around it. And a before/after criterion ("no behavior change",

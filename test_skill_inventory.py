@@ -31,6 +31,7 @@ def test_flywheel_root_skill_inventory():
         "ideate",
         "loop-architect",
         "process-inbox",
+        "show-me",
     ]
 
 

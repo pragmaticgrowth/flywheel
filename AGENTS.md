@@ -61,9 +61,11 @@ post-push observation, never a gate.
 **Queue invariants.** Status lives ONLY in `index.yaml`, never in goal frontmatter
 (dual-write drifts). Goal files are immutable contracts, `define-goal --amend <id>` on a
 `blocked` goal the sole exception (immutable to implementers and while claimable). Statuses:
-`not_started | in_progress | completed | blocked`. Every status write is flip-one-entry
-→ commit (`chore(goals): claim|complete|block <id>`, plus define-goal's
-`chore(goals): amend <id>` requeue).
+`not_started | in_progress | completed | blocked | retired` (retired = terminal,
+archive-bound, for disproven-premise goals — v12.0.0). Every status write is flip-one-entry
+→ commit (`chore(goals): claim|complete|block|archive|retire <id>`, plus define-goal's
+`chore(goals): amend <id>` requeue — in-run via dispatch's Self-heal drain waiver, by
+hand otherwise).
 
 The full rationale, the config-block schema, the model-routing rubric, and the history
 of superseded models (v3 worktree/PR model, retired `wish` and `telegram-message` skills)

@@ -45,7 +45,7 @@ re-draining as NEW goals arrive.
 | `/dispatch 087` (also `87`, `087-slug`, or "work goal 087") | Solo mode: work exactly that goal (see Solo mode below). |
 | `/dispatch --count N` | Work up to N ready goals, then stop (N ≥ 1). `--count 1` is the pre-v10 single-goal fire — use it when one goal is deliberately all you want. |
 | `/dispatch --unlimited` | Explicit alias of the flagless drain default (kept for compatibility and for loop prompts that spell intent out). |
-| `/dispatch --parallel [K]` (combinable with `--count`) | Lane concurrency: build up to K provably-disjoint goals at once in local worktree lanes (default K = `config.parallel.max_lanes`, else 2; hard cap 4), integrating strictly one at a time. Claude Code only — on Droid the flag is noted in the report and the run proceeds serially. See references/parallel-mode.md. |
+| `/dispatch --parallel [K]` (combinable with `--count`) | Lane concurrency: build up to K provably-disjoint goals at once in local worktree lanes (default K = `config.parallel.max_lanes`, else 2; hard cap 4), integrating strictly one at a time. Claude Code only — on Droid the flag is REFUSED out loud (v12.0.0): the run's FIRST line states `parallel unavailable on this harness — running serial`, and lane machinery is never emulated with background workers. A repeated non-blocking task-status poll with no intervening work is a compliance miss on any harness (measured 2026-08-17: a Droid run that emulated 4 lanes burned 293 poll calls — 34% of its turns — and the waste exhausted the account balance mid-drain, killing the run). See references/parallel-mode.md. |
 
 Argument rules: a goal id combined with `--count`/`--unlimited`/`--parallel`/`--serial`
 → the id wins; note the ignored flag in the report. `--count` without a valid N ≥ 1, or
@@ -138,12 +138,24 @@ claims. Spawn-time mapping per harness:
   value set, live-verified 2026-07-25); `inherit` omits it. Implementers always spawn
   as the `worker` type regardless of tier.
 
-**Pin-failure fallback (v11.6.0).** A spawn (or mid-goal death) whose error names the
-MODEL or PROVIDER rather than the work — `unknown provider for model …`, `model not
-found`, a 4xx quoting the pinned id — is a pin this account/backend cannot serve
-right now, NOT a transient death: retry ONCE with the pin omitted (the agent inherits
+**Pin-failure fallback (v11.6.0; class widened v12.0.0).** A spawn (or mid-goal death)
+whose error names the
+MODEL, PROVIDER, or the ACCOUNT'S ACCESS to them rather than the work —
+`unknown provider for model …`, `model not
+found`, a 4xx quoting the pinned id, and equally `insufficient balance` /
+`billing_error`, `auth_unavailable`, "provider is currently overloaded", a 403/429/503
+from the model endpoint — is infrastructure, NOT a transient work death: retry ONCE
+with the pin omitted (the agent inherits
 the session model), note `tier-fallback: <id> <tier> → session` in the fire's report,
-and continue the run. Never burn the ~3 transient respawns on an error that
+and continue the run. When the UNPINNED retry fails with the same
+infrastructure class, the environment itself is down — settle CLEANLY instead of
+hanging: block only the in-flight goal (`environment: model endpoint unavailable —
+<error>`, needs-you class `environment failure`), run Phase 4, release the checkout
+lock, and stop. A clean stop resumes at Phase 1 next window; a mid-wave hang waits for
+a human (measured 2026-08-18: a 4-lane drain hit `403 billing_error` +
+`503 auth_unavailable` and sat 4h46m until the owner typed "continue"; measured
+2026-08-18 on a second harness: two "provider overloaded" deaths each cost a manual
+"continue"). Never burn the ~3 transient respawns on an error that
 reproduces identically by construction (measured 2026-08-15: a drain at 28/39 died
 mid-run when a heavy pin's mapped model was rejected — `400 unknown provider for model claude-opus-5` —
 and respawning the same pin could only repeat it), and never substitute a LIGHTER
@@ -193,6 +205,12 @@ Droid) and state the role inline exactly as the relevant step describes.
 Never use the built-in Explore type (Claude Code) for any review role — it is a search
 agent and its own description forbids review use. On Droid, `explorer` is likewise never
 a review role: review needs to run commands (tests, builds), which `explorer` cannot.
+**Droid spawns are awaited (v12.0.0):** every dispatch spawn on Droid — implementer,
+gate-reviewer, fresh-check lens, repair — passes `await: true` on the Task call. A
+spawn without it runs in the background and its verdict arrives as a later event that
+can land AFTER the gate has already ruled (measured 2026-08-17: a goal's review
+verdict was delivered two minutes after the run's final report, five hours after the
+goal settled — the v5.4.0 background-review scar on a new surface).
 
 ## Hard rules (every iteration, before any action)
 
@@ -226,6 +244,18 @@ a review role: review needs to run commands (tests, builds), which `explorer` ca
   stalling an autonomous run on a question the skill already answers. The ONLY legal
   interactive ask is the Attended-only rule below; anything else a human must know goes
   to needs-you or the settle-triage inbox, and the run continues.
+  **Declarative stalls are the same miss (v12.0.0).** The ban was measured as
+  question-marks and re-emerged as statements: "I don't push without you asking, so
+  staging is yours to review first" (40 verified commits stranded), "`/dispatch` was
+  not started — the tree has unrelated dirty files", "it needs your word", "Say the
+  word and I'll run the release". A statement that ends the run's forward motion on a
+  step this skill (or the repo's own standing authorization) already licenses is an
+  invented permission-ask wearing a period. This covers the CLOSING turn too: a run
+  never ends on an offer — an action inside the rails is taken; an action that is
+  genuinely the owner's is emitted as a needs-you item WITH a recommendation, never
+  as a question or an offer. Measured 2026-08-16/19 across both field repos: five
+  "say the word" closers cost ~18 hours of idle wall-clock, and three declarative
+  stalls each ended a run the owner had already authorized twice.
 - Substantive conflicts are never guessed through. A local `git merge`/squash that hits a
   conflict on the current branch means two pieces of work changed the same logic → set the
   goal `blocked`, surface it under needs-you as class `conflict`, and roll back; never
@@ -251,8 +281,11 @@ command, so a new class is one new row instead of a new phrasing:
 `<id or item> — <reason> → <what to run>`
 
 `<id or item>` is the goal id (or the item name for a queue-wide condition), `<reason>` is
-the block reason exactly as it was written to `index.yaml` (never a paraphrase — the index
-and the report line must read the same), and `<what to run>` is the resolving command from
+a faithful condensation of the block reason **capped at ~120 characters** — the FULL
+reason lives in `index.yaml` and the report file, and the two must agree in substance
+(v12.0.0: the old exactly-as-written rule met a real 740-character index reason and
+forced every session into "needs-you: 3 items below" + a prose essay — the escape hatch
+that produced the walls of text) — and `<what to run>` is the resolving command from
 the table, with `<id>` and `<base>` substituted. Command unclear for a class not in the
 table? Emit the item with the closest table command and say what is uncertain — never drop
 the `→` half.
@@ -286,6 +319,70 @@ row here (class, trigger, what to run) — never a second line shape, and never 
 format section elsewhere in this skill. A class whose "what to run" is prose rather than a
 fixed command (what to look at, not what to type) still fills the `→` half with that prose.
 
+**Two channels, one shape (v12.0.0): `needs-you:` is decisions, `fyi:` is observations.**
+An item renders under `needs-you:` ONLY when a human decision or human-only action is
+what unblocks it — an owner fork (spend, data loss, irreversible or externally visible),
+or an item the self-heal pass below already tried and could not clear. Pure observations —
+`CI failure` (pre-existing red), `recurring lesson`, `needs independent review` on a
+PASSed goal, a goal this run retired — render as `fyi:` bullets after the needs-you
+items, same line shape, never counted as waiting on the human. Measured 2026-08-18: a
+run reported "needs-you: 3 items" when exactly one needed a human — an observation in
+the decision channel reads as a stop, and the owner acts on (or swears at) the count.
+
+## Self-heal — the run fixes its own blockers before naming a human (v12.0.0)
+
+3-day forensics across two field repos (2026-08-16/19): **~37 needs-you items, of which
+~3 genuinely required a human.** The dominant class — a contract defect blocking correct
+or correctly-refused work — was routed to a human command (`/define-goal --amend <id>`)
+that, whenever anyone actually ran it, took ~10 minutes and needed zero owner input
+("no owner fork" recorded in the amendment itself). The factory was queueing its own
+homework as the owner's. So, in EVERY dispatch run (the invocation is the standing
+approval — the same v11.7.0 waiver precedent process-inbox drains already use):
+
+1. **A contract-defect settle routes through define-goal's amend machinery IN-RUN,
+   not to a human.** When a goal settles (or already sits) `blocked` with a
+   `contract defect: …` reason — FAIL_CONTRACT, GOAL_UNREACHABLE, CONTRACT_AMBIGUOUS,
+   the escalation ladder's too-large/wrong rung, `needs context` nothing in-run could
+   answer — invoke define-goal's amend mode under its **drain waiver** (v12.0.0): the
+   red-team review runs UNCHANGED, question rounds never happen (take the clearly
+   recommended or conservative reading and record it in the amendment note), and the
+   step-7 owner confirmation is waived. Requeue and re-claim it once (the re-claim
+   consumes a count unit like any claim).
+2. **A disproven premise RETIRES the goal — there is nothing to amend.** When the
+   evidence in hand (the implementer's report, the gate review) shows the goal's
+   premise is false or its outcome already true — the defect doesn't exist, the
+   metric was a misread aggregate, the capability already ships — the goal is
+   retired, not amended and not left `blocked` forever: flip the entry to
+   `status: retired` with `reason: retired: <premise disproven | already true> —
+   <one-line evidence>`, move the entry to `archive.yaml` and the goal file to
+   `docs/goals/done/` in the same `chore(goals): retire <id>` commit. When the
+   settle evidence already proves the disproven premise, retire DIRECTLY — no
+   intermediate block commit; a goal that is already `blocked` retires with the
+   single retire commit. Retired is
+   TERMINAL: it never requeues, never re-reports, and surfaces once as an `fyi:`
+   line in the run that retired it. (Measured: a false-premise goal sat `blocked`
+   pointing at an amend that could not exist, and a prior session invented
+   "superseded" for the same state — the verb was missing.)
+3. **Bounds.** ONE amend-and-re-claim per goal per RUN — a goal that blocks on a
+   contract defect AGAIN in the same run stays `blocked` and goes to needs-you as
+   genuinely stuck (the second defect is the evidence a human is actually needed).
+   A true owner fork inside the amend — spend, data loss, irreversible or
+   externally visible — is never resolved under the waiver: the goal stays
+   `blocked` and the needs-you item carries the fork AND your recommendation.
+4. **The blocked backlog heals too.** After Phase 1 and before Phase 2's first
+   claim, walk every EXISTING `blocked` entry: reasons in the contract-defect
+   family route through 1–2 above — under the SAME once-per-goal-per-run cap as
+   item 3, so a backlog amend and a settle amend never stack on one goal in one
+   run; `environment`-class,
+   `repeated transient death`, and owner-fork reasons stay blocked as today. This
+   is what lets a queue that predates this rule drain clean instead of dragging
+   its history into every report.
+
+The needs-you table's `→ /define-goal --amend <id>` rows now name what the RUN does
+first; a human sees such a row only when self-heal already tried and failed. Nothing
+here touches the gate: amended goals re-enter the full claim → implement → gate cycle,
+and the red-team still reviews every amendment.
+
 **Attended-only interactive questions.** Dispatch may ask the human a question directly —
 instead of only writing the item into needs-you — when, and only when, ALL THREE of these
 hold at once:
@@ -317,15 +414,21 @@ The index is the claim ledger. A claim is a status flip committed BEFORE impleme
    (queue commits are always their own commit, never fused with code — sole sanctioned
    exception: the plan-mirror edit rides `chore(goals): complete <id>`, Working a goal
    step 4).
-3. Push is OPTIONAL (backup only) and never gated. Sequential mode is single-session; if you
+3. Mid-run, push is OPTIONAL (backup only) and never gated — but the TERMINAL stop runs
+   the Ship step (Phase 0, v12.0.0): where the repo's own docs carry standing publish
+   authorization, an unpushed tree is unfinished work, not caution. Sequential mode is
+   single-session; if you
    ever run two dispatch sessions on one local queue they race on index.yaml — don't
    (Phase 0's checkout lock now stops the second run at start, v11.6.0).
 
 Every status transition uses the same convention — one entry, its own commit:
-`chore(goals): claim|complete|block|archive <id>`. These four are dispatch's closed verb
-set; the one status write dispatch does NOT own is define-goal's `chore(goals): amend <id>`,
+`chore(goals): claim|complete|block|archive|retire <id>`. These five are dispatch's closed
+verb set (`retire` since v12.0.0 — the Self-heal section's terminal disposition for a
+disproven-premise goal: entry to `archive.yaml` with `status: retired` + reason, file to
+`docs/goals/done/`, one commit); the one status write dispatch does NOT own is
+define-goal's `chore(goals): amend <id>`,
 which requeues a `blocked` goal after repairing its contract (needs-you class
-`contract defect (…)` above).
+`contract defect (…)` above — in-run via Self-heal, by hand otherwise).
 
 ## Re-entrancy — idempotent iterations
 
@@ -343,10 +446,11 @@ where it left off:
    final report named a blocker, set `blocked` with that reason. A report that declares
    `GOAL_UNREACHABLE` (the acceptance criteria can be neither satisfied nor shown measurable
    after honest attempts) is a contract defect, not a work failure: set `blocked` with reason
-   `contract defect: <criterion> unreachable` and surface it under needs-you as class
-   `contract defect (unreachable)` (the human re-specifies via `define-goal --amend`) — do NOT
+   `contract defect: <criterion> unreachable` — do NOT
    respawn it, a re-run hits the
-   same unmeasurable check. A final report declaring `CONTRACT_AMBIGUOUS` routes identically
+   same unmeasurable check; the Self-heal pass then amends or retires it in-run
+   (needs-you class `contract defect (unreachable)` only when self-heal has already
+   failed on it). A final report declaring `CONTRACT_AMBIGUOUS` routes identically
    as class `contract defect (ambiguous)` (reason `contract defect: <criterion> ambiguous`) —
    a respawn guesses at the same fork. Otherwise respawn — but distinguish a transient infrastructure
    death (connection closed mid-response, parse error, 529 overloaded, a stream-idle
@@ -408,9 +512,19 @@ override. Advisory by design: the claim protocol still guards the QUEUE — the 
 guards the TREE, which the queue's commit ledger cannot see (uncommitted implementer
 work, live lanes).
 
-Confirm the working tree is clean (dirty or diverged → stop and report rather than stash
-silently). If `docs/goals/index.yaml` is missing, report "no goals queue — create goals with
-/define-goal" and end the iteration.
+Confirm the working tree is clean. **A dirty tree is handled, not a refusal (v12.0.0).**
+Foreign uncommitted changes at run start: FIRST look for a live concurrent writer — a
+fresh checkout lock, or foreign files modified within the last ~10 minutes — and if one
+is plausible, stop with needs-you class `checkout busy` (never commit into a contested
+tree; three real two-writer collisions, 2026-08-18). No live writer → quarantine the
+dirt in ONE labeled commit, `chore(wip): foreign tree state at drain start`, name it in
+the report, and PROCEED — the commit predates every `gate_base`, so no gate verdict
+covers it, and it is never squashed into any goal's commit. Never stash silently, and
+never end a run over dirt nobody is writing (measured 2026-08-18: a drain refused to
+start over unrelated dirty files 24 minutes after the owner had said "full complete all
+remaining things"). A DIVERGED branch still stops and reports — that is history
+surgery, not dirt. If `docs/goals/index.yaml` is missing, report "no goals queue —
+create goals with /define-goal" and end the iteration.
 
 If `config.base` is set and the current branch != `config.base`, STOP and report — you are on
 the wrong working branch; checkout `<config.base>` first (mirroring the per-goal `base:`
@@ -425,6 +539,28 @@ drained`, inbox pointer per Phase 4); a run that finds the queue already drained
 items — conversion is the next visible action, never a buried footnote) and stops. A terminal stop still runs Phase 4 first — the drained fire reports and heartbeats
 before stopping. A later `/dispatch` (or `/loop`) re-run picks up newly-added goals — a `/define-goal` +
 `/dispatch` resumes from wherever the queue now stands.
+
+**Ship step — every terminal stop (v12.0.0): unshipped is not done.** Before the
+closing line, if the target repo's OWN CLAUDE.md/AGENTS.md carries a standing
+authorization to publish — "push every time", "commit and push without asking", a named
+release command declared pre-authorized — RUN that path now and put the outcome in the
+closing line (`shipped: <push|command> ok` / `ship FAILED: <one clause>` as needs-you
+class `environment failure`). No standing authorization in the repo's docs → one clause,
+`not shipped (no standing authorization)`, and nothing more — never an offer, never
+"say the word". The rule keys STRICTLY off the target repo's own docs; dispatch never
+invents a deploy. Measured 2026-08-18: a run reported `21/21 done` with 30 unpushed
+commits in a repo whose CLAUDE.md both authorizes and REQUIRES the push — the owner
+found out a day later that "done" had shipped nothing, and a manual recovery session
+did the release.
+
+**Chain to the inbox — a user-invoked flagless drain finishes the loop (v12.0.0).**
+When a flagless drain the USER invoked ends `stopped: drained` with ≥1 unconverted
+inbox line, do not point at `/process-inbox` — INVOKE it, flagless, once. Chain guards,
+both hard: never when THIS dispatch run was itself invoked by process-inbox step 6 (the
+chain never loops), and at most one chain per session. Count-limited runs, solo mode,
+and stops other than `drained` keep the pointer instead — the chain is for "one
+command, everything done", not for every fire. (The pointer alone measured as a 10.5-hour
+human latency on 45 captured items, 2026-08-17.)
 
 At end-of-drain only (NOT per-goal — no polling), if the working branch has a remote AND `gh`
 is available and authenticated, do ONE non-blocking check of the latest CI run on the current
@@ -636,7 +772,8 @@ For each claimed goal, in order:
    criterion no command can settle **needs independent review** and tells the goal author it
    reaches a human under needs-you at integration — so after the squash, re-read
    `docs/goals/<id>.md` and collect every acceptance criterion carrying that marker. For each
-   one, emit a needs-you item as class `needs independent review` (needs-you above supplies
+   one, emit an `fyi:` item as class `needs independent review` (an observation, never a
+   decision — the two-channel rule; needs-you above supplies
    the `→` half; this class has no `index.yaml` block reason to quote — the goal PASSed — so
    its `<reason>` half is the criterion's own subject, e.g. `007 — subjective criterion:
    checkout page calm`). Render the `→` half as **what to run and what to look for** — the
@@ -691,7 +828,9 @@ proposal — and give each item exactly ONE of these four dispositions:
    it FAIL_FIXABLE (`$DISPATCH_REFS/escalation-and-repair.md`). A DONE_WITH_CONCERNS
    whose concern invalidates an acceptance criterion is not a PASS.
 2. **Dismiss** — verified false, purely cosmetic, or already tracked → one line of
-   reasoning in the fire's report. A dismissal without reasoning is disposition 3 or 4.
+   reasoning in the goal's report file (the `## Orchestrator` section — "the fire's
+   report" is always that FILE, never the chat turn; Phase 4's envelope).
+   A dismissal without reasoning is disposition 3 or 4.
 3. **Capture** — real, outside this goal's contract, AND over the capture bar →
    append ONE line to
    `docs/goals/inbox.md` (create the file on first use) and commit it
@@ -704,8 +843,8 @@ proposal — and give each item exactly ONE of these four dispositions:
    or externally visible.
 4. **Report-only** — real but under the bar: latent or unreachable-today
    findings, fail-safe residuals, deliberate contract-mandated tradeoffs,
-   test-caption/comment-wording nits, watch items. One line in the fire's report
-   naming the item and this disposition; its full detail already lives in the
+   test-caption/comment-wording nits, watch items. One line in the goal's report
+   file naming the item and this disposition; its full detail already lives in the
    implementer's/reviewer's report file, which is its permanent home (git and
    the report dir keep it findable). Measured 2026-08-13/16 across two real
    repos (~70 settles): capture-everything appended ~1.5–2.5 inbox lines per
@@ -847,9 +986,31 @@ alongside an id is ignored — the id wins). Guards before claiming: a named goa
 dependency order is part of the contract (amend the chain via define-goal to mean it);
 an id matching no entry reports the near-misses.
 
-## Phase 4 — report (always, exactly one line)
+## Phase 4 — report (the report IS the message — nothing rides along)
 
 `[dispatch] <done>/<total> done [<bar>] · ready: <count> · blocked: <count> · inbox: <unconverted inbox lines, omit when zero> · current: <id or none> · last: <id PASS (reviewed | review-skipped: mechanical)|FAIL|none> · needs-you: <blocked goals + human decisions, or nothing>`
+
+**The output envelope (v12.0.0) — the rule the line format never stated.** Measured
+2026-08-16/19 across eleven real orchestrator sessions on two harnesses: every session
+emitted the report line correctly, then wrapped it in 2,000–4,100 characters of
+headed prose — "What shipped", "judgment calls worth your review", "two things I'd
+flag about my own conduct" — including 2,749 characters for a single-goal run. The
+owner's verdict on that output, verbatim: "i don't want to see bullshit." So:
+
+- **A per-goal settle turn is the report line and NOTHING else.** No headings, no
+  narrative recap of the goal, no gate story, no "claiming X next". Everything you
+  want to say about a goal — findings verified or refuted, dismissal reasoning,
+  Report-only items, judgment calls where you overrode a reviewer — is APPENDED to
+  the goal's report file (`~/.local/state/pg-dispatch/<SLUG>/reports/<id>-report.md`,
+  under an `## Orchestrator` heading). That file is where Settle triage's "one line
+  of reasoning" lives too — "the fire's report" always means that FILE, never the
+  chat turn.
+- **The closing turn is: the report line, the summary line, one bullet per needs-you
+  item, one bullet per fyi item. Nothing else, and never a second closing message.**
+  No "What happened" section, no tables, no epilogue after a system reminder. Hard
+  ceiling ~15 lines; a needs-you bullet's reason half stays under its ~120-char cap.
+- **Interstitial narration between report lines is at most one short sentence** and
+  never restates a finding, a diff, or a verdict.
 
 Lead with **progress** (`<done>/<total>`), never `ready/total` — a bare `ready/total` reads
 as "nothing done" to a human. Every number carries its label. The counts come from the index
@@ -874,21 +1035,28 @@ Anchor example: 19/21 → round(18.10) = 18 filled → `[███████�
 
 **Every multi-goal run** (the drain default included): the one-line report above is
 emitted after EACH settled goal, and one final summary line closes the run:
-`[dispatch] worked <n>: <id PASS|FAIL, …> · stopped: <count reached|drained|budget exhausted|environment brake>`
+`[dispatch] worked <n>: <id PASS|FAIL|RETIRED, …> · stopped: <count reached|drained|budget exhausted|environment brake> · shipped: <outcome per the Ship step> · <all complete | outstanding: <n> for you>`
 (the summary line itself appends no extra heartbeat — heartbeats are per-goal-cycle).
-When the run stops with a non-empty inbox, the summary's last words are the conversion
+**The closing state is a word, not an essay (v12.0.0):** `all complete` when the queue
+is drained, nothing is blocked, and needs-you is empty — the literal phrase the owner
+asked to see; otherwise `outstanding: <n> for you` where `<n>` counts exactly the
+needs-you bullets that follow (fyi items never count). When the run stops with a
+non-empty inbox and the Phase 0 chain rule doesn't fire (count-limited, solo, or an
+in-chain run), the summary carries the conversion
 pointer — `inbox: <N> captured → /process-inbox` — so captured follow-ups are the next
 visible action, never a buried footnote. This summary line is the run's ONE closing
 line; Phase 0's `factory drained` line replaces it only when the run worked zero goals
 (the queue was already drained at start — see the terminal stop, Phase 0).
 
-needs-you lists everything currently waiting on the human: every goal with explicit `blocked`
-status (with the dependents stuck behind it), `GOAL_UNREACHABLE`/`CONTRACT_AMBIGUOUS`/
-`FAIL_CONTRACT` contract
-amendments, a `base:`-mismatched goal needing a branch switch, `budget exhausted`, and the
-non-blocking observations — a red CI run, and every criterion marked
+needs-you lists what is genuinely waiting on the human AFTER the Self-heal pass has run:
+goals still `blocked` because their defect needed a second amend or hides an owner fork
+(with the dependents stuck behind them), a `base:`-mismatched goal needing a branch
+switch, `budget exhausted`, an environment the run could not clear. The
+non-blocking observations — a red CI run, a `recurring lesson`, every criterion marked
 **needs independent review** on a goal this fire PASSed (Working a goal, step 4: those goals
-are `completed`, so the item asks for a look, not a decision). A
+are `completed`, so the item asks for a look, not a decision), a goal this run retired —
+render under **`fyi:`** instead (the two-channel rule in the needs-you section): same
+line shape, after the needs-you bullets, never counted in `outstanding:`. A
 **dep-blocked** goal (not_started, waiting on another goal still running or not yet ready) is
 NOT human-blocked: it unblocks on its own, so it never appears here on its own — only as a
 "dependent stuck behind" a goal that is human-blocked. Every iteration, not only new ones —

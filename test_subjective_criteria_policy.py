@@ -86,7 +86,7 @@ def table_span() -> list[str]:
 def contents_rules() -> str:
     """The Phase 4 paragraph enumerating what needs-you carries."""
     text = unwrap(read(DISPATCH))
-    start = text.index("needs-you lists everything currently waiting on the human")
+    start = text.index("needs-you lists what is genuinely waiting on the human")
     return text[start:text.index("**Stalled factory", start)]
 
 

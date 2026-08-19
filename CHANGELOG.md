@@ -13,6 +13,81 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [12.0.0] — 2026-08-19
+
+**The self-healing drain — no avoidable needs-you, no essays.** Owner mandate
+2026-08-19 ("i want full completions, i don't want to see needs-you, and it
+writes too long responses after goals"), backed by four-analyst forensics over
+the last 3 days of romy + nonresidenttax sessions on BOTH harnesses: **~37
+needs-you items surfaced; ~3 genuinely required the owner.** The dominant
+classes were the factory queueing its own homework as the owner's — human-only
+contract amends (~10 min of factory work each, "no owner fork" recorded in the
+amends themselves), an OWNER bucket that topic-matched instead of proving
+consequences (the same 5 items re-presented across 4 sessions; 4 of 5 dissolved
+under one read-only production query), goals authored undrainable by
+define-goal's own stop-and-confirm rule, and false-premise goals with no way to
+die. Meanwhile every session emitted the mandated report line correctly — then
+wrapped it in 2,000–4,100 chars of "What shipped / worth your attention" prose
+(2,749 chars for a one-goal run), and five "say the word" closers cost ~18h of
+idle wall-clock. Breaking changes, hence the major:
+
+- **dispatch — Self-heal.** Every run routes contract-defect blocks (new AND
+  the pre-existing blocked backlog) through define-goal's amend machinery
+  in-run under a drain waiver: red-team unchanged, one amend-and-re-claim per
+  goal per run, true owner forks still stop. A goal whose premise the evidence
+  disproves is **retired** — `retire` is the fifth claim verb (`status:
+  retired`, entry to `archive.yaml` with reason, file to `done/`, terminal,
+  satisfied as a dependency; goals-status hides and counts it). The blanket
+  "never auto-amend" rule is gone.
+- **dispatch — two channels.** `needs-you:` carries decisions only;
+  observations (pre-existing CI red, recurring lessons, needs-independent-
+  review, retirements) move to `fyi:` and never count as waiting on the owner.
+  Reasons cap at ~120 chars (the full text stays in index/report files — a
+  real 740-char index reason drove every session into prose).
+- **dispatch — the output envelope.** The settle turn IS the report line; the
+  closing turn is line + summary + bullets and nothing else; "the fire's
+  report" always means the report FILE. The summary ends **`all complete`** —
+  the literal phrase the owner asked for — or `outstanding: <n> for you`.
+- **dispatch — declarative stalls banned.** "I don't push without you asking",
+  "not started — dirty tree", "say the word" are the permission-ask miss in
+  statement form, closing turn included. A terminal stop runs the repo's own
+  pre-authorized publish path (**ship step** — a run had reported 21/21 done
+  over 30 unpushed commits in a push-is-deploy repo); dirty trees are
+  quarantine-committed after a live-writer check, not refused; a user-invoked
+  flagless drain that ends drained with inbox lines chains into
+  /process-inbox once (loop-guarded).
+- **dispatch — infra resilience.** Billing/auth/overload errors join the
+  pin-fallback class and end in a CLEAN settle (lock released) instead of a
+  mid-wave hang (measured: 4h46m); Droid `--parallel` is refused out loud and
+  poll-loop lane emulation is banned (measured: 293 poll calls = 34% of a
+  run's turns, drained the account balance); Droid spawns pass `await: true`;
+  a warm resume that replays with zero new commits disables warm resume for
+  the run.
+- **define-goal — contracts that can actually finish.** The reality check
+  grows to eight: **Drainability** (no criterion may need a human's word
+  mid-goal — the old rule MANDATING stop-and-confirm gates on criteria-path
+  irreversible actions is inverted to a split rule), **Premise** (justifying
+  claims verified against a primary artifact, dated, refutation-tested for
+  bugs), and **fail-at-base/pass-at-head acceptance** (live-network reports
+  are evidence, never acceptance; not-yet-true capabilities are `depends_on`
+  priors). Amend mode gains the drain waiver and the retire path; inbox
+  intake refuses aggregate-only premises and verifies named mechanisms live.
+  `agents/contract-red-team.md` carries Drainability + Premise in lockstep
+  and no longer endorses criteria-path gates.
+- **process-inbox — the OWNER bar.** OWNER requires a PROVEN consequence:
+  run the read-only blast-radius check first and attach it; an empty target
+  is not a data-loss decision; a code edit behind the factory's gate is never
+  OWNER. Carried-over OWNER lines are re-adjudicated each sweep (the parking
+  lot is closed). The report is a hard envelope: counts line + dispatch's
+  line + one line per OWNER item, `<O>` equal to the lines printed.
+
+The safety line is unchanged and now exclusive: money, deletion/exposure of
+data that provably exists, and anything irreversible or externally visible
+outside the repo's own gated path still stop for the owner — nothing else
+does. RED-baselined per repo doctrine (three dry-run agents, old text vs new,
+every scenario flipped) and GREEN-verified (62 policy tests, incl. the new
+`test_self_heal_policy.py`).
+
 ## [11.8.0] — 2026-08-18
 
 **The visual explainer.** Owner ask 2026-08-18: adapt HumanLayer's `show-me`

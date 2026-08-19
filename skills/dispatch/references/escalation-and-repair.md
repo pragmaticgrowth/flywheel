@@ -21,7 +21,12 @@ resume costs a fraction of a cold spawn; turn count beats token price), resume i
 the findings list plus the receiving-review rules below. When the harness cannot resume
 (Droid, an agent that died or errored, or the resume itself fails), spawn ONE fresh
 repair agent instead — same brief as the implementer, same resolved implementer tier,
-findings appended. Either way it is one repair round: re-gate after it (commands in the
+findings appended. **Replay detection (v12.0.0):** a warm resume that returns with ZERO
+new commits and a report indistinguishable from the previous one is the harness
+replaying the old turn, not work — treat that resume as failed, disable warm resume for
+the REMAINDER of this run, and spawn fresh (measured 2026-08-17 on Droid: three
+consecutive warm resumes each "completed" by replaying the implementer's prior final
+message verbatim with zero work, caught only by manual lane inspection). Either way it is one repair round: re-gate after it (commands in the
 background, focused re-check in the foreground, join both); a second identical FAIL →
 roll back + block, exactly as the no-progress rule requires. Never add a second repair
 round to a warm resume — if the warm round couldn't fix it, the finding goes to a human
@@ -52,14 +57,21 @@ the rest of the goal, not a risk the first pass left unchecked.
 
 A `CONTRACT_AMBIGUOUS` return is a contract defect caught early, not a work failure: if
 any work commits landed before the stop, `git reset --hard <gate_base>`; set the goal
-`blocked — contract defect: <criterion> ambiguous` and surface it under needs-you as
-class `contract defect (ambiguous)` (the human re-specifies via `define-goal --amend`) —
+`blocked — contract defect: <criterion> ambiguous` —
 never respawn it to "try a reading", the respawn guesses at the same fork.
 
 `GOAL_UNREACHABLE` likewise skips the ladder: roll back any work commits
 (`git reset --hard <gate_base>`) and block with reason
-`contract defect: <criterion> unreachable` (needs-you class
-`contract defect (unreachable)` — never a respawn; same routing as Re-entrancy).
+`contract defect: <criterion> unreachable` — never a respawn; same routing as
+Re-entrancy.
+
+**Then Self-heal owns the block (v12.0.0 — SKILL.md, Self-heal section).** Every
+contract-defect block above routes through define-goal's amend machinery IN-RUN under
+the drain waiver (red-team unchanged, one amend-and-re-claim per goal per run), and a
+block whose evidence disproves the goal's premise RETIRES the goal instead
+(`chore(goals): retire <id>`). It reaches needs-you as a `contract defect (…)` class
+only when self-heal already failed on it this run, or the amend hits a true owner
+fork.
 
 A live `NEEDS_CONTEXT` or `BLOCKED` return skips the gate — there is nothing to certify
 yet — but does NOT go straight to `blocked`: run the escalation ladder first.
@@ -87,7 +99,8 @@ certifies the whole `gate_base..HEAD` diff regardless of which spawn produced it
    `inherit`/`heavy` skip this rung — capability was not the gap there.
 3. **Too large / contract wrong.** A blocker that reads "the goal is too large" or "the
    contract is wrong" → the contract-defect route: roll back, block with
-   `contract defect: <reason>` (needs-you class `contract defect (too large / wrong)` —
-   define-goal splits or re-specifies). Never respawn — a respawn hits the same wall.
+   `contract defect: <reason>`, then the Self-heal pass amends (or splits via
+   define-goal) in-run — needs-you class `contract defect (too large / wrong)` only
+   when self-heal fails. Never respawn — a respawn hits the same wall.
 4. **Anything else** → roll back any work commits and block with the implementer's
    stated reason, as today.

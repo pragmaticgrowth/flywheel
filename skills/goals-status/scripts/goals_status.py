@@ -184,16 +184,18 @@ def build_report(goals_dir):
     archived = load_index(os.path.join(goals_dir, "archive.yaml"))
 
     # a dep is "still blocking" only if it sits in the live queue unfinished;
-    # completed (in index) or archived (absent) deps count as satisfied.
+    # completed/retired (in index) or archived (absent) deps count as satisfied.
     incomplete = {gid for gid, e in index_goals.items()
-                  if _status(e) != "completed"}
+                  if _status(e) not in ("completed", "retired")}
+    retired = sum(1 for e in index_goals.values() if _status(e) == "retired") \
+        + sum(1 for e in archived.values() if _status(e) == "retired")
     completed = sum(1 for e in index_goals.values() if _status(e) == "completed") \
-        + len(archived)
+        + sum(1 for e in archived.values() if _status(e) != "retired")
 
     records = []
     for gid, entry in index_goals.items():
         raw = _status(entry)
-        if raw == "completed":
+        if raw in ("completed", "retired"):
             continue
         st = raw if raw in STATUS_ORDER else "not_started"
         gf = parse_goal_file(os.path.join(goals_dir, gid + ".md"))
@@ -213,7 +215,8 @@ def build_report(goals_dir):
             "ready": st == "not_started" and not waiting_on,
         })
     records.sort(key=lambda r: (STATUS_ORDER.index(r["status"]), r["id"]))
-    return {"open": len(records), "completed": completed, "goals": records}
+    return {"open": len(records), "completed": completed, "retired": retired,
+            "goals": records}
 
 
 # ---- rendering ----------------------------------------------------------------
@@ -224,8 +227,10 @@ def _meta_str(rec):
 
 def _empty_line(report):
     c = report["completed"]
-    if c:
-        return "docs/goals — nothing open · %d completed \U0001f389\n" % c
+    r = report.get("retired", 0)
+    tail = " · %d retired" % r if r else ""
+    if c or r:
+        return "docs/goals — nothing open · %d completed%s \U0001f389\n" % (c, tail)
     return "docs/goals — queue is empty\n"
 
 
@@ -257,8 +262,13 @@ def render_detailed(report):
     if report["open"] == 0:
         return _empty_line(report)
     c = report["completed"]
-    head = "docs/goals — %d open%s" % (
-        report["open"], " · %d completed (hidden)" % c if c else "")
+    r = report.get("retired", 0)
+    hidden = ""
+    if c:
+        hidden = " · %d completed (hidden)" % c
+    if r:
+        hidden += " · %d retired" % r
+    head = "docs/goals — %d open%s" % (report["open"], hidden)
     out = [head, ""]
     groups = _group(report["goals"])
     for st in STATUS_ORDER:
