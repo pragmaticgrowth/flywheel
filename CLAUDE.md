@@ -607,7 +607,16 @@ own review to the full panel, and is explicitly not a compliance miss.
   define-goal's `amend <id>` requeue of a blocked goal). One entry per commit,
   status-only-in-index; no push, no push-arbitration — the single session
   owns the branch. NNN minting is local too (a collision renumbers the NEW
-  goal only; never renumber existing goals).
+  goal only; never renumber existing goals). v12.2.0 (owner ask 2026-08-27,
+  grounded in a 4-day/91-goal timing analysis that needed git archaeology to
+  compute): the claim flip stamps `claimed_at:` and every terminal flip
+  (`complete|block|retire`) stamps `settled_at:` (UTC ISO-8601, seconds) on the
+  same entry edit — duration metadata, dispatch-only writes, NEVER control flow
+  (the stale-claim brake still counts heartbeat fires), optional on legacy
+  entries, carried verbatim into archive.yaml; dispatch's report line shows
+  each settled goal's claim-to-settle minutes and goals-status shows elapsed
+  age on in_progress/blocked entries. Timestamps are not status, so
+  status-only-in-index holds unchanged.
 - Skills mandates come in three layers: method skills (writing-plans,
   TDD, verification-before-completion, and a lightweight subagent-driven
   verifier/reviewer loop for non-trivial work) hardcoded in dispatch's brief;

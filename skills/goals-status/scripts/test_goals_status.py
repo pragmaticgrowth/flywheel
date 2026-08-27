@@ -255,6 +255,42 @@ def test_cli_malformed_index_exits_2_not_silently_empty():
     assert out == ""            # never print a half-view as if it were the queue
 
 
+
+
+# ---- v12.2.0 timestamps (claimed_at / settled_at → elapsed display) -----------
+
+def test_age_str_humanizes_and_degrades():
+    import datetime
+    now = datetime.datetime(2026, 8, 27, 12, 0, tzinfo=datetime.timezone.utc)
+    assert gs._age_str("2026-08-27T11:19:00Z", now) == "41m"
+    assert gs._age_str("2026-08-27T09:42:00Z", now) == "2.3h"
+    assert gs._age_str("2026-08-24T12:00:00Z", now) == "3d"
+    assert gs._age_str("", now) == ""                 # legacy entry: field absent
+    assert gs._age_str(None, now) == ""
+    assert gs._age_str("not-a-date", now) == ""       # garbage never crashes the view
+    assert gs._age_str("2099-01-01T00:00:00Z", now) == ""  # future = clock skew, hide
+
+
+def test_timestamps_render_in_open_view():
+    import datetime
+    d = tempfile.mkdtemp(prefix="goals-status-ts-")
+    claimed = (datetime.datetime.now(datetime.timezone.utc)
+               - datetime.timedelta(minutes=41)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    settled = (datetime.datetime.now(datetime.timezone.utc)
+               - datetime.timedelta(hours=5)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    with open(os.path.join(d, "index.yaml"), "w") as f:
+        f.write(
+            "goals:\n"
+            f"  010-live: {{status: in_progress, claimed_at: {claimed}}}\n"
+            f'  011-stuck: {{status: blocked, reason: "gate FAIL", settled_at: {settled}}}\n'
+            "  012-plain: {status: in_progress}\n")
+    out = gs.render_detailed(gs.build_report(d))
+    assert "claimed 41m ago" in out
+    assert "(blocked 5.0h ago)" in out
+    # legacy entry without the fields renders exactly as before — no empty parens
+    assert "claimed  ago" not in out and "()" not in out
+
+
 if __name__ == "__main__":
     fns = [g for n, g in sorted(globals().items()) if n.startswith("test_")]
     for fn in fns:

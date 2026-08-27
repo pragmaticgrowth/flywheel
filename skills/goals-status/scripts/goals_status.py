@@ -15,7 +15,7 @@ PyYAML is the only parser: factory-doctor already treats a missing PyYAML and a
 malformed index as BLOCKERs, so this view points at that fix rather than
 hand-rolling a second, weaker YAML reader.
 """
-import argparse, os, re, subprocess, sys, textwrap
+import argparse, datetime, os, re, subprocess, sys, textwrap
 try:
     import yaml
 except ImportError:
@@ -175,6 +175,32 @@ def _status(entry):
     return str((entry or {}).get("status") or "").strip()
 
 
+def _age_str(value, now=None):
+    """Humanized elapsed time since an index timestamp ('41m', '2.3h', '3d').
+
+    Timestamps (`claimed_at`/`settled_at`, dispatch v12.2.0) are optional
+    metadata — anything unparseable returns '' and is simply not shown.
+    """
+    if not value:
+        return ""
+    try:
+        ts = value if isinstance(value, datetime.datetime) \
+            else datetime.datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=datetime.timezone.utc)
+        now = now or datetime.datetime.now(datetime.timezone.utc)
+        mins = (now - ts).total_seconds() / 60
+    except (ValueError, TypeError):
+        return ""
+    if mins < 0:
+        return ""
+    if mins < 90:
+        return "%dm" % round(mins)
+    if mins < 48 * 60:
+        return "%.1fh" % (mins / 60)
+    return "%dd" % round(mins / 60 / 24)
+
+
 def build_report(goals_dir):
     """Join index status + goal-file title/brief. None if there's no index.yaml."""
     index_path = os.path.join(goals_dir, "index.yaml")
@@ -213,6 +239,10 @@ def build_report(goals_dir):
             "reason": str(entry.get("reason") or "") if st == "blocked" else "",
             "waiting_on": waiting_on if st == "not_started" else [],
             "ready": st == "not_started" and not waiting_on,
+            # elapsed since claim (in_progress) / since it blocked (blocked);
+            # '' when the entry predates the v12.2.0 timestamp fields.
+            "age": _age_str(entry.get("claimed_at")) if st == "in_progress"
+                   else _age_str(entry.get("settled_at")) if st == "blocked" else "",
         })
     records.sort(key=lambda r: (STATUS_ORDER.index(r["status"]), r["id"]))
     return {"open": len(records), "completed": completed, "retired": retired,
@@ -252,7 +282,10 @@ def _detailed_goal(rec, width=68):
         lines.append("  › " + wrapped[0])
         lines.extend("    " + w for w in wrapped[1:])
     if rec["status"] == "blocked":
-        lines.append("  ✗ reason: " + (rec["reason"] or "(no reason recorded)"))
+        age = " (blocked %s ago)" % rec["age"] if rec.get("age") else ""
+        lines.append("  ✗ reason: " + (rec["reason"] or "(no reason recorded)") + age)
+    elif rec["status"] == "in_progress" and rec.get("age"):
+        lines.append("  ▶ claimed %s ago" % rec["age"])
     elif rec["status"] == "not_started" and rec["waiting_on"]:
         lines.append("  ⏳ waiting on " + ", ".join(rec["waiting_on"]))
     return "\n".join(lines)

@@ -413,7 +413,7 @@ The index is the claim ledger. A claim is a status flip committed BEFORE impleme
 2. Flip exactly one entry to `in_progress` and `git commit -m "chore(goals): claim <id>"`
    (queue commits are always their own commit, never fused with code — sole sanctioned
    exception: the plan-mirror edit rides `chore(goals): complete <id>`, Working a goal
-   step 4).
+   step 4). The same entry edit stamps `claimed_at:` — see Timestamps below.
 3. Mid-run, push is OPTIONAL (backup only) and never gated — but the TERMINAL stop runs
    the Ship step (Phase 0, v12.0.0): where the repo's own docs carry standing publish
    authorization, an unpushed tree is unfinished work, not caution. Sequential mode is
@@ -429,6 +429,24 @@ disproven-premise goal: entry to `archive.yaml` with `status: retired` + reason,
 define-goal's `chore(goals): amend <id>`,
 which requeues a `blocked` goal after repairing its contract (needs-you class
 `contract defect (…)` above — in-run via Self-heal, by hand otherwise).
+
+**Timestamps (v12.2.0) — the same entry edit, no extra commit.** The claim flip writes
+`claimed_at: <UTC ISO-8601, second precision, e.g. 2026-08-27T09:14:02Z>` on the entry;
+every terminal flip — `complete`, `block`, `retire` — writes `settled_at:` the same way
+(blocked goals get timing too). Rules: dispatch is the only writer (define-goal's amend
+and humans never touch them); a re-claim (escalation-ladder re-spawn, Self-heal
+amend-and-re-claim, stale-claim resume that re-spawns) OVERWRITES `claimed_at` and
+DELETES any stale `settled_at` from a prior sitting — each sitting starts its own
+clock, the prior sitting's numbers live in the goal's report file; in parallel lane
+mode `claimed_at` is the lane claim and `settled_at` is
+integration settle, so a lane's duration includes its wait behind the integration lock.
+These fields are metadata, NEVER dispatch control flow: no claim, brake, or gate
+decision branches on them — the stale-claim brake still counts heartbeat fires, not
+wall-clock (Re-entrancy rule 2), which is what survives a usage-limit pause. Missing
+fields on pre-existing entries are normal, never a doctor finding; a missing or
+malformed field falls back to the claim/settle commit author dates (git is the
+recovery path, exactly as for `gate_base`); archive moves carry the fields verbatim
+(duration analysis reads `archive.yaml` without git archaeology).
 
 ## Re-entrancy — idempotent iterations
 
@@ -988,7 +1006,7 @@ an id matching no entry reports the near-misses.
 
 ## Phase 4 — report (the report IS the message — nothing rides along)
 
-`[dispatch] <done>/<total> done [<bar>] · ready: <count> · blocked: <count> · inbox: <unconverted inbox lines, omit when zero> · current: <id or none> · last: <id PASS (reviewed | review-skipped: mechanical)|FAIL|none> · needs-you: <blocked goals + human decisions, or nothing>`
+`[dispatch] <done>/<total> done [<bar>] · ready: <count> · blocked: <count> · inbox: <unconverted inbox lines, omit when zero> · current: <id or none> · last: <id PASS (reviewed, <N>m | review-skipped: mechanical, <N>m)|FAIL (<N>m)|none> · needs-you: <blocked goals + human decisions, or nothing>`
 
 **The output envelope (v12.0.0) — the rule the line format never stated.** Measured
 2026-08-16/19 across eleven real orchestrator sessions on two harnesses: every session
@@ -1023,7 +1041,15 @@ after this iteration's mutations:
   CONTRACT_AMBIGUOUS short-circuit — reports `<id> FAIL` here; needs-you carries the detail).
   A gated `last` also names its review decision — `<id> PASS (reviewed)` or
   `<id> PASS (review-skipped: mechanical)` — so the mechanical carve-out (Working a goal,
-  step 3) leaves an audit trail in every fire's report, never a silent skip.
+  step 3) leaves an audit trail in every fire's report, never a silent skip. `last` also
+  carries the goal's claim-to-settle wall-clock as `<N>m` (integer minutes, 0.5 rounds
+  up like the bar; `settled_at` − `claimed_at` from the index entry the settle just
+  wrote; fall back to the claim/settle commit author dates when a field is missing) —
+  e.g. `last: 172 PASS (reviewed, 41m)`. A retirement shows no duration — Self-heal
+  retires backlog goals this run never claimed, so there is no sitting to time.
+  A duration is a FIELD, never a sentence — no narration about pace rides the line —
+  and read it with the same skepticism the timing data earned: a sitting spanning a
+  usage-limit pause looks slow and isn't (the report file has the story).
 - Any residual `in_progress` entry this fire could not settle (e.g. one claimed on a different
   `base:` branch) counts into `blocked` (as blocked-pending) so that `done + ready + blocked`
   always equals `total` — the reconciliation the report line promises a human never silently
@@ -1035,7 +1061,9 @@ Anchor example: 19/21 → round(18.10) = 18 filled → `[███████�
 
 **Every multi-goal run** (the drain default included): the one-line report above is
 emitted after EACH settled goal, and one final summary line closes the run:
-`[dispatch] worked <n>: <id PASS|FAIL|RETIRED, …> · stopped: <count reached|drained|budget exhausted|environment brake> · shipped: <outcome per the Ship step> · <all complete | outstanding: <n> for you>`
+`[dispatch] worked <n>: <id PASS (<N>m)|FAIL (<N>m)|RETIRED, …> · stopped: <count reached|drained|budget exhausted|environment brake> · shipped: <outcome per the Ship step> · <all complete | outstanding: <n> for you>`
+(each worked goal carries its claim-to-settle minutes — same computation as `last`,
+and RETIRED likewise shows none)
 (the summary line itself appends no extra heartbeat — heartbeats are per-goal-cycle).
 **The closing state is a word, not an essay (v12.0.0):** `all complete` when the queue
 is drained, nothing is blocked, and needs-you is empty — the literal phrase the owner

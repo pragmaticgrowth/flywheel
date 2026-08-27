@@ -12,6 +12,11 @@ brief. Completed goals are hidden (just counted), and so are `retired` goals
 separately in the header, satisfied as a dependency). Read-only — it never writes to
 `docs/goals/` (dispatch owns queue state).
 
+Where the index entry carries dispatch's v12.2.0 timestamps, an `in_progress`
+goal shows how long ago it was claimed and a `blocked` goal how long ago it
+blocked — entries without the fields (anything queued before v12.2.0) simply
+show no age, never an error.
+
 ## Run
 
 One command, run from the target repo (the helper finds `docs/goals/` from the

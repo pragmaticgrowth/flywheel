@@ -65,7 +65,10 @@ post-push observation, never a gate.
 archive-bound, for disproven-premise goals — v12.0.0). Every status write is flip-one-entry
 → commit (`chore(goals): claim|complete|block|archive|retire <id>`, plus define-goal's
 `chore(goals): amend <id>` requeue — in-run via dispatch's Self-heal drain waiver, by
-hand otherwise).
+hand otherwise). Since v12.2.0 the claim flip also stamps `claimed_at:` and every
+terminal flip `settled_at:` (UTC ISO-8601) on the entry — metadata for duration
+visibility, written only by dispatch, never read for control flow, optional on
+pre-existing entries; timestamps are not status, so status-only-in-index holds.
 
 The full rationale, the config-block schema, the model-routing rubric, and the history
 of superseded models (v3 worktree/PR model, retired `wish` and `telegram-message` skills)

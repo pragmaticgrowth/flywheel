@@ -13,6 +13,46 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [12.2.0] — 2026-08-27
+
+**Goal timing becomes visible — timestamps in the queue, minutes in the report
+line.** Owner ask 2026-08-27, grounded in a 4-day field analysis (both
+harnesses, 6 repos): 91 goals settled with a 68-minute median claim-to-settle,
+but every one of those numbers had to be reconstructed from `git log` — no
+index field, report line, or status view carried time at all (the format spec
+enumerated every field and had no timing slot; the one timing signal found in
+~16 MB of transcripts was improvised narration).
+
+- **dispatch — the claim protocol stamps timestamps.** The claim flip writes
+  `claimed_at:` and every terminal flip (`complete|block|retire`) writes
+  `settled_at:` (UTC ISO-8601, second precision) on the same one-entry edit —
+  no new commits, dispatch is the only writer. A re-claim overwrites
+  `claimed_at` (each sitting gets its own clock; prior sittings live in the
+  report file); lane mode stamps lane-claim → integration-settle, lock wait
+  included. Metadata, NEVER control flow: the stale-claim brake still counts
+  heartbeat fires (the rule that survives usage-limit pauses), missing fields
+  on legacy entries are normal everywhere, git author dates stay the
+  tiebreaker, archive moves carry the fields verbatim.
+- **dispatch — the report line carries minutes.** `last:` gains the goal's
+  claim-to-settle wall-clock (`172 PASS (reviewed, 41m)`; legacy entries fall
+  back to the claim/settle commit author dates), and the run summary's worked
+  list carries each goal's minutes. A duration is a FIELD, never a sentence —
+  the v12.0.0 output envelope is unchanged.
+- **goals-status — open goals show their age.** An `in_progress` goal shows
+  how long ago it was claimed, a `blocked` goal how long ago it blocked;
+  entries without the fields render exactly as before (tested: garbage or
+  future timestamps degrade to no age, never an error). Suite grown 14 → 16.
+
+RED/GREEN dry-run tested: the pre-change text left every timestamp scenario
+undecided; the new text decides all eight (claim write, block write,
+stale-claim resume unchanged, report-line format, legacy fallback, re-claim
+reset, lane semantics, writer exclusivity). The dry-run's review round closed
+six ambiguities before ship: rounding named (0.5 up, like the bar), retirements
+carry no duration, a re-claim clears the stale `settled_at`, the git fallback
+is for missing/malformed fields only (no competing "tiebreaker" reading), the
+template's `<N>m` sits in both PASS branches, and the brake cross-reference
+fixed.
+
 ## [12.1.0] — 2026-08-19
 
 **Two contract-scope defects the factory kept re-discovering, closed at the
