@@ -3,7 +3,7 @@ config:
   model: inherit
   skills: []
   verify:
-    - python3 -m pytest -q
+    - uv run --with pytest --python 3.13 pytest -q
   # budget:           # optional — uncomment to cap repeated dispatch fires
   #   max_goals_per_session: 1
 goals:
