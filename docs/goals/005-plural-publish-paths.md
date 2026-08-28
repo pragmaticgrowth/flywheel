@@ -21,7 +21,9 @@ Dispatch's Ship step today runs one path and emits one `shipped:` outcome. After
 
 provenance: inbox-drain. Verified 2026-08-28: `skills/dispatch/SKILL.md` Ship step (Phase 0) is singular — "RUN that path now", one `shipped:` / `ship FAILED:` outcome. `/root/nonresidenttax/AGENTS.md` declares both `main` auto-deploy (Vercel product) and per-Worker `pnpm --filter @nt/<app> deploy:production` (auth, edge, web, product-data, mcp, support). Keys strictly off the target repo's docs.
 
-Assumptions: "the diff touched" means the `gate_base..HEAD` (or, at a terminal drain stop, the commits this run produced) intersects a path the declaring doc ties to that publish command; if the docs do not map paths to services, run every declared path. `new file: test_plural_ship_policy.py`.
+Assumptions: "the diff touched" means the `gate_base..HEAD` (or, at a terminal drain stop, the commits this run produced) intersects a path the declaring doc ties to that publish command; if the docs do not map paths to services, run every declared path. `new file: test_plural_ship_policy.py` is the proving surface named in `acceptance:` — this goal is `type: feature`, so pg_validate's bug-only repro-direction overlay (the path that INCONCLUSIVEs when `acceptance:` names a file added by the fix) does not run.
+
+**Amended 2026-08-28:** implementer stopped CONTRACT_AMBIGUOUS (new-file runner vs existing module, citing goal 004). Settled reading: keep `acceptance:` on `test_plural_ship_policy.py`; 004's INCONCLUSIVE is `gtype == "bug"` only (`skills/dispatch/scripts/pg_validate.py`). provenance: dispatch-self-heal.
 
 ## Acceptance criteria
 
