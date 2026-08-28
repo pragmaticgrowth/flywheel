@@ -14,7 +14,7 @@ goals:
   005-plural-publish-paths: {status: completed, claimed_at: 2026-08-28T10:04:54Z, settled_at: 2026-08-28T10:21:33Z}
   006-inbox-prodcheck-lines: {status: completed, claimed_at: 2026-08-28T10:24:54Z, settled_at: 2026-08-28T10:39:45Z}
   007-drain-teammate-idle: {status: completed, claimed_at: 2026-08-28T10:39:58Z, settled_at: 2026-08-28T11:01:53Z}
-  008-droid-freshcheck-probe: {status: in_progress, claimed_at: 2026-08-28T12:07:25Z}
+  008-droid-freshcheck-probe: {status: blocked, claimed_at: 2026-08-28T12:07:25Z, settled_at: 2026-08-28T12:26:53Z, reason: "contract defect: acceptance names a new test file so base repro-direction is unrunnable; tests allow extra unsafe bare lens forms"}
   009-resume-from-increments: {status: not_started, depends_on: [004-enforce-report-file-gate]}
   010-subsystem-count-slice: {status: not_started}
   011-report-line-honesty: {status: not_started}
