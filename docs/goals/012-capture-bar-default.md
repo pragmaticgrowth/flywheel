@@ -9,7 +9,7 @@ size: S
 touches:
   - skills/dispatch/SKILL.md
 acceptance:
-  - uv run --with pytest --python 3.13 pytest -q test_capture_bar_policy.py
+  - uv run --with pytest --python 3.13 pytest -q
 ---
 
 ## Outcome (plain language)
@@ -20,11 +20,13 @@ The v11.6 capture bar still lists Capture before Report-only and the inbox-line 
 
 provenance: inbox-drain. Verified 2026-08-28: `skills/dispatch/SKILL.md:852-862` — Capture is gated on the bar, Report-only is "under the bar", no "default" wording, template at `:856` is `- [ ] <YYYY-MM-DD> <source-goal-id> <bug|feature|chore> — <one-line description> (evidence: …)` with no earning token. `grep -i earning skills/` is empty. `/root/romy/docs/goals/inbox.md` is 647 lines (capture claimed 580; trend holds). Last capture-bar text edit: `532b135` (v11.6.0).
 
-Assumptions: the earning token is a required parenthetical or field in the template, e.g. `(earn: live-defect|new-work|owner-decision)`. Unsure / latent / wording nits stay Report-only. `new file: test_capture_bar_policy.py`.
+Assumptions: the earning token is a required parenthetical or field in the template, e.g. `(earn: live-defect|new-work|owner-decision)`. Unsure / latent / wording nits stay Report-only. `new file: test_capture_bar_policy.py` is collected by the stable `pytest -q` runner — do not name it as its own `acceptance:` path (`type: bug` repro-direction INCONCLUSIVEs when `acceptance:` names a file added by the fix).
+
+**Amended 2026-08-28:** `acceptance:` named new file `test_capture_bar_policy.py` (same INCONCLUSIVE shape as 004/006/008/011) → drop that path; proving tests stay in the new file collected by `uv run --with pytest --python 3.13 pytest -q`. provenance: dispatch-self-heal.
 
 ## Acceptance criteria
 
-- [ ] `uv run --with pytest --python 3.13 pytest -q test_capture_bar_policy.py` is RED at base and GREEN after: Settle triage states `unsure → Report-only` adjacent to the four dispositions; Capture is legal only when the line carries an earning token; the inbox-line template requires naming the earning condition (live defect / genuinely new work / owner decision) in the line itself.
+- [ ] `uv run --with pytest --python 3.13 pytest -q` is RED at base with the new policy tests overlaid and GREEN after: Settle triage states `unsure → Report-only` adjacent to the four dispositions; Capture is legal only when the line carries an earning token; the inbox-line template requires naming the earning condition (live defect / genuinely new work / owner decision) in the line itself.
 - [ ] `uv run --with pytest --python 3.13 pytest -q` is green (never fewer than the 262 tests passing at authoring).
 
 ## Constraints (hard rules)
