@@ -121,8 +121,9 @@ triage is yours.
 - **DROP** — DISPROVED or GONE. The line is deleted, its why recorded (step 5).
 - **PRODUCTION-CHECK** — UNVERIFIABLE-HERE. If this session can reach the live
   system read-only (a query, a log read), run the named check now and re-triage
-  on the result; otherwise it goes to the report's needs-you list with the
-  exact query spelled out.
+  on the result (runnable checks do not print as P-lines); otherwise it goes to
+  the report as a P-line (query + why), not the needs-you list. P-lines are
+  not OWNER lines.
 - **KEEP** — real but deliberately not actionable yet: needs a measurement
   first, blocked on a pending decision, unreachable at current caps. Stays
   captured, reason appended to its line.
@@ -212,14 +213,16 @@ handoff stated.
 One summary, counts first — `<N> items → <X> goals queued (<ids>) · <Y> fixed
 directly (<commit>) · <Z> dropped dead · <K> kept · <P> production checks ·
 <O> for you` — then, on a flagless drain, dispatch's own final report line
-(`<done>/<total> done` + bar, blocked reasons, needs-you) — then each OWNER
-item in one plain-language line with your recommendation. **That is the ENTIRE
-message (v12.0.0):** the counts line, dispatch's line, one line per OWNER item —
-no "What happened" section, no tables, no caveats, no epilogue; the detail lives
-in the committed `## Triaged` ledger. `<O>` must EQUAL the number of OWNER lines
-printed below it (a measured report said "6 for you" and listed 5). "Nothing else
-needs the owner's eyes" is a hard envelope, not advice — the measured violations
-ran to ~3,000 characters.
+(`<done>/<total> done` + bar, blocked reasons, needs-you) — then one P-line per
+unrunnable production check (query + why) — then each OWNER item in one
+plain-language line with your recommendation. **That is the ENTIRE
+message (v12.0.0):** the counts line, dispatch's line, the P-lines, one line per
+OWNER item — no "What happened" section, no tables, no caveats, no epilogue; the
+detail lives in the committed `## Triaged` ledger. `<P>` must EQUAL the number of
+P-lines printed, mirroring `<O>`. `<O>` must EQUAL the number of OWNER lines
+printed below it (a measured report said "6 for you" and listed 5). P-lines are
+not OWNER lines. "Nothing else needs the owner's eyes" is a hard envelope, not
+advice — the measured violations ran to ~3,000 characters.
 
 ## Red flags — stop and get back on the path
 
@@ -249,8 +252,8 @@ ran to ~3,000 characters.
   run the check first; topic-matching is not the bar.
 - Re-presenting a carried-over OWNER line without re-adjudicating it against the
   bar → the bucket is a decision queue, never a parking lot.
-- A report with any section beyond the counts line, dispatch's line, and the
-  OWNER lines → the envelope is hard.
+- A report with any section beyond the counts line, dispatch's line, the
+  P-lines, and the OWNER lines → the envelope is hard.
 
 ## Related skills
 
