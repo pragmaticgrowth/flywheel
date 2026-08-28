@@ -939,14 +939,28 @@ SHA of the goal's claim commit on the current branch,
 `gate_base..HEAD`). For each `in_progress` entry, decide by whether work commits exist on the
 branch after that claim commit:
 
-1. **Work commits present after the claim commit** → recover `gate_base` as above. If the dead
-   session's implementer report file exists at `~/.local/state/pg-dispatch/<SLUG>/reports/<id>-report.md` (`<SLUG>` = the repo
-   dir name), hand it to the reviewer as usual; absent is fine — the crash-recovered
-   reviewer handoff only (the diff and goal file suffice for Arm B), never a license
-   to complete without a report. Before running the gate, if that report is missing,
-   empty, or older than `gate_base`, regenerate a stub report from `gate_base..HEAD`
-   (and any STATUS block) at the same path so Arm A cannot `git reset --hard` a sitting
-   that only lacked the file. Then run the gate (Working a goal, step 3) against it.
+1. **Work commits present after the claim commit** → recover `gate_base` as above, then read
+   the sitting's STATUS: whatever `STATUS:` block the dead session left in its report file
+   (`~/.local/state/pg-dispatch/<SLUG>/reports/<id>-report.md`, `<SLUG>` = the repo dir name)
+   or its final message. Any other declared status (`BLOCKED`, `NEEDS_CONTEXT`,
+   `CONTRACT_AMBIGUOUS`, `GOAL_UNREACHABLE`) keeps its own routing — the short-circuits and
+   ladder in `$DISPATCH_REFS/escalation-and-repair.md`. **No `STATUS:` block at all → resume
+   from increments, never gate-then-reset**: a missing `STATUS:` block on a returned
+   implementer is itself the trigger for the resume-from-increments rung
+   (`$DISPATCH_REFS/escalation-and-repair.md`) — read `gate_base..HEAD` (log plus diff),
+   re-brief ONE fresh worker with what already landed, let it finish the goal from current
+   HEAD on the same claim and `gate_base`, and route its own `STATUS:` return normally (a
+   `DONE` continues below). The gate — and its `git reset --hard <gate_base>` FAIL path —
+   never fires first on a sitting whose implementer never declared DONE: that rollback
+   destroys landed increments. The 004 report check below runs only once a `STATUS: DONE`
+   (or a regenerated stub) exists. **Completion-shaped `STATUS:` present (`DONE` or
+   `DONE_WITH_CONCERNS`) → the gate path.** If the dead session's implementer report file
+   exists at the path above, hand it to the reviewer as usual; absent is fine — the
+   crash-recovered reviewer handoff only (the diff and goal file suffice for Arm B), never a
+   license to complete without a report. Before running the gate, if that report is missing,
+   empty, or older than `gate_base`, regenerate a stub report from `gate_base..HEAD` (and any
+   STATUS block) at the same path so Arm A cannot `git reset --hard` a sitting that only
+   lacked the file. Then run the gate (Working a goal, step 3) against it.
    PASS → squash +
    `chore(goals): complete <id>`.
    FAIL_FIXABLE → one repair agent, re-gate (incl. the focused review re-check); still

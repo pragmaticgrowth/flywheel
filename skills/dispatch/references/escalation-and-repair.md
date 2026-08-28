@@ -102,5 +102,23 @@ certifies the whole `gate_base..HEAD` diff regardless of which spawn produced it
    `contract defect: <reason>`, then the Self-heal pass amends (or splits via
    define-goal) in-run — needs-you class `contract defect (too large / wrong)` only
    when self-heal fails. Never respawn — a respawn hits the same wall.
-4. **Anything else** → roll back any work commits and block with the implementer's
+4. **No `STATUS:` block — resume from increments.** A missing `STATUS:` block on a
+   returned implementer is itself a trigger for this rung — EVEN when work commits
+   exist on the branch: the sitting is dead with unknown work-state (a worker that
+   dies mid-sitting after committing working increments leaves exactly this shape;
+   DEATH NEEDS EVIDENCE detects the death, this rung recovers the work it landed).
+   Never gate-then-reset it: the gate would FAIL_FIXABLE half-done work and its
+   rollback destroys landed increments. Instead: read `gate_base..HEAD` —
+   `git log gate_base..HEAD` plus the diff — then re-brief ONE fresh worker with
+   what already landed: the canonical implementer brief plus a `Landed so far`
+   section carrying the increment log and what the diff already changed, finishing
+   the goal from current HEAD on the same claim and `gate_base`, rolling nothing
+   back (the gate certifies the whole `gate_base..HEAD` diff regardless of which
+   spawn produced it). The changed brief — what already landed — is what makes
+   this not a same-model-unchanged respawn; spawn on the goal's same resolved
+   implementer tier. The resumed worker's own `STATUS:` return routes normally
+   (`DONE` → the gate; any other status → this file's routes). No work commits at
+   all is the stale-claim path (SKILL.md Phase 1 bullet 2), not this rung. Once
+   per goal per session, like every rung.
+5. **Anything else** → roll back any work commits and block with the implementer's
    stated reason, as today.
