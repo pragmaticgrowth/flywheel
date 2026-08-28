@@ -13,6 +13,95 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [12.3.0] — 2026-08-28
+
+**Death stops destroying work, and "done" stops being self-declared.** Twelve
+goals drained in one day from the 2026-08-27 field analysis of both harnesses.
+The two loudest findings: a worker that died mid-sitting after committing
+working increments had those increments rolled back by the very gate meant to
+certify them, and the settle-time capture bar kept filling inboxes because
+"capture" was listed before "report-only" with nothing to earn a line.
+
+- **dispatch — a dead worker resumes from what it landed (goals 009, 014,
+  015).** A missing `STATUS:` block on a returned implementer is now itself the
+  trigger for a new escalation rung, RESUME FROM INCREMENTS: read
+  `gate_base..HEAD`, re-brief ONE fresh worker with a `Landed so far` section,
+  and finish the goal from current HEAD on the same claim and `gate_base` —
+  never gate-then-reset, whose `git reset --hard` destroys exactly the work the
+  rung exists to recover. `Child session timed out due to inactivity` joins the
+  transient infra class (ONE same-tier respawn; the pin comes off only when the
+  error text also names the model or provider — never for the timeout alone).
+  And the rule is DEATH-MODE GENERIC: a second consecutive STATUS-less death
+  re-fires the resume rung while the ~3-transient-respawn budget has headroom
+  (each re-brief carries a larger landed set, so it is never a
+  same-model-unchanged respawn); only a spent budget blocks
+  `repeated transient death`, and the rollback fires there and nowhere earlier.
+- **dispatch — Arm A enforces the implementer report (goal 004).** The brief
+  has said for versions that a missing report file is a gate finding; Arm A
+  never checked. `pg_validate.py` gains a `report-file` check — missing, empty,
+  or older than `gate_base` is FAIL_FIXABLE, with no exemption for one-file
+  mechanical edits. Phase 1's "absent is fine" is now explicitly the
+  crash-recovery reviewer handoff only, and crash recovery regenerates a stub
+  from `gate_base..HEAD` first so a sitting that merely lacked the file is not
+  reset.
+- **dispatch — Report-only is the DEFAULT capture disposition (goal 012).** The
+  four settle-triage dispositions now lead with "unsure → Report-only", and an
+  inbox line is legal ONLY when it carries its earning token — an `(earn: …)`
+  field naming which of the bar's three shapes it meets (live defect /
+  genuinely new work / owner decision). A line without its token is a capture
+  that did not happen.
+- **dispatch — Ship runs every declared publish path (goal 005).** When the
+  target repo's own docs declare more than one, Ship runs every declared path
+  the diff touched and reports per-service; one shipped and one not is
+  `ship FAILED: partial (<service> unshipped)` under needs-you class
+  `environment failure`. Dispatch still never invents a deploy.
+- **dispatch — the closer stays last, counters come from one read (goal 011).**
+  A plan-tool acknowledgement (Claude Code's plan status update, Droid's "Plan
+  is up-to-date.") is a PRE-CLOSING action: allowed, but it lands BEFORE the
+  closing turn, never after it as a second closing message wearing a tool
+  label. And `done`/`ready`/`blocked`/`total` derive from ONE fresh
+  `index.yaml` read at settle time — a remembered `done += 1` drifts the first
+  time a Phase 1 settle or a Self-heal pass moves an entry.
+- **dispatch — Droid fresh-check lenses get tools, and honesty gets a probe
+  (goal 008).** Every sanctioned `droid exec` lens command now carries
+  `--enabled-tools "Read,Grep,Glob,LS,Execute"` (lenses were returning
+  UNVERIFIABLE with no filesystem access), and
+  `Fresh-check: not run (no fresh-context mechanism available)` is honest only
+  after `command -v droid` actually fails — a lens that errors with `droid`
+  present records as `not delivered`, never as no mechanism.
+- **dispatch — one wait, not a poll loop (goal 014); lane pings drained (goal
+  007).** The Arm A join waits on the background task ONCE then reads the
+  output — on Droid, repeated `sleep`+`ps` / task-status polling is banned by
+  name. In parallel mode the orchestrator consumes or dismisses pending
+  `idle_notification` teammate messages before the closing turn so a leftover
+  ping cannot open the next one (Claude-Code-only; never drained by spawning
+  anything).
+- **define-goal — three product bands is contract-blocking Size (goal 010).** A
+  `touches:` list hitting ≥3 of migration/schema (`**/migrations/**`,
+  `**/supabase/**`), API/server (`**/apps/api/**`, `**/server/**`), and web/UI
+  (`**/apps/web/**`, `**/frontend/**`) blocks even with an atomicity Context
+  note — the note still downgrades only the qualitative two-band span, and this
+  count trigger has no advisory reading. `docs/goals/**` never counts; product
+  docs may count as a fourth band but the trigger stays ≥3 of the three product
+  bands. Field-grounded: a 16-glob four-band goal passed every Size and Slice
+  check and its lane run still needed touches-closure amends. Red-team item 7
+  updated in lockstep.
+- **process-inbox — unrunnable production checks print (goal 006).** Step 7's
+  hard envelope allowed a compliant report to count `<P>` and print none of the
+  queries. It now prints one P-line per unrunnable check (query + why), `<P>`
+  equals the lines printed, mirroring `<O>`; P-lines are not OWNER lines.
+- **ideate + goals-status — the front door (goal 013).** An unshaped backlog is
+  ideate's front door too: "I have N issues, where do I start?" gets one
+  orientation pass, a vertical-slice cut, and ONE plan whose phases map 1:1
+  onto goals — define-goal's batch mode is for items already shaped enough to
+  contract individually. And the goals-status view now ends with exactly one
+  `next: <command>` line derived first-match from queue state (open goals →
+  `/dispatch`; else unchecked inbox lines → `/process-inbox`; else `/ideate`).
+
+Suite grown 262 → 360 tests: ten new root policy suites plus the
+`pg_validate.py` and `goals_status.py` additions. Every skill-text rule was
+RED-baselined against `git show HEAD:<file>` per the house doctrine.
+
 ## [12.2.0] — 2026-08-27
 
 **Goal timing becomes visible — timestamps in the queue, minutes in the report

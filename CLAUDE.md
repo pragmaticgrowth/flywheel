@@ -83,7 +83,13 @@ is no `plugins/` directory — the repo root IS the flywheel plugin.
   terminal states are invoking define-goal with the approved plan or the user
   parking the idea — it never writes goal files, index entries, or code.
   Single-goal outcomes stay fileless; already-shaped wants skip it entirely;
-  re-invoking on a planned idea iterates the same plan file. v11.3.0 (owner
+  re-invoking on a planned idea iterates the same plan file. v12.3.0 (goal 013,
+  with goals-status): an UNSHAPED LIST is this skill's front door too — "I have
+  N issues/items, where do I start?" is one idea at plan altitude, not a
+  define-goal batch dump: orient once over the whole list, cut it into vertical
+  slices (items may merge or split in the cut), and write ONE plan whose phases
+  map 1:1 onto the goals define-goal will contract; batch mode is for items
+  already shaped enough to contract individually. v11.3.0 (owner
   decision 2026-08-13): when the session's tools include the Artifact tool
   (built into Claude Code ≥2.1.183, needs a claude.ai login, can be disabled,
   absent on Droid/headless), step 5 ALSO publishes the plan as a designed
@@ -434,6 +440,38 @@ own review to the full panel, and is explicitly not a compliance miss.
   of a mid-wave hang; Droid `--parallel` is refused out loud (poll-loop
   emulation banned); Droid spawns pass `await: true`; a warm resume that
   replays with zero new commits disables warm resume for the run.
+  v12.3.0 — the death-recovery release (2026-08-27 field analysis, both
+  harnesses; twelve goals drained 2026-08-28): RESUME FROM INCREMENTS — a
+  missing `STATUS:` block on a returned implementer is ITSELF the trigger for a
+  new escalation rung (read `gate_base..HEAD`, re-brief ONE fresh worker with a
+  `Landed so far` section, finish from current HEAD on the same claim and
+  `gate_base`), never gate-then-reset, whose `git reset --hard` destroys exactly
+  the increments the rung exists to recover; `Child session timed out due to
+  inactivity` joins the transient infra class (ONE same-tier respawn, pin off
+  only when the error ALSO names model/provider), and the rule is DEATH-MODE
+  GENERIC — a second consecutive STATUS-less death re-fires the resume rung
+  while the ~3-transient-respawn budget has headroom (the larger landed set is
+  what makes each re-brief a changed brief), `repeated transient death` and the
+  rollback firing only once that budget is spent. REPORT-FILE GATE — Arm A's
+  `pg_validate.py` now enforces what the brief always claimed: a missing, empty,
+  or pre-`gate_base` implementer report is FAIL_FIXABLE with no mechanical-edit
+  exemption (Phase 1's "absent is fine" is the crash-recovery reviewer handoff
+  only, and crash recovery regenerates a stub first so a sitting that merely
+  lacked the file is not reset). CAPTURE BAR INVERTED — Report-only is the
+  DEFAULT disposition (unsure lands there) and an inbox line is legal only
+  carrying its `(earn: …)` token naming which of the three shapes it meets; a
+  line without one is a capture that did not happen. PLURAL SHIP — every
+  declared publish path the diff touched, reported per-service. CLOSER STAYS
+  LAST — a plan-tool acknowledgement is a PRE-CLOSING action, and the report
+  line's counters derive from ONE fresh `index.yaml` read at settle time, never
+  a remembered increment. DROID LENSES — `droid exec` fresh-check commands carry
+  `--enabled-tools "Read,Grep,Glob,LS,Execute"` (tool-less lenses were returning
+  UNVERIFIABLE) and `not run (no fresh-context mechanism available)` is honest
+  only after `command -v droid` fails (a lens erroring with `droid` present is
+  `not delivered`). ONE WAIT — the Arm A join waits once then reads, repeated
+  `sleep`+`ps` polling banned by name on Droid; and parallel mode drains pending
+  `idle_notification` teammate pings before the closing turn (Claude-Code-only,
+  never by spawning anything).
 - **goals-status** (v5.2.0; simplified in v6.0.0) — read-only view of the
   docs/goals queue. Prints
   every OPEN goal — `in_progress`, `blocked`, `not_started` — with its title and
@@ -451,7 +489,12 @@ own review to the full panel, and is explicitly not a compliance miss.
   than none), while one unparseable **goal file** degrades to `(untitled)` and
   never takes the view down. SKILL.md resolves the helper in ONE bash block
   (`$CLAUDE_PLUGIN_ROOT`, else a `find` over `~/.claude/plugins`); the old
-  brace-glob chain aborted under zsh with `no matches found`. Strictly
+  brace-glob chain aborted under zsh with `no matches found`. v12.3.0 (the
+  front door, with ideate — goal 013): the view ends with exactly one
+  `next: <command>` line the helper derives first-match from queue state — any
+  open goal → `/dispatch`, else unchecked `- [ ]` lines in `docs/goals/inbox.md`
+  → `/process-inbox`, else `/ideate`; an all-completed queue pointing at
+  `/ideate` is the front door working, not an error. Strictly
   read-only — never claims, changes, or implements a goal (that's
   `dispatch`) and never writes `index.yaml`.
 - **process-inbox** (v11.5.0, owner ask 2026-08-13 — "one command so the best
@@ -516,7 +559,11 @@ own review to the full panel, and is explicitly not a compliance miss.
   CONVERT item's named mechanism is verified live (a measured recommendation
   would have paged nobody), and the report is a hard envelope — counts line +
   dispatch's line + one line per OWNER item, `<O>` equal to the lines printed,
-  nothing else.
+  nothing else. v12.3.0 (goal 006): the envelope also carries one P-LINE per
+  unrunnable PRODUCTION-CHECK (the exact query + why), `<P>` equal to the
+  P-lines printed, mirroring `<O>` — step 3 had been sending those queries to a
+  report that step 7's envelope then forbade printing, so a compliant report
+  could count `<P>` and show none of them; P-lines are not OWNER lines.
 - **show-me** (v11.8.0, owner ask 2026-08-18 — adapted from HumanLayer's
   show-me skill) — visual explainer for the current topic: answers
   "how does X work / what talks to what / what would change" with the

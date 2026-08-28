@@ -1,6 +1,6 @@
 {
   "name": "flywheel",
-  "version": "12.2.0",
+  "version": "12.3.0",
   "description": "Pragmatic Growth workflow skills for Claude Code and Factory Droid — ideate (fuzzy ideas → an approved plan through a progressive plain-language dialogue — option questions with recommended defaults, fresh recon when an answer opens new ground — code-shaped design, vertical-slice phases, technical forks resolved in one touch), define-goal (plain-language wants → measurable, red-teamed goal contracts; plan-backed wants skip the interview), dispatch (orchestrator on the current branch — drains the queue by default, one fully-settled goal cycle at a time; an exact goal, --count N caps, or a --parallel lane wave that builds disjoint goals concurrently while integrating one verified goal at a time — with TDD-backed checks, a local build+test gate behind an independent second-view review, and settle triage that captures every leftover concern into docs/goals/inbox.md instead of chat prose), process-inbox (attended triage of the captured-follow-ups inbox — re-verify every item against current code, then convert, batch-fix, or drop through the factory's own rails), goals-status (read-only view of the open docs/goals queue), loop-architect (autonomous loop contracts), and factory-doctor (one-pass preflight/doctor). Ships six tool-restricted read-only subagents — review roles gate-reviewer, fresh-check, contract-red-team, and recon roles recon-locator, recon-analyzer, recon-patterns.",
   "author": {
     "name": "pragmaticgrowth"
