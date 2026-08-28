@@ -407,8 +407,12 @@ own review to the full panel, and is explicitly not a compliance miss.
   the report FILE); the summary ends `all complete` or `outstanding: <n> for
   you`. DECLARATIVE STALLS are the permission-ask miss in statement form (incl.
   the closing turn — no offers). SHIP STEP — a terminal stop runs the repo's own
-  pre-authorized publish path; unshipped is not done (a run reported 21/21 done
-  over 30 unpushed commits in a push-is-deploy repo). Dirty trees are
+  pre-authorized publish path (every declared path the diff touched when docs
+  declare more than one, reported per-service; one shipped and one not is
+  `ship FAILED: partial (<service> unshipped)` under needs-you class
+  `environment failure`); unshipped is not done (a run reported 21/21 done
+  over 30 unpushed commits in a push-is-deploy repo). Dispatch never
+  invents a deploy. Dirty trees are
   quarantine-committed and worked past (after a live-writer check), not refused.
   A user-invoked flagless drain that ends drained with inbox lines CHAINS into
   /process-inbox once (loop-guarded). Infra class widened: billing/auth/overload

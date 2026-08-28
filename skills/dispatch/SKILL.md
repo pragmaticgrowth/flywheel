@@ -563,7 +563,13 @@ closing line, if the target repo's OWN CLAUDE.md/AGENTS.md carries a standing
 authorization to publish — "push every time", "commit and push without asking", a named
 release command declared pre-authorized — RUN that path now and put the outcome in the
 closing line (`shipped: <push|command> ok` / `ship FAILED: <one clause>` as needs-you
-class `environment failure`). No standing authorization in the repo's docs → one clause,
+class `environment failure`). When those docs declare more than one publish path, run
+every declared path the diff touched and report per-service: a path is touched when
+`gate_base..HEAD` (or, at a terminal drain stop, the commits this run produced)
+intersects a path the declaring doc ties to that publish command; if the docs do not
+map paths to services, run every declared path. One shipped and one not is
+`ship FAILED: partial (<service> unshipped)`, still needs-you class
+`environment failure`. No standing authorization in the repo's docs → one clause,
 `not shipped (no standing authorization)`, and nothing more — never an offer, never
 "say the word". The rule keys STRICTLY off the target repo's own docs; dispatch never
 invents a deploy. Measured 2026-08-18: a run reported `21/21 done` with 30 unpushed
