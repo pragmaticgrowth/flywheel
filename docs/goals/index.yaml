@@ -18,6 +18,6 @@ goals:
   009-resume-from-increments: {status: completed, claimed_at: 2026-08-28T13:53:03Z, settled_at: 2026-08-28T14:15:00Z, depends_on: [004-enforce-report-file-gate]}
   010-subsystem-count-slice: {status: completed, claimed_at: 2026-08-28T14:15:07Z, settled_at: 2026-08-28T14:40:14Z}
   011-report-line-honesty: {status: completed, claimed_at: 2026-08-28T14:53:30Z, settled_at: 2026-08-28T15:15:17Z}
-  012-capture-bar-default: {status: blocked, claimed_at: 2026-08-28T15:15:17Z, settled_at: 2026-08-28T15:28:50Z, reason: "contract defect: type-bug acceptance names new test file so bare-base control is INCONCLUSIVE; scope acceptance at the stable full-suite runner"}
+  012-capture-bar-default: {status: in_progress, claimed_at: 2026-08-28T15:28:50Z}
   013-front-door-guide: {status: not_started}
   014-child-timeout-arm-a: {status: not_started, depends_on: [009-resume-from-increments]}
