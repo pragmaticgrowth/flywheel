@@ -45,6 +45,30 @@ default, auto-parallel lanes when `config.parallel` opts in) → `goals-status`
 (read-only queue view). `loop-architect` designs the unattended
 cadence; `factory-doctor` preflights the environment.
 
+**The standard of completion** (v12.4.0, from Factory's 2026-08-27 study: an agent
+that authors its own definition of done stops early, and a standard that can soften
+stops measuring). Two rules cut across the pipeline, and they protect each other —
+without the ratchet, self-heal could route a failing outcome check into an amend and
+weaken the check that was measuring the whole:
+
+- **The whole is measured, not just each piece.** At 3+ phases a plan's LAST phase is
+  its OUTCOME CHECK — a verification-only goal that builds nothing, depends on every
+  other phase, and runs every bullet of `## What will be true when done`. Those
+  bullets each name an exact command (or keep `**needs independent review**`), must
+  FAIL at the plan's base commit, must be COMMITTED tests the suite discovers, and
+  must DRIVE a real surface. So `status: done` on a plan means its outcome check
+  PASSED, not that its pieces got built — with no new dispatch machinery, since
+  phases already map 1:1 onto goals.
+- **The standard only ratchets up.** An amend classifies every edit against
+  `git show HEAD:docs/goals/<id>.md`; weakening (criterion deleted, threshold
+  loosened, a runnable command traded for a vouched-for assertion, a drivable-surface
+  check traded for a code-reading one, a lost BEFORE, a removed review marker,
+  `touches:` narrowed) STOPS FOR THE OWNER, drain waiver or not. Plans are ratcheted
+  the same way on iteration, which is what closes the back door of softening the
+  plan and contracting the goal honestly from weaker text. Enforced at reality-check
+  item 10 and red-team item 15 — the red-team being the one thing the waiver never
+  waives. A `needs independent review` marker cannot launder a weakening (v12.4.1).
+
 **Dispatch's execution model** (the part that requires reading several files to grasp):
 one goal INTEGRATES at a time, committed **directly on the currently checked-out
 branch** — no PRs, no remote branches. Building may parallelize: `--parallel` (or a
@@ -60,7 +84,10 @@ post-push observation, never a gate.
 
 **Queue invariants.** Status lives ONLY in `index.yaml`, never in goal frontmatter
 (dual-write drifts). Goal files are immutable contracts, `define-goal --amend <id>` on a
-`blocked` goal the sole exception (immutable to implementers and while claimable). Statuses:
+`blocked` goal the sole exception (immutable to implementers and while claimable) — and
+since v12.4.0 that exception is RATCHETED: an amend may make a contract stricter or more
+correct, never easier, and a weakening one stops for the owner even under the Self-heal
+drain waiver. Statuses:
 `not_started | in_progress | completed | blocked | retired` (retired = terminal,
 archive-bound, for disproven-premise goals — v12.0.0). Every status write is flip-one-entry
 → commit (`chore(goals): claim|complete|block|archive|retire <id>`, plus define-goal's
