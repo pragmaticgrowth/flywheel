@@ -600,7 +600,19 @@ criteria list reads (repair forensics 2026-08-01: a goal bundling 9 audit findin
 route documents of findings through batch mode, one finding per goal,
 `depends_on`-ordered. When the seams genuinely don't exist
 (one atomic migration), keep it whole but say so in Context — the size is then a fact,
-not an oversight. Every dependent
+not an oversight. **The three-band count trigger (v12.3.0) is the one exception the
+atomicity note cannot buy back**: a `touches:` list hitting ≥3 of the three product
+bands is contract-blocking Size even with an atomicity note — count migration/schema
+(`**/migrations/**`, `**/supabase/**`), API/server (`**/apps/api/**`, `**/server/**`),
+and web/UI (`**/apps/web/**`, `**/frontend/**`); `docs/goals/**` never counts (plans,
+index, inbox, and goal files are factory state, not product surfaces), and product docs
+(`docs/**` minus `docs/goals/**`) may count as a fourth band but the trigger stays
+≥3 of the three product bands. A goal crossing all three product bands is an unsplit
+`depends_on` chain of thinner vertical slices by construction — field-measured
+2026-08-28: a 16-glob four-band goal (supabase + apps/api + apps/web + docs) passed
+every Size/Slice check and its lane run still needed touches-closure amends. The
+atomicity note still downgrades the qualitative two-band span above; it never
+downgrades this count. Every dependent
 goal in a chain gets its dependency's interfaces in Context: a plan-backed chain links
 the plan (`Plan: docs/goals/plans/<file> — Phase <N>` — its code-shaped Design section
 carries the exact names once, already reviewed); a plan-less chain writes an
@@ -883,8 +895,16 @@ contract, not approve it —
   note stating why the work is atomic downgrades only the SPAN trigger to advisory (the
   seams genuinely don't exist); it never excuses a piled-up criteria list — criteria
   bloat on an atomic goal is its own finding (merge or cut criteria, don't split the
-  work). Oversized goals are the factory's dominant cycle-time tail; splitting is the
-  fix, not a bigger turn cap.
+  work). The count trigger is NEVER downgraded: a `touches:` list hitting ≥3 of the
+  three product bands — migration/schema (`**/migrations/**`, `**/supabase/**`),
+  API/server (`**/apps/api/**`, `**/server/**`), web/UI (`**/apps/web/**`,
+  `**/frontend/**`) — is contract-blocking even with an atomicity note;
+  `docs/goals/**` never counts, product docs (`docs/**` minus `docs/goals/**`) may
+  count as a fourth band but the trigger stays ≥3 of the three product bands, and the
+  fix is the split (a `depends_on` chain of thinner vertical slices — a vertical goal
+  of one or two bands stays legal). The atomicity downgrade above covers only the
+  qualitative two-band span; the count has no advisory reading. Oversized goals are
+  the factory's dominant cycle-time tail; splitting is the fix, not a bigger turn cap.
 - **Slice (vertical-cut test, v11.0.0)**: can every acceptance criterion of this goal
   be satisfied and verified WITHOUT any goal that comes LATER in its own
   `depends_on` chain existing? A goal whose criteria depend on a later sibling — the

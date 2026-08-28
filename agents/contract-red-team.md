@@ -59,7 +59,16 @@ Check every draft against this rubric:
    than two independent findings/root causes bundled from a
    source document; oversized → contract-blocking with the proposed split seams (a
    Context note stating why the work is atomic downgrades only the span trigger to
-   advisory; criteria bloat is its own finding).
+   advisory; criteria bloat is its own finding). Count `touches:` against the three
+   product bands — migration/schema (`**/migrations/**`, `**/supabase/**`),
+   API/server (`**/apps/api/**`, `**/server/**`), web/UI (`**/apps/web/**`,
+   `**/frontend/**`): a list hitting ≥3 of the three product bands is
+   contract-blocking even with an atomicity note — `docs/goals/**` never counts,
+   product docs (`docs/**` minus `docs/goals/**`) may count as a fourth band but the
+   trigger stays ≥3 of the three product bands, and the fix is a `depends_on` chain
+   of thinner vertical slices (a vertical one- or two-band goal stays legal). The
+   atomicity downgrade covers only the qualitative two-band span; this count trigger
+   has no advisory reading.
 8. **Slice (vertical-cut test)** — can every criterion be satisfied and verified
    WITHOUT any goal LATER in this goal's own `depends_on` chain existing? Criteria
    depending on a later sibling (the layer-ordered "all schema → all services → all UI"

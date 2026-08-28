@@ -161,7 +161,16 @@ is no `plugins/` directory — the repo root IS the flywheel plugin.
   unsplit `depends_on` chain and splitting is contract-blocking (unless
   Context states why it's atomic, then advisory); grounded in 2026-07-28
   cycle forensics (158 cycles, median ~57 min; every 13–18h outlier was an
-  oversized contract). v11.0.0 (the plan release, forensics-backed
+  oversized contract). v12.3.0 adds a count trigger the atomicity note never
+  downgrades: a `touches:` list hitting ≥3 of the three product bands —
+  migration/schema (`**/migrations/**`, `**/supabase/**`), API/server
+  (`**/apps/api/**`, `**/server/**`), web/UI (`**/apps/web/**`,
+  `**/frontend/**`) — is contract-blocking Size even with an atomicity note
+  (`docs/goals/**` never counts; product docs are a fourth band but the trigger
+  stays ≥3 of the three product bands; the fix is a `depends_on` chain of thinner
+  vertical slices; the note still downgrades only the qualitative two-band
+  span; field-grounded 2026-08-28 in a 16-glob four-band goal that passed
+  every check and then needed touches-closure amends). v11.0.0 (the plan release, forensics-backed
   2026-08-12): plan-backed wants get a FAST PATH — zero question rounds (the
   plan is the interview; the one exception is a red-team finding or plan gap
   opening a genuine fork), recon narrowed to verify-and-complete, phases as
