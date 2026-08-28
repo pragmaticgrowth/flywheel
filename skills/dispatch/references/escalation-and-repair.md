@@ -80,7 +80,10 @@ yet — but does NOT go straight to `blocked`: run the escalation ladder first.
 
 Each rung fires at most ONCE per goal per session, and never as a
 same-model-unchanged respawn — if the implementer is stuck, something must change (more
-context, a stronger model, or a better contract). A ladder re-spawn continues from the
+context, a stronger model, or a better contract). One carve-out (goal 015): an evidenced
+transient STATUS-less death re-fires the resume rung while the transient-death budget
+has headroom — each re-brief carries a larger `Landed so far` set, which is the change.
+A ladder re-spawn continues from the
 current branch state (same claim, same `gate_base`; roll nothing back — the gate
 certifies the whole `gate_base..HEAD` diff regardless of which spawn produced it):
 
@@ -119,6 +122,13 @@ certifies the whole `gate_base..HEAD` diff regardless of which spawn produced it
    implementer tier. The resumed worker's own `STATUS:` return routes normally
    (`DONE` → the gate; any other status → this file's routes). No work commits at
    all is the stale-claim path (SKILL.md Phase 1 bullet 2), not this rung. Once
-   per goal per session, like every rung.
+   per goal per session, like every rung — one carve-out: a SECOND consecutive
+   STATUS-less death re-fires this rung while the ~3-transient-respawn budget has
+   headroom; the re-brief is changed by the larger `Landed so far` set (never a
+   same-model-unchanged respawn), and the rule is death-mode generic — 014's
+   child-session timeout clause (SKILL.md Re-entrancy rule 2) is one named instance.
 5. **Anything else** → roll back any work commits and block with the implementer's
-   stated reason, as today.
+   stated reason, as today. **Guard (goal 015):** a STATUS-less transient death never
+   routes here while the transient-death budget has headroom — rung 4 re-fires. Once
+   that budget is spent the goal blocks here as `repeated transient death` and the
+   rollback fires at this rung.

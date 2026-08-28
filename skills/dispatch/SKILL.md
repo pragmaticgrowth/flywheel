@@ -487,7 +487,11 @@ where it left off:
    toward the no-progress rule: respawn it ONCE at the SAME tier, and the pin comes
    off only when the error text also names the model or provider (never for this
    timeout alone). A repeat of the same timeout on the respawned sitting is not a
-   second free respawn — it re-enters these stale-claim rules. When the dead sitting
+   second free respawn — it re-enters these stale-claim rules. That re-entry rule is
+   death-mode generic (goal 015): ANY second STATUS-less transient death re-enters
+   these rules the same way — the resume-from-increments rung while the
+   transient-respawn budget has headroom, `blocked: repeated transient death` only
+   once it is spent. When the dead sitting
    left work commits (`gate_base..HEAD` non-empty), that respawn IS the
    resume-from-increments rung (`$DISPATCH_REFS/escalation-and-repair.md` — Phase 0
    below resolves that path): read `gate_base..HEAD`, re-brief ONE fresh worker with
@@ -978,7 +982,10 @@ branch after that claim commit:
    (`$DISPATCH_REFS/escalation-and-repair.md`) — read `gate_base..HEAD` (log plus diff),
    re-brief ONE fresh worker with what already landed, let it finish the goal from current
    HEAD on the same claim and `gate_base`, and route its own `STATUS:` return normally (a
-   `DONE` continues below). The gate — and its `git reset --hard <gate_base>` FAIL path —
+   `DONE` continues below). A second consecutive STATUS-less death re-fires the
+   resume-from-increments rung while the transient-death budget has headroom (goal 015);
+   only a spent budget blocks `repeated transient death` — rung 5's guard. The gate —
+   and its `git reset --hard <gate_base>` FAIL path —
    never fires first on a sitting whose implementer never declared DONE: that rollback
    destroys landed increments. The 004 report check below runs only once a `STATUS: DONE`
    (or a regenerated stub) exists. **Completion-shaped `STATUS:` present (`DONE` or
