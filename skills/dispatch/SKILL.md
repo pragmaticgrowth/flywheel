@@ -160,7 +160,11 @@ reproduces identically by construction (measured 2026-08-15: a drain at 28/39 di
 mid-run when a heavy pin's mapped model was rejected — `400 unknown provider for model claude-opus-5` —
 and respawning the same pin could only repeat it), and never substitute a LIGHTER
 pin — inherit-the-session-model is the only fallback, same rung as the escalation
-ladder's capability re-spawn.
+ladder's capability re-spawn. A death whose error names NONE of those classes —
+`Child session timed out due to inactivity` above all — is not pin failure: it is a
+Re-entrancy transient (the transient-vs-work-failure classification is
+Re-entrancy rule 2's to make), respawned ONCE at the SAME tier, and the pin stays
+on unless the error text also names the model or provider.
 
 A non-`inherit` tier applies to EVERY code-writing agent you spawn for THAT goal — the
 implementer and any fix/repair agent alike; `inherit` means omit the mapping so the agent
@@ -477,6 +481,17 @@ where it left off:
    dies under you — respawn it under the same ~3-attempt budget immediately instead of
    re-diagnosing the goal (a measured stream-idle death cost ~1h40m of near-duplicate
    repair work because it went unrecognized).
+   **Child-session timeout — one same-tier respawn (2026-08-28).**
+   `Error running task subagent: Child session timed out due to inactivity` is a
+   transient infrastructure death of that class — NOT a work failure and not a fail
+   toward the no-progress rule: respawn it ONCE at the SAME tier, and the pin comes
+   off only when the error text also names the model or provider (never for this
+   timeout alone). A repeat of the same timeout on the respawned sitting is not a
+   second free respawn — it re-enters these stale-claim rules. When the dead sitting
+   left work commits (`gate_base..HEAD` non-empty), that respawn IS the
+   resume-from-increments rung (`$DISPATCH_REFS/escalation-and-repair.md` — Phase 0
+   below resolves that path): read `gate_base..HEAD`, re-brief ONE fresh worker with
+   what already landed, never a from-scratch respawn.
    **Death needs evidence — a terminal signal or two samples (v11.6.0).** An agent is
    dead when its spawn RETURNED (a tool result — error or empty — ended the call) or
    its completion notification says so. Absent that, silence is not death: a live
@@ -769,9 +784,11 @@ For each claimed goal, in order:
    context; it escalates your own review to the full panel and nothing more. What IS a miss
    is a panel silently skipped, or claimed but self-run in the implementer's own context.
    **Join — no verdict before BOTH arms are in hand.** When Arm B returns, Read Arm
-   A's output file (commands still running → wait on that task; never grade a partial
-   gate). Show the command output. Every `config.verify` command must exit 0, exactly
-   as before — the overlap moves wall-clock, never the bar.
+   A's output file (commands still running → wait on that task ONCE, then read the
+   output — on Droid, never a repeated sleep+`ps` / task-status poll loop: one wait,
+   then read the output; never grade a partial gate). Show the command output. Every
+   `config.verify` command must exit 0, exactly as before — the overlap moves
+   wall-clock, never the bar.
    **Flake protocol (bounded, logged — never a repair).** When a verify command fails on
    a test the diff does not touch and the goal's surfaces do not reach, re-run THAT test
    once in isolation before rendering the verdict: an isolated pass is a flake — count
