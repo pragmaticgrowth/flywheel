@@ -50,14 +50,16 @@ subagent has NO Task tool — the platform does not let you spawn a subagent at 
 (documented: "a subagent cannot spawn its own subagents"). Do not pretend otherwise and do
 NOT fall back to reviewing your own diff in your own context: self-review is the maker
 grading its own work, which is the exact failure the panel exists to prevent. Instead use
-the sanctioned Droid path — `droid exec -f <prompt-file>` (or `droid exec "<prompt>"`),
-which starts a genuinely fresh headless session with clean context. Write each lens brief to
-a temp file, run the lenses, and paste each verdict into your `Fresh-check:` line. It costs a
-CLI cold start per lens, so on Droid run at most two lenses and skip the panel entirely for a
-one-file mechanical edit. If neither path is available, say so plainly in the
-`Fresh-check:` line — `not run (no fresh-context mechanism available)` — and never imply a
-panel happened. The orchestrator always runs its own independent review regardless, and a
-truthful "not run" simply escalates it to the full orchestrator-run panel.
+the sanctioned Droid path — `droid exec -f <prompt-file> --enabled-tools "Read,Grep,Glob,LS,Execute"`
+(or `droid exec "<prompt>" --enabled-tools "Read,Grep,Glob,LS,Execute"`), which starts a
+genuinely fresh headless session with clean context. Write each lens brief to a temp file,
+run the lenses, and paste each verdict into your `Fresh-check:` line. It costs a CLI cold
+start per lens, so on Droid run at most two lenses and skip the panel entirely for a one-file
+mechanical edit. Only when `command -v droid` fails may you say
+`Fresh-check: not run (no fresh-context mechanism available)`. If `droid` is present but a
+lens execution errors, record that lens as `not delivered` after the step 5 retry rather
+than claiming no mechanism. The orchestrator always runs its own independent review
+regardless, and a truthful "not run" simply escalates it to the full orchestrator-run panel.
 
 Workspace: you are on the current branch in this checkout — work on the current branch in
 this checkout, commit your intended files here. Do NOT create a worktree, do NOT create a
