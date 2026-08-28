@@ -17,7 +17,7 @@ goals:
   008-droid-freshcheck-probe: {status: completed, claimed_at: 2026-08-28T12:29:57Z, settled_at: 2026-08-28T13:52:56Z}
   009-resume-from-increments: {status: completed, claimed_at: 2026-08-28T13:53:03Z, settled_at: 2026-08-28T14:15:00Z, depends_on: [004-enforce-report-file-gate]}
   010-subsystem-count-slice: {status: completed, claimed_at: 2026-08-28T14:15:07Z, settled_at: 2026-08-28T14:40:14Z}
-  011-report-line-honesty: {status: in_progress, claimed_at: 2026-08-28T14:53:30Z}
+  011-report-line-honesty: {status: completed, claimed_at: 2026-08-28T14:53:30Z, settled_at: 2026-08-28T15:15:17Z}
   012-capture-bar-default: {status: not_started}
   013-front-door-guide: {status: not_started}
   014-child-timeout-arm-a: {status: not_started, depends_on: [009-resume-from-increments]}
