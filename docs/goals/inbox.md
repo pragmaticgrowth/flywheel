@@ -9,5 +9,3 @@ Converted to goals by /define-goal, which removes the line.
 Folds: report-file + crash-scope → 004; `--enabled-tools` + `command -v droid` → 008; plan-tool closer + one-index counters → 011.
 
 DROP: romy per-settle push / orphaned claim 227 — field evidence gone (`227-report-delete-catches-late-children` is `completed`; `/root/romy` is in sync with origin); per-settle `push if a remote exists (non-blocking)` already at `skills/dispatch/SKILL.md:779`; Phase 1 already respawns stale claims.
-
-- [ ] 2026-08-28 009-resume-from-increments bug — second consecutive STATUS-less death (resumed worker dies too) falls to rung-5 rollback destroying landed increments; routing unspecified (evidence: skills/dispatch/references/escalation-and-repair.md:121-124)
