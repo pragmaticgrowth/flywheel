@@ -413,8 +413,13 @@ own review to the full panel, and is explicitly not a compliance miss.
   `fyi:`, and reasons cap at ~120 chars (the full text stays in index/report
   files). OUTPUT ENVELOPE — the settle turn IS the report line, the closing turn
   is line + summary + bullets and nothing else ("the fire's report" always means
-  the report FILE); the summary ends `all complete` or `outstanding: <n> for
-  you`. DECLARATIVE STALLS are the permission-ask miss in statement form (incl.
+  the report FILE); a plan-tool update (any harness plan/artifact status
+  acknowledgement, incl. Droid's "Plan is up-to-date.") is a PRE-CLOSING action —
+  allowed, but it lands BEFORE the closer so the closing turn stays the run's
+  last message; the line's done/ready/blocked/total counters derive from ONE
+  `index.yaml` read at settle time, never an incremented remembered count; the
+  summary ends `all complete` or `outstanding: <n> for you`. DECLARATIVE STALLS
+  are the permission-ask miss in statement form (incl.
   the closing turn — no offers). SHIP STEP — a terminal stop runs the repo's own
   pre-authorized publish path (every declared path the diff touched when docs
   declare more than one, reported per-service; one shipped and one not is

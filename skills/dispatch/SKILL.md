@@ -1051,12 +1051,25 @@ owner's verdict on that output, verbatim: "i don't want to see bullshit." So:
   item, one bullet per fyi item. Nothing else, and never a second closing message.**
   No "What happened" section, no tables, no epilogue after a system reminder. Hard
   ceiling ~15 lines; a needs-you bullet's reason half stays under its ~120-char cap.
+- **A plan-tool update is a PRE-CLOSING action (goal 011, 2026-08-28) — the closer
+  stays last.** Any harness plan/artifact status acknowledgement — Claude Code's
+  plan-tool status update, Droid's `Plan is up-to-date.` line — is ALLOWED, never
+  banned; it must simply land BEFORE the closing turn is emitted, never after it.
+  Measured on Droid drains: the acknowledgement prose arrived after the report
+  line — a second closing message wearing a tool label. Sequence it: send the
+  plan-tool update and let its result return while the run still owes its closer,
+  then emit the closing turn — the closer is the run's last message, always.
 - **Interstitial narration between report lines is at most one short sentence** and
   never restates a finding, a diff, or a verdict.
 
 Lead with **progress** (`<done>/<total>`), never `ready/total` — a bare `ready/total` reads
-as "nothing done" to a human. Every number carries its label. The counts come from the index
-after this iteration's mutations:
+as "nothing done" to a human. Every number carries its label. **The counts come from ONE
+fresh read of `index.yaml` at settle time — never an incremented remembered count (goal
+011, 2026-08-28).** Re-read the index when composing the line, after this iteration's
+mutations, and derive every counter — `done`, `ready`, `blocked`, `total` — from that
+single read: a remembered `done += 1` drifts the first time a Phase 1 settle, a Self-heal
+retire, or a blocked requeue changes the index between fires without the counting session
+seeing it (measured mid-drain on Droid):
 - `done` = completed · `ready` = not_started with all `depends_on` completed (claimable now) ·
   `blocked` = `blocked` status or not_started with an unmet dependency · `current` = the goal
   being worked this fire (or none; in parallel mode the live lane ids, `+`-joined —
