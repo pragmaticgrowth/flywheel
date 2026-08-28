@@ -12,7 +12,7 @@ goals:
   003-surface-subjective-criteria: {status: completed, depends_on: [002-answerable-needs-you]}
   004-enforce-report-file-gate: {status: completed, claimed_at: 2026-08-28T09:28:04Z, settled_at: 2026-08-28T09:59:21Z}
   005-plural-publish-paths: {status: completed, claimed_at: 2026-08-28T10:04:54Z, settled_at: 2026-08-28T10:21:33Z}
-  006-inbox-prodcheck-lines: {status: not_started}
+  006-inbox-prodcheck-lines: {status: in_progress, claimed_at: 2026-08-28T10:21:52Z}
   007-drain-teammate-idle: {status: not_started}
   008-droid-freshcheck-probe: {status: not_started}
   009-resume-from-increments: {status: not_started, depends_on: [004-enforce-report-file-gate]}
