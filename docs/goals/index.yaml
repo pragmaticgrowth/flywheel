@@ -10,7 +10,7 @@ goals:
   001-prove-the-gate-runs: {status: completed, priority: high}
   002-answerable-needs-you: {status: completed}
   003-surface-subjective-criteria: {status: completed, depends_on: [002-answerable-needs-you]}
-  004-enforce-report-file-gate: {status: in_progress, claimed_at: 2026-08-28T09:28:04Z}
+  004-enforce-report-file-gate: {status: completed, claimed_at: 2026-08-28T09:28:04Z, settled_at: 2026-08-28T09:59:21Z}
   005-plural-publish-paths: {status: not_started}
   006-inbox-prodcheck-lines: {status: not_started}
   007-drain-teammate-idle: {status: not_started}
