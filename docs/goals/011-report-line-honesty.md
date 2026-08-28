@@ -10,7 +10,7 @@ touches:
   - skills/dispatch/SKILL.md
   - CLAUDE.md
 acceptance:
-  - uv run --with pytest --python 3.13 pytest -q test_report_line_honesty_policy.py
+  - uv run --with pytest --python 3.13 pytest -q
 ---
 
 ## Outcome (plain language)
@@ -21,11 +21,13 @@ Droid drains currently let plan-tool acknowledgement prose land after the report
 
 provenance: inbox-drain. Fold of two inbox lines (plan-tool closer leak; counter drift). Verified 2026-08-28: `skills/dispatch/SKILL.md` OUTPUT ENVELOPE (`:1011-1034`) says the closing turn is "the report line, the summary line, one bullet per needs-you item, one bullet per fyi item. Nothing else" and "The counts come from the index after this iteration's mutations" — but it does not sequence a plan-tool update as a pre-closing action, and it does not forbid deriving counters by incrementing a remembered count.
 
-Assumptions: "plan-tool" means any harness plan/artifact status acknowledgement (including "Plan is up-to-date."). The pre-closing action is still allowed; it must happen before the closer, not after. `new file: test_report_line_honesty_policy.py`.
+Assumptions: "plan-tool" means any harness plan/artifact status acknowledgement (including "Plan is up-to-date."). The pre-closing action is still allowed; it must happen before the closer, not after. `new file: test_report_line_honesty_policy.py` is collected by the stable `pytest -q` runner — do not name it as its own `acceptance:` path (`type: bug` repro-direction INCONCLUSIVEs when `acceptance:` names a file added by the fix).
+
+**Amended 2026-08-28:** `acceptance:` named new file `test_report_line_honesty_policy.py` (same INCONCLUSIVE shape as 004/006/008) → drop that path; proving tests stay in the new file collected by `uv run --with pytest --python 3.13 pytest -q`. provenance: dispatch-self-heal.
 
 ## Acceptance criteria
 
-- [ ] `uv run --with pytest --python 3.13 pytest -q test_report_line_honesty_policy.py` is RED at base and GREEN after: the envelope rule in `skills/dispatch/SKILL.md` and the matching CLAUDE.md restatement name the plan-tool update as a pre-closing action so the closer stays last; Phase 4 requires done/ready/blocked/total from ONE `index.yaml` read at settle, never an incremented remembered count.
+- [ ] `uv run --with pytest --python 3.13 pytest -q` is RED at base with the new policy tests overlaid and GREEN after: the envelope rule in `skills/dispatch/SKILL.md` and the matching CLAUDE.md restatement name the plan-tool update as a pre-closing action so the closer stays last; Phase 4 requires done/ready/blocked/total from ONE `index.yaml` read at settle, never an incremented remembered count.
 - [ ] `uv run --with pytest --python 3.13 pytest -q` is green (never fewer than the 262 tests passing at authoring).
 
 ## Constraints (hard rules)
