@@ -54,30 +54,33 @@ Key discoveries:
 - `## Contract reality check` says "eight checks" and lists NINE
   (`skills/define-goal/SKILL.md:704-712` vs `713-782`) — item 9 arrived in v12.1.0
   and the header was never updated. CLAUDE.md repeats the wrong count.
-- **Blocker, outside this plan's phases:** `config.verify` is
-  `python3 -m pytest -q` and pytest is not importable on this machine, so
-  dispatch's gate fails on every goal. The suite passes under
-  `uv run --with pytest pytest -q` (262 passed). Fix the config line before
-  queueing any of this.
+- `config.verify` was `python3 -m pytest -q` with pytest not importable here, so the
+  gate failed on every goal. Fixed 2026-08-28 to
+  `uv run --with pytest --python 3.13 pytest -q` — 262 tests green. Do not "fix" it back.
 
 ## What will be true when done
 
-Each outcome names the exact command that proves it. Every one of these fails on
-this plan's base commit and passes only once all three phases have landed.
+Each outcome names the exact command that proves it, in `config.verify`'s form. The
+first three FAIL at this plan's base commit `6e1d8ca` (the suites do not exist there)
+and pass only once every phase has landed; the fourth is the regression guard and is
+green at BOTH ends — it proves nothing broke, not that something arrived.
 
 - A weakening amend stops for the owner even under the drain waiver, and a
   tightening amend still proceeds unattended —
-  `uv run --with pytest pytest -q test_ratchet_policy.py`
+  `uv run --with pytest --python 3.13 pytest -q test_ratchet_policy.py`
 - A 3+-phase plan carries an executable outcome check as its own final phase, with
   every check named as a command that fails at base —
-  `uv run --with pytest pytest -q test_outcome_check_policy.py`
+  `uv run --with pytest --python 3.13 pytest -q test_outcome_check_policy.py`
 - `status: done` on a plan means its outcome check passed, not that its pieces got
-  built — `uv run --with pytest pytest -q test_outcome_check_policy.py -k done`
-- Nothing else regressed — `uv run --with pytest pytest -q` (262 existing tests
-  still pass)
+  built — `uv run --with pytest --python 3.13 pytest -q test_outcome_check_policy.py -k
+  test_plan_status_done_means_outcome_check_passed`
+- Nothing else regressed — `uv run --with pytest --python 3.13 pytest -q`, green at
+  base and at head, never fewer than the 262 tests passing before this chain
 - The two rules decide real scenarios the way they read — **needs independent
-  review**: subagent dry-runs with RED baselines against `git show HEAD:<file>`,
-  per CLAUDE.md's skill-edit rule.
+  review**: subagent dry-runs with RED baselines against `git show HEAD:<file>`, per
+  CLAUDE.md's skill-edit rule, with both transcripts written into the goal's report
+  file as named evidence. Placement-guard tests pin the text, never its meaning; this
+  bullet is where meaning is checked.
 
 Post-ship signal: on the next drain that self-heals a blocked goal, the amendment
 note names what it tightened; on the next 3+-phase plan, the final phase is an
@@ -177,6 +180,8 @@ Two teeth, matching how the existing reality-check items are each mirrored by a
 red-team item:
 
 ```
+modified  test_self_heal_policy.py                 its "eight checks" guard pins the
+                                             old count — update in the same change
 modified  skills/define-goal/SKILL.md      — amend step 4 gains the ratchet
                                              classification + the note records it;
                                              reality check gains item 10
