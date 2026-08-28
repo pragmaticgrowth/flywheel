@@ -206,8 +206,8 @@ For BLOCKED / NEEDS_CONTEXT / GOAL_UNREACHABLE / CONTRACT_AMBIGUOUS, put the spe
 criterion and its readings) directly in the
 message — the dispatcher acts on them immediately; the report file holds evidence, never
 the lede. Everything you print stays resident in the orchestrator's context for the whole
-fire — the report file is what keeps the factory lean, and a missing report file for
-non-trivial work is itself a gate finding. The Fresh-check line is not optional — the
+fire — the report file is what keeps the factory lean, and a missing report file
+is itself a gate finding. The Fresh-check line is not optional — the
 orchestrator independently reviews your diff regardless (your verdicts are corroborating
 evidence, not the verdict), and a missing line or a not-required claim the diff belies
 (multi-file or substantive work claiming a mechanical one-file edit) escalates to a full

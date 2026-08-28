@@ -852,6 +852,82 @@ def _make_repo(tmp):
     _git_local(tmp, "init", "-q"); _git_local(tmp, "config", "user.email", "t@t"); _git_local(tmp, "config", "user.name", "t")
     return tmp
 
+def _report_home(home, repo_root, goal_id):
+    slug = os.path.basename(os.path.abspath(repo_root))
+    return os.path.join(home, ".local", "state", "pg-dispatch", slug, "reports",
+                        f"{goal_id}-report.md")
+
+def _write_fresh_report(goal_id, repo_root, base_sha, home):
+    path = _report_home(home, repo_root, goal_id)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    open(path, "w").write("STATUS: DONE\n")
+    ts = int(_git_local(repo_root, "log", "-1", "--format=%ct", base_sha).stdout.strip())
+    os.utime(path, (ts + 10, ts + 10))
+    return path
+
+def _pgv_env(home):
+    env = os.environ.copy()
+    env["HOME"] = home
+    return env
+
+def _with_home(fn):
+    home = tempfile.mkdtemp(); repo = tempfile.mkdtemp()
+    old = os.environ.get("HOME")
+    os.environ["HOME"] = home
+    try:
+        return fn(home, repo)
+    finally:
+        if old is None:
+            os.environ.pop("HOME", None)
+        else:
+            os.environ["HOME"] = old
+
+def _unwrapped(path):
+    return " ".join(open(path).read().split())
+
+def test_report_file_missing_is_fail_fixable():
+    def inner(home, repo):
+        r = pgv.report_file("004", repo, 1_700_000_000)
+        assert r["pass"] is False and r["kind"] == "fixable"
+        assert "missing" in r["evidence"]
+        return r
+    _with_home(inner)
+
+def test_report_file_empty_is_fail_fixable():
+    def inner(home, repo):
+        path = _report_home(home, repo, "004")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        open(path, "w").write("")
+        os.utime(path, (1_700_000_010, 1_700_000_010))
+        r = pgv.report_file("004", repo, 1_700_000_000)
+        assert r["pass"] is False and r["kind"] == "fixable"
+        assert "empty" in r["evidence"]
+        return r
+    _with_home(inner)
+
+def test_report_file_stale_mtime_is_fail_fixable():
+    def inner(home, repo):
+        path = _report_home(home, repo, "004")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        open(path, "w").write("STATUS: DONE\n")
+        os.utime(path, (1_699_999_990, 1_699_999_990))
+        r = pgv.report_file("004", repo, 1_700_000_000)
+        assert r["pass"] is False and r["kind"] == "fixable"
+        assert "older than --base" in r["evidence"] or "stale" in r["evidence"]
+        return r
+    _with_home(inner)
+
+def test_report_file_valid_passes():
+    def inner(home, repo):
+        path = _report_home(home, repo, "004")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        open(path, "w").write("STATUS: DONE\n")
+        os.utime(path, (1_700_000_010, 1_700_000_010))
+        r = pgv.report_file("004", repo, 1_700_000_000)
+        assert r["pass"] is True, r
+        return r
+    _with_home(inner)
+
 def test_local_chore_acceptance_green_passes(tmp_path=None):
     d = tempfile.mkdtemp()
     _make_repo(d)
@@ -866,9 +942,12 @@ def test_local_chore_acceptance_green_passes(tmp_path=None):
     open(os.path.join(d, "app.py"), "w").write("x = 2\n")
     _git_local(d, "add", "app.py"); _git_local(d, "commit", "-qm", "work")
     head = _git_local(d, "rev-parse", "HEAD").stdout.strip()
+    home = tempfile.mkdtemp()
+    _write_fresh_report("001", d, base, home)
     script = os.path.join(os.path.dirname(__file__), "pg_validate.py")
     out = subprocess.run([sys.executable, script, "--head", head, "--base", base,
-                          "--goal", "001", "--goal-file", gf], capture_output=True, text=True, cwd=d)
+                          "--goal", "001", "--goal-file", gf], capture_output=True, text=True, cwd=d,
+                         env=_pgv_env(home))
     payload = json.loads(out.stdout)
     assert payload["verdict"] == "PASS", payload
     assert payload["sha_head"].startswith(head[:12])
@@ -886,8 +965,10 @@ def test_local_bug_repro_direction_pass_and_contract():
     open(gf,"w").write('---\ntype: bug\nacceptance:\n  - "grep -q FIXED f.txt"\n---\nbody\n')
     open(os.path.join(d,"f.txt"),"w").write("FIXED\n"); g(d,"add","f.txt"); g(d,"commit","-qm","fix")
     head = g(d,"rev-parse","HEAD").stdout.strip()
+    home = tempfile.mkdtemp()
+    _write_fresh_report("002", d, base, home)
     out = subprocess.run([sys.executable,s,"--head",head,"--base",base,"--goal","002","--goal-file",gf],
-                         capture_output=True,text=True,cwd=d)
+                         capture_output=True,text=True,cwd=d, env=_pgv_env(home))
     assert json.loads(out.stdout)["verdict"] == "PASS", out.stdout
     # --- FAIL_CONTRACT direction: already green on base (nothing red to fix), trivial head.
     d2 = tempfile.mkdtemp(); g(d2,"init","-q"); g(d2,"config","user.email","t@t"); g(d2,"config","user.name","t")
@@ -897,8 +978,10 @@ def test_local_bug_repro_direction_pass_and_contract():
     open(gf2,"w").write('---\ntype: bug\nacceptance:\n  - "grep -q FIXED f.txt"\n---\nbody\n')
     open(os.path.join(d2,"other.txt"),"w").write("noop\n"); g(d2,"add","other.txt"); g(d2,"commit","-qm","noop")
     head2 = g(d2,"rev-parse","HEAD").stdout.strip()
+    home2 = tempfile.mkdtemp()
+    _write_fresh_report("003", d2, base2, home2)
     out2 = subprocess.run([sys.executable,s,"--head",head2,"--base",base2,"--goal","003","--goal-file",gf2],
-                          capture_output=True,text=True,cwd=d2)
+                          capture_output=True,text=True,cwd=d2, env=_pgv_env(home2))
     assert json.loads(out2.stdout)["verdict"] == "FAIL_CONTRACT", out2.stdout
 
 def test_local_unresolved_ref_is_inconclusive():
@@ -961,9 +1044,11 @@ def test_local_bug_repro_pass_with_control():
     open(os.path.join(d,"product.txt"),"w").write("FIXED\n")
     g(d,"add","check.test.sh","product.txt"); g(d,"commit","-qm","fix + test")
     head = g(d,"rev-parse","HEAD").stdout.strip()
+    home = tempfile.mkdtemp()
+    _write_fresh_report("011", d, base, home)
     s = os.path.join(os.path.dirname(__file__),"pg_validate.py")
     out = subprocess.run([sys.executable,s,"--head",head,"--base",base,"--goal","011","--goal-file",gf],
-                         capture_output=True,text=True,cwd=d)
+                         capture_output=True,text=True,cwd=d, env=_pgv_env(home))
     assert json.loads(out.stdout)["verdict"] == "PASS", out.stdout
 
 
@@ -988,11 +1073,84 @@ def test_local_bug_repro_symlink_preserves_live_deps():
     head = g(d,"rev-parse","HEAD").stdout.strip()
     os.makedirs(os.path.join(d,"node_modules"))  # live (gitignored) dep dir
     marker = os.path.join(d,"node_modules","marker"); open(marker,"w").write("dep\n")
+    home = tempfile.mkdtemp()
+    _write_fresh_report("012", d, base, home)
     s = os.path.join(os.path.dirname(__file__),"pg_validate.py")
     out = subprocess.run([sys.executable,s,"--head",head,"--base",base,"--goal","012","--goal-file",gf],
-                         capture_output=True,text=True,cwd=d)
+                         capture_output=True,text=True,cwd=d, env=_pgv_env(home))
     assert json.loads(out.stdout)["verdict"] == "PASS", out.stdout
     assert os.path.exists(marker), "live node_modules/marker was destroyed by worktree cleanup"
+
+
+def test_local_report_file_required_for_pass():
+    # Root cause: Arm A never checked the implementer report. With --goal, a missing,
+    # empty, or pre-base report must FAIL_FIXABLE; the same green fixture PASSes only
+    # when the report exists, is non-empty, and has mtime after the --base commit.
+    d = tempfile.mkdtemp()
+    _make_repo(d)
+    open(os.path.join(d, "app.py"), "w").write("x = 1\n")
+    _git_local(d, "add", "app.py"); _git_local(d, "commit", "-qm", "base")
+    base = _git_local(d, "rev-parse", "HEAD").stdout.strip()
+    gf = os.path.join(d, "goal.md")
+    open(gf, "w").write("---\ntype: chore\nacceptance:\n  - \"true\"\n---\nbody\n")
+    open(os.path.join(d, "app.py"), "w").write("x = 2\n")
+    _git_local(d, "add", "app.py"); _git_local(d, "commit", "-qm", "work")
+    head = _git_local(d, "rev-parse", "HEAD").stdout.strip()
+    home = tempfile.mkdtemp()
+    script = os.path.join(os.path.dirname(__file__), "pg_validate.py")
+    env = _pgv_env(home)
+    goal = "004"
+
+    def run():
+        return subprocess.run(
+            [sys.executable, script, "--head", head, "--base", base,
+             "--goal", goal, "--goal-file", gf],
+            capture_output=True, text=True, cwd=d, env=env)
+
+    missing = run()
+    assert json.loads(missing.stdout)["verdict"] == "FAIL_FIXABLE", missing.stdout
+    assert missing.returncode == 3, missing.returncode
+
+    path = _report_home(home, d, goal)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    base_ts = int(_git_local(d, "log", "-1", "--format=%ct", base).stdout.strip())
+
+    open(path, "w").write("")
+    os.utime(path, (base_ts + 10, base_ts + 10))
+    empty = run()
+    assert json.loads(empty.stdout)["verdict"] == "FAIL_FIXABLE", empty.stdout
+
+    open(path, "w").write("STATUS: DONE\n")
+    os.utime(path, (base_ts - 10, base_ts - 10))
+    stale = run()
+    assert json.loads(stale.stdout)["verdict"] == "FAIL_FIXABLE", stale.stdout
+
+    open(path, "w").write("STATUS: DONE\n")
+    os.utime(path, (base_ts + 10, base_ts + 10))
+    ok = run()
+    payload = json.loads(ok.stdout)
+    assert payload["verdict"] == "PASS", payload
+    assert ok.returncode == 0
+
+
+def test_phase1_absent_is_fine_is_crash_recovered_reviewer_handoff_only():
+    text = _unwrapped(os.path.join(_here, "..", "SKILL.md"))
+    assert "absent is fine" in text
+    assert "crash-recovered reviewer handoff" in text
+    assert "never a license to complete without a report" in text
+
+
+def test_phase1_work_commits_present_regenerates_stub_before_gate():
+    text = _unwrapped(os.path.join(_here, "..", "SKILL.md"))
+    assert "Work commits present after the claim commit" in text
+    assert "regenerate a stub report from `gate_base..HEAD`" in text
+    assert "Before running the gate" in text
+
+
+def test_implementer_brief_missing_report_is_gate_finding_without_nontrivial_carveout():
+    text = _unwrapped(os.path.join(_here, "..", "references", "implementer-brief.md"))
+    assert "a missing report file is itself a gate finding" in text
+    assert "missing report file for non-trivial" not in text
 
 
 if __name__ == "__main__":

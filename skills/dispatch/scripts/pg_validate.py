@@ -20,6 +20,7 @@ def aggregate(results):
 
 
 import fnmatch
+import os
 
 # fnmatch '*' spans '/', so '.claude/*' matches nested paths too.
 FORBIDDEN_PATHS = (".claude/*", ".factory/*", ".github/workflows/*", "*/deploy*.sh", "deploy*.sh")
@@ -281,6 +282,40 @@ def queue_untouched(changed_paths):
                     "evidence": f"implementer edited queue file {p!r}; the orchestrator owns docs/goals/"}
     return {"name": "queue-untouched", "pass": True, "kind": "fixable",
             "evidence": "implementer left docs/goals/ untouched"}
+
+
+def report_path(goal_id, repo_root):
+    """~/.local/state/pg-dispatch/<cwd-basename>/reports/<goal-id>-report.md"""
+    slug = os.path.basename(os.path.abspath(repo_root))
+    return os.path.join(os.path.expanduser("~"), ".local", "state", "pg-dispatch",
+                        slug, "reports", f"{goal_id}-report.md")
+
+
+def report_file(goal_id, repo_root, base_commit_ts):
+    """Require the implementer report on every --goal run: exists, non-empty,
+    mtime after --base commit time. Missing/empty/stale → FAIL_FIXABLE.
+
+    A short report is enough; one-file mechanical edits are not exempt. Phase 1
+    crash recovery regenerates a stub before this check so a sitting that only
+    lacked the file is not reset.
+    """
+    path = report_path(goal_id, repo_root)
+    if not os.path.isfile(path):
+        return {"name": "report-file", "pass": False, "kind": "fixable",
+                "evidence": f"implementer report missing: {path}",
+                "violations": [f"missing: {path}"]}
+    if os.path.getsize(path) == 0:
+        return {"name": "report-file", "pass": False, "kind": "fixable",
+                "evidence": f"implementer report empty: {path}",
+                "violations": [f"empty: {path}"]}
+    mtime = os.path.getmtime(path)
+    if mtime <= float(base_commit_ts):
+        return {"name": "report-file", "pass": False, "kind": "fixable",
+                "evidence": f"implementer report older than --base: {path}",
+                "violations": [f"stale: {path}"]}
+    return {"name": "report-file", "pass": True, "kind": "fixable",
+            "evidence": f"implementer report present and newer than --base: {path}",
+            "violations": []}
 
 
 import argparse, glob, json, ntpath, os, posixpath, shutil, subprocess, tempfile
@@ -694,6 +729,12 @@ def run_validation(head, goal_id, base, goal_file, repo_root):
     checks.append(queue_untouched(changed))
     checks.append(blast_radius(changed, touches))
     checks.append(forbidden_content(_diff_text(sha_base, sha_head)))
+    rc_ct, out_ct, _ = _git(["log", "-1", "--format=%ct", sha_base], cwd=repo_root)
+    try:
+        base_ts = int((out_ct or "").strip())
+    except ValueError:
+        base_ts = 0
+    checks.append(report_file(goal_id, repo_root, base_ts))
 
     if gtype == "bug":
         # Overlay the head's changed test files onto the base checkout so a TDD test
