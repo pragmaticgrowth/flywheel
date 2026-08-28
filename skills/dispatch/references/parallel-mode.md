@@ -95,6 +95,10 @@ remaining budget allows.
 6. Report line + heartbeat per settled goal, exactly as Phase 4 (each settle = one
    fire for the cross-fire brake). In parallel mode `current:` lists the live lane
    ids (e.g. `current: 131+134`).
+   **Idle-drain (Claude-Code-only).** The orchestrator must consume or dismiss
+   pending `idle_notification` teammate-inbox messages before the closing turn
+   so a leftover ping cannot open the next turn. Droid has no teammate surface
+   — skip this step there. Never spawn a teammate, agent, or hook to drain one.
 
 **Failure rulings (every scenario, decided in advance):**
 
