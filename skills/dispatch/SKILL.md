@@ -846,7 +846,10 @@ committed artifacts survive. So, BEFORE a goal's settle commit, walk every loose
 this cycle produced — each `Concerns:` line of a DONE_WITH_CONCERNS report, every
 reviewer finding you verified real but out-of-scope, every "needs a new goal" /
 "follow-up" recommendation in the implementer's report, every recurring-lesson
-proposal — and give each item exactly ONE of these four dispositions:
+proposal — and give each item exactly ONE of these four dispositions —
+**unsure → Report-only**: Report-only is the DEFAULT — an item that does
+not clearly meet one of the capture bar's three earning shapes is under
+the bar:
 
 1. **Repair now** — it breaches THIS goal's own contract → it is a gate finding; route
    it FAIL_FIXABLE (`$DISPATCH_REFS/escalation-and-repair.md`). A DONE_WITH_CONCERNS
@@ -859,13 +862,21 @@ proposal — and give each item exactly ONE of these four dispositions:
    append ONE line to
    `docs/goals/inbox.md` (create the file on first use) and commit it
    `chore(goals): inbox <id>`:
-   `- [ ] <YYYY-MM-DD> <source-goal-id> <bug|feature|chore> — <one-line description> (evidence: <report path or path:line>)`
+   `- [ ] <YYYY-MM-DD> <source-goal-id> <bug|feature|chore> — <one-line description> (earn: live-defect|new-work|owner-decision) (evidence: <report path or path:line>)`
    **The capture bar (v11.6.0) — exactly three shapes earn an inbox line:**
-   (a) a LIVE defect — wrong behavior reachable on current code; (b) genuinely
-   NEW work — missing wiring, a missing consumer, a feature gap the owner would
-   want built; (c) an OWNER decision — spend, data loss, anything irreversible
-   or externally visible.
-4. **Report-only** — real but under the bar: latent or unreachable-today
+   (a) a LIVE defect (`live-defect`) — wrong behavior reachable on current
+   code; (b) genuinely NEW work (`new-work`) — missing wiring, a missing
+   consumer, a feature gap the owner would want built; (c) an OWNER decision
+   (`owner-decision`) — spend, data loss, anything irreversible or externally
+   visible.
+   **Capture is legal ONLY when the appended line carries its earning token** —
+   the `(earn: …)` field naming, in the line itself, which of the bar's three
+   shapes the item meets (live defect / genuinely new work / owner decision).
+   If you cannot honestly name one shape, the item is not over the bar →
+   Report-only. An inbox line without its earning token is a capture that did
+   not happen — never append it.
+4. **Report-only** (the DEFAULT — unsure lands here) — real but under the bar:
+   latent or unreachable-today
    findings, fail-safe residuals, deliberate contract-mandated tradeoffs,
    test-caption/comment-wording nits, watch items. One line in the goal's report
    file naming the item and this disposition; its full detail already lives in the
