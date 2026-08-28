@@ -20,4 +20,4 @@ goals:
   011-report-line-honesty: {status: completed, claimed_at: 2026-08-28T14:53:30Z, settled_at: 2026-08-28T15:15:17Z}
   012-capture-bar-default: {status: completed, claimed_at: 2026-08-28T15:28:50Z, settled_at: 2026-08-28T15:46:31Z}
   013-front-door-guide: {status: completed, claimed_at: 2026-08-28T15:46:31Z, settled_at: 2026-08-28T16:11:15Z}
-  014-child-timeout-arm-a: {status: blocked, claimed_at: 2026-08-28T16:11:15Z, settled_at: 2026-08-28T16:33:18Z, depends_on: [009-resume-from-increments], reason: "contract defect: type-bug acceptance names new test file so bare-base control is INCONCLUSIVE; scope acceptance at the stable full-suite runner"}
+  014-child-timeout-arm-a: {status: not_started, depends_on: [009-resume-from-increments]}
