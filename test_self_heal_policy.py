@@ -143,9 +143,9 @@ def test_droid_spawns_are_awaited():
 
 # ---- define-goal --------------------------------------------------------------
 
-def test_define_goal_reality_check_has_eight_checks():
+def test_define_goal_reality_check_has_ten_checks():
     text = unwrapped(DEFINE)
-    assert "eight checks" in text
+    assert "ten checks" in text
     assert "Drainability" in text
     assert "Premise" in text
 

@@ -50,8 +50,28 @@ Key discoveries:
 
 ## What will be true when done
 
-- <observable outcome 1>
-- <observable outcome 2>
+<Each bullet names the EXACT command that proves it, in `config.verify`'s form. Every
+command must FAIL at this plan's base commit and pass only once every phase has landed
+— a check that already passes before any phase lands is measuring a piece, not the
+whole. A subjective outcome that no command can settle keeps the review marker instead;
+do not invent a command for it.>
+
+- <observable outcome> — `<exact command>`
+- <subjective outcome> — **needs independent review**
+- Nothing else regressed — `<the repo's full verify command>`, green at base and at head
+
+<Two rules govern the commands:>
+
+<1. COMMITTED-TEST FORM. Each command must run a test the repo's own suite discovers —
+`config.verify` must reach it as written. Never an ad-hoc command run once at settle: a
+committed check is re-run by every later goal's gate, so a late phase that breaks an
+early phase's outcome fails a gate, while a one-shot command leaves `status: done`
+stamped against evidence that went stale the moment the next phase landed.>
+
+<2. DRIVABLE-SURFACE CHECKS. Each command drives the real surface — the CLI, the API, the
+suite, the rendered page — never a check that only reads or greps source. Phase
+implementers read this plan, so the checks are visible to them by design; that is safe
+only while the sole way to pass a check is to actually build the behavior it measures.>
 
 Post-ship signal (optional): <the metric, log line, or behavior to check AFTER this
 ships that says it actually worked — distinct from the acceptance criteria that gate
@@ -127,6 +147,20 @@ end-to-end path first, then widen.>
 - [ ] Phase 2: <takeaway title>
   - Files: <...>
   - Verify: `<exact command>`
+
+<AT 3 OR MORE PHASES, the LAST phase is an OUTCOME CHECK — the phase that measures the
+WHOLE rather than another piece. It builds nothing: it runs every bullet in
+`## What will be true when done`, shows each one failing at the plan's base commit and
+passing at HEAD, and stops for the owner if any bullet cannot be shown failing at base
+(a check that passes at base was measuring a piece). It depends on every other phase, so
+`status: done` on the plan means the outcome check PASSED, not merely that the pieces got
+built. A plan of 1-2 phases does not need one — the pieces and the whole are the same
+thing at that size.>
+
+- [ ] Phase N: <the outcome check — verification only, builds nothing>
+  - Depends on: <every other phase>
+  - Verify: every bullet in `## What will be true when done`, run in order, each shown
+    failing at base and passing at HEAD
 ```
 
 Checkbox lifecycle: ideate writes every phase `- [ ]`. Dispatch flips a phase to

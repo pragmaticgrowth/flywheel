@@ -83,7 +83,31 @@ is no `plugins/` directory — the repo root IS the flywheel plugin.
   terminal states are invoking define-goal with the approved plan or the user
   parking the idea — it never writes goal files, index entries, or code.
   Single-goal outcomes stay fileless; already-shaped wants skip it entirely;
-  re-invoking on a planned idea iterates the same plan file. v12.3.0 (goal 013,
+  re-invoking on a planned idea iterates the same plan file. v12.4.0 — THE PLAN
+  IS MEASURED AS A WHOLE, AND ITS STANDARD IS RATCHETED. At 3+ slices step 2
+  mints one extra phase, the OUTCOME CHECK: a verification-only final goal that
+  builds nothing, depends on every other phase, and runs every bullet of
+  `## What will be true when done` — so `status: done` comes to mean the outcome
+  check PASSED, not merely that the pieces got built, with no new dispatch
+  machinery (phases already map 1:1 onto goals). Outcome bullets stop being inert
+  prose: each names an exact command (or keeps the `**needs independent review**`
+  marker), each must FAIL at the plan's base commit (a check that already passes
+  is measuring a piece), each must be a COMMITTED test the repo's suite discovers
+  (an ad-hoc command run once at settle leaves the stamp resting on evidence that
+  went stale the moment the next phase landed), and each must DRIVE a real surface
+  rather than read source — which is what makes the owner-resolved decision to let
+  implementers see the plan safe, since the only way to pass such a check is to
+  build the behavior. And ideate is now a RATCHET SITE alongside define-goal: on
+  iteration, outcome-bullet edits are classified against
+  `git show HEAD:docs/goals/plans/<file>.md` and a weakening stops for the owner
+  (removing or renaming the section counts). This closes the back door the
+  goal-file ratchet alone leaves open — soften the plan, contract the goal
+  honestly from the softened text, and every individual comparison sees nothing.
+  Three residual routes are named rather than implied: a plan edited outside
+  ideate after its outcome goal is contracted (red-team item 15(b) is the
+  backstop), a fresh plan file duplicating a topic, and a weakened TEST BODY under
+  a byte-identical command — no text ratchet can see that last one.
+  v12.3.0 (goal 013,
   with goals-status): an UNSHAPED LIST is this skill's front door too — "I have
   N issues/items, where do I start?" is one idea at plan altitude, not a
   define-goal batch dump: orient once over the whole list, cut it into vertical
@@ -224,6 +248,29 @@ is no `plugins/` directory — the repo root IS the flywheel plugin.
   is nothing to amend). Inbox intake also refuses aggregate-only premises (KEEP
   `premise unconfirmed`) and verifies named mechanisms live. Red-team items 11–12
   (Drainability, Premise) added in lockstep.
+  v12.4.0 — THE RATCHET (from Factory's 2026-08-27 study: an agent stops early
+  because it authors its own definition of done, and a standard that can soften
+  stops measuring): an amend may only make a contract stricter or more correct,
+  never easier. Amend step 4 classifies every edit against
+  `git show HEAD:docs/goals/<id>.md` on a named taxonomy — weakening (criterion
+  deleted and not replaced, threshold loosened, a runnable command traded for a
+  vouched-for assertion, a drivable-surface check traded for a code-reading one,
+  a before/after criterion that lost its BEFORE, a removed `needs independent
+  review` flag, `touches:` narrowed past what the criteria still require) STOPS
+  FOR THE OWNER, drain waiver or not; tightening/repair proceeds unattended as
+  before, and the amendment note carries a `ratchet:` field naming which it was.
+  RETIRE is under it too as the largest possible weakening — under the waiver its
+  disproving evidence must be a command output or quoted primary artifact, never
+  the agent's own reasoning. Reality check item 10 (amend-only) and red-team item
+  15 enforce it, and the header count — stale at "eight" while listing nine since
+  v12.1.0 — is corrected to "ten". The waiver deliberately cannot reach any of it:
+  self-heal is the one path where nobody is watching, so it is the one path where
+  a softening standard would go unnoticed. The plan-backed fast path also
+  contracts a 3+-phase plan's FINAL phase as its outcome check (`type: chore` via
+  a new type-shape exception admitting a verification-only goal with no
+  no-behavior-change proof; `depends_on` every other phase), and warns that a
+  `-k` selector exits 5 on no match, so any test name an outcome bullet selects
+  must be pinned by a criterion in the goal that CREATES it.
 **Harness note (v8.2.0; depth corrected v8.3.0):** on Claude Code a subagent can spawn
 further subagents (Agent nests — official docs put the default nesting depth at 3 layers
 below the main conversation, not the 5 previously claimed here; dispatch's
@@ -472,6 +519,20 @@ own review to the full panel, and is explicitly not a compliance miss.
   `sleep`+`ps` polling banned by name on Droid; and parallel mode drains pending
   `idle_notification` teammate pings before the closing turn (Claude-Code-only,
   never by spawning anything).
+  v12.4.0 — A WHOLE-OUTCOME GAP OUTRANKS THE CAPTURE BAR. v12.3.0 made Report-only
+  the default with "unsure lands here", which is right for nits and backwards for
+  the one failure the plan tier exists to catch, so settle triage gains ONE narrow
+  carve-out: an item that would FALSIFY a bullet of the goal's linked plan
+  `## What will be true when done` is never Report-only, however unsure the
+  implementer is. It carries the `live-defect` earning token by construction —
+  without that the capture item's own "cannot honestly name one shape →
+  Report-only" would re-route the very items the carve-out exempts — and the
+  operative test is narrow: it qualifies when, if true, it would make an outcome
+  bullet's COMMAND fail or a `needs independent review` bullet false; topical
+  relation is not enough. Everything else stays Report-only exactly as v12.3.0 has
+  it. Phase 0's plan-sync section also states what the stamp MEANS: on a 3+-phase
+  plan the last phase is the outcome check, so `status: done` means it PASSED (a
+  1-2-phase plan keeps the older, weaker meaning).
 - **goals-status** (v5.2.0; simplified in v6.0.0) — read-only view of the
   docs/goals queue. Prints
   every OPEN goal — `in_progress`, `blocked`, `not_started` — with its title and

@@ -86,6 +86,17 @@ it is not a slice — re-cut.** The decomposition maps 1:1 onto future goals and
 their `depends_on` chain; say so in plain language ("this is really three
 deliverables; the second needs the first").
 
+**At 3 or more slices, mint one more phase: the OUTCOME CHECK.** The pieces measure
+themselves; nothing measures the whole. So the last phase of a 3+-phase plan is a
+verification-only goal that builds nothing — it runs every bullet in
+`## What will be true when done`, shows each failing at the plan's base commit and
+passing at HEAD, and depends on every other phase. That fixes what `status: done`
+MEANS by construction: the stamp already fires when the last phase checks, and the
+last phase is now the outcome check. It needs no new dispatch machinery — phases
+already map 1:1 onto goals, so the outcome check is an ordinary goal that gets
+contracted, red-teamed, claimed, and gated like any other. A 1-2-phase plan skips
+it: at that size the pieces and the whole are the same thing.
+
 ### 3. Explore — a progressive dialogue, not an interrogation
 
 Derive everything the repo can answer yourself — never ask the owner a question
@@ -196,6 +207,14 @@ Before handoff, re-read the plan with fresh eyes:
   time — kill them here, the cheapest place.
 - **Slices:** does any phase fail the slice test (unverifiable without a later
   phase)? Re-cut it now — define-goal's red-team blocks horizontal cuts.
+- **Outcomes fail at base (v12.4.0):** every bullet in `## What will be true when
+  done` names an exact command or the `**needs independent review**` marker; each
+  command is reachable by `config.verify` AS WRITTEN, drives a real surface rather
+  than reading source, and **fails at the plan's base commit**. Check the last one
+  — run it, or name why it must fail (the suite it calls does not exist yet). A
+  bullet that already passes before any phase lands is measuring a piece, not the
+  whole, and belongs in a phase's Verify line instead. At 3+ phases, confirm the
+  final phase is the outcome check that runs them all.
 - **Headers:** does every heading state its takeaway?
 
 Fix inline and move on — no re-review loop.
@@ -222,6 +241,53 @@ plan's frontmatter carries an `artifact:` URL and the session has the Artifact
 tool, republish the updated plan to that SAME URL as part of re-presenting
 (never a second page); no tool in this session → chat presentation as usual,
 and the URL stays for the next session that has it.
+
+### The outcome bullets are ratcheted — a plan's standard may only get stricter
+
+Iterating a plan is the one place a standard can be lowered before anyone is
+measuring it. Goal contracts have carried a ratchet since v12.4.0, but the outcome
+bullets do not live in a goal file — they live here, and the derived contract can be
+weaker than the original while every individual comparison sees nothing weakened:
+soften the plan, let define-goal contract the outcome goal honestly from the softened
+text, and the goal-file ratchet has nothing to compare against. **So ideate, not just
+define-goal, is a ratchet site. That is correct — ideate is where the standard is
+authored, so it is where the standard can first be lowered.**
+
+Before writing an updated plan, diff its `## What will be true when done` bullets
+against `git show HEAD:docs/goals/plans/<file>.md` and classify every change on
+define-goal's amend taxonomy:
+
+```
+WEAKENING — stops for the owner       TIGHTENING — proceeds, as any other edit
+a bullet deleted, not replaced        a bullet added
+its command dropped for prose         a vague bullet pinned to a command
+a threshold loosened                  a threshold raised
+`needs independent review` removed    a subjective bullet given a real command
+a command → a code-reading check      a code-reading check → a drivable surface
+```
+
+Renaming or removing the `## What will be true when done` section itself is
+weakening: a classifier keyed on the heading would otherwise read a deleted section
+as "no bullets present" rather than "every bullet deleted".
+
+Scope: ONLY the `## What will be true when done` bullets are ratcheted. The rest of
+the plan — design, phases, context, open questions — stays freely editable, because
+only the outcome bullets are load-bearing as the standard. A plan being written for
+the FIRST time has no previous commit and nothing to ratchet against; the rule engages
+on iteration only. A tightening iteration needs no ceremony at all: write it, note it,
+move on.
+
+A weakening iteration stops for the owner: present the classification and what it
+would relax, and let them decide — "the work turned out harder than the bullet
+assumed" is the reason this rule exists, never a reason to accept it.
+
+This does not close every route, and the residue is named rather than implied: it does
+not reach a plan edited outside this skill after its outcome goal is already
+contracted (the red-team's item 15(b) is the backstop there, and it compares however
+the plan was edited), nor a fresh plan file duplicating an existing plan's topic, nor
+what a command ASSERTS — leave a bullet's command byte-identical and weaken the test
+body it runs, and no text ratchet sees anything. Closing that last one needs a
+different instrument than comparing prose.
 
 ## Red flags — stop and get back on the path
 

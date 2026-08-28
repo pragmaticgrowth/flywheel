@@ -641,6 +641,16 @@ the settle mirror) edit checkbox/status text ONLY — a plan's `artifact:`
 presentation page belongs to ideate's approval touches and is never republished
 by dispatch.
 
+**What that stamp MEANS (v12.4.0).** On a plan of 3+ phases the last phase is the
+plan's OUTCOME CHECK — a verification-only goal that builds nothing and runs every
+bullet of `## What will be true when done`, each shown failing at the plan's base
+commit and passing at HEAD. Since the stamp fires when the last open phase checks,
+`status: done` means the plan's outcome check PASSED — not merely that its pieces got
+built. This needs no new machinery here: the outcome check is an ordinary final phase
+depending on every other, so it claims, gates, and settles through the same path as
+any goal, and a failure blocks and surfaces under `needs-you:` like any other. A
+1-2-phase plan has no outcome check and its stamp keeps the older, weaker meaning.
+
 On any environment failure you can't handle (missing tooling, an unrunnable `config.verify`
 command, a queue the claim protocol can't write), stop the iteration and surface it under
 needs-you as class `environment failure` — `/factory-doctor` diagnoses and fixes setup so the loop stops failing
@@ -871,6 +881,20 @@ proposal — and give each item exactly ONE of these four dispositions —
 **unsure → Report-only**: Report-only is the DEFAULT — an item that does
 not clearly meet one of the capture bar's three earning shapes is under
 the bar:
+
+**One carve-out, and it outranks the default (v12.4.0).** An item that would
+FALSIFY a bullet in the goal's linked plan `## What will be true when done` is
+NEVER Report-only, however unsure you are. It carries the `live-defect` earning
+token by construction — so the capture item's "if you cannot honestly name one
+shape → Report-only" cannot re-route it — and it earns its inbox line. The
+operative test is narrow: the item qualifies when, if true, it would make an
+outcome bullet's COMMAND fail, or make a `**needs independent review**` bullet
+false. Being topically related to a bullet is not enough. Everything else in the
+list below is unchanged: nits, latent findings, fail-safe residuals, and
+contract-mandated tradeoffs stay Report-only exactly as they are. This is a
+carve-out for the WHOLE outcome, not a rollback of the capture bar — the bar
+filters nits, and an outcome bullet is the one thing measuring whether the plan
+delivered what it set out to.
 
 1. **Repair now** — it breaches THIS goal's own contract → it is a gate finding; route
    it FAIL_FIXABLE (`$DISPATCH_REFS/escalation-and-repair.md`). A DONE_WITH_CONCERNS

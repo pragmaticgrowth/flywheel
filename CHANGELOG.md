@@ -13,6 +13,94 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [12.4.0] — 2026-08-29
+
+**The factory measures the whole, and its standard can only get stricter.** From
+Factory's 2026-08-27 study: held to a standard of completion it wrote *before*
+implementation, the same model rebuilt gdal to 90 % behavioral parity against 36 %
+for a single agent that decided for itself when it was done. The single agent did
+not run out of budget — it stopped because, having validated each piece in the
+context that produced it, it never established a complete account of what remained.
+
+Flywheel already authors the standard before the work; that is what a goal contract
+is. Two gaps remained, and this release closes both. They protect each other, which
+is why they ship together: without the ratchet, self-heal could route a failing
+outcome check into an amend and weaken the very check measuring the whole.
+
+- **ideate — a 3+-phase plan carries an OUTCOME CHECK as its final phase.** The
+  pieces measure themselves; nothing measured the whole. Now the last phase of a
+  3+-phase plan is a verification-only goal that builds nothing, depends on every
+  other phase, and runs every bullet of `## What will be true when done`. It needs
+  no new dispatch machinery — phases already map 1:1 onto goals, so it gets
+  contracted, red-teamed, claimed and gated like any other. A 1-2-phase plan skips
+  it: at that size the pieces and the whole are the same thing.
+- **ideate — outcome bullets stop being inert prose.** Each names an exact command
+  (or keeps the `**needs independent review**` marker for what no command can
+  settle). Three rules give them teeth: each must FAIL at the plan's base commit (a
+  check that already passes is measuring a piece, not the whole); each must be a
+  COMMITTED test the repo's own suite discovers, never an ad-hoc command run once at
+  settle, so a late phase that breaks an early phase's outcome fails a gate instead
+  of leaving `status: done` resting on stale evidence; and each must DRIVE a real
+  surface rather than read source. That last one is what makes the owner-resolved
+  decision to let phase implementers see the plan safe — if the only way to pass a
+  visible check is to build the behavior, targeting the sample *is* the work.
+- **define-goal — THE RATCHET: an amend may only make a contract stricter.** Since
+  v12.0.0 self-heal rewrites blocked contracts in-run with nobody watching, and
+  nothing compared the rewrite against what it replaced. Amend step 4 now classifies
+  every edit against `git show HEAD:docs/goals/<id>.md`. Weakening — a criterion
+  deleted and not replaced, a threshold loosened, a runnable command traded for an
+  assertion someone must vouch for, a drivable-surface check traded for a
+  code-reading one, a before/after criterion that lost its BEFORE, a removed
+  `needs independent review` flag, `touches:` narrowed past what the criteria still
+  require — STOPS FOR THE OWNER, drain waiver or not. Tightening and repair proceed
+  unattended exactly as before. The amendment note carries a `ratchet:` field naming
+  which it was. "The implementer could not pass it" is never itself a reason to
+  lower the bar; that is the failure the rule exists to catch.
+- **define-goal — RETIRE is under the ratchet, as the largest possible weakening.**
+  The whole contract disappears, terminally. Under the drain waiver the disproving
+  evidence must be a command output or a quoted primary artifact; an agent's own
+  reasoning as sole evidence stops for the owner.
+- **ideate — the PLAN is ratcheted too, or the goal-file ratchet has a back door.**
+  Outcome bullets do not live in a goal file, and plans have no immutability rule
+  anywhere in the repo — ideate iterates them by design. So: soften the plan,
+  contract the outcome goal honestly from the softened text, and every individual
+  comparison sees nothing weakened. Plan iteration now classifies outcome-bullet
+  edits against `git show HEAD:docs/goals/plans/<file>.md` on the same taxonomy
+  (renaming or removing the section counts as weakening), which makes ideate a
+  ratchet site alongside define-goal — correct, since ideate is where the standard
+  is authored and therefore where it can first be lowered. Three residual routes are
+  named rather than implied: a plan edited outside ideate after its outcome goal is
+  contracted (red-team item 15(b) backstops it), a fresh plan file duplicating a
+  topic, and a weakened TEST BODY under a byte-identical command — which no text
+  ratchet can see.
+- **dispatch — a whole-outcome gap outranks the capture bar.** v12.3.0 made
+  Report-only the default with "unsure lands here", right for nits and backwards for
+  exactly this failure. One narrow carve-out: an item that would falsify a plan
+  outcome bullet is never Report-only, however unsure the implementer is. It carries
+  the `live-defect` token by construction — without that, the capture item's own
+  "cannot honestly name one shape → Report-only" would re-route the very items the
+  carve-out exempts. The operative test is narrow (it would make the bullet's
+  *command* fail; topical relation is not enough) and nothing else about the bar
+  loosens.
+- **dispatch — `status: done` on a plan means its outcome check passed**, not merely
+  that its pieces got built. Stated at Phase 0's plan-sync; the settle mirror and
+  `index.yaml`-is-the-authority rule are unchanged.
+- **Enforcement lands where the waiver cannot reach.** Reality check item 10
+  (amend-only) and red-team item 15 (amended contracts *and* plan-derived outcome
+  goals, compared however the plan was edited). The waiver runs the red-team
+  UNCHANGED, so anything placed there is something self-heal cannot skip — and the
+  reality check header, stale at "eight" while listing nine since v12.1.0, is
+  corrected to "ten".
+
+Suite grown 360 → 403 across two new policy suites. Every one of the six outcome
+commands was verified FAILING at base `4007651` (exit 4) in a throwaway worktree and
+PASSING at HEAD, with the regression guard green at both ends. Eleven RED baselines
+confirmed the pre-change text was silent on every rule. The dry-runs were self-run
+in the implementing context rather than in fresh subagent contexts (explicit
+maintainer instruction for this run), which is weaker evidence than the house
+doctrine's independent dry-run: the placement guards pin the text, and the meaning
+of these rules has not yet been checked by an independent reader.
+
 ## [12.3.0] — 2026-08-28
 
 **Death stops destroying work, and "done" stops being self-declared.** Twelve

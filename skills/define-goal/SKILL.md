@@ -104,7 +104,20 @@ contract as usual.
 **Plan-backed fast path (invoked from ideate, or a want covered by an existing
 approved plan): ZERO question rounds.** The plan IS the interview — its Open-questions
 section holds the settled forks (and any still-OPEN ones, which you carry into the
-affected goal's Context rather than re-asking). Recon narrows to verifying and
+affected goal's Context rather than re-asking).
+
+**A 3+-phase plan's FINAL phase is its outcome check — contract it as one (v12.4.0).**
+It is verification-only: it builds nothing and its criteria are the plan's own
+`## What will be true when done` bullets, each shown FAILING at the plan's base commit
+and PASSING at HEAD. Contract it `type: chore` (the type-shape rule admits a
+verification goal without a no-behavior-change proof), `depends_on` every other phase,
+and carry the base commit into its Context so "fails at base" names a real sha. Two
+traps to check while drafting it: a bullet whose command already passes at base is
+measuring a piece, not the whole — send it back to a phase's Verify line; and a `-k`
+selector exits 5 when it matches nothing, so any test name a bullet selects must be
+pinned by a criterion in the goal that CREATES that test, never left to Interfaces
+prose. Never contract it to auto-fix what it finds: a whole-outcome miss is a design
+fault, and design faults stop for the owner. Recon narrows to verifying and
 completing what the plan located rather than re-deriving it — and when that
 verification finds a plan error (a Verify path that doesn't exist, a command that
 doesn't parse), FIX THE PLAN in the same commit as the goal files, not just the
@@ -697,6 +710,12 @@ behavior criteria; a chore's full-suite check replaces the owning-package one):
 - **chore** (refactor, upgrade, migration) — acceptance is "no behavior change": the full
   test suite green before AND after, plus the one mechanical check that proves the chore
   itself (dependency version, lint-rule count, migration applied).
+  **One admitted exception: a VERIFICATION-ONLY goal (v12.4.0)** — a plan's outcome-check
+  phase, which builds nothing and only measures — is `type: chore` and is NOT required to
+  prove "no behavior change". It has no behavior to hold constant; its acceptance is the
+  outcome commands themselves, each shown failing at the plan's base commit and passing at
+  HEAD. Do not mint a `type: verify` for this: a fourth type would ripple through the
+  red-team, `pg_validate.py`, and every rule keyed on the three existing types.
 
 The completion condition differs by destination. **Queue:** the Acceptance criteria
 section IS the contract — `dispatch` hands the file to its implementer, whose brief
@@ -715,7 +734,7 @@ by cap instead of by budget.
 
 ## Contract reality check — mechanical, before the red-team (queue destination only)
 
-Run these eight checks yourself on every queued draft, BEFORE spawning the contract
+Run these ten checks yourself on every queued draft, BEFORE spawning the contract
 red-team — each is cheap, and each encodes a defect class that blocked
 CORRECT, finished work at gate time in real drains (2026-08-13/16 forensics, two
 repos: every one of the 10 blocked goals was one of these classes, not a work
@@ -792,6 +811,19 @@ window's avoidable blocks was a 6/7/8-class authoring defect):
    shipped its operative half, and the gate reviewer still returned contract=FAIL
    on the consequence clause, forcing the orchestrator to adjudicate the criterion
    rather than the code.
+10. **The ratchet — an amended contract is never weaker than the one it replaces
+    (AMEND MODE ONLY).** On a queued draft produced by `--amend`, diff it against
+    `git show HEAD:docs/goals/<id>.md` and classify every changed criterion by
+    Amend mode's weakening/tightening taxonomy. Any weakening — a criterion deleted
+    and not replaced, a threshold loosened, a runnable command traded for a
+    vouched-for assertion, a drivable-surface check traded for a code-reading one, a
+    before/after criterion that lost its BEFORE, a removed `needs independent review`
+    flag, `touches:` narrowed past what the criteria still require — is
+    **contract-blocking** and stops for the owner, under the drain waiver exactly as
+    interactively. This check does not run on a fresh draft (there is no predecessor
+    to compare) and never fires on tightening or repair. Its whole point is the
+    unattended path: self-heal rewrites a blocked contract with nobody watching, and
+    the cheapest way to make a failing goal pass is to ask less of it.
 
 The red-team re-checks 1–3 and 6–9 (its Command-reality, Gate-fit, Drainability,
 Premise, and Absolute-claims items carry the same
@@ -1003,9 +1035,48 @@ Run the steps in this order:
    Re-stamp `model:` only if the amended criteria change the tightness rubric's answer.
    Status stays out of the file: status stays ONLY in `index.yaml` (see the queue rules),
    and this mode never adds a status field to goal frontmatter.
+
+   **THE RATCHET — classify every edit before you write it (v12.4.0).** An amend may
+   only make a contract stricter or more correct, never easier. The "before" is
+   `git show HEAD:docs/goals/<id>.md` — deterministic, already in the repo, no new
+   state file. Comparing against HEAD on every amend makes the contract monotonically
+   non-weakening, so it is transitively never weaker than the original. Classify each
+   changed criterion:
+
+   *Weakening — STOPS FOR THE OWNER, drain waiver or not:*
+
+   ```
+   a criterion deleted and not replaced
+   a threshold loosened                    (fewer, slower, lower coverage)
+   a runnable command  →  an assertion a human or agent must vouch for
+   a drivable-surface check  →  a code-reading check
+   a before/after criterion loses its BEFORE
+   a `needs independent review` flag removed
+   `touches:` narrowed so a path the criteria still require drops out
+   ```
+
+   *Tightening or repair — proceeds unattended, exactly as today:*
+
+   ```
+   a criterion added
+   a wrong path or command corrected so it actually runs
+   a two-readable criterion pinned to the STRICTER reading
+   a criterion split per Drainability
+   a not-yet-true capability moved to a `depends_on` prior
+   ```
+
+   A weakening amend is a true owner fork: present the classification with what it
+   would relax and why the block seems to demand it, and let the owner decide. The
+   goal stays `blocked` until they do. "The implementer could not pass it" is never
+   itself a reason to lower the bar — that is the failure this rule exists to catch,
+   and it is what an unattended self-heal will otherwise do by construction.
 5. **Record a one-line amendment note in the goal file's Context section** —
-   `**Amended <date>:** <the defect> → <the resolved reading>` — so the next implementer
-   reads the settled fork instead of re-opening it. One line per amendment, appended; never
+   `**Amended <date>:** <the defect> → <the resolved reading> (ratchet: tightening|repair)` —
+   so the next implementer reads the settled fork instead of re-opening it. The ratchet
+   field is not optional: it names step 4's classification, and for an owner-approved
+   weakening it also names what was relaxed and who approved it
+   (`ratchet: weakening — <what> — owner-approved <date>`). An amendment note with no
+   ratchet field is an amend that skipped the classification. One line per amendment, appended; never
    rewrite or delete an earlier note (the notes are the goal's decision history, and git
    holds the rest). **And when the defect traces to a still-OPEN question in the goal's
    linked plan (v11.2.0): resolve it AT THE SOURCE too** — move that plan question to
@@ -1022,7 +1093,12 @@ Run the steps in this order:
 evidence shows the goal's PREMISE is false or its outcome already true — the defect
 does not exist on current code, the metric was a misread aggregate, the capability
 already ships — no rewrite can produce a valid contract: the goal is RETIRED, not
-amended. Flip the entry to `status: retired` with `reason: retired: <premise
+amended. **Retire is under the ratchet too, and is the largest possible weakening:
+the whole contract disappears, terminally and unrequeueably.** Under the drain waiver
+the disproving evidence must be a COMMAND OUTPUT or a quoted primary artifact,
+recorded in the retire reason; an agent's own reasoning as the sole evidence stops
+for the owner. The reality check's Premise item verifies a premise when a goal is
+WRITTEN, which is not the same as verifying it when the goal is DESTROYED. Flip the entry to `status: retired` with `reason: retired: <premise
 disproven | already true> — <one-line evidence>`, move the entry to `archive.yaml`
 and the goal file to `docs/goals/done/` in one `chore(goals): retire <id>` commit
 (dispatch's fifth verb — its Self-heal section does the same in-run). Retired is
@@ -1038,7 +1114,11 @@ and step 7's owner confirmation is WAIVED — the red-team of step 6 runs UNCHAN
 and both commits carry `provenance: dispatch-self-heal` in the amendment note. A
 true owner fork — spend, data loss, irreversible or externally visible — is never
 resolved under the waiver: the goal stays `blocked` and the fork goes back to
-dispatch as the needs-you item, with a recommendation.
+dispatch as the needs-you item, with a recommendation. **The waiver never reaches
+the ratchet:** step 4's weakening classification and a red-team Ratchet finding are
+both contract-blocking under the waiver exactly as they are interactively. That is
+deliberate — self-heal is the one path where nobody is watching, so it is the one
+path where a softening standard would go unnoticed.
 
 7. **Confirm with the user, then write and requeue in TWO commits** — the contract edit and
    the status write never share a commit (queue writes are always their own commit, exactly

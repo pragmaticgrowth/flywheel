@@ -113,6 +113,27 @@ Check every draft against this rubric:
     and the gate still fails the consequence clause. The fix is to state the weaker,
     TRUE consequence. Distinct from item 13: that one catches an unsatisfiable pasted
     CONSTRAINT, this one a criterion whose stated CONSEQUENCE outruns its Constraints.
+15. **Ratchet** — a standard may only get stricter. This item fires on two shapes, and
+    on both it is **contract-blocking**; it never fires on a fresh draft with no
+    predecessor, nor on tightening or repair.
+    *(a) An amended contract.* Given the previous contract —
+    `git show HEAD:docs/goals/<id>.md` — flag any weakened criterion: deleted and not
+    replaced, threshold loosened (fewer, slower, lower coverage), a runnable command
+    traded for an assertion someone must vouch for, a drivable-surface check traded for
+    a code-reading one, a before/after criterion that lost its BEFORE, a removed
+    `needs independent review` flag, or `touches:` narrowed so a path the criteria still
+    require drops out.
+    *(b) A plan-derived outcome goal.* When the draft's Context links a plan, compare
+    that plan's `## What will be true when done` bullets against the plan's previous
+    commit — `git show HEAD:docs/goals/plans/<file>.md` — and flag the same weakenings
+    there, plus a renamed or deleted section (a classifier keyed on the heading reads a
+    removed section as "no bullets" rather than "every bullet deleted"). Compare
+    HOWEVER the plan was edited; the softening does not have to have come through
+    ideate. This is the back door the goal-file ratchet alone leaves open: soften the
+    plan, contract the goal honestly from the softened text, and every individual
+    comparison sees nothing.
+    "The implementer could not pass it" is never a reason that downgrades this finding —
+    a stated rationale never downgrades severity, and here the rationale IS the defect.
 
 Read-only is absolute, and the shell is not an exception: never edit or create files —
 not in the repo, not under /tmp, not via a redirect or heredoc; reads and cheap read-only

@@ -22,8 +22,8 @@ goals:
   013-front-door-guide: {status: completed, claimed_at: 2026-08-28T15:46:31Z, settled_at: 2026-08-28T16:11:15Z}
   014-child-timeout-arm-a: {status: completed, claimed_at: 2026-08-28T16:36:36Z, settled_at: 2026-08-28T16:56:07Z, depends_on: [009-resume-from-increments]}
   015-double-death-routing: {status: completed, claimed_at: 2026-08-28T17:06:57Z, settled_at: 2026-08-28T17:30:01Z, priority: high}
-  016-amend-ratchet: {status: not_started}
-  017-plan-outcome-check: {status: not_started}
-  018-plan-ratchet: {status: not_started, depends_on: [016-amend-ratchet, 017-plan-outcome-check]}
-  019-done-means-passed: {status: not_started, depends_on: [017-plan-outcome-check]}
-  020-standard-of-completion-outcome: {status: not_started, depends_on: [016-amend-ratchet, 017-plan-outcome-check, 018-plan-ratchet, 019-done-means-passed]}
+  016-amend-ratchet: {status: completed}
+  017-plan-outcome-check: {status: completed}
+  018-plan-ratchet: {status: completed, depends_on: [016-amend-ratchet, 017-plan-outcome-check]}
+  019-done-means-passed: {status: completed, depends_on: [017-plan-outcome-check]}
+  020-standard-of-completion-outcome: {status: completed, depends_on: [016-amend-ratchet, 017-plan-outcome-check, 018-plan-ratchet, 019-done-means-passed]}

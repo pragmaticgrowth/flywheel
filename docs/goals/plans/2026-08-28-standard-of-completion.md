@@ -2,7 +2,7 @@
 topic: standard-of-completion
 created: 2026-08-28
 amended: 2026-08-29
-status: approved
+status: done
 repo: flywheel
 branch: main
 artifact: https://claude.ai/code/artifact/2c4b2516-7362-46f3-bb8a-528a53f10873
@@ -441,7 +441,7 @@ All three resolved 2026-08-28 by the owner: "go with your recommendations".
 Phases 1 and 2 are independent and may run in either order or concurrently.
 Phase 3 depends on both. Phase 5 is the outcome check and depends on everything.
 
-- [ ] Phase 1: A weakening amend stops for the owner; a tightening one still runs unattended
+- [x] Phase 1: A weakening amend stops for the owner; a tightening one still runs unattended
   - Files: `skills/define-goal/SKILL.md` (amend step 4 ratchet classification,
     amendment-note format, reality-check item 10 amend-only, header count fix,
     drain-waiver blocking clause, retire-evidence rule per the resolved question);
@@ -451,7 +451,7 @@ Phase 3 depends on both. Phase 5 is the outcome check and depends on everything.
     with a RED baseline against `git show HEAD:skills/define-goal/SKILL.md`
     · **needs independent review** on whether the weakening list is exhaustive
 
-- [ ] Phase 2: A 3+-phase plan carries an executable outcome check as its final phase
+- [x] Phase 2: A 3+-phase plan carries an executable outcome check as its final phase
   - Files: `skills/ideate/references/plan-template.md` (outcome bullets carry
     commands, fail-at-base rule, outcome check as final phase, bullets are
     drivable-surface checks reachable by `config.verify` as written);
@@ -461,7 +461,7 @@ Phase 3 depends on both. Phase 5 is the outcome check and depends on everything.
     · plus a subagent dry-run producing a plan for a 3-phase idea, RED-baselined
     against `git show HEAD:skills/ideate/references/plan-template.md`
 
-- [ ] Phase 3: A plan's outcome bullets are ratcheted the same way a goal's criteria are
+- [x] Phase 3: A plan's outcome bullets are ratcheted the same way a goal's criteria are
   - Depends on: Phase 1 (the taxonomy it reuses), Phase 2 (the bullets it guards)
   - Files: `skills/ideate/SKILL.md` (iterating an existing plan classifies every
     outcome-bullet edit as weakening or tightening against
@@ -477,7 +477,7 @@ Phase 3 depends on both. Phase 5 is the outcome check and depends on everything.
     a reviewer should try to find a route from a softened plan to a passing outcome
     check that the rule does not catch
 
-- [ ] Phase 4: define-goal contracts the outcome phase, done means passed, and a whole-outcome gap always surfaces
+- [x] Phase 4: define-goal contracts the outcome phase, done means passed, and a whole-outcome gap always surfaces
   - Depends on: Phase 2
   - Files: `skills/define-goal/SKILL.md` (plan-backed fast path handles the outcome
     phase; one type-shape sentence admitting a verification goal as `type: chore`);
@@ -491,7 +491,7 @@ Phase 3 depends on both. Phase 5 is the outcome check and depends on everything.
     unsure — RED-baselined against `git show HEAD:skills/dispatch/SKILL.md`, which
     currently routes it to Report-only by default
 
-- [ ] Phase 5: The whole thing works end to end, and ships
+- [x] Phase 5: The whole thing works end to end, and ships
   - Depends on: Phases 1-4
   - This is the plan's own outcome check — verification only, builds nothing
   - Files: `CLAUDE.md` (all rules, corrected reality-check count);
