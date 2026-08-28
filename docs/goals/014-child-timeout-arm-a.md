@@ -9,7 +9,7 @@ size: S
 touches:
   - skills/dispatch/SKILL.md
 acceptance:
-  - uv run --with pytest --python 3.13 pytest -q test_child_timeout_policy.py
+  - uv run --with pytest --python 3.13 pytest -q
 ---
 
 ## Outcome (plain language)
@@ -25,11 +25,13 @@ provenance: inbox-drain. Fold of two related spawn/join findings (≤2). Verifie
 
 **Interfaces** (from `009-resume-from-increments`): a missing `STATUS:` or evidenced death with work commits uses the resume-from-increments rung, not a vanilla respawn. This goal's child-session-timeout respawn must name that rung when `gate_base..HEAD` is non-empty.
 
-Assumptions: child-session-timeout is a same-tier transient respawn (does not burn the no-progress fail count; pin-omitted only if the error also names model/provider). Arm A on Droid stays foreground when the harness has no reliable background shell; the Arm A join explicitly bans repeated sleep-poll / task-status poll loops (one wait, then read the output). `new file: test_child_timeout_policy.py`.
+Assumptions: child-session-timeout is a same-tier transient respawn (does not burn the no-progress fail count; pin-omitted only if the error also names model/provider). Arm A on Droid stays foreground when the harness has no reliable background shell; the Arm A join explicitly bans repeated sleep-poll / task-status poll loops (one wait, then read the output). `new file: test_child_timeout_policy.py` is collected by the stable `pytest -q` runner — do not name it as its own `acceptance:` path (`type: bug` repro-direction INCONCLUSIVEs when `acceptance:` names a file added by the fix).
+
+**Amended 2026-08-28:** `acceptance:` named new file `test_child_timeout_policy.py` (same INCONCLUSIVE shape as 004/006/008/011/012) → drop that path; proving tests stay in the new file collected by `uv run --with pytest --python 3.13 pytest -q`. provenance: dispatch-self-heal.
 
 ## Acceptance criteria
 
-- [ ] `uv run --with pytest --python 3.13 pytest -q test_child_timeout_policy.py` is RED at base and GREEN after: infra/transient-death text names `Child session timed out due to inactivity` as a same-tier one-respawn transient (pin-omitted only if the error also names model/provider); Arm A join text bans repeated sleep-poll / task-status poll loops on Droid (one wait, then read the output).
+- [ ] `uv run --with pytest --python 3.13 pytest -q` is RED at base with the new policy tests overlaid and GREEN after: infra/transient-death text names `Child session timed out due to inactivity` as a same-tier one-respawn transient (pin-omitted only if the error also names model/provider); Arm A join text bans repeated sleep-poll / task-status poll loops on Droid (one wait, then read the output).
 - [ ] `uv run --with pytest --python 3.13 pytest -q` is green (never fewer than the 262 tests passing at authoring).
 
 ## Constraints (hard rules)
