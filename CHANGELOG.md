@@ -13,6 +13,33 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [12.4.2] — 2026-08-29
+
+**Two rules that decided one item two ways, and two stale counts.** Full audit of
+the plugin after the v12.4.x releases: numeric claims against reality, item
+numbering, every path a skill references, agent frontmatter and tool allowlists,
+helper compilation, and the doctor probe.
+
+- **dispatch — Dismiss and Report-only now have a stated precedence.** A wrong test
+  caption matched both disposition 2 ("purely cosmetic") and disposition 4
+  ("test-caption/comment-wording nits") with nothing ranking them, so the same item
+  could be recorded as false or as true-but-under-the-bar depending on who read it.
+  Dismiss is now scoped to items that are NOT REAL (disproved or already tracked);
+  anything real but worthless is disposition 4, and "when both seem to fit, take 4".
+  Both still land in the same report file — what was at stake was the record saying
+  "this was false" versus "this was true and under the bar", which must not blur.
+- **AGENTS.md — the skill count said seven; there are eight.** Both the architecture
+  tree and the pipeline sentence had missed `show-me` since v11.8.0. Same class of
+  defect as the reality check's "eight checks" heading over nine items that v12.4.0
+  corrected.
+
+Audited clean, no changes needed: reality-check header (ten) matches its ten items;
+red-team items number 1–15 with no gaps; every `skills/…` and `agents/…` path
+referenced anywhere in the skills resolves; no user-specific absolute paths; no
+TBD/FIXME placeholders; all six agents carry a description and a tool allowlist with
+no `model:` pin and no write-capable tool; all eight skills carry name+description;
+all Python helpers compile and run. Suite 404 → 405.
+
 ## [12.4.1] — 2026-08-29
 
 **The ratchet's one laundering route, closed by the independent dry-run v12.4.0

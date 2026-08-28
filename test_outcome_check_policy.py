@@ -177,6 +177,15 @@ def test_report_only_carve_out_is_narrow_not_a_rollback():
     assert "stay Report-only exactly as they are" in text
 
 
+def test_dismiss_and_report_only_have_a_stated_precedence():
+    """Independent dry-run 2026-08-29: a wrong test caption matched both
+    Dismiss ("purely cosmetic") and Report-only ("test-caption nits") with no
+    precedence stated, so the text decided one item two ways."""
+    text = unwrapped(DISPATCH)
+    assert "Dismiss is for items that are NOT REAL" in text
+    assert "when both seem to fit, take 4" in text
+
+
 def test_report_only_default_survives_the_carve_out():
     """The v12.3.0 strings the carve-out must not overwrite."""
     text = unwrapped(DISPATCH)

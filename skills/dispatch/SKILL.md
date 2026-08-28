@@ -899,10 +899,15 @@ delivered what it set out to.
 1. **Repair now** — it breaches THIS goal's own contract → it is a gate finding; route
    it FAIL_FIXABLE (`$DISPATCH_REFS/escalation-and-repair.md`). A DONE_WITH_CONCERNS
    whose concern invalidates an acceptance criterion is not a PASS.
-2. **Dismiss** — verified false, purely cosmetic, or already tracked → one line of
+2. **Dismiss** — verified false or already tracked → one line of
    reasoning in the goal's report file (the `## Orchestrator` section — "the fire's
    report" is always that FILE, never the chat turn; Phase 4's envelope).
-   A dismissal without reasoning is disposition 3 or 4.
+   A dismissal without reasoning is disposition 3 or 4. **Dismiss is for items that
+   are NOT REAL** (disproved, or already captured elsewhere). An item that is real
+   but worthless — a wrong test caption, a cosmetic nit — is disposition 4, which
+   names those classes explicitly; when both seem to fit, take 4. The two land in
+   the same file, so the only thing at stake is whether the record says "this was
+   false" or "this was true and under the bar", and those must not be confused.
 3. **Capture** — real, outside this goal's contract, AND over the capture bar →
    append ONE line to
    `docs/goals/inbox.md` (create the file on first use) and commit it
