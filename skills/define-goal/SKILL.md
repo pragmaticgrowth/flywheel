@@ -1065,6 +1065,12 @@ Run the steps in this order:
    a not-yet-true capability moved to a `depends_on` prior
    ```
 
+   Adding a `**needs independent review**` marker does NOT launder a weakening.
+   Trading a runnable command for a human judgement is a weakening whether or not
+   the replacement carries the marker: the marker exists for criteria no command
+   could EVER settle, chosen at authoring time — it is never a downgrade path for a
+   criterion that already had a command.
+
    A weakening amend is a true owner fork: present the classification with what it
    would relax and why the block seems to demand it, and let the owner decide. The
    goal stays `blocked` until they do. "The implementer could not pass it" is never

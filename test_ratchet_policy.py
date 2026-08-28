@@ -74,6 +74,15 @@ def test_weakening_stops_for_the_owner():
     assert "stays `blocked` until they do" in text
 
 
+def test_review_marker_cannot_launder_a_weakening():
+    """Independent dry-run 2026-08-29 flagged this as two-readable: the skill
+    sanctions `needs independent review` as an authoring shape, so a command →
+    marker downgrade could be argued legitimate. Pinned to the stricter reading."""
+    text = unwrapped(DEFINE)
+    assert "does NOT launder a weakening" in text
+    assert "never a downgrade path for a criterion that already had a command" in text
+
+
 def test_implementer_failure_is_never_a_reason_to_lower_the_bar():
     assert (
         "\"The implementer could not pass it\" is never itself a reason to lower the bar"

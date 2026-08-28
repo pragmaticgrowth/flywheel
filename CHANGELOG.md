@@ -13,6 +13,39 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [12.4.1] — 2026-08-29
+
+**The ratchet's one laundering route, closed by the independent dry-run v12.4.0
+shipped without.** v12.4.0's dry-runs were self-run in the implementing context
+(maintainer instruction for that run) and its changelog said so, naming the
+unverified half. Running them properly afterwards found exactly the kind of defect
+self-review cannot: a two-readable seam between two sections that each read fine
+alone.
+
+- **define-goal — a `needs independent review` marker cannot launder a weakening.**
+  The skill sanctions that marker as an authoring-time shape for criteria no command
+  can settle. Read against the ratchet, that left an argument available: trade a
+  runnable command for "a reviewer confirms X", attach the marker, and call the
+  result a sanctioned subjective criterion rather than a weakening. Now stated
+  explicitly — the marker "exists for criteria no command could EVER settle, chosen
+  at authoring time — it is never a downgrade path for a criterion that already had
+  a command." Pinned by `test_ratchet_policy.py -k launder`.
+
+Both v12.4.0 dry-runs are recorded: the amend lens decided the weakening amend
+STOPS (waiver cannot reach it, red-team item 15(a) blocking) and the control repair
+amend PROCEEDS; the settle-triage lens routed an outcome-falsifying finding to
+Capture with `earn: live-defect` despite the implementer's uncertainty, and left
+both controls — a caption nit and a latent unreachable-today finding — at
+Report-only. The rules decide as written and do not over-fire.
+
+One finding deliberately NOT acted on, per this repo's own capture bar: dispositions
+2 and 4 overlap for a wrong test caption ("purely cosmetic" vs "test-caption/
+comment-wording nits") with no stated precedence. Both route to the same report
+file, so no behavior differs — under the bar, Report-only, recorded here rather than
+queued as work.
+
+Suite 403 → 404.
+
 ## [12.4.0] — 2026-08-29
 
 **The factory measures the whole, and its standard can only get stricter.** From
