@@ -10,7 +10,7 @@ goals:
   001-prove-the-gate-runs: {status: completed, priority: high}
   002-answerable-needs-you: {status: completed}
   003-surface-subjective-criteria: {status: completed, depends_on: [002-answerable-needs-you]}
-  004-enforce-report-file-gate: {status: in_progress, claimed_at: 2026-08-28T08:50:37Z}
+  004-enforce-report-file-gate: {status: blocked, claimed_at: 2026-08-28T08:50:37Z, settled_at: 2026-08-28T09:19:13Z, reason: "contract defect: acceptance names new file test_report_file_policy.py so repro-direction is INCONCLUSIVE"}
   005-plural-publish-paths: {status: not_started}
   006-inbox-prodcheck-lines: {status: not_started}
   007-drain-teammate-idle: {status: not_started}
