@@ -1,6 +1,6 @@
 ---
 name: goals-status
-description: Use when the user runs "/goals-status" or asks what's in the docs/goals queue — what's left, what's blocked, what's in progress, or "show me the open goals". Prints a read-only view of the OPEN goals (in_progress, blocked, not_started), each with its title and brief; completed goals are hidden. Shows the queue only — never claims a goal, changes queue state, or implements anything (that's /dispatch).
+description: Use when the user runs "/goals-status" or asks what's in the docs/goals queue — what's left, what's blocked, what's in progress, "what should I run next", or "show me the open goals". Prints a read-only view of the OPEN goals (in_progress, blocked, not_started), each with its title and brief, ending with one `next:` line naming the command to run next (/dispatch, /process-inbox, or /ideate by queue state); completed goals are hidden. Shows the queue only — never claims a goal, changes queue state, or implements anything (that's /dispatch).
 ---
 
 # Goals Status
@@ -43,6 +43,23 @@ partial or empty view as if it were the real queue state.
 
 One goal showing as `(untitled)` is not a failure of the view — that goal's own
 frontmatter is unparseable, and only that row degrades.
+
+## The `next:` line
+
+The view ends with exactly one `next: <command>` line — the one skill the
+owner should run next, derived first-match from current queue state:
+
+1. Any open goal (`in_progress` / `blocked` / `not_started`) → `next:
+   /dispatch` — dispatch works the queue and self-heals blocked contracts
+   in-run.
+2. Else, `docs/goals/inbox.md` carrying unchecked `- [ ]` lines → `next:
+   /process-inbox`.
+3. Else → `next: /ideate` — nothing open and nothing captured; start
+   something new.
+
+The helper derives the line itself — print it with the verbatim output. An
+all-completed queue pointing at `/ideate` is the front door working, not an
+error.
 
 ## Boundaries
 

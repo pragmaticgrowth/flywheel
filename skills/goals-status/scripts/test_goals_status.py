@@ -291,6 +291,85 @@ def test_timestamps_render_in_open_view():
     assert "claimed  ago" not in out and "()" not in out
 
 
+
+# ---- next: command derivation (goal 013 — the front-door answer) -------------
+
+ALL_COMPLETED = "config:\n  base: main\ngoals:\n  001-a: {status: completed}\n"
+EMPTY_QUEUE = "config:\n  base: main\ngoals: {}\n"
+
+
+def _queue_dir(index_body):
+    d = tempfile.mkdtemp(prefix="goals-status-next-")
+    with open(os.path.join(d, "index.yaml"), "w") as f:
+        f.write(index_body)
+    return d
+
+
+def _write_inbox(d, lines):
+    with open(os.path.join(d, "inbox.md"), "w") as f:
+        f.write("# Inbox\n\n" + "\n".join(lines) + "\n")
+
+
+def test_next_command_open_queue_names_dispatch():
+    d = _make_queue()          # in_progress + blocked + not_started all present
+    rep = gs.build_report(d)
+    assert rep["next"] == "/dispatch"
+    assert gs.next_command(rep, d) == "/dispatch"
+    out = gs.render_detailed(rep)
+    assert "next: /dispatch" in out
+    assert out.count("next:") == 1          # exactly one next line
+
+
+def test_open_goals_outrank_a_full_inbox_first_match_is_priority():
+    # the contract's FIRST match is priority: an open queue means /dispatch
+    # even when the inbox carries unchecked lines — an implementation that
+    # checked the inbox first would otherwise pass every other test here
+    d = _make_queue()
+    _write_inbox(d, ["- [ ] fix the flaky login test (earn: live-defect)"])
+    assert gs.build_report(d)["next"] == "/dispatch"
+
+
+def test_next_command_blocked_only_queue_still_names_dispatch():
+    # blocked goals are open work — dispatch self-heals them in-run
+    d = _queue_dir('config:\n  base: main\n'
+                   'goals:\n  001-stuck: {status: blocked, reason: "x"}\n')
+    assert gs.build_report(d)["next"] == "/dispatch"
+
+
+def test_next_command_settled_queue_with_unchecked_inbox_names_process_inbox():
+    d = _queue_dir(ALL_COMPLETED)
+    _write_inbox(d, ["- [ ] fix the flaky login test (earn: live-defect)"])
+    rep = gs.build_report(d)
+    assert rep["next"] == "/process-inbox"
+    out = gs.render_detailed(rep)
+    assert "next: /process-inbox" in out
+    assert "nothing open" in out
+
+
+def test_next_command_checked_inbox_lines_do_not_count():
+    d = _queue_dir(ALL_COMPLETED)
+    _write_inbox(d, ["- [x] already triaged", "## Triaged", "retired keep: x — y"])
+    assert gs.build_report(d)["next"] == "/ideate"
+
+
+def test_next_command_empty_queue_and_no_inbox_names_ideate():
+    d = _queue_dir(EMPTY_QUEUE)
+    assert gs.build_report(d)["next"] == "/ideate"
+    out = gs.render_detailed(gs.build_report(d))
+    assert "next: /ideate" in out            # rendered, not just derived
+    assert out.count("next:") == 1
+    _write_inbox(d, ["# Inbox"])            # an empty inbox file is the same
+    assert gs.build_report(d)["next"] == "/ideate"
+
+
+def test_cli_prints_the_next_line_once():
+    d = _make_queue()
+    rc, out, _ = _run_cli("--dir", d)
+    assert rc == 0
+    assert "next: /dispatch" in out
+    assert out.count("next:") == 1
+
+
 if __name__ == "__main__":
     fns = [g for n, g in sorted(globals().items()) if n.startswith("test_")]
     for fn in fns:

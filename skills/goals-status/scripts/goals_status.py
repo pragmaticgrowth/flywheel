@@ -14,6 +14,10 @@ the "brief" is the file's `## Outcome (plain language)` paragraph — there is n
 PyYAML is the only parser: factory-doctor already treats a missing PyYAML and a
 malformed index as BLOCKERs, so this view points at that fix rather than
 hand-rolling a second, weaker YAML reader.
+
+The view ends with one `next:` line naming the command the owner runs next —
+derived in next_command(), first match: /dispatch when anything is open,
+else /process-inbox when the inbox carries unchecked items, else /ideate.
 """
 import argparse, datetime, os, re, subprocess, sys, textwrap
 try:
@@ -169,6 +173,32 @@ def parse_goal_file(path):
     }
 
 
+# ---- next-command derivation --------------------------------------------------
+
+def _inbox_open_count(goals_dir):
+    """Unchecked `- [ ]` lines in docs/goals/inbox.md (0 when absent/unreadable)."""
+    try:
+        text = open(os.path.join(goals_dir, "inbox.md"),
+                    encoding="utf-8", errors="replace").read()
+    except OSError:
+        return 0
+    return sum(1 for ln in text.splitlines() if ln.strip().startswith("- [ ]"))
+
+
+def next_command(report, goals_dir):
+    """The ONE command the owner runs next, derived from current queue state.
+
+    First match: any open goal (in_progress/blocked/not_started) → /dispatch
+    (dispatch works the queue and self-heals blocked contracts in-run); else
+    unchecked `- [ ]` inbox lines → /process-inbox; else /ideate.
+    """
+    if report["open"] > 0:
+        return "/dispatch"
+    if _inbox_open_count(goals_dir) > 0:
+        return "/process-inbox"
+    return "/ideate"
+
+
 # ---- report assembly ----------------------------------------------------------
 
 def _status(entry):
@@ -245,8 +275,10 @@ def build_report(goals_dir):
                    else _age_str(entry.get("settled_at")) if st == "blocked" else "",
         })
     records.sort(key=lambda r: (STATUS_ORDER.index(r["status"]), r["id"]))
-    return {"open": len(records), "completed": completed, "retired": retired,
-            "goals": records}
+    report = {"open": len(records), "completed": completed, "retired": retired,
+              "goals": records}
+    report["next"] = next_command(report, goals_dir)
+    return report
 
 
 # ---- rendering ----------------------------------------------------------------
@@ -293,27 +325,30 @@ def _detailed_goal(rec, width=68):
 
 def render_detailed(report):
     if report["open"] == 0:
-        return _empty_line(report)
-    c = report["completed"]
-    r = report.get("retired", 0)
-    hidden = ""
-    if c:
-        hidden = " · %d completed (hidden)" % c
-    if r:
-        hidden += " · %d retired" % r
-    head = "docs/goals — %d open%s" % (report["open"], hidden)
-    out = [head, ""]
-    groups = _group(report["goals"])
-    for st in STATUS_ORDER:
-        recs = groups.get(st)
-        if not recs:
-            continue
-        icon, label = STATUS_META[st]
-        out.append("%s %s  (%d)" % (icon, label, len(recs)))
-        for r in recs:
-            out.append(_detailed_goal(r))
-            out.append("")
-    return "\n".join(out).rstrip() + "\n"
+        body = _empty_line(report).rstrip("\n")
+    else:
+        c = report["completed"]
+        r = report.get("retired", 0)
+        hidden = ""
+        if c:
+            hidden = " · %d completed (hidden)" % c
+        if r:
+            hidden += " · %d retired" % r
+        head = "docs/goals — %d open%s" % (report["open"], hidden)
+        out = [head, ""]
+        groups = _group(report["goals"])
+        for st in STATUS_ORDER:
+            recs = groups.get(st)
+            if not recs:
+                continue
+            icon, label = STATUS_META[st]
+            out.append("%s %s  (%d)" % (icon, label, len(recs)))
+            for r in recs:
+                out.append(_detailed_goal(r))
+                out.append("")
+        body = "\n".join(out).rstrip()
+    # the front-door answer: exactly one next line, last, queue-derived
+    return "%s\n\nnext: %s\n" % (body, report["next"])
 
 
 # ---- CLI ----------------------------------------------------------------------

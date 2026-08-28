@@ -1,6 +1,6 @@
 ---
 name: ideate
-description: Use when the user has an idea or early want that isn't ready to define — "I have an idea", "what if we", "let's think through X", "/ideate" — or when goal definition stalls because the want needs design exploration first. Explores intent and design through dialogue and writes the plan (docs/goals/plans/) that define-goal contracts from; never implements and never writes goal files or queue entries (that's define-goal).
+description: Use when the user has an idea or early want that isn't ready to define — "I have an idea", "what if we", "let's think through X", "/ideate", or an unshaped list of issues/backlog items — "I have N issues/items, where do I start?" — or when goal definition stalls because the want needs design exploration first. Explores intent and design through dialogue and writes the plan (docs/goals/plans/) that define-goal contracts from; never implements and never writes goal files or queue entries (that's define-goal).
 argument-hint: "[the idea to explore]"
 ---
 
@@ -35,6 +35,15 @@ to `define-goal`; ideating on it is ceremony. A simple single-goal outcome
 explored here stays fileless: the design flows into that goal's Context and no
 plan file is written. When a define-goal question round reveals the want is really
 a design problem (answers keep re-opening what to build), hand off here.
+
+**Arriving with a list — "I have N issues/items, where do I start?"** An
+unshaped backlog is this skill's front door too, not a define-goal batch
+dump: N items are one idea at plan altitude. Orient once over the whole list
+(step 1's recon), cut it into vertical slices (step 2 — items may merge or
+split in the cut), and write ONE plan whose phases map 1:1 onto the goals
+define-goal will contract (a goal per phase, ordered by `depends_on`).
+define-goal's batch mode is for items already shaped enough to contract
+individually — an unshaped list needs this scope pass first.
 
 **HARD GATE.** The ONLY terminal states of this skill are (a) invoking
 `define-goal` with the approved plan (or fileless design), or (b) the user parking
