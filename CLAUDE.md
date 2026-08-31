@@ -962,9 +962,11 @@ re-add a site, a deploy config, or a docs-sync mandate without an explicit ask.
   the six events BOTH harnesses document (SessionStart, SessionEnd, UserPromptSubmit,
   PostToolUse, SubagentStop, Stop) so one file serves both; Claude-only events
   (SubagentStart, PostToolUseFailure, StopFailure) are deliberately NOT registered
-  rather than risk Droid rejecting an unknown key. Two PostToolUse entries by design:
-  Droid matches tool names as exact strings with `*` as wildcard, Claude Code treats
-  the matcher as a regex and matches all when it is omitted. Metadata only — never a
+  rather than risk Droid rejecting an unknown key. PostToolUse carries NO matcher, verified
+  2026-09-01 on both harnesses: Claude Code reads the matcher as a regex and matches
+  every tool when it is omitted (a `matcher: "*"` entry logged nothing at all), and
+  Droid matches all tools with it omitted too — carrying both entries made Droid fire
+  TWICE for one tool call. Metadata only — never a
   prompt body, tool input, tool output, file content, or environment value; the one
   string it reads out of a command is a `chore(goals):` flip, keeping the verb and
   goal id. ~9 ms and ~100 bytes per tool call, rotating at 64 MB.

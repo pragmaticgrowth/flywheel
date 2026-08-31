@@ -28,9 +28,9 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
   public. Only the six events BOTH harnesses document are registered (SessionStart,
   SessionEnd, UserPromptSubmit, PostToolUse, SubagentStop, Stop); Claude-only events
   are deliberately left out rather than risk Droid rejecting an unknown key, and
-  PostToolUse carries two entries because Droid matches tool names as exact strings
-  with `*` as wildcard while Claude Code reads the matcher as a regex and matches all
-  when it is omitted. Metadata only — never a prompt body, tool input, tool output,
+  PostToolUse carries no matcher at all: verified live on both harnesses, Claude Code
+  matches every tool when it is omitted (a `matcher: "*"` entry logged nothing), and so
+  does Droid — registering both forms made Droid fire twice for a single tool call. Metadata only — never a prompt body, tool input, tool output,
   file content, or environment value. The single string it reads out of a command is a
   `chore(goals):` queue flip, from which it keeps the verb and the goal id, which is
   what finally makes goal timing independent of an agent's honesty. ~9 ms and ~100
