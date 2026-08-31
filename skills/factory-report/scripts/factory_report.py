@@ -93,6 +93,19 @@ def read_log(path, cutoff):
     return rows
 
 
+LANE = re.compile(r"/pg-dispatch/([^/]+)/lanes/")
+
+
+def repo_of(cwd):
+    """Repo name from a working directory. A dispatch lane worktree lives at
+    ~/.local/state/pg-dispatch/<slug>/lanes/<goal>, so its basename is the GOAL id —
+    roll those up under the repo they belong to, or every lane looks like its own repo."""
+    m = LANE.search(cwd or "")
+    if m:
+        return m.group(1)
+    return os.path.basename((cwd or "").rstrip("/")) or "?"
+
+
 def agents(rows):
     """Group log events per agent (or per session for main-loop work)."""
     by = collections.defaultdict(list)
@@ -105,7 +118,7 @@ def agents(rows):
         gaps = [(evs[i]["_t"] - evs[i - 1]["_t"]).total_seconds() / 60 for i in range(1, len(evs))]
         out.append(dict(
             sid=sid, aid=aid, at=evs[-1].get("at") or evs[0].get("at"),
-            repo=os.path.basename((evs[0].get("cwd") or "").rstrip("/")) or "?",
+            repo=repo_of(evs[0].get("cwd") or ""),
             start=evs[0]["_t"], end=evs[-1]["_t"],
             mins=(evs[-1]["_t"] - evs[0]["_t"]).total_seconds() / 60,
             ntool=len(tools), maxgap=max(gaps) if gaps else 0.0,
@@ -193,7 +206,9 @@ def main():
             print("AGENTS  event logging is off — enable with: "
                   f"mkdir -p {os.path.dirname(a.log).replace(os.path.expanduser('~'), '~')}")
     else:
-        work = [x for x in ags if x["ntool"] >= 3]
+        # >=1 tool call: a review lens is short by design and must still be counted;
+        # only genuinely empty sessions are noise.
+        work = [x for x in ags if x["ntool"] >= 1]
         print(f"AGENTS  {len(work)} with real work, {len(rows)} events logged")
         by_type = collections.defaultdict(list)
         for x in work:

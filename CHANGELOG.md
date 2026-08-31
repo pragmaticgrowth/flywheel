@@ -13,6 +13,22 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [13.0.2] — 2026-09-01
+
+### Fixed
+
+- **factory-report — lane worktrees were counted as separate repos.** A dispatch lane
+  lives at `~/.local/state/pg-dispatch/<slug>/lanes/<goal>`, so the working directory's
+  basename is the GOAL id; every parallel lane showed up as its own one-goal "repo".
+  Lane paths now roll up under the repo they belong to.
+- **factory-report — short review lenses were filtered out of the agent table.** The
+  cutoff was 3 tool calls, but a fresh-check lens or gate reviewer is short by design
+  (field median ~2.7 min), so exactly the agents worth counting were dropped. Now one
+  tool call; only genuinely empty sessions are treated as noise.
+- **factory-report — the empty-log message told you to enable logging that was already
+  on.** "Logging is off" and "logging is on, nothing in this window yet" are now
+  different messages.
+
 ## [13.0.1] — 2026-09-01
 
 ### Fixed
