@@ -958,11 +958,15 @@ re-add a site, a deploy config, or a docs-sync mandate without an explicit ask.
   CONSTRUCTION: the script exits at line one unless `~/.local/state/pg-factory/`
   exists, so installing the plugin writes nothing and records nothing until the
   owner runs one `mkdir`. That opt-in is not a nicety — the marketplace is public,
-  and a plugin that starts logging on install is a bad surprise. It registers only
-  the six events BOTH harnesses document (SessionStart, SessionEnd, UserPromptSubmit,
-  PostToolUse, SubagentStop, Stop) so one file serves both; Claude-only events
-  (SubagentStart, PostToolUseFailure, StopFailure) are deliberately NOT registered
-  rather than risk Droid rejecting an unknown key. TWO details are load-bearing and were verified
+  and a plugin that starts logging on install is a bad surprise. It registers the six events BOTH
+  harnesses document (SessionStart, SessionEnd, UserPromptSubmit, PostToolUse,
+  SubagentStop, Stop) plus three Claude-only ones (SubagentStart, PostToolUseFailure,
+  StopFailure) — v13.0.x withheld those fearing Droid would reject an unknown event key,
+  and a live probe disproved it: Droid silently IGNORES events it does not know.
+  `SubagentStart` is the load-bearing one: without it a subagent's clock starts at its
+  first tool call, measuring a real 7-second subagent as 3 (a 57 % undercount) and making
+  a zero-tool subagent — a lens returning a verdict — invisible; `StopFailure` carries a
+  `rate_limit` reason, the usage-limit death the factory could never see. TWO details are load-bearing and were verified
   LIVE on a fresh session of each harness 2026-09-01, not read off the docs. First, the
   plugin-root reference must be DOUBLE-quoted: Claude Code hands the command to a shell
   and relies on it to expand `$CLAUDE_PLUGIN_ROOT`, so single quotes make it a literal

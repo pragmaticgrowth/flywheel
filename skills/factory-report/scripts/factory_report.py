@@ -116,11 +116,18 @@ def agents(rows):
         evs.sort(key=lambda r: r["_t"])
         tools = [e for e in evs if e.get("ev") == "PostToolUse"]
         gaps = [(evs[i]["_t"] - evs[i - 1]["_t"]).total_seconds() / 60 for i in range(1, len(evs))]
+        # A subagent's clock starts at SubagentStart when we have it. Falling back to its
+        # first logged event undercounts every subagent by whatever it spent thinking
+        # before its first tool call — measured at 3s of a real 7s — and makes a subagent
+        # that never calls a tool (a lens returning a verdict) look like it never ran.
+        st = next((e["_t"] for e in evs if e.get("ev") == "SubagentStart"), None)
+        exact = st is not None
+        start = st or evs[0]["_t"]
         out.append(dict(
             sid=sid, aid=aid, at=evs[-1].get("at") or evs[0].get("at"),
             repo=repo_of(evs[0].get("cwd") or ""),
-            start=evs[0]["_t"], end=evs[-1]["_t"],
-            mins=(evs[-1]["_t"] - evs[0]["_t"]).total_seconds() / 60,
+            start=start, end=evs[-1]["_t"], exact=exact,
+            mins=(evs[-1]["_t"] - start).total_seconds() / 60,
             ntool=len(tools), maxgap=max(gaps) if gaps else 0.0,
             task=next((e.get("task") for e in reversed(evs) if e.get("task")), None),
             harness=evs[0].get("h", "?"),
@@ -206,18 +213,21 @@ def main():
             print("AGENTS  event logging is off — enable with: "
                   f"mkdir -p {os.path.dirname(a.log).replace(os.path.expanduser('~'), '~')}")
     else:
-        # >=1 tool call: a review lens is short by design and must still be counted;
-        # only genuinely empty sessions are noise.
-        work = [x for x in ags if x["ntool"] >= 1]
+        # A subagent counts once we saw it start, tool calls or not — a lens that
+        # returns a verdict without touching a tool is still work. Otherwise require
+        # one tool call, so genuinely empty sessions stay out.
+        work = [x for x in ags if x["ntool"] >= 1 or x["exact"]]
         print(f"AGENTS  {len(work)} with real work, {len(rows)} events logged")
         by_type = collections.defaultdict(list)
         for x in work:
             by_type[x["at"] or "main session"].append(x)
-        print("\n  role                        n   median    total   tools")
+        print("\n  role                        n   median    total   tools  timing")
         for k, v in sorted(by_type.items(), key=lambda kv: -sum(x["mins"] for x in kv[1])):
             m = [x["mins"] for x in v]
+            ex = sum(1 for x in v if x["exact"])
+            mark = "exact" if ex == len(v) else ("from 1st tool" if ex == 0 else f"{ex}/{len(v)} exact")
             print(f"  {k[:24]:24} {len(v):>4}  {st.median(m):>6.1f}m "
-                  f"{sum(m) / 60:>6.1f}h  {st.median([x['ntool'] for x in v]):>5.0f}")
+                  f"{sum(m) / 60:>6.1f}h  {st.median([x['ntool'] for x in v]):>5.0f}  {mark}")
 
         print("\n" + "-" * W)
         print("FAILURE SIGNALS  (reporting only — nothing here stops an agent)")

@@ -1,5 +1,5 @@
 {
-  "_comment": "flywheel factory event log. OPT-IN: pg-log.sh exits immediately unless ~/.local/state/pg-factory/ exists, so installing this plugin changes nothing until you run `mkdir -p ~/.local/state/pg-factory`. Only the six events both Claude Code and Droid document are registered, so one file serves both harnesses. Two details are load-bearing and were verified live on both harnesses 2026-09-01, not read off the docs: (1) the plugin-root reference MUST be double-quoted -- Claude Code passes the command to a shell and relies on it to expand $CLAUDE_PLUGIN_ROOT, so single quotes make it a literal and every hook dies with 'cannot open ${CLAUDE_PLUGIN_ROOT}/...' , while Droid substitutes textually and works either way; and (2) PostToolUse carries NO matcher -- Claude Code reads the matcher as a regex and matches every tool when it is omitted (a `matcher: \"*\"` entry logged nothing at all), Droid matches all tools with it omitted too, and registering both forms made Droid fire twice for a single tool call. async:true is honoured by Claude Code and ignored by Droid, which runs the hook synchronously at ~9ms.",
+  "_comment": "flywheel factory event log. OPT-IN: pg-log.sh exits immediately unless ~/.local/state/pg-factory/ exists, so installing this plugin changes nothing until you run `mkdir -p ~/.local/state/pg-factory`. Verified live on both harnesses 2026-09-01, not read off the docs: (1) the plugin-root reference MUST be double-quoted -- Claude Code passes the command to a shell and relies on it to expand $CLAUDE_PLUGIN_ROOT, so single quotes kill every hook with 'cannot open ${CLAUDE_PLUGIN_ROOT}/...', while Droid substitutes textually and works either way; (2) PostToolUse carries NO matcher -- omitting it matches every tool on both, a `matcher: \"*\"` entry logged nothing on Claude Code, and registering both forms made Droid fire twice per call; and (3) Droid IGNORES hook events it does not know, so the last five keys here are Claude-only and cost Droid nothing. SubagentStart is the one that matters: without it a subagent's clock starts at its first tool call, which undercounted a measured 7-second subagent as 3 seconds and made a zero-tool subagent invisible. async:true is honoured by Claude Code and ignored by Droid, which runs the hook synchronously at ~9ms.",
   "hooks": {
     "SessionStart": [
       {
@@ -49,6 +49,18 @@
         ]
       }
     ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/pg-log.sh\"",
+            "timeout": 10,
+            "async": true
+          }
+        ]
+      }
+    ],
     "SubagentStop": [
       {
         "hooks": [
@@ -62,6 +74,30 @@
       }
     ],
     "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/pg-log.sh\"",
+            "timeout": 10,
+            "async": true
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/pg-log.sh\"",
+            "timeout": 10,
+            "async": true
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
       {
         "hooks": [
           {

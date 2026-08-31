@@ -13,6 +13,26 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [13.1.0] — 2026-09-01
+
+### Added
+
+- **Subagent working time is now measured from the spawn, not the first tool call.**
+  v13.0.x registered only the six events both harnesses document, on the caution that
+  Droid might reject an unknown event key. A live probe settled it: **Droid silently
+  ignores hook events it does not know**, so Claude-only events cost it nothing. The one
+  that matters is `SubagentStart`, which fires with `agent_id` and `agent_type` — without
+  it a subagent's clock started at its first tool call, which measured a real 7-second
+  subagent as 3 seconds (a 57 % undercount) and made a subagent that never calls a tool —
+  a fresh-check lens returning a verdict — invisible entirely. `PostToolUseFailure` and
+  `StopFailure` are registered alongside it on the same free-on-Droid basis;
+  `StopFailure` carries a `rate_limit` reason, which is the usage-limit death the factory
+  has never been able to see.
+- **factory-report distinguishes exact from inferred timing.** The agent table's new
+  `timing` column reads `exact` where a `SubagentStart` bounded the run and
+  `from 1st tool` where it fell back, so an undercounted number is never presented as a
+  measured one. Agents with a known start now count even with zero tool calls.
+
 ## [13.0.2] — 2026-09-01
 
 ### Fixed
