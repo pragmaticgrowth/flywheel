@@ -13,6 +13,16 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [13.1.1] — 2026-09-01
+
+### Fixed
+
+- **factory-report dropped zero-tool Droid subagents.** On Droid a subagent IS its own
+  session, so a lens that reasons and returns a verdict without touching a tool is a real
+  session with real messages — and the work filter, which required a tool call, threw it
+  away. `SubagentStart` fixed the equivalent blind spot on Claude Code in 13.1.0; this
+  closes it on Droid by counting a session that exchanged messages as work.
+
 ## [13.1.0] — 2026-09-01
 
 ### Added

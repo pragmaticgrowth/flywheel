@@ -130,6 +130,7 @@ def agents(rows):
             mins=(evs[-1]["_t"] - start).total_seconds() / 60,
             ntool=len(tools), maxgap=max(gaps) if gaps else 0.0,
             task=next((e.get("task") for e in reversed(evs) if e.get("task")), None),
+            nmsg=next((e.get("nmsg") for e in reversed(evs) if e.get("nmsg")), 0) or 0,
             harness=evs[0].get("h", "?"),
         ))
     return sorted(out, key=lambda a: a["start"])
@@ -213,10 +214,11 @@ def main():
             print("AGENTS  event logging is off — enable with: "
                   f"mkdir -p {os.path.dirname(a.log).replace(os.path.expanduser('~'), '~')}")
     else:
-        # A subagent counts once we saw it start, tool calls or not — a lens that
-        # returns a verdict without touching a tool is still work. Otherwise require
-        # one tool call, so genuinely empty sessions stay out.
-        work = [x for x in ags if x["ntool"] >= 1 or x["exact"]]
+        # Work is: any tool call, OR a subagent we watched start (Claude), OR a session
+        # that exchanged messages (Droid, where a subagent IS a session — a lens that
+        # reasons and returns a verdict calls no tools but is not an empty session).
+        # Only sessions with none of the three are dropped as noise.
+        work = [x for x in ags if x["ntool"] >= 1 or x["exact"] or x["nmsg"] >= 1]
         print(f"AGENTS  {len(work)} with real work, {len(rows)} events logged")
         by_type = collections.defaultdict(list)
         for x in work:
