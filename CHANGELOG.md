@@ -13,6 +13,27 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [13.0.1] — 2026-09-01
+
+### Fixed
+
+- **The hooks never fired on Claude Code.** v13.0.0 quoted the plugin root as
+  `sh '${CLAUDE_PLUGIN_ROOT}/hooks/pg-log.sh'`. Claude Code hands the hook command to a
+  shell and relies on the shell to expand `$CLAUDE_PLUGIN_ROOT`, so single quotes made
+  it a literal and every hook died with `sh: 0: cannot open
+  ${CLAUDE_PLUGIN_ROOT}/hooks/pg-log.sh`; Droid substitutes the variable textually
+  before the shell sees it, which is why only Droid worked. `async: true` swallows hook
+  errors, so the symptom was a permanently empty log and no complaint anywhere. Now
+  double-quoted, which is correct on both. Verified after the fix on a fresh session of
+  each harness: SessionStart, UserPromptSubmit, PostToolUse (exactly one per tool call),
+  Stop and SessionEnd all land.
+- **Droid logged every tool call twice.** v13.0.0 registered two PostToolUse entries —
+  one with `matcher: "*"` for Droid, one with the matcher omitted for Claude Code — on
+  the assumption that each harness would take its own. Both matched on Droid. Live
+  probes settled it: omitting the matcher matches every tool on BOTH harnesses, and a
+  `matcher: "*"` entry logged nothing at all on Claude Code, which reads the matcher as
+  a regex. One entry, no matcher.
+
 ## [13.0.0] — 2026-09-01
 
 ### Added
