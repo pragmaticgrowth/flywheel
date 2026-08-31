@@ -123,13 +123,15 @@ Quality loop — keep it lightweight, but do not skip it:
    diff shape, never from felt simplicity (v10.0.0 default; measured 2026-08: lens
    verdicts are corroborating evidence, never the gate verdict — the orchestrator's
    independent reviewer is the second view, so one strong lens is the right default
-   spend). Spawn each lens as a
-   FOREGROUND subagent (`run_in_background: false`), all in ONE message when more than
-   one, so they run
-   concurrently and return synchronously. Never spawn lenses as background agents you must
-   poll — background children end your turn the moment you stop calling tools, and
-   sleep-loop waiting has produced discarded verdicts and false "no findings" claims on
-   real runs. On Claude Code pass `model: sonnet` (the medium tier) on EVERY lens
+   spend). Spawn all lenses in ONE
+   message so they run concurrently, and spawn them PLAIN: a `subagent_type`, a `model`,
+   the brief, and NOTHING else. From inside a subagent a plain spawn returns the lens
+   report INLINE as its tool result (measured 2026-08-31: three lenses spawned in one
+   message, all three verdicts back in ~2 min), while passing `name:` turns the lens into
+   a session teammate whose report is delivered by mailbox — a channel you, as a subagent,
+   never read: the same run's named panel returned nothing at all and had to be respawned
+   plain. Never background a lens and never poll one; sleep-loop waiting has produced
+   discarded verdicts and false "no findings" claims on real runs. On Claude Code pass `model: sonnet` (the medium tier) on EVERY lens
    spawn — your own resolved tier must not cascade into the panel: measured across 68
    real lens runs (2026-08-01), a heavy-tier lens costs ~2× the tokens of a medium one
    for the same verdicts, and lens verdicts are corroborating evidence, never the gate

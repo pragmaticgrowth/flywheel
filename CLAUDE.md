@@ -566,6 +566,31 @@ own review to the full panel, and is explicitly not a compliance miss.
   it. Phase 0's plan-sync section also states what the stamp MEANS: on a 3+-phase
   plan the last phase is the outcome check, so `status: done` means it PASSED (a
   1-2-phase plan keeps the older, weaker meaning).
+  v12.6.0 — THE WAIT (2026-08-31 forensics on two field `/process-inbox` runs). On
+  Claude Code a spawned helper's report reaches the orchestrator only at a TURN
+  BOUNDARY: the `Agent` call returns "launched", the report arrives later as a
+  completion notification. Every wait the runs built out of `Monitor` sleep loops,
+  blocking `TaskOutput` on those loops, and repeated `ListAgents` held the turn OPEN and
+  therefore starved the delivery it was waiting for — a verifier that answered in 71 s
+  was killed as stalled at 8 min, a red-team that delivered full findings at 4 min 24 s
+  was killed at 5 min 58 s, and BOTH were re-run in the orchestrator's own context,
+  destroying exactly the independence the spawn exists to buy (45 `ListAgents` calls and
+  six sleep loops burned across the two runs). So: spawn PLAIN — `subagent_type`,
+  `model`, brief, nothing else — do the independent work in hand, and otherwise let the
+  turn END. `name:` is banned on every factory spawn: a named agent becomes a persistent
+  session teammate reporting by MAILBOX rather than by notification (that verifier's
+  verdict was accepted into the mailbox at 71 s and never surfaced; named implementers
+  from earlier runs were still listed idle 5 h on) — and from inside a subagent a plain
+  spawn returns its report INLINE as the tool result, which is why the same run's named
+  lens panel returned nothing and had to be respawned plain. DEATH NEEDS THE TRANSCRIPT:
+  a helper writes its own transcript to disk while it runs
+  (`~/.claude/projects/<cwd-slug>/<session-id>/subagents/agent-*.jsonl`;
+  `~/.factory/sessions/<cwd-slug>/<childSessionId>.jsonl` on Droid, child ids in
+  `~/.factory/task-invocations.json`), so fresh records or a file ending mid-tool-call
+  mean ALIVE and the v11.6.0 two-samples rule now names that file as its evidence. The
+  ban on repeated task-status polling, previously written as a Droid rule, is now
+  explicitly both-harness. Droid's awaited `Task` contract is unchanged — K spawns, ONE
+  wait, results together.
 - **goals-status** (v5.2.0; simplified in v6.0.0) — read-only view of the
   docs/goals queue. Prints
   every OPEN goal — `in_progress`, `blocked`, `not_started` — with its title and

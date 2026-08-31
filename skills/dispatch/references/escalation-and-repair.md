@@ -15,9 +15,10 @@ in one go (including any verified Critical/Important findings from the independe
 review) — never one repair per finding.
 
 **Warm resume is round one (v10.0.0).** When the harness can continue the goal's own
-implementer agent with its context intact (Claude Code: message the named implementer
-agent you spawned — its window already holds the goal, the code, and the tests, so a
-resume costs a fraction of a cold spawn; turn count beats token price), resume it with
+implementer agent with its context intact (Claude Code: message the implementer you
+spawned, addressed by the agent id its spawn returned — never a `name:`, which this
+skill's Spawning-and-waiting rule bans; its window already holds the goal, the code, and
+the tests, so a resume costs a fraction of a cold spawn; turn count beats token price), resume it with
 the findings list plus the receiving-review rules below. When the harness cannot resume
 (Droid, an agent that died or errored, or the resume itself fails), spawn ONE fresh
 repair agent instead — same brief as the implementer, same resolved implementer tier,

@@ -264,6 +264,26 @@ the banned shape; concurrency is not.
   as a question or an offer. Measured 2026-08-16/19 across both field repos: five
   "say the word" closers cost ~18 hours of idle wall-clock, and three declarative
   stalls each ended a run the owner had already authorized twice.
+- **Spawning and waiting — yield the turn, never build a wait (v12.6.0).** On Claude Code
+  a helper's report reaches you only at a TURN BOUNDARY: the `Agent` call returns
+  "launched" immediately, and the report arrives later as a completion notification. So
+  after spawning, do the independent work already in hand (read the goal file, its plan,
+  the diff) and otherwise let the turn END — the notification brings you back. Building a
+  wait is the miss, and it is self-defeating: a `Monitor` sleep loop, a blocking
+  `TaskOutput` on that sleep task, or repeated `ListAgents` all hold the turn OPEN, which
+  is exactly what starves delivery (`ListAgents` reports running/idle and never the
+  report; `TaskOutput` addresses shell tasks, not agents). And NEVER pass `name:` on a
+  factory spawn: a named agent becomes a persistent session teammate whose report goes to
+  a mailbox instead of the notification channel — measured 2026-08-31, a named verifier's
+  verdict was accepted into that mailbox at 71 s and had still not surfaced 8 minutes
+  later, and named implementers from earlier runs were still listed idle 5 h on. Droid is
+  unchanged: awaited `Task` calls return together — K spawns, ONE wait, zero polls.
+  **When may you stop waiting?** Only on the Death-needs-evidence test in Re-entrancy
+  below, which governs EVERY spawn this skill makes — reviewers, lenses, red-teams and
+  recon as much as implementers: a returned spawn or a terminal notification, else two
+  checks with real minutes between them showing zero new records in the helper's own
+  transcript and zero new commits. Six silent minutes is not that test; neither is
+  impatience.
 - Substantive conflicts are never guessed through. A local `git merge`/squash that hits a
   conflict on the current branch means two pieces of work changed the same logic → set the
   goal `blocked`, surface it under needs-you as class `conflict`, and roll back; never
@@ -510,6 +530,17 @@ where it left off:
    respawn onto a live agent puts two writers in one tree (measured 2026-08-15:
    three false dead-calls in one parallel run — one target had been alive ~7h and
    already merged).
+   **A silent helper is not a dead one — read its transcript (v12.6.0).** The helper
+   writes its own transcript to disk WHILE it runs: Claude Code
+   `~/.claude/projects/<cwd-slug>/<session-id>/subagents/agent-*.jsonl`; Droid
+   `~/.factory/sessions/<cwd-slug>/<childSessionId>.jsonl` (child ids in
+   `~/.factory/task-invocations.json`). `tail` it before any dead-call: records seconds or
+   a couple of minutes old, or a file ending mid-tool-call, mean a LIVE agent — keep
+   waiting. Killing a live helper and re-running its work in your own context is a
+   compliance miss twice over — it destroys the independence the spawn exists to buy, and
+   it pays for the work twice (measured 2026-08-31: a verifier killed at 8 min had
+   answered at 71 s; a red-team killed at 5 min 58 s had delivered full findings at
+   4 min 24 s; both were then re-run by the orchestrator itself).
    A transient death is not a "fail" toward the no-progress rule; don't
    let it burn the respawn budget — retry it, up to ~3 transient respawns per goal per session,
    after which a goal that still can't make any commit progress IS blocked (named
@@ -685,7 +716,8 @@ escalation-and-repair.md), Read on demand at the step that names them.
 
 For each claimed goal, in order:
 1. `anchor` = current HEAD (clean). `git commit` the claim → `gate_base` = HEAD now.
-2. Spawn ONE foreground implementer (Agent, run_in_background: false) that works in this
+2. Spawn ONE implementer (plain `Agent` spawn — no `name:`, never backgrounded; then wait
+   per the Spawning-and-waiting rule) that works in this
    checkout on the current branch under the method mandates (writing-plans, TDD,
    verification-before-completion) + config.skills + the goal's `skills:`. It uses the
    lightweight subagent-driven quality loop in the canonical brief
@@ -696,8 +728,9 @@ For each claimed goal, in order:
 3. Run the LOCAL gate authoritatively yourself. The gate has two independent arms over
    the same frozen `gate_base..HEAD` range — the deterministic commands (Arm A) and the
    independent review (Arm B) — and neither consumes the other's output, so OVERLAP
-   them: start Arm A in the background, spawn Arm B in the foreground, and join both
-   before any verdict. (The old review-then-commands serial order idled minutes per goal
+   them: start Arm A as a background command, spawn Arm B, and join both
+   before any verdict (the join obeys the Spawning-and-waiting rule — Arm B's report
+   arrives at a turn boundary; never hold the turn open waiting for it). (The old review-then-commands serial order idled minutes per goal
    for zero added safety; the combined-verdict rule below is unchanged.)
    **Arm A — the gate commands, started FIRST, in the background.** ONE Bash call,
    `run_in_background: true`, that runs
@@ -803,8 +836,8 @@ For each claimed goal, in order:
    is a panel silently skipped, or claimed but self-run in the implementer's own context.
    **Join — no verdict before BOTH arms are in hand.** When Arm B returns, Read Arm
    A's output file (commands still running → wait on that task ONCE, then read the
-   output — on Droid, never a repeated sleep+`ps` / task-status poll loop: one wait,
-   then read the output; never grade a partial gate). Show the command output. Every
+   output — never a repeated sleep+`ps` / task-status poll loop on EITHER harness: one
+   wait, then read the output; never grade a partial gate). Show the command output. Every
    `config.verify` command must exit 0, exactly as before — the overlap moves
    wall-clock, never the bar.
    **Flake protocol (bounded, logged — never a repair).** When a verify command fails on
@@ -1058,15 +1091,17 @@ every run claims the next goal only after the previous goal fully settles (Invoc
 
 ## Phase 3 — spawn the implementer (depth 1, foreground)
 
-One Agent per claimed goal, `run_in_background: false` (on Droid: one `Task`,
+One Agent per claimed goal, never backgrounded (on Droid: one `Task`,
 `subagent_type: worker`, `await: true`). In serial mode (default): NO
 worktree — it works in THIS checkout on the current branch. In parallel mode the same
 brief applies with only the Workspace paragraph substituted
-(`$DISPATCH_REFS/parallel-mode.md`), and all wave spawns go out foreground in ONE
+(`$DISPATCH_REFS/parallel-mode.md`), and all wave spawns go out in ONE
 message. Set the spawn's `model` parameter to the goal's resolved implementer tier
-(Implementer-tier resolution above; `inherit` = omit the parameter). Where the harness
-supports named agents, name the spawn (e.g. `impl-<id>`) — the warm repair round
-resumes it by name.
+(Implementer-tier resolution above; `inherit` = omit the parameter). Pass NO `name:`
+(Spawning-and-waiting, Hard rules): warm resume does not need one — the spawn returns the
+agent's own id and the repair round resumes it by that id, while a name would move the
+implementer's completion onto the mailbox channel, where a 2026-08-31 field run had its
+report surface 13 minutes late.
 
 The brief is canonical and lives at `$DISPATCH_REFS/implementer-brief.md` — Read it,
 fill in `<id>`, `<SLUG>` (= the repo dir name, same as the Phase 4 heartbeat), the

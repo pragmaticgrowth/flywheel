@@ -134,10 +134,13 @@ def test_pin_paragraph_guards_child_timeout_against_pin_removal():
 
 # ---- Arm A join: one wait, never a poll loop ----------------------------------
 
-def test_arm_a_join_waits_once_then_reads_output_banning_droid_poll_loops():
+def test_arm_a_join_waits_once_then_reads_output_banning_poll_loops():
     span = arm_a_join()
     assert "wait on that task ONCE, then read the output" in span
-    assert "on Droid, never a repeated sleep+`ps` / task-status poll loop" in span
+    # v12.6.0: the poll-loop ban is both-harness, not a Droid-only rule
+    assert (
+        "never a repeated sleep+`ps` / task-status poll loop on EITHER harness" in span
+    )
     assert "one wait, then read the output" in span
     # the pre-existing bar survives verbatim
     assert "never grade a partial gate" in span

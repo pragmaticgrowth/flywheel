@@ -75,9 +75,15 @@ branch** — no PRs, no remote branches. Building may parallelize: `--parallel` 
 flagless drain with `config.parallel` present) builds provably-disjoint goals in
 disposable local worktree lanes, still integrating strictly one at a time behind the
 same gate — on BOTH harnesses since v12.5.0 (Claude Code spawns the wave as concurrent
-foreground `Agent` calls, Droid as concurrent foreground awaited `Task` calls in one
-message; background-plus-poll lane emulation stays banned everywhere). Each goal is bracketed by two anchors: `anchor`
-(pre-claim clean HEAD) and `gate_base` (HEAD after the claim commit). One foreground
+plain `Agent` calls, Droid as concurrent awaited `Task` calls in one
+message; background-plus-poll lane emulation stays banned everywhere). Since v12.6.0 the
+WAIT is doctrine too: on Claude Code a helper's report arrives at a turn BOUNDARY, so a
+factory spawn never carries `name:` (a named agent reports by mailbox, not by
+notification) and the orchestrator never builds a wait out of sleep loops, blocking shell
+waits, or repeated agent listings — those hold the turn open and starve the delivery. A
+silent helper is checked against its own on-disk transcript before it is ever called
+dead. Each goal is bracketed by two anchors: `anchor`
+(pre-claim clean HEAD) and `gate_base` (HEAD after the claim commit). One
 implementer commits; then the orchestrator runs the LOCAL gate over `gate_base..HEAD` —
 an independent fresh adversarial reviewer, then `skills/dispatch/scripts/pg_validate.py`,
 then the repo's `config.verify` commands. PASS → squash to one `feat(goal NNN)` commit +

@@ -76,8 +76,8 @@ each.
 
 ### 2. Verify fan-out — every item re-checked against current code
 
-Spawn one read-only verification subagent per cluster (foreground, concurrent,
-cap ~8 per wave; more clusters → more waves). Claude Code:
+Spawn one read-only verification subagent per cluster (concurrent — all of a wave's
+spawns in ONE message, cap ~8 per wave; more clusters → more waves). Claude Code:
 `flywheel:recon-analyzer` when the runtime lists it, else `general-purpose` —
 either way on the medium tier (`model: sonnet`); never the built-in Explore
 type. Droid: `explorer` with `complexity: medium`, else `worker` with the
@@ -90,6 +90,28 @@ answer — read the code as it stands. Return per item: CONFIRMED (current
 GONE (the code was deleted or the fix already landed — name the commit if
 visible) | UNVERIFIABLE-HERE (only a live/production system can settle it — name
 the exact query that would). Evidence for every verdict; no fixes, no writes."
+
+**Spawning and waiting (v12.6.0).** Spawn PLAIN — `subagent_type`, `model`, brief, and
+nothing else. Never pass `name:`: a named agent becomes a persistent session teammate
+whose report is delivered by mailbox rather than as a completion notification (measured
+2026-08-31: a named verifier's verdict sat unread in that mailbox for 8 minutes and the
+orchestrator re-did the work itself, losing the independence the spawn exists to buy).
+After spawning, do the independent work in hand and otherwise let the turn END — reports
+arrive at turn boundaries, so a wait built from sleep loops, blocking shell waits, or
+repeated agent listings starves the very delivery it is waiting for. And never call a
+silent helper dead without tailing its own transcript
+(`~/.claude/projects/<cwd-slug>/<session-id>/subagents/agent-*.jsonl` on Claude Code,
+`~/.factory/sessions/<cwd-slug>/<childSessionId>.jsonl` on Droid): fresh records, or a
+file ending mid-tool-call, mean it is alive. The other side of that test — the only thing
+that licenses giving up on one — is TWO checks with real minutes between them showing
+zero new transcript records and no completion notification. Then, and only then:
+**retry once, never wait a second round.** Respawn that cluster ONCE, plain; if the
+respawn also delivers nothing, verify that cluster's items in your own context and note
+`verified inline (verifier not delivered)` on them. That fallback is legitimate HERE and
+is not the miss dispatch names, because a verification subagent buys context economy and
+parallelism, not independence — nothing is grading its own work. It is NOT available for
+dispatch's gate review or red-team, where independence is the entire product; those
+wait.
 
 Judgment stays with you, on the session model: subagent verdicts are input, the
 triage is yours.

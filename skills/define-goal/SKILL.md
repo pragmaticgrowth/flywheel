@@ -329,7 +329,21 @@ Recon details:
   `complexity:` is unverified, and no Droid claim ships without live verification
   (v7.0.0 doctrine). On
   either harness the gather agents are strictly READ-ONLY (report only — never edit,
-  fix, or run heavy repro). The SYNTHESIS/judgment step (when you split one out to
+  fix, or run heavy repro).
+  **Spawning and waiting (v12.6.0).** Spawn PLAIN — `subagent_type`, `model`, brief,
+  and nothing else. Never pass `name:`: a named agent becomes a persistent session
+  teammate whose report is delivered by mailbox rather than as a completion
+  notification (measured 2026-08-31: a named verifier's verdict sat unread in that
+  mailbox for 8 minutes and the orchestrator re-did the work itself, losing the
+  independence the spawn exists to buy). After spawning, do the independent work in
+  hand and otherwise let the turn END — reports arrive at turn boundaries, so a wait
+  built from sleep loops, blocking shell waits, or repeated agent listings starves the
+  very delivery it is waiting for. And never call a silent helper dead without tailing
+  its own transcript (Claude Code:
+  `~/.claude/projects/<cwd-slug>/<session-id>/subagents/agent-*.jsonl`; Droid:
+  `~/.factory/sessions/<cwd-slug>/<childSessionId>.jsonl`): fresh records, or a file
+  ending mid-tool-call, mean it is alive.
+  The SYNTHESIS/judgment step (when you split one out to
   weigh evidence and rank hypotheses) stays on the current session model — never
   route it to the gather tier: weighing what the findings mean is the contract-quality
   step the gather/judge split protects, and so is the contract you write from it. Search
@@ -849,7 +863,11 @@ on Droid — the rubric below plus a read-only tool allowlist are baked into its
 definition, so the spawn prompt carries only the drafts and repo specifics), else the
 generic type (`general-purpose` on Claude Code, `worker` on Droid) with the rubric
 stated inline; no model override either way — it inherits the session model, same rule
-as recon synthesis — with the drafted goal file content. Its brief: try to BREAK the
+as recon synthesis — with the drafted goal file content. Spawn it under the
+Spawning-and-waiting rule above: plain, no `name:`, and let the turn end rather than
+building a wait (measured 2026-08-31: a named red-team delivered full findings at
+4 min 24 s, was killed as "stalled" at 5 min 58 s, and its rubric was re-run in the
+orchestrator's own context — an independent review that stopped being independent). Its brief: try to BREAK the
 contract, not approve it —
 
 - **Gameability**: can any criterion be satisfied without the outcome being true — a

@@ -68,7 +68,9 @@ medium tier (`model: sonnet`) at spawn; else `general-purpose` on the same
 medium tier (`model: sonnet`) —
 never the built-in Explore type, whose model cannot be pinned. Droid:
 `explorer` with `complexity: medium` — reporting `path:line` summaries, never
-file dumps. The
+file dumps. Spawn plain, never with `name:`, and after spawning let the turn end rather
+than building a wait: reports arrive at turn boundaries, and sleep loops or repeated
+agent listings only starve the delivery (dispatch's Spawning-and-waiting rule, v12.6.0). The
 judgment stays with you: weighing what they found, the approaches, and the design
 happen in your session-model context. define-goal's recon still runs later,
 narrowed by what you found.

@@ -13,6 +13,82 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [12.6.0] — 2026-08-31
+
+**The wait.** The factory's helpers were finishing on time and the orchestrator was not
+hearing them. On Claude Code a spawned helper's report reaches the parent only at a TURN
+BOUNDARY — the `Agent` call returns "launched", the report arrives later as a completion
+notification — so every wait built out of sleep loops held the turn open and starved the
+delivery it was waiting for.
+
+### Evidence
+
+Two field `/process-inbox` runs on 2026-08-31, same repo, back to back:
+
+- a read-only verifier returned its verdict **71 seconds** after spawn; the orchestrator
+  waited through three `Monitor` sleep loops, declared it stalled at **8 min 11 s**,
+  killed it, and re-ran the verification in its own context;
+- a contract red-team delivered full findings at **4 min 24 s**, was killed at
+  **5 min 58 s**, and its rubric was likewise re-run in the orchestrator's context — an
+  independent review that stopped being independent;
+- an implementer's completion notice arrived **13 minutes** after it went idle, at the
+  very end of the run;
+- **45 `ListAgents` calls** and **six sleep loops** were burned waiting across the two
+  runs, and six named implementers from earlier runs were still listed idle **5 hours**
+  on;
+- inside a subagent, a lens panel spawned WITH `name:` returned nothing at all and had to
+  be respawned plain, which returned all three verdicts inline in ~2 minutes.
+
+### Changed
+
+- **Spawning and waiting is a dispatch hard rule.** Spawn PLAIN — `subagent_type`,
+  `model`, brief, nothing else. Then do the independent work in hand and otherwise let
+  the turn END; the notification brings you back. A `Monitor` sleep loop, a blocking
+  `TaskOutput` on that loop, or repeated `ListAgents` is a compliance miss and is
+  self-defeating (`ListAgents` reports running/idle and never the report; `TaskOutput`
+  addresses shell tasks, not agents).
+- **`name:` is banned on every factory spawn.** A named agent becomes a persistent
+  session teammate whose report goes to a mailbox instead of the notification channel;
+  from inside a subagent, which never reads that mailbox, a plain spawn returns the
+  report inline as its tool result.
+- **Death needs the transcript.** The v11.6.0 two-samples rule now names its evidence: a
+  helper writes its own transcript to disk while it runs
+  (`~/.claude/projects/<cwd-slug>/<session-id>/subagents/agent-*.jsonl`; on Droid
+  `~/.factory/sessions/<cwd-slug>/<childSessionId>.jsonl`, child ids in
+  `~/.factory/task-invocations.json`). Fresh records, or a file ending mid-tool-call,
+  mean ALIVE — keep waiting. Killing a live helper and re-running its work in the
+  orchestrator's context pays twice and destroys the independence the spawn exists to
+  buy.
+- **The task-status polling ban is now explicitly both-harness**, not a Droid rule with a
+  Claude Code exemption. Droid's awaited `Task` contract is unchanged: K spawns in one
+  message, ONE wait, results together.
+- **Warm resume no longer needs a name.** Phase 3's "name the spawn (e.g. `impl-<id>`) —
+  the warm repair round resumes it by name" contradicted the ban and is replaced: the
+  spawn returns the agent's own id and the repair round resumes it by that id. (In the
+  measured run, the named implementer's completion surfaced 13 minutes late.)
+- **`process-inbox` gets the other half of the test and an exit.** Two checks minutes
+  apart with no new transcript records is what licenses giving up on a verifier; then
+  retry the cluster ONCE, plain, and if that also delivers nothing verify those items
+  inline, marked as such. That fallback is legitimate for VERIFICATION — which buys
+  context economy and parallelism, not independence — and explicitly not available for
+  dispatch's gate review or red-team, where independence is the whole product.
+- **Hard rules now state when you may stop waiting**, rather than leaving the death test
+  only in Re-entrancy where it read as an implementer-only rule: it governs every spawn
+  the skill makes — reviewers, lenses, red-teams and recon included.
+- Same rule carried into `process-inbox`'s verify fan-out, `define-goal`'s recon and
+  contract red-team spawns, `ideate`'s orientation spawns, the implementer brief's
+  fresh-check panel, and parallel mode's wave spawns.
+
+### Tests
+
+- New `test_spawn_wait_policy.py` — 15 placement guards over the plain-spawn ban, the
+  wait discipline, the transcript death test, process-inbox's two halves and its
+  verification-only fallback, and the both-harness poll ban.
+- `test_child_timeout_policy.py` caught up to the broadened Arm A join wording, and
+  `test_self_heal_policy.py`'s `parallel unavailable on this harness` assertion — red
+  since v12.5.0 retired that refusal — was rewritten to assert the current rule. Suite:
+  409 pass, 0 fail.
+
 ## [12.5.0] — 2026-08-31
 
 **Parallel lane mode now runs on Droid.** v12.0.0 refused `--parallel` on Factory

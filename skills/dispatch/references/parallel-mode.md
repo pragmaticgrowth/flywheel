@@ -16,8 +16,12 @@ heartbeat, settle triage) is exactly the canonical per-goal sequence.
 model, admission control, the integration lock and every failure ruling below are
 harness-neutral; only the wave spawn call differs.
 
-- **Claude Code**: all wave implementers go out as concurrent FOREGROUND `Agent` spawns
-  in ONE message — the same proven mechanism the lens panel uses.
+- **Claude Code**: all wave implementers go out as concurrent PLAIN `Agent` spawns in ONE
+  message — `subagent_type`, `model`, brief, and nothing else. No `name:` (a named agent
+  becomes a session teammate that reports by mailbox instead of the notification channel),
+  and no background flag. Their reports land at turn boundaries, so the wave wait obeys
+  the Spawning-and-waiting rule in SKILL.md's Hard rules: let the turn end, never build a
+  wait out of sleep loops or repeated agent listings.
 - **Droid**: all wave implementers go out as concurrent FOREGROUND `Task` spawns in ONE
   message — `subagent_type: worker`, `await: true`, `complexity:` from the goal's
   resolved tier. This is a live-verified Droid capability, not an emulation: the
@@ -66,8 +70,9 @@ never concurrency — it was EMULATING lanes with `runInBackground: true` Task s
 a `TaskOutput` poll loop (measured 2026-08-17: a Droid run emulating 4 lanes burned 293
 poll calls, 34 % of its turns, and exhausted the account balance mid-drain). A repeated
 non-blocking task-status poll with no intervening work is a compliance miss on any
-harness. Foreground concurrent spawns have the opposite shape by construction: K spawns
-in one message, ONE wait, K results, zero polls.
+harness — and on Claude Code it is worse than waste, because a held-open turn is exactly
+what stops a finished lane's report from being delivered. Concurrent spawns have the
+opposite shape by construction: K spawns in one message, ONE wait, K results, zero polls.
 
 **Admission control — which ready goals may share a wave.** Walk the ready list in
 normal priority order; a goal joins the wave only when ALL hold against every goal
@@ -107,10 +112,9 @@ remaining budget allows.
    `config.parallel.setup` — a missing local secret fails as auth errors that read
    exactly like a real regression and burns a full gate cycle (measured on a real
    lane 2026-08-13: 6 failures in the lane, 7/7 green once `.dev.vars` was copied).
-3. Spawn ALL wave implementers foreground in ONE message (the lens-panel concurrency
-   pattern — concurrent, returning synchronously; never background-then-poll) — `Agent`
-   spawns on Claude Code, `Task` spawns with `await: true` on Droid, per the Harness
-   support section. Each
+3. Spawn ALL wave implementers in ONE message (concurrent, never background-then-poll) —
+   plain `Agent` spawns with no `name:` on Claude Code, `Task` spawns with `await: true`
+   on Droid, per the Harness support section. Each
    brief is the canonical implementer brief (references/implementer-brief.md) with ONE
    substitution — the Workspace
    paragraph becomes: "Workspace: your lane is the worktree at the ABSOLUTE path

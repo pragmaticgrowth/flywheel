@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parent
 
 DISPATCH = "skills/dispatch/SKILL.md"
 ESCALATION = "skills/dispatch/references/escalation-and-repair.md"
+PARALLEL = "skills/dispatch/references/parallel-mode.md"
 DEFINE = "skills/define-goal/SKILL.md"
 INBOX = "skills/process-inbox/SKILL.md"
 RED_TEAM = "agents/contract-red-team.md"
@@ -131,10 +132,14 @@ def test_infra_error_class_is_widened_and_settles_cleanly():
     assert "settle CLEANLY" in text
 
 
-def test_droid_parallel_is_refused_and_polling_banned():
+def test_parallel_runs_on_both_harnesses_and_polling_stays_banned():
+    # v12.5.0 retired the Droid refusal (the FEATURE was never the defect — the
+    # background-plus-poll MECHANISM was); v12.6.0 made the poll ban both-harness.
     text = unwrapped(DISPATCH)
-    assert "parallel unavailable on this harness" in text
-    assert "compliance miss on any harness" in text
+    assert "parallel unavailable on this harness" not in text
+    assert "both harnesses" in text
+    assert "never a repeated sleep+`ps` / task-status poll loop on EITHER harness" in text
+    assert "compliance miss on any harness" in unwrapped(PARALLEL)
 
 
 def test_droid_spawns_are_awaited():
