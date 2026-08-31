@@ -186,7 +186,12 @@ def main():
 
     print("\n" + "-" * W)
     if not rows:
-        print("AGENTS  no event log yet — enable with: mkdir -p ~/.local/state/pg-factory")
+        if os.path.isdir(os.path.dirname(a.log)):
+            print("AGENTS  logging is on, but no events in this window yet — "
+                  "agent numbers appear after the next run")
+        else:
+            print("AGENTS  event logging is off — enable with: "
+                  f"mkdir -p {os.path.dirname(a.log).replace(os.path.expanduser('~'), '~')}")
     else:
         work = [x for x in ags if x["ntool"] >= 3]
         print(f"AGENTS  {len(work)} with real work, {len(rows)} events logged")
