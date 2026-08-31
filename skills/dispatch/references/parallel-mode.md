@@ -1,7 +1,7 @@
-# Parallel mode — the lane model (`--parallel` / auto-parallel drains, Claude Code only)
+# Parallel mode — the lane model (`--parallel` / auto-parallel drains; both harnesses)
 
 Read this file when a run carries `--parallel`, when a flagless drain auto-enters lane
-mode (v11.0.0: `config.parallel` exists, Claude Code, ≥2 co-schedulable ready goals —
+mode (v11.0.0: `config.parallel` exists, ≥2 co-schedulable ready goals —
 the flag and the auto-entry run the identical lifecycle below; `--serial` suppresses
 auto-entry), or when Phase 1 finds lane-backed claims to settle.
 
@@ -12,10 +12,62 @@ never touches the gate's authority — it moves wall-clock, never the bar. Every
 restated here (claim protocol, briefs, gate arms, budgets, escalation ladder, report,
 heartbeat, settle triage) is exactly the canonical per-goal sequence.
 
-**Harness gate.** Claude Code only (concurrent foreground Agent spawns are the same
-proven mechanism the lens panel uses). On Droid, note the ignored flag in the report and
-run serially — Droid's concurrent-Task and worktree behavior is unverified (v7.0.0
-doctrine: no Droid claim ships without live verification).
+**Harness support (v12.5.0 — Droid enabled).** BOTH harnesses run lane mode. The lane
+model, admission control, the integration lock and every failure ruling below are
+harness-neutral; only the wave spawn call differs.
+
+- **Claude Code**: all wave implementers go out as concurrent FOREGROUND `Agent` spawns
+  in ONE message — the same proven mechanism the lens panel uses.
+- **Droid**: all wave implementers go out as concurrent FOREGROUND `Task` spawns in ONE
+  message — `subagent_type: worker`, `await: true`, `complexity:` from the goal's
+  resolved tier. This is a live-verified Droid capability, not an emulation: the
+  2026-08-31 audit of `~/.factory/task-invocations.json` (Droid 0.208.2, 1,017 recorded
+  invocations) found routine 7–8-way concurrent foreground bursts, including
+  write-capable `worker` spawns running 9–14 minutes apiece (2026-08-26 `aj-leads`,
+  7 concurrent `worker`s; 2026-08-27 `mfa`, 8 concurrent; 2026-08-28 `flywheel`,
+  8 concurrent). K on Droid obeys the same default and hard cap 4. Worktree lanes
+  themselves are field-proven on Droid too: a 2026-08-17 run built 4 goals concurrently
+  in real `~/.local/state/pg-dispatch/<SLUG>/lanes/<id>` worktrees off `staging` — its
+  ONLY defect was launching those Tasks in the BACKGROUND and polling them, which is the
+  shape banned below.
+
+Three Droid-only lane rules follow:
+
+- **A Droid Task subagent INHERITS the session's cwd.** Every recorded invocation's
+  `cwd` equals its parent session's, and Task takes no cwd parameter. So the lane
+  Workspace paragraph must name the lane as an ABSOLUTE path and the implementer must
+  address it explicitly in every Execute call (`git -C <lane> …`, or `cd <lane> && …`) —
+  never assume the lane is the working directory. A lane implementer that commits into
+  the main checkout because it assumed cwd is exactly the two-writers-in-one-tree
+  failure lanes exist to prevent.
+- **A Droid subagent has no Task tool**, so an in-lane fresh-check panel uses the
+  sanctioned `droid exec` path exactly as the implementer brief specifies, with
+  `--cwd <lane path>` added so the lens reads the LANE's tree and not the main checkout.
+- **Long in-lane commands must be detached, then waited on ONCE.** Droid's foreground
+  shell has been observed killing a long-running command with its process group at
+  roughly a minute (measured 2026-08-13: a `droid exec` lens produced zero output until
+  it was re-run detached). An in-lane build/test run or `droid exec` lens that can
+  outlive that goes `setsid <cmd> > <log> 2>&1 &`, then ONE wait, then read `<log>` —
+  the Arm A join rule verbatim. One wait, never a `sleep`+`ps` or task-status poll loop.
+
+**Lane creation blocked by trust or permission (Droid).** Lane worktrees live outside
+the repo under `~/.local/state/pg-dispatch/`, which must sit inside a Droid trusted
+folder. A `git worktree add` or a lane spawn that fails on a trust or permission error
+is environment, not work, so it is a ONE-strike ruling (unlike the two-strike rebase
+misprediction below — a trust error reproduces identically for every later lane, so a
+second attempt buys nothing): discard that lane, KEEP the goal claimed and work it
+SERIALLY from the current branch HEAD as a fresh implementer spawn, let any lanes
+already running finish and integrate normally, open no further lanes for the rest of
+the run, and surface needs-you class `environment failure` naming the path. Never a
+poll emulation, and never a silent fall-back to lanes on the next wave.
+
+**The background-poll ban stays, on BOTH harnesses.** What v12.0.0 banned on Droid was
+never concurrency — it was EMULATING lanes with `runInBackground: true` Task spawns plus
+a `TaskOutput` poll loop (measured 2026-08-17: a Droid run emulating 4 lanes burned 293
+poll calls, 34 % of its turns, and exhausted the account balance mid-drain). A repeated
+non-blocking task-status poll with no intervening work is a compliance miss on any
+harness. Foreground concurrent spawns have the opposite shape by construction: K spawns
+in one message, ONE wait, K results, zero polls.
 
 **Admission control — which ready goals may share a wave.** Walk the ready list in
 normal priority order; a goal joins the wave only when ALL hold against every goal
@@ -56,12 +108,17 @@ remaining budget allows.
    exactly like a real regression and burns a full gate cycle (measured on a real
    lane 2026-08-13: 6 failures in the lane, 7/7 green once `.dev.vars` was copied).
 3. Spawn ALL wave implementers foreground in ONE message (the lens-panel concurrency
-   pattern — concurrent, returning synchronously; never background-then-poll). Each
+   pattern — concurrent, returning synchronously; never background-then-poll) — `Agent`
+   spawns on Claude Code, `Task` spawns with `await: true` on Droid, per the Harness
+   support section. Each
    brief is the canonical implementer brief (references/implementer-brief.md) with ONE
    substitution — the Workspace
-   paragraph becomes: "Workspace: you are in the worktree at
+   paragraph becomes: "Workspace: your lane is the worktree at the ABSOLUTE path
    `~/.local/state/pg-dispatch/<SLUG>/lanes/<id>` on local branch `lane/<id>` — work
-   and commit THERE only. Never touch the main checkout, never switch branches, do NOT
+   and commit THERE only. Do not assume it is your working directory: address it
+   explicitly in every shell call (`cd <lane> && …` or `git -C <lane> …`) and confirm
+   with `git -C <lane> rev-parse --abbrev-ref HEAD` before your first commit. Never
+   touch the main checkout, never switch branches, do NOT
    create further worktrees or branches, do NOT push, do NOT open a PR."
 4. In-lane gate, per returned implementer: Arm B reviews `<branch-HEAD>..lane/<id>`
    (read-only reviewers of DIFFERENT lanes may spawn concurrently in one message;

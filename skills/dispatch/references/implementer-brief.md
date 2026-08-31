@@ -52,7 +52,9 @@ NOT fall back to reviewing your own diff in your own context: self-review is the
 grading its own work, which is the exact failure the panel exists to prevent. Instead use
 the sanctioned Droid path — `droid exec -f <prompt-file> --enabled-tools "Read,Grep,Glob,LS,Execute"`
 (or `droid exec "<prompt>" --enabled-tools "Read,Grep,Glob,LS,Execute"`), which starts a
-genuinely fresh headless session with clean context. Write each lens brief to a temp file,
+genuinely fresh headless session with clean context. **When you are working a parallel
+lane, add `--cwd <absolute lane path>`** so the lens reads YOUR lane's tree and not the
+main checkout — a lens run against the wrong tree reviews someone else's work. Write each lens brief to a temp file,
 run the lenses, and paste each verdict into your `Fresh-check:` line. It costs a CLI cold
 start per lens, so on Droid run at most two lenses and skip the panel entirely for a one-file
 mechanical edit. Only when `command -v droid` fails may you say

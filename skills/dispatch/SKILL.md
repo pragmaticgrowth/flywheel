@@ -16,8 +16,8 @@ Dispatch works ready goals **on the currently checked-out branch** (e.g. `stagin
 Integration is serial, one goal AT A TIME — and since v10.0.0 the flagless default is a
 DRAIN: keep working ready goals, one fully-settled cycle after another, until the queue
 is empty or a stop condition fires (`--count N` is the opt-in limiter; lane mode —
-Claude Code only, entered via `--parallel` or auto-entered on a flagless drain when
-`config.parallel` exists (Invocation) — builds provably-disjoint goals concurrently in
+on BOTH harnesses since v12.5.0, entered via `--parallel` or auto-entered on a flagless
+drain when `config.parallel` exists (Invocation) — builds provably-disjoint goals concurrently in
 local worktree lanes: references/parallel-mode.md). Per goal: claim it, spawn a single foreground implementer that
 commits its work (on this branch in serial mode; in its lane in parallel mode), run a
 LOCAL gate yourself, and on PASS keep one squashed commit — on FAIL roll the goal back so
@@ -41,11 +41,11 @@ re-draining as NEW goals arrive.
 
 | Invocation | Behavior |
 |---|---|
-| `/dispatch` | **Drain — the v10.0.0 default:** keep working ready goals until the queue drains or a stop condition below fires. **Auto-parallel (v11.0.0):** when the queue's `config.parallel` block exists (the repo owner's standing opt-in), the harness is Claude Code, and ≥2 ready goals are co-schedulable under the untouched admission rules, the drain runs them as `--parallel` waves (K = `config.parallel.max_lanes`, else 2); otherwise — no `config.parallel`, Droid, or nothing co-schedulable — it works sequentially exactly as before. `--serial` forces sequential for this run; `config.parallel.auto: false` (v11.2.0) is the PERSISTENT opt-out — it keeps the block's tuning for explicit `--parallel` runs while flagless drains stay sequential (the knob exists because pre-v11 queues configured `parallel:` when it only tuned the flag). |
+| `/dispatch` | **Drain — the v10.0.0 default:** keep working ready goals until the queue drains or a stop condition below fires. **Auto-parallel (v11.0.0):** when the queue's `config.parallel` block exists (the repo owner's standing opt-in) and ≥2 ready goals are co-schedulable under the untouched admission rules, the drain runs them as `--parallel` waves (K = `config.parallel.max_lanes`, else 2) on EITHER harness (v12.5.0); otherwise — no `config.parallel`, or nothing co-schedulable — it works sequentially exactly as before. `--serial` forces sequential for this run; `config.parallel.auto: false` (v11.2.0) is the PERSISTENT opt-out — it keeps the block's tuning for explicit `--parallel` runs while flagless drains stay sequential (the knob exists because pre-v11 queues configured `parallel:` when it only tuned the flag). |
 | `/dispatch 087` (also `87`, `087-slug`, or "work goal 087") | Solo mode: work exactly that goal (see Solo mode below). |
 | `/dispatch --count N` | Work up to N ready goals, then stop (N ≥ 1). `--count 1` is the pre-v10 single-goal fire — use it when one goal is deliberately all you want. |
 | `/dispatch --unlimited` | Explicit alias of the flagless drain default (kept for compatibility and for loop prompts that spell intent out). |
-| `/dispatch --parallel [K]` (combinable with `--count`) | Lane concurrency: build up to K provably-disjoint goals at once in local worktree lanes (default K = `config.parallel.max_lanes`, else 2; hard cap 4), integrating strictly one at a time. Claude Code only — on Droid the flag is REFUSED out loud (v12.0.0): the run's FIRST line states `parallel unavailable on this harness — running serial`, and lane machinery is never emulated with background workers. A repeated non-blocking task-status poll with no intervening work is a compliance miss on any harness (measured 2026-08-17: a Droid run that emulated 4 lanes burned 293 poll calls — 34% of its turns — and the waste exhausted the account balance mid-drain, killing the run). See references/parallel-mode.md. |
+| `/dispatch --parallel [K]` (combinable with `--count`) | Lane concurrency: build up to K provably-disjoint goals at once in local worktree lanes (default K = `config.parallel.max_lanes`, else 2; hard cap 4), integrating strictly one at a time. **Supported on BOTH harnesses since v12.5.0** — Claude Code spawns the wave as concurrent foreground `Agent` calls, Droid as concurrent foreground `Task` calls (`worker`, `await: true`) in ONE message; the v12.0.0 blanket Droid refusal is RETIRED (it mistook the banned mechanism for the feature — field data across 1,017 real Droid Task invocations shows routine 7–8-way concurrent foreground spawns, write-capable workers included). What stays banned on EVERY harness is emulating lanes with background workers you poll: a repeated non-blocking task-status poll with no intervening work is a compliance miss (measured 2026-08-17: a Droid run that emulated 4 lanes burned 293 poll calls — 34% of its turns — and the waste exhausted the account balance mid-drain, killing the run). Read references/parallel-mode.md before claiming a wave. |
 
 Argument rules: a goal id combined with `--count`/`--unlimited`/`--parallel`/`--serial`
 → the id wins; note the ignored flag in the report. `--count` without a valid N ≥ 1, or
@@ -214,7 +214,11 @@ gate-reviewer, fresh-check lens, repair — passes `await: true` on the Task cal
 spawn without it runs in the background and its verdict arrives as a later event that
 can land AFTER the gate has already ruled (measured 2026-08-17: a goal's review
 verdict was delivered two minutes after the run's final report, five hours after the
-goal settled — the v5.4.0 background-review scar on a new surface).
+goal settled — the v5.4.0 background-review scar on a new surface). Awaited does NOT
+mean one-at-a-time: K awaited `Task` calls issued in ONE message run CONCURRENTLY and
+return together, which is exactly how a parallel wave and a lens panel spawn on Droid
+(field-verified 2026-08-31 — see references/parallel-mode.md). Background-plus-poll is
+the banned shape; concurrency is not.
 
 ## Hard rules (every iteration, before any action)
 
@@ -958,7 +962,7 @@ worktree and are unaffected). `factory-doctor` preflights this
 the POSIX shell; auto-resolution already skips the WSL launcher stub) and
 `PG_VALIDATE_TIMEOUT` (seconds per acceptance command, default 1800).
 
-## Parallel mode — the lane model (`--parallel` / auto-parallel drains, Claude Code only)
+## Parallel mode — the lane model (`--parallel` / auto-parallel drains; both harnesses)
 
 The full lane model — admission control, the lane lifecycle, the serialized
 integration lock, and every failure ruling — lives at
@@ -1054,7 +1058,8 @@ every run claims the next goal only after the previous goal fully settles (Invoc
 
 ## Phase 3 — spawn the implementer (depth 1, foreground)
 
-One Agent per claimed goal, `run_in_background: false`. In serial mode (default): NO
+One Agent per claimed goal, `run_in_background: false` (on Droid: one `Task`,
+`subagent_type: worker`, `await: true`). In serial mode (default): NO
 worktree — it works in THIS checkout on the current branch. In parallel mode the same
 brief applies with only the Workspace paragraph substituted
 (`$DISPATCH_REFS/parallel-mode.md`), and all wave spawns go out foreground in ONE

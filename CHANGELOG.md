@@ -13,6 +13,70 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [12.5.0] — 2026-08-31
+
+**Parallel lane mode now runs on Droid.** v12.0.0 refused `--parallel` on Factory
+Droid out loud — `parallel unavailable on this harness — running serial` — because one
+2026-08-17 run had faked lanes with background workers and a poll loop (293 poll calls,
+34 % of its turns, account balance exhausted mid-drain). That banned the FEATURE for the
+sin of the MECHANISM. This release separates them.
+
+### Evidence
+
+The v7.0.0 doctrine is that no Droid claim ships without live verification, and Droid's
+concurrent-Task behavior had simply never been measured. It has now: a 2026-08-31 audit
+of `~/.factory/task-invocations.json` (Droid 0.208.2, 1,017 recorded Task invocations
+across nine repos) shows routine 7–8-way CONCURRENT FOREGROUND (`runInBackground: false`)
+Task bursts — write-capable `worker` spawns among them, running 9–14 minutes apiece
+(2026-08-26 `aj-leads`, 7 concurrent workers; 2026-08-27 `mfa`, 8; 2026-08-28
+`flywheel`, 8). Droid does concurrency natively; what it must not do is poll.
+
+### Changed
+
+- **Harness gate retired.** `references/parallel-mode.md` gains a Harness-support
+  section in place of the Claude-Code-only gate. The lane model itself is
+  harness-neutral and unchanged — admission control, the in-lane gate, the serialized
+  integration lock, rebase → re-run Arm A → collapse → fast-forward-only, and every
+  failure ruling. Only the wave spawn call differs: concurrent foreground `Agent` calls
+  on Claude Code, K awaited `Task` calls (`worker`, `await: true`, `complexity:` from
+  the resolved tier) issued in ONE message on Droid.
+- **`await: true` never meant one-at-a-time.** Stated explicitly beside the v12.0.0
+  awaited-spawns rule, since reading it as serialization is what made lane mode look
+  impossible on Droid.
+- **Auto-parallel on both harnesses.** A flagless drain with `config.parallel` present
+  enters lane mode on Droid too; `--serial` and `config.parallel.auto: false` are still
+  the opt-outs.
+- **The poll ban stays, and is now harness-neutral.** `runInBackground: true` plus a
+  `TaskOutput` poll loop is a compliance miss on every harness. Foreground concurrency
+  is its opposite by construction: K spawns, ONE wait, K results, zero polls.
+
+### Added — two Droid-only lane rules, from the same audit
+
+- **Lane paths are absolute.** A Droid Task subagent inherits the session's cwd (every
+  recorded invocation's `cwd` equals its parent session's; Task takes no cwd parameter).
+  The lane Workspace paragraph now names the lane as an absolute path, requires
+  `cd <lane> && …` or `git -C <lane> …` on every shell call, and mandates a
+  `git -C <lane> rev-parse --abbrev-ref HEAD` confirmation before the first commit — a
+  lane implementer that assumes cwd commits into the main checkout, which is exactly the
+  two-writers-in-one-tree failure lanes exist to prevent.
+- **In-lane lenses need `--cwd`.** A Droid subagent has no Task tool, so an in-lane
+  fresh-check runs `droid exec … --cwd <absolute lane path>`; without it the lens reads
+  the main checkout and reviews someone else's work (`references/implementer-brief.md`).
+- **Long in-lane commands are detached, then waited on once.** Droid's foreground shell
+  has been observed killing a long command with its process group at roughly a minute
+  (measured 2026-08-13, a `droid exec` lens returning zero output until re-run detached).
+  An in-lane build/test run or lens that can outlive that goes
+  `setsid <cmd> > <log> 2>&1 &`, then ONE wait, then read the log — the Arm A join rule
+  verbatim, and never a `sleep`+`ps` or task-status poll loop.
+- **Trust failures degrade, they do not emulate.** Lanes live under
+  `~/.local/state/pg-dispatch/`, which must sit inside a Droid trusted folder. A
+  `git worktree add` or lane spawn failing on a trust/permission error is a ONE-strike
+  ruling (a trust error reproduces identically for every later lane, so retrying buys
+  nothing — unlike the two-strike rebase-misprediction rule): discard that lane, keep the
+  goal claimed and work it serially from branch HEAD, let running lanes finish and
+  integrate, open no further lanes this run, surface needs-you class
+  `environment failure` naming the path.
+
 ## [12.4.2] — 2026-08-29
 
 **Two rules that decided one item two ways, and two stale counts.** Full audit of

@@ -74,7 +74,9 @@ one goal INTEGRATES at a time, committed **directly on the currently checked-out
 branch** — no PRs, no remote branches. Building may parallelize: `--parallel` (or a
 flagless drain with `config.parallel` present) builds provably-disjoint goals in
 disposable local worktree lanes, still integrating strictly one at a time behind the
-same gate. Each goal is bracketed by two anchors: `anchor`
+same gate — on BOTH harnesses since v12.5.0 (Claude Code spawns the wave as concurrent
+foreground `Agent` calls, Droid as concurrent foreground awaited `Task` calls in one
+message; background-plus-poll lane emulation stays banned everywhere). Each goal is bracketed by two anchors: `anchor`
 (pre-claim clean HEAD) and `gate_base` (HEAD after the claim commit). One foreground
 implementer commits; then the orchestrator runs the LOCAL gate over `gate_base..HEAD` —
 an independent fresh adversarial reviewer, then `skills/dispatch/scripts/pg_validate.py`,

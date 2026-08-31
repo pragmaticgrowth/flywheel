@@ -291,7 +291,7 @@ own review to the full panel, and is explicitly not a compliance miss.
   exists — see the v11 tail of this bullet — and `--serial` forces
   one-at-a-time) — no PRs,
   no remote or `goal/<id>` branches; since v9.0.0 a `--parallel [K]`
-  batch mode (Claude Code only, default K=2, cap 4) builds provably-disjoint
+  batch mode (both harnesses since v12.5.0; default K=2, cap 4) builds provably-disjoint
   goals concurrently in disposable LOCAL worktree lanes
   (`~/.local/state/pg-dispatch/<SLUG>/lanes/<id>`, local branch `lane/<id>`,
   deleted at settle) under admission control (disjoint `touches:` globs — a
@@ -484,8 +484,8 @@ own review to the full panel, and is explicitly not a compliance miss.
   A user-invoked flagless drain that ends drained with inbox lines CHAINS into
   /process-inbox once (loop-guarded). Infra class widened: billing/auth/overload
   errors get the pin-omitted retry then a CLEAN settle (lock released) instead
-  of a mid-wave hang; Droid `--parallel` is refused out loud (poll-loop
-  emulation banned); Droid spawns pass `await: true`; a warm resume that
+  of a mid-wave hang; Droid `--parallel` was refused out loud (poll-loop
+  emulation banned — RETIRED in v12.5.0, see below); Droid spawns pass `await: true`; a warm resume that
   replays with zero new commits disables warm resume for the run.
   v12.3.0 — the death-recovery release (2026-08-27 field analysis, both
   harnesses; twelve goals drained 2026-08-28): RESUME FROM INCREMENTS — a
@@ -519,6 +519,39 @@ own review to the full panel, and is explicitly not a compliance miss.
   `sleep`+`ps` polling banned by name on Droid; and parallel mode drains pending
   `idle_notification` teammate pings before the closing turn (Claude-Code-only,
   never by spawning anything).
+  v12.5.0 — PARALLEL LANE MODE ON DROID. The v12.0.0 blanket refusal
+  (`parallel unavailable on this harness — running serial`) is retired: it banned the
+  FEATURE because of the MECHANISM one run used to fake it. Field evidence settles the
+  capability question the v7.0.0 no-unverified-Droid-claim doctrine left open — a
+  2026-08-31 audit of `~/.factory/task-invocations.json` (Droid 0.208.2, 1,017 recorded
+  Task invocations across nine repos) found routine 7–8-way CONCURRENT FOREGROUND
+  (`runInBackground: false`) Task bursts, write-capable `worker` spawns among them
+  running 9–14 minutes apiece (2026-08-26 aj-leads 7 workers, 2026-08-27 mfa 8,
+  2026-08-28 flywheel 8). So a Droid wave spawns exactly like a Claude Code wave: K
+  awaited `Task` calls (`worker`, `await: true`, `complexity:` from the tier) issued in
+  ONE message, returning together — awaited never meant one-at-a-time. Everything else in
+  the lane model is harness-neutral and unchanged (admission control, the in-lane gate,
+  the serialized integration lock, fast-forward-only branch movement, every failure
+  ruling), and flagless auto-parallel now applies on both harnesses. What STAYS banned
+  everywhere is the shape the 2026-08-17 run actually used — `runInBackground: true`
+  plus a `TaskOutput` poll loop (293 poll calls, 34 % of its turns, account balance
+  exhausted mid-drain); foreground concurrency is its opposite: K spawns, ONE wait, zero
+  polls. Two Droid-only lane rules come from the same audit: a Droid Task subagent
+  INHERITS the session cwd (every recorded invocation's `cwd` equals its parent's; Task
+  takes no cwd parameter), so lane briefs name the lane as an ABSOLUTE path, require
+  `cd <lane>`/`git -C <lane>` on every shell call, and mandate a
+  `git -C <lane> rev-parse --abbrev-ref HEAD` confirmation before the first commit; and a
+  Droid subagent has no Task tool, so an in-lane fresh-check lens adds `--cwd <lane>` to
+  its `droid exec` command or it reviews the wrong tree. A `git worktree add` or lane
+  spawn failing on a trust/permission error (lanes live under
+  `~/.local/state/pg-dispatch/`, which must sit inside a Droid trusted folder) is
+  a ONE-strike needs-you `environment failure`: discard that lane, keep the goal claimed
+  and work it serially, let running lanes finish, open no further lanes this run.
+  Long in-lane commands are detached (`setsid <cmd> > <log> 2>&1 &`) and waited on ONCE:
+  Droid's foreground shell was observed killing a long command with its process group at
+  roughly a minute. Worktree lanes themselves were already field-proven on Droid — the
+  banned 2026-08-17 run DID build 4 goals in real lanes off `staging`; its only defect
+  was backgrounding the Tasks and polling them.
   v12.4.0 — A WHOLE-OUTCOME GAP OUTRANKS THE CAPTURE BAR. v12.3.0 made Report-only
   the default with "unsure lands here", which is right for nits and backwards for
   the one failure the plan tier exists to catch, so settle triage gains ONE narrow
@@ -677,7 +710,7 @@ own review to the full panel, and is explicitly not a compliance miss.
   run DRAINS the queue since v10.0.0 (v6.1.0–v9.x it worked one goal);
   `--count N` caps the run at N of the same fully-settled cycles (each goal claims → gates
   → settles before the next claim; budget outranks flags); `--parallel [K]`
-  (v9.0.0, Claude Code only; since v11.0.0 a flagless drain auto-enters lane
+  (v9.0.0, Claude Code only until v12.5.0 opened it to Droid; since v11.0.0 a flagless drain auto-enters lane
   mode when `config.parallel` exists and ≥2 ready goals are co-schedulable,
   `--serial` opting out) adds lane-model build concurrency behind the
   SAME serialized, locally-gated integration (see the dispatch bullet above —
