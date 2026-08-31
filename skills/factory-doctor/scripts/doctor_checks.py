@@ -44,7 +44,7 @@ def validate_queue(index_obj):
     return (len(problems) == 0, problems)
 
 
-import argparse, glob, json, ntpath, os, posixpath, shutil, subprocess, sys, tempfile
+import argparse, datetime, glob, json, ntpath, os, posixpath, shutil, subprocess, sys, tempfile, time
 try:
     import yaml
 except ImportError:
@@ -384,6 +384,79 @@ def _external_scheduler_evidence():
     return False
 
 
+def event_log_check(enabled, event_count, newest_age_hours, enabled_age_hours):
+    """Health of the opt-in factory event log (v13.0.0+; /factory-report reads it).
+
+    Pure — the caller does the I/O. The failure this exists to catch is SILENT: a hook
+    whose command path does not resolve fails with no visible error (Claude Code's
+    `async: true` swallows it), so the log stays empty forever and nothing complains.
+
+      enabled           -- the log directory exists; it is the on/off switch
+      event_count       -- lines in events.ndjson (0 when absent or empty)
+      newest_age_hours  -- hours since the newest event, None when there are none
+      enabled_age_hours -- hours since the log directory was created
+    """
+    if not enabled:
+        return {"check": "event-log", "level": "INFO",
+                "detail": "off — /factory-report still reports goal timing from git, "
+                          "but no agent or session numbers",
+                "fix": "mkdir -p ~/.local/state/pg-factory   (opt in; delete the dir to opt out)"}
+    if event_count == 0:
+        # Just switched on: empty is expected, not a finding.
+        if enabled_age_hours is not None and enabled_age_hours <= 1:
+            return {"check": "event-log", "level": "INFO",
+                    "detail": "on, nothing recorded yet (enabled in the last hour) — "
+                              "sessions started from now on are logged",
+                    "fix": ""}
+        return {"check": "event-log", "level": "WARN",
+                "detail": "on, but NOTHING has been recorded — the hook is most likely "
+                          "failing silently (Claude Code's async hooks swallow errors)",
+                "fix": "FIX: update the plugin and restart the session (hooks load at session "
+                       "start). Still empty? Remove \"async\" from the installed "
+                       "hooks/hooks.json and run one session — the real error then prints."}
+    if newest_age_hours is not None and newest_age_hours > 168:
+        return {"check": "event-log", "level": "WARN",
+                "detail": f"on, but the newest event is {newest_age_hours / 24:.0f} days old "
+                          f"({event_count} events) — logging may have broken since",
+                "fix": "FIX: restart the session (hooks load at session start); if it stays "
+                       "stale, check that the flywheel plugin is installed and enabled."}
+    return {"check": "event-log", "level": "INFO",
+            "detail": f"on — {event_count} events, newest "
+                      + ("just now" if newest_age_hours is not None and newest_age_hours < 1
+                         else f"{newest_age_hours:.0f}h ago"),
+            "fix": ""}
+
+
+def _event_log_state():
+    """Read-only probe for event_log_check. Never raises."""
+    d = os.path.join(os.path.expanduser("~"), ".local", "state", "pg-factory")
+    if not os.path.isdir(d):
+        return False, 0, None, None
+    now = time.time()
+    try:
+        enabled_age = (now - os.path.getmtime(d)) / 3600.0
+    except OSError:
+        enabled_age = None
+    f = os.path.join(d, "events.ndjson")
+    n, newest = 0, None
+    try:
+        with open(f, errors="ignore") as fh:
+            last = None
+            for line in fh:
+                if line.strip():
+                    n += 1
+                    last = line
+        if last:
+            ts = json.loads(last).get("ts")
+            if ts:
+                t = datetime.datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ").replace(
+                    tzinfo=datetime.timezone.utc)
+                newest = (datetime.datetime.now(datetime.timezone.utc) - t).total_seconds() / 3600.0
+    except (OSError, ValueError):
+        pass
+    return True, n, newest, enabled_age
+
+
 def lane_hygiene_check(lane_branches, worktree_lane_paths, in_progress_ids, lanes_dir_entries):
     """Parallel-mode lane hygiene (v9.0.0 lane model). Pure function.
 
@@ -513,6 +586,9 @@ def run_checks(base, skip_verify_run=False):
     add("gh-auth", "INFO",
         "authenticated" if rc == 0 else "not authenticated — gh features unavailable",
         "" if rc == 0 else "gh auth login -h github.com")
+
+    # event log (v13.0.0+) — /factory-report's only source for agent numbers
+    C.append(event_log_check(*_event_log_state()))
 
     # CI (INFO-only)
     wf = os.path.join(repo_root, ".github", "workflows")

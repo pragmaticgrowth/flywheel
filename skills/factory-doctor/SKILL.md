@@ -112,7 +112,7 @@ npm install + Chromium is a system-level change, never auto-run). On Windows the
 checks `symlink-privilege`: without Developer Mode or elevation, dispatch's bug-goal gate
 cannot link dep dirs into its base worktree and every `type: bug` goal returns INCONCLUSIVE —
 WARN carrying the enable-Developer-Mode fix (REPORT-only; an OS settings change is never
-auto-run). The probe also emits four
+auto-run). The probe also emits five
 REPORT-only loop-health checks (all read-only — never auto-fixed): `queue-liveness` (WARN naming
 any `in_progress` goal with no work commits on the branch after its claim commit — a stale claim /
 silent-death candidate dispatch will respawn or that needs unblocking), `lane-hygiene`
@@ -129,7 +129,16 @@ project + user scope) and no pre-existing OS scheduler (still detected as a rail
 one exists). Its `fix` field carries loop-architect Step 5's current guidance:
 window-timed attended drains — `/dispatch` (drains by default since v10.0.0) right after each limit reset —
 rather than headless scheduling. INFO-only when no
-loop has fired here or a rail is detected). The `verify` check WARNs if `config.verify` is
+loop has fired here or a rail is detected). Fifth, `event-log` (v13.2.0) reports the health
+of the opt-in factory event log that `/factory-report` reads for its agent numbers: INFO when
+it is off (with the one-line `mkdir` to opt in — never enabled for the user, it starts
+recording on their machine), INFO when it is on and healthy or was enabled within the hour,
+and WARN in the two states that mean it is broken — enabled more than an hour ago with
+NOTHING recorded, or a newest event older than a week. That WARN exists because the failure is
+SILENT: a hook whose command path does not resolve dies with no visible error (Claude Code's
+`async: true` swallows it), so a permanently empty log is the only symptom, and its `fix`
+carries the two-step diagnosis (restart, since hooks load at session start; then drop `async`
+from the installed `hooks/hooks.json` to make the real error print). The `verify` check WARNs if `config.verify` is
 absent and there are active goals — copy its `fix` (add a `verify:` list to `index.yaml`). The
 `verify-run` check reports whether those declared commands ACTUALLY run: BLOCKER naming the
 failing or unresolvable command verbatim with its exit code, WARN on a timeout, INFO when all

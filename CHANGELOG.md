@@ -13,6 +13,25 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [13.2.0] — 2026-09-01
+
+### Added
+
+- **factory-doctor now checks the event log.** The log's failure mode is silent — a hook
+  whose command path does not resolve dies with no visible error, because Claude Code's
+  `async: true` swallows it, so a permanently empty log is the only symptom and nothing
+  ever complains. That is exactly the shape a doctor should catch, and until now nothing
+  did. The new `event-log` check is INFO when logging is off (carrying the one-line opt-in,
+  never enabling it for you), INFO when it is healthy or was switched on within the hour,
+  and WARN in the two states that mean it is broken: enabled over an hour ago with nothing
+  recorded, or a newest event more than a week old. The fix text carries the two-step
+  diagnosis. Six tests cover every branch.
+
+### Fixed
+
+- **The skill inventory test still expected eight skills.** Adding `factory-report` in
+  13.0.0 left the marketplace shape test red; caught by running the repo's own suite.
+
 ## [13.1.1] — 2026-09-01
 
 ### Fixed

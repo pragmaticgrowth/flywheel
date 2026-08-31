@@ -27,6 +27,7 @@ def test_flywheel_root_skill_inventory():
         "define-goal",
         "dispatch",
         "factory-doctor",
+        "factory-report",
         "goals-status",
         "ideate",
         "loop-architect",

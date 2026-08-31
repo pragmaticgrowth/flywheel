@@ -423,3 +423,36 @@ def test_lane_hygiene_missing_worktree_named_recreatable():
 def test_lane_hygiene_stray_dir_warns():
     r = dc.lane_hygiene_check([], [], ["001-a"], ["junk-dir"])
     assert r["level"] == "WARN" and "stray" in r["detail"] and "junk-dir" in r["detail"]
+
+# --- event log (v13.0.0+) ------------------------------------------------------
+
+def test_event_log_off_is_info_with_the_opt_in_command():
+    r = dc.event_log_check(False, 0, None, None)
+    assert r["level"] == "INFO" and "off" in r["detail"]
+    assert "mkdir -p ~/.local/state/pg-factory" in r["fix"]
+
+def test_event_log_just_enabled_and_empty_is_not_a_finding():
+    # Enabling it 10 minutes ago and seeing nothing yet is expected, not a fault.
+    r = dc.event_log_check(True, 0, None, 0.17)
+    assert r["level"] == "INFO" and "nothing recorded yet" in r["detail"]
+
+def test_event_log_enabled_long_ago_but_empty_warns_about_the_silent_failure():
+    # The whole point of the check: a hook whose path does not resolve fails with no
+    # visible error, so an empty log is the only symptom.
+    r = dc.event_log_check(True, 0, None, 9.0)
+    assert r["level"] == "WARN"
+    assert "NOTHING has been recorded" in r["detail"]
+    assert "restart" in r["fix"] and "async" in r["fix"]
+
+def test_event_log_stale_events_warn_with_age_in_days():
+    r = dc.event_log_check(True, 4200, 300.0, 900.0)
+    assert r["level"] == "WARN" and "12 days old" in r["detail"]
+
+def test_event_log_healthy_is_info_with_the_count():
+    r = dc.event_log_check(True, 4200, 0.3, 900.0)
+    assert r["level"] == "INFO" and "4200 events" in r["detail"] and "just now" in r["detail"]
+
+def test_event_log_probe_never_raises_when_absent(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    enabled, n, newest, age = dc._event_log_state()
+    assert enabled is False and n == 0 and newest is None

@@ -747,7 +747,10 @@ own review to the full panel, and is explicitly not a compliance miss.
   and `/loop` remains an in-window cadence tool that dies at the limit.
 - **factory-doctor** — one-pass preflight/doctor for a repo + machine:
   checks software, gh auth + scopes, the git working tree, CI, queue
-  state, and loop health (stale claims, underspecified goals, and
+  state, and loop health (stale claims, underspecified goals, `event-log` (v13.2.0 — WARN when logging is
+  enabled but nothing has been recorded for over an hour, or the newest event is a week
+  old; the log's failure mode is SILENT because `async` hooks swallow their errors, so an
+  empty file is the only symptom), and
   `limit-resilience` — WARN when a repo's loop demonstrably fires but has no
   usage-limit rail: no `StopFailure` hook, no pre-existing scheduler; its fix
   text recommends the v8.3.0 window-timed attended drain, never headless);
