@@ -27,10 +27,16 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
   `mkdir -p ~/.local/state/pg-factory`. That matters because this marketplace is
   public. Only the six events BOTH harnesses document are registered (SessionStart,
   SessionEnd, UserPromptSubmit, PostToolUse, SubagentStop, Stop); Claude-only events
-  are deliberately left out rather than risk Droid rejecting an unknown key, and
-  PostToolUse carries no matcher at all: verified live on both harnesses, Claude Code
-  matches every tool when it is omitted (a `matcher: "*"` entry logged nothing), and so
-  does Droid — registering both forms made Droid fire twice for a single tool call. Metadata only — never a prompt body, tool input, tool output,
+  are deliberately left out rather than risk Droid rejecting an unknown key, and two
+  wiring details were settled by live probes on a fresh session of each harness rather
+  than read off the docs. The plugin-root reference must be **double-quoted** — Claude
+  Code hands the command to a shell and relies on it to expand `$CLAUDE_PLUGIN_ROOT`, so
+  single quotes make it a literal and every hook dies with `cannot open
+  ${CLAUDE_PLUGIN_ROOT}/...`, while Droid substitutes textually and works either way;
+  `async: true` swallows that error, so the symptom is a permanently empty log and no
+  complaint. And PostToolUse carries **no matcher** — Claude Code matches every tool when
+  it is omitted (a `matcher: "*"` entry logged nothing at all), Droid does too, and
+  registering both forms made Droid fire twice for a single tool call. Metadata only — never a prompt body, tool input, tool output,
   file content, or environment value. The single string it reads out of a command is a
   `chore(goals):` queue flip, from which it keeps the verb and the goal id, which is
   what finally makes goal timing independent of an agent's honesty. ~9 ms and ~100

@@ -1,12 +1,12 @@
 {
-  "_comment": "flywheel factory event log. OPT-IN: pg-log.sh exits immediately unless ~/.local/state/pg-factory/ exists, so installing this plugin changes nothing until you run `mkdir -p ~/.local/state/pg-factory`. Only the six events both Claude Code and Droid document are registered, so one file serves both harnesses. PostToolUse deliberately carries NO matcher: Claude Code reads the matcher as a regex and matches every tool when it is omitted, and Droid matches all tools too (verified 2026-09-01 \u2014 a `matcher: \"*\"` entry logged nothing on Claude Code, and carrying both an omitted-matcher and a `*` entry made Droid fire twice for one call).",
+  "_comment": "flywheel factory event log. OPT-IN: pg-log.sh exits immediately unless ~/.local/state/pg-factory/ exists, so installing this plugin changes nothing until you run `mkdir -p ~/.local/state/pg-factory`. Only the six events both Claude Code and Droid document are registered, so one file serves both harnesses. Two details are load-bearing and were verified live on both harnesses 2026-09-01, not read off the docs: (1) the plugin-root reference MUST be double-quoted -- Claude Code passes the command to a shell and relies on it to expand $CLAUDE_PLUGIN_ROOT, so single quotes make it a literal and every hook dies with 'cannot open ${CLAUDE_PLUGIN_ROOT}/...' , while Droid substitutes textually and works either way; and (2) PostToolUse carries NO matcher -- Claude Code reads the matcher as a regex and matches every tool when it is omitted (a `matcher: \"*\"` entry logged nothing at all), Droid matches all tools with it omitted too, and registering both forms made Droid fire twice for a single tool call. async:true is honoured by Claude Code and ignored by Droid, which runs the hook synchronously at ~9ms.",
   "hooks": {
     "SessionStart": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "sh '${CLAUDE_PLUGIN_ROOT}/hooks/pg-log.sh'",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/pg-log.sh\"",
             "timeout": 10,
             "async": true
           }
@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "sh '${CLAUDE_PLUGIN_ROOT}/hooks/pg-log.sh'",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/pg-log.sh\"",
             "timeout": 10,
             "async": true
           }
@@ -30,7 +30,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "sh '${CLAUDE_PLUGIN_ROOT}/hooks/pg-log.sh'",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/pg-log.sh\"",
             "timeout": 10,
             "async": true
           }
@@ -42,7 +42,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "sh '${CLAUDE_PLUGIN_ROOT}/hooks/pg-log.sh'",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/pg-log.sh\"",
             "timeout": 10,
             "async": true
           }
@@ -54,7 +54,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "sh '${CLAUDE_PLUGIN_ROOT}/hooks/pg-log.sh'",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/pg-log.sh\"",
             "timeout": 10,
             "async": true
           }
@@ -66,7 +66,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "sh '${CLAUDE_PLUGIN_ROOT}/hooks/pg-log.sh'",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/pg-log.sh\"",
             "timeout": 10,
             "async": true
           }

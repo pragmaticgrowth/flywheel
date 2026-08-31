@@ -962,11 +962,18 @@ re-add a site, a deploy config, or a docs-sync mandate without an explicit ask.
   the six events BOTH harnesses document (SessionStart, SessionEnd, UserPromptSubmit,
   PostToolUse, SubagentStop, Stop) so one file serves both; Claude-only events
   (SubagentStart, PostToolUseFailure, StopFailure) are deliberately NOT registered
-  rather than risk Droid rejecting an unknown key. PostToolUse carries NO matcher, verified
-  2026-09-01 on both harnesses: Claude Code reads the matcher as a regex and matches
+  rather than risk Droid rejecting an unknown key. TWO details are load-bearing and were verified
+  LIVE on a fresh session of each harness 2026-09-01, not read off the docs. First, the
+  plugin-root reference must be DOUBLE-quoted: Claude Code hands the command to a shell
+  and relies on it to expand `$CLAUDE_PLUGIN_ROOT`, so single quotes make it a literal
+  and every hook dies with `cannot open ${CLAUDE_PLUGIN_ROOT}/...`, while Droid
+  substitutes textually and works either way — and `async: true` SWALLOWS that error, so
+  the symptom on Claude Code is a permanently empty log and no complaint. Second,
+  PostToolUse carries NO matcher: Claude Code reads the matcher as a regex and matches
   every tool when it is omitted (a `matcher: "*"` entry logged nothing at all), and
   Droid matches all tools with it omitted too — carrying both entries made Droid fire
-  TWICE for one tool call. Metadata only — never a
+  TWICE for one tool call. `async: true` is honoured by Claude Code and ignored by
+  Droid, which runs the hook synchronously at ~9 ms. Metadata only — never a
   prompt body, tool input, tool output, file content, or environment value; the one
   string it reads out of a command is a `chore(goals):` flip, keeping the verb and
   goal id. ~9 ms and ~100 bytes per tool call, rotating at 64 MB.

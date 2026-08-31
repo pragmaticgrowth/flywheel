@@ -106,6 +106,10 @@ the fact that a prompt happened; a slash command leaves only its name.
 
 The log rotates at 64 MB and costs about 9 ms and 100 bytes per tool call.
 
+If the log stays empty after enabling, the hook path failed silently — `async: true`
+hides hook errors on Claude Code. Re-run one probe with `async` removed from the
+installed `hooks/hooks.json` and the real error prints.
+
 ## Boundaries
 
 - Never claims, amends, blocks, or retires a goal — that is `/dispatch` and
