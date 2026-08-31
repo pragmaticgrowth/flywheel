@@ -1,0 +1,24 @@
+{
+  "_comment": "flywheel factory event log. OPT-IN: pg-log.sh exits immediately unless ~/.local/state/pg-factory/ exists, so installing this plugin changes nothing until you run `mkdir -p ~/.local/state/pg-factory`. Only the six events both Claude Code and Droid document are registered, so one file serves both harnesses. Two PostToolUse entries by design: Droid matches tool names as exact strings with `*` as its wildcard, Claude Code treats the matcher as a regex and matches everything when it is omitted.",
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [ { "type": "command", "command": "sh '${CLAUDE_PLUGIN_ROOT}/hooks/pg-log.sh'", "timeout": 10, "async": true } ] }
+    ],
+    "SessionEnd": [
+      { "hooks": [ { "type": "command", "command": "sh '${CLAUDE_PLUGIN_ROOT}/hooks/pg-log.sh'", "timeout": 10, "async": true } ] }
+    ],
+    "UserPromptSubmit": [
+      { "hooks": [ { "type": "command", "command": "sh '${CLAUDE_PLUGIN_ROOT}/hooks/pg-log.sh'", "timeout": 10, "async": true } ] }
+    ],
+    "PostToolUse": [
+      { "matcher": "*", "hooks": [ { "type": "command", "command": "sh '${CLAUDE_PLUGIN_ROOT}/hooks/pg-log.sh'", "timeout": 10, "async": true } ] },
+      { "hooks": [ { "type": "command", "command": "sh '${CLAUDE_PLUGIN_ROOT}/hooks/pg-log.sh'", "timeout": 10, "async": true } ] }
+    ],
+    "SubagentStop": [
+      { "hooks": [ { "type": "command", "command": "sh '${CLAUDE_PLUGIN_ROOT}/hooks/pg-log.sh'", "timeout": 10, "async": true } ] }
+    ],
+    "Stop": [
+      { "hooks": [ { "type": "command", "command": "sh '${CLAUDE_PLUGIN_ROOT}/hooks/pg-log.sh'", "timeout": 10, "async": true } ] }
+    ]
+  }
+}

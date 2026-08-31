@@ -19,10 +19,12 @@ TDD on your branch, an independent reviewer plus your build/test commands gate
 the diff, and only work that passes is kept — failures roll back cleanly.
 
 The `pragmatic-growth` marketplace ships **one plugin** — `flywheel` — with
-eight skills and six read-only subagents: three reviewers (`gate-reviewer`,
+nine skills and six read-only subagents: three reviewers (`gate-reviewer`,
 `fresh-check`, `contract-red-team`) and three recon roles (`recon-locator`,
 `recon-analyzer`, `recon-patterns`) that ground every contract and plan in how
-the code actually works. No MCP servers, no hooks, no daemons, no build step.
+the code actually works. No MCP servers, no daemons, no build step. The one
+hook bundle is the opt-in factory event log behind `/factory-report`: it stays
+inert — writing nothing, recording nothing — until you create its log directory.
 
 ## Install
 
@@ -61,6 +63,7 @@ Update later with `/plugin marketplace update pragmatic-growth`, or
 | **define-goal** | Plain-language want → a measurable, red-teamed goal contract in the queue (or a whole document of them). `--amend <id>` repairs a blocked goal's contract and requeues it. Never writes code. |
 | **dispatch** | The orchestrator: claim, implement with TDD, review, gate, keep or roll back. Drains the queue by default and **self-heals**: contract-defect blocks are amended in-run (red-team intact), disproven goals are retired, and the run ends `all complete` or with the short list of true owner decisions. `--count N` limits the run, `--serial` forces one goal at a time, `--parallel [K]` builds disjoint goals concurrently. |
 | **process-inbox** | One-command sweep for the follow-ups dispatch captures in `docs/goals/inbox.md`: re-verifies every item against current code, batch-fixes the trivial ones, deletes the dead ones, converts the real ones via define-goal, then drains the queue via dispatch — end to end by default (`--triage-only` stops at the handoff). Only spend/irreversible items wait for you. |
+| **factory-report** | Read-only performance view across every repo with a queue: goal timing from git, agent cost from the opt-in event log, and the three execution failure modes — runaway, hung, oversized — told apart instead of lumped as "it took two hours". |
 | **goals-status** | Read-only view of what's open — in progress, blocked, not started — ending with one `next:` line naming the command to run next. |
 | **show-me** | Visual explainer: "show me how X works / what would change" answered with the smallest diagram, tree, pseudocode, or diff that lands the point instead of prose. Read-only. |
 | **loop-architect** | Designs the loop contract (prompt + verification + stop conditions) for unattended runs. |
@@ -128,7 +131,8 @@ Every cycle is idempotent, so a run killed mid-goal costs nothing.
 ```
 flywheel/
 ├── .claude-plugin/        # plugin manifest + the pragmatic-growth marketplace
-├── skills/                # the eight skills (+ their Python helpers)
+├── hooks/                 # the opt-in factory event log (inert until enabled)
+├── skills/                # the nine skills (+ their Python helpers)
 ├── agents/                # six read-only roles: 3 reviewers + 3 recon
 ├── CHANGELOG.md           # canonical version history
 ├── CLAUDE.md              # contributor guide — design invariants, release flow

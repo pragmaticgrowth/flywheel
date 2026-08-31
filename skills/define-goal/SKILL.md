@@ -953,7 +953,21 @@ contract, not approve it —
   count as a fourth band but the trigger stays ≥3 of the three product bands, and the
   fix is the split (a `depends_on` chain of thinner vertical slices — a vertical goal
   of one or two bands stays legal). The atomicity downgrade above covers only the
-  qualitative two-band span; the count has no advisory reading. Oversized goals are
+  qualitative two-band span; the count has no advisory reading. COUNT THE UNITS, NOT
+  THE CRITERIA (v13.0.0): a SINGLE criterion — or the Outcome — naming **three or more
+  parallel new surfaces of the same kind** (screens, routes, endpoints, jobs, commands,
+  tables) is N goals wearing one criterion's clothes, and is contract-blocking on the
+  same no-advisory footing as the band count. Parallel means sibling: none of them
+  depends on another, and each could ship alone — which is exactly why the enumeration
+  IS the split seam (one goal per surface, or per pair, `depends_on`-ordered behind
+  whatever shared groundwork they need). Two is a pair and stays legal; a list joined by
+  "and" or a comma series is the tell. Field-grounded 2026-08-31: two console-wave goals
+  passed every existing check — one subsystem, two bands, five and six criteria — while
+  one criterion each said "Documents, Mailroom, and DocuSeal screens" and "monitoring,
+  NAICS, R2 objects, Trustpilot, legacy payments"; both ran healthy, with no hang and no
+  thrash, and still took 132 and 119 minutes against a 29-minute median that day. Nothing
+  was broken in the run — the contract was simply more than one sitting, and only the
+  unit count showed it. Oversized goals are
   the factory's dominant cycle-time tail; splitting is the fix, not a bigger turn cap.
 - **Slice (vertical-cut test, v11.0.0)**: can every acceptance criterion of this goal
   be satisfied and verified WITHOUT any goal that comes LATER in its own

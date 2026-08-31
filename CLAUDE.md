@@ -15,8 +15,11 @@ The repo publishes ONE plugin from the `pragmatic-growth` marketplace:
 from the marketplace in v8.0.0, owner decision
 2026-07-25 — the marketplace is the goal-factory only now; git history keeps
 them recoverable.) No MCP
-servers, no commands, no hooks, no build step. ONE scoped exception to the
-skills-only rule: SIX plugin agent definitions under root `agents/` — the
+servers, no commands, no build step, and ONE hook bundle — root `hooks/`, the
+opt-in factory event log added in v13.0.0 (owner ask 2026-09-01), inert until
+`~/.local/state/pg-factory/` exists. TWO scoped exceptions to the
+skills-only rule — that hook bundle, and SIX plugin agent definitions under root
+`agents/`: the
 factory's read-only REVIEW roles `gate-reviewer`, `fresh-check`,
 `contract-red-team` (v5.4.0, owner-delegated decision 2026-07-16 after
 transcript forensics on real dispatch runs showed hand-composed review briefs
@@ -39,13 +42,14 @@ the skills always keep a generic-type-with-inline-brief fallback
 `flywheel:<name>` on Claude Code, bare `<name>` on Droid), and
 the built-in Explore type (Claude Code) and `explorer` (Droid) are banned
 for review roles.
-`flywheel` has eight skills under root
-`skills/` (three ship deterministic Python helpers in `scripts/`), forming a
+`flywheel` has nine skills under root
+`skills/` (four ship deterministic Python helpers in `scripts/`), forming a
 plain-language → autonomous-execution pipeline around a file-based goal queue
 (`docs/goals/` in target repos): `/ideate → /define-goal → /dispatch →
 /goals-status`, with `loop-architect` and `factory-doctor` as the rails,
 `process-inbox` closing the loop from dispatch's captured follow-ups back into
-define-goal, and `show-me` as the one pipeline-adjacent explainer (v11.8.0,
+define-goal, `factory-report` as the cross-repo performance view over the whole
+estate (v13.0.0), and `show-me` as the one pipeline-adjacent explainer (v11.8.0,
 owner ask 2026-08-18 — adapted from HumanLayer's show-me). There
 is no `plugins/` directory — the repo root IS the flywheel plugin.
 
@@ -200,7 +204,17 @@ is no `plugins/` directory — the repo root IS the flywheel plugin.
   stays ≥3 of the three product bands; the fix is a `depends_on` chain of thinner
   vertical slices; the note still downgrades only the qualitative two-band
   span; field-grounded 2026-08-28 in a 16-glob four-band goal that passed
-  every check and then needed touches-closure amends). v11.0.0 (the plan release, forensics-backed
+  every check and then needed touches-closure amends). v13.0.0 adds the second
+  no-advisory count — COUNT THE UNITS, NOT THE CRITERIA: one criterion (or the Outcome)
+  naming 3+ PARALLEL new surfaces of the same kind (screens, routes, endpoints, jobs,
+  commands, tables — none depending on another) is N goals in one criterion's clothes,
+  contract-blocking, the enumeration itself being the split seam; two is a pair and
+  stays legal. Field-grounded 2026-08-31: two console-wave goals passed every existing
+  Size check — one subsystem, two bands, five and six criteria — while one criterion
+  each read "Documents, Mailroom, and DocuSeal screens" and "monitoring, NAICS, R2
+  objects, Trustpilot, legacy payments"; both ran healthy with no hang and no thrash and
+  still took 132 and 119 minutes against a 29-minute median that day.
+  `agents/contract-red-team.md` updated in lockstep. v11.0.0 (the plan release, forensics-backed
   2026-08-12): plan-backed wants get a FAST PATH — zero question rounds (the
   plan is the interview; the one exception is a red-team finding or plan gap
   opening a genuine fork), recon narrowed to verify-and-complete, phases as
@@ -696,6 +710,30 @@ own review to the full panel, and is explicitly not a compliance miss.
   the upstream `.humanlayer/tasks/` artifact convention was replaced with
   this). Strictly read-only — explains, never edits code or the queue; data
   charts are out of scope (dataviz territory).
+- **factory-report** (v13.0.0, owner ask 2026-09-01 — "a logging system we can
+  monitor performance easily") — the read-only performance view across EVERY repo on
+  the machine with a `docs/goals` queue, not one repo at a time (that is
+  `goals-status`). Ships `scripts/factory_report.py` reading three sources with a fixed
+  trust order: goal timing ALWAYS from the repo's own `chore(goals):` commit dates
+  (retroactive, works on repos that never had logging on, and cannot be fabricated by
+  an agent — the v12.7.0 audit found 43 % of stamps wrong); agent lifecycles and
+  tool-call counts from the event log the plugin's hooks write to ONE machine-wide
+  `~/.local/state/pg-factory/events.ndjson`; status and queue depth from
+  `index.yaml`/`archive.yaml`, whose stamped durations are cross-checked against git and
+  never trusted over it. Its point is the THREE FAILURE MODES, which look identical from
+  outside — "the goal took two hours" — and have different fixes: RUNAWAY (tool calls far
+  above normal, no gaps: a healthy worker's p90 is ~105, the threshold 300 — measured
+  over 494 workers only two ever passed it and BOTH failed; mfa/105 made 1,427 calls in
+  114 min with no gap over a minute, then died), HUNG (a 15-minute+ silence; inside a
+  working agent the largest normal gap is ~1 min, and two field agents sat 5 and 8 hours
+  silent), and OVERSIZED (healthy, evenly paced, finishes — the contract was just too
+  big; the fix is upstream in define-goal, never in dispatch). All three are
+  REPORTING-ONLY by owner decision 2026-09-01 ("watch first"): the thresholds come from
+  one repo mix, so nothing in flywheel stops an agent on them until real data backs
+  them. Publishes to the same stable artifact each run where the Artifact tool exists
+  (same availability gate as ideate's plan), chat output the norm and the fallback.
+  Strictly read-only — never claims, amends, or implements, and never rewrites a
+  contract on the strength of a slow number.
 - **loop-architect** — designs loop contracts (prompt + verification +
   stop conditions) for autonomous /goal, /loop, routine, or remote runs;
   names `docs/goals/index.yaml` the canonical factory ledger. Includes
@@ -887,7 +925,8 @@ place; `git show v7.0.0:plugins/<name>` recovers any of them intact.
 .claude-plugin/plugin.json        # root flywheel plugin manifest — the ONLY plugin
 .claude-plugin/marketplace.json   # marketplace — name: pragmatic-growth, lists flywheel alone
 agents/<name>.md                  # six flywheel plugin agents — read-only review roles: gate-reviewer, fresh-check, contract-red-team (v5.4.0) + recon roles: recon-locator, recon-analyzer, recon-patterns (v11.1.0, adapted from riptide)
-skills/<name>/SKILL.md            # eight flywheel skills (ideate, define-goal, dispatch, process-inbox, goals-status, loop-architect, factory-doctor, show-me)
+hooks/hooks.json + hooks/pg-log.sh # the ONE hook bundle (v13.0.0) — opt-in factory event log, inert until ~/.local/state/pg-factory/ exists; six events both harnesses document, one script serves both
+skills/<name>/SKILL.md            # nine flywheel skills (ideate, define-goal, dispatch, process-inbox, goals-status, factory-report, loop-architect, factory-doctor, show-me)
 skills/<name>/scripts/*.py        # dispatch/pg_validate.py (local gate), factory-doctor/doctor_checks.py, goals-status/goals_status.py (read-only queue view)
 CHANGELOG.md                      # canonical, git-tracked version history
 README.md                         # short public overview (what it is, install, quick start)
@@ -914,7 +953,22 @@ re-add a site, a deploy config, or a docs-sync mandate without an explicit ask.
   a generic-type inline-brief fallback (`general-purpose` on Claude Code,
   `worker` on Droid) so nothing breaks where plugin
   agents are unavailable. A new hook or agent needs the same explicit ask.
-  (The repo carried a second exception — `hooks/hooks.json` for the
+  A SECOND standing exception since v13.0.0 (owner ask 2026-09-01): root
+  `hooks/` — `hooks.json` + `pg-log.sh`, the factory event log. It is OPT-IN BY
+  CONSTRUCTION: the script exits at line one unless `~/.local/state/pg-factory/`
+  exists, so installing the plugin writes nothing and records nothing until the
+  owner runs one `mkdir`. That opt-in is not a nicety — the marketplace is public,
+  and a plugin that starts logging on install is a bad surprise. It registers only
+  the six events BOTH harnesses document (SessionStart, SessionEnd, UserPromptSubmit,
+  PostToolUse, SubagentStop, Stop) so one file serves both; Claude-only events
+  (SubagentStart, PostToolUseFailure, StopFailure) are deliberately NOT registered
+  rather than risk Droid rejecting an unknown key. Two PostToolUse entries by design:
+  Droid matches tool names as exact strings with `*` as wildcard, Claude Code treats
+  the matcher as a regex and matches all when it is omitted. Metadata only — never a
+  prompt body, tool input, tool output, file content, or environment value; the one
+  string it reads out of a command is a `chore(goals):` flip, keeping the verb and
+  goal id. ~9 ms and ~100 bytes per tool call, rotating at 64 MB.
+  (The repo carried a THIRD exception — `hooks/hooks.json` for the
   `telegram-message` notifier, owner decision 2026-07-07 — from v4.11.0 until
   the v6.0.0 sunset removed the skill and the hook bundle; flywheel ships no
   hooks again.)
@@ -965,7 +1019,7 @@ There is no website and no full-doc-sync ritual. A change updates the docs it
 actually invalidates, nothing more.
 
 - **README stays SHORT.** It is a public overview only — what flywheel is,
-  install, quick start, the eight skills in one line each, the queue/gate/config
+  install, quick start, the nine skills in one line each, the queue/gate/config
   shape. Update it ONLY when one of those user-facing facts changes (a skill's
   purpose, invocation, install command, or the config model). Internal
   mechanics, rationale, and history go in `CLAUDE.md`/`AGENTS.md`, never in the

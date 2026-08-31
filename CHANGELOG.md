@@ -13,6 +13,61 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [13.0.0] — 2026-09-01
+
+### Added
+
+- **The factory event log — one opt-in hook bundle, both harnesses, every repo.**
+  Root `hooks/` is the plugin's second standing exception to skills-first (owner ask
+  2026-09-01). `hooks/pg-log.sh` writes one ndjson line per event to a single
+  machine-wide `~/.local/state/pg-factory/events.ndjson`, shared by every repo and by
+  Claude Code and Droid alike — one script serves both because both pass the same
+  JSON on stdin. It is **inert by construction**: the log directory is the switch, so
+  installing flywheel writes nothing and records nothing until someone runs
+  `mkdir -p ~/.local/state/pg-factory`. That matters because this marketplace is
+  public. Only the six events BOTH harnesses document are registered (SessionStart,
+  SessionEnd, UserPromptSubmit, PostToolUse, SubagentStop, Stop); Claude-only events
+  are deliberately left out rather than risk Droid rejecting an unknown key, and
+  PostToolUse carries two entries because Droid matches tool names as exact strings
+  with `*` as wildcard while Claude Code reads the matcher as a regex and matches all
+  when it is omitted. Metadata only — never a prompt body, tool input, tool output,
+  file content, or environment value. The single string it reads out of a command is a
+  `chore(goals):` queue flip, from which it keeps the verb and the goal id, which is
+  what finally makes goal timing independent of an agent's honesty. ~9 ms and ~100
+  bytes per tool call; rotates at 64 MB.
+- **`factory-report` — the ninth skill.** One read-only performance view across every
+  repo on the machine with a `docs/goals` queue. Goal timing always comes from
+  `chore(goals):` commit dates, so it works retroactively and over repos that never had
+  logging on; the event log supplies agent lifecycles and tool-call counts; stamped
+  index durations are cross-checked against git and never trusted over it. Its point is
+  telling apart three failures that look identical from outside — "the goal took two
+  hours":
+  - **runaway** — tool calls far above normal with no gaps. A healthy worker's p90 is
+    ~105 calls; over 494 measured workers only two ever passed 300, and **both failed**.
+    `mfa/105` made 1,427 calls in 114 minutes with no gap over a minute, then died.
+  - **hung** — a 15-minute-plus silence. Inside a working agent the largest normal gap
+    is about a minute; two field agents sat silent for 5 and 8 hours.
+  - **oversized** — healthy, evenly paced, finishes. Nothing broke; the contract was
+    too big, and the fix is upstream in define-goal, never in dispatch.
+
+  All three are **reporting-only** by owner decision ("watch first"): the thresholds
+  come from one repo mix, so nothing stops an agent on them until real data backs them.
+
+### Changed
+
+- **define-goal — count the units, not the criteria.** A single acceptance criterion
+  (or the Outcome) naming three or more PARALLEL new surfaces of the same kind —
+  screens, routes, endpoints, jobs, commands, tables, none depending on another — is N
+  goals wearing one criterion's clothes, and is now contract-blocking on the same
+  no-advisory footing as the `touches:` band count; the enumeration is itself the split
+  seam. Two is a pair and stays legal. Field-grounded 2026-08-31: two console-wave goals
+  passed every existing Size check — one subsystem, two bands, five and six criteria —
+  while one criterion each read "Documents, Mailroom, and DocuSeal screens" and
+  "monitoring, NAICS, R2 objects, Trustpilot, legacy payments". Both ran healthy, with
+  no hang and no thrash, and still took 132 and 119 minutes against a 29-minute median
+  that day. Only the unit count saw it. `agents/contract-red-team.md` updated in
+  lockstep.
+
 ## [12.7.0] — 2026-09-01
 
 ### Fixed

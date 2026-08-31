@@ -68,7 +68,14 @@ Check every draft against this rubric:
    trigger stays ≥3 of the three product bands, and the fix is a `depends_on` chain
    of thinner vertical slices (a vertical one- or two-band goal stays legal). The
    atomicity downgrade covers only the qualitative two-band span; this count trigger
-   has no advisory reading.
+   has no advisory reading. Then count the UNITS, not the criteria: one criterion (or
+   the Outcome) naming three or more PARALLEL new surfaces of the same kind — screens,
+   routes, endpoints, jobs, commands, tables, none depending on another — is N goals in
+   one criterion's clothes and is contract-blocking with no advisory reading, the
+   enumeration itself being the split seam. Two is a pair and stays legal; an "and" list
+   or comma series is the tell. This fires on drafts that pass every other Size check —
+   one subsystem, two bands, five criteria — and it is what separates a goal that merely
+   ran long from one that was too big.
 8. **Slice (vertical-cut test)** — can every criterion be satisfied and verified
    WITHOUT any goal LATER in this goal's own `depends_on` chain existing? Criteria
    depending on a later sibling (the layer-ordered "all schema → all services → all UI"
