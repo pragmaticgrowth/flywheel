@@ -461,7 +461,15 @@ which requeues a `blocked` goal after repairing its contract (needs-you class
 **Timestamps (v12.2.0) — the same entry edit, no extra commit.** The claim flip writes
 `claimed_at: <UTC ISO-8601, second precision, e.g. 2026-08-27T09:14:02Z>` on the entry;
 every terminal flip — `complete`, `block`, `retire` — writes `settled_at:` the same way
-(blocked goals get timing too). Rules: dispatch is the only writer (define-goal's amend
+(blocked goals get timing too). READ THE CLOCK, NEVER TYPE THE TIME (v12.7.0): the value
+is the verbatim stdout of `date -u +%Y-%m-%dT%H:%M:%SZ`, run in the same action that
+performs the flip — a time recalled from earlier in the run, inferred from a prior
+timestamp, or rounded to a whole minute is fabricated data, and the format above is a
+FORMAT, never a licence to compose the value. A 2026-08-31 audit of 58 stamped goals
+against their own claim/settle commits found 43 % more than 2 minutes off, 14 % more than
+15 minutes off, one goal settling 3.5 minutes BEFORE it was claimed and another stamped a
+full day in the future; whole-minute stamps (`:00` seconds on both ends) were the tell,
+and the repos whose stamps matched git were the ones that ran the command. Rules: dispatch is the only writer (define-goal's amend
 and humans never touch them); a re-claim (escalation-ladder re-spawn, Self-heal
 amend-and-re-claim, stale-claim resume that re-spawns) OVERWRITES `claimed_at` and
 DELETES any stale `settled_at` from a prior sitting — each sitting starts its own
@@ -471,7 +479,10 @@ integration settle, so a lane's duration includes its wait behind the integratio
 These fields are metadata, NEVER dispatch control flow: no claim, brake, or gate
 decision branches on them — the stale-claim brake still counts heartbeat fires, not
 wall-clock (Re-entrancy rule 2), which is what survives a usage-limit pause. Missing
-fields on pre-existing entries are normal, never a doctor finding; a missing or
+fields on pre-existing entries are normal, never a doctor finding — but a flip THIS run
+performs always carries its stamp, and one that lands without it is an incomplete flip to
+be corrected in the next entry edit (two goals settled unstamped on 2026-08-31, well past
+any rollout lag); a missing or
 malformed field falls back to the claim/settle commit author dates (git is the
 recovery path, exactly as for `gate_base`); archive moves carry the fields verbatim
 (duration analysis reads `archive.yaml` without git archaeology).

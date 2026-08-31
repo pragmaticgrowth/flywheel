@@ -13,6 +13,26 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [12.7.0] — 2026-09-01
+
+### Fixed
+
+- **dispatch — the timestamps are read from the clock, not typed.** v12.2.0 shipped
+  `claimed_at:`/`settled_at:` with a format and an example but never said where the value
+  comes from, so agents composed one. A 2026-08-31 audit of the 58 stamped goals across
+  four field repos against their own `chore(goals): claim|complete|block|retire` commits
+  found **43 % more than 2 minutes off, 36 % more than 5, 14 % more than 15** — one goal
+  settling 3.5 minutes BEFORE it was claimed, another stamped a full day in the future
+  (+1,437 min), and one repo missing on 16 of 19 stamps with a median error of 10 minutes.
+  Whole-minute stamps (`:00` seconds at both ends, 29 of 64) were the tell; the repos whose
+  stamps matched git were the ones that ran the command. The stamp is now the verbatim
+  stdout of `date -u +%Y-%m-%dT%H:%M:%SZ` run in the same action as the flip, and a
+  recalled, inferred, or whole-minute value is named fabricated data. Ungoverned, the
+  metric read 67.4 h of goal time where git says 36.4 h.
+- **dispatch — an unstamped terminal flip is an incomplete flip.** The pre-existing-entry
+  exemption was reading as blanket permission: two goals settled unstamped on 2026-08-31,
+  days past any rollout lag. A flip this run performs always carries its stamp.
+
 ## [12.6.0] — 2026-08-31
 
 **The wait.** The factory's helpers were finishing on time and the orchestrator was not

@@ -801,6 +801,14 @@ own review to the full panel, and is explicitly not a compliance miss.
   each settled goal's claim-to-settle minutes and goals-status shows elapsed
   age on in_progress/blocked entries. Timestamps are not status, so
   status-only-in-index holds unchanged.
+  v12.7.0 (2026-08-31 audit of the 58 stamped goals across four field repos against
+  their own claim/settle commits: 43 % off by >2 min, 14 % by >15, one settling BEFORE its
+  claim, one a full day in the future, the metric reading 67.4 h against git's 36.4 h): the
+  stamp is the verbatim stdout of `date -u +%Y-%m-%dT%H:%M:%SZ` run in the same action as
+  the flip — a recalled, inferred, or whole-minute value is fabricated data (whole-minute
+  stamps were the tell; the repos that matched git ran the command) — and an unstamped
+  terminal flip is an incomplete flip, the pre-existing-entry exemption never a blanket
+  one.
 - Skills mandates come in three layers: method skills (writing-plans,
   TDD, verification-before-completion, and a lightweight subagent-driven
   verifier/reviewer loop for non-trivial work) hardcoded in dispatch's brief;
