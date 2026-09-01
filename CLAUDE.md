@@ -637,6 +637,12 @@ never authoritative — 1–3 spawns per goal buying nothing.
   incident narration to CHANGELOG, every rule/format/budget preserved — the `name:`
   ban now lives ONCE in Hard rules with cross-references elsewhere. Chain-to-inbox
   and everything else unchanged.
+  v14.1.0 — the report line splits `waiting:` (not_started behind an unfinished
+  dependency; self-resolving, omitted when zero) out of `blocked:` (blocked status
+  only, plus unsettleable residual in_progress). Field-grounded same day: a healthy
+  two-chain drain with ZERO real blocks reported `blocked: 16` and read as sixteen
+  ignored failures. Sum invariant: done + ready + waiting + blocked (+ current) =
+  total. Label fix only — self-heal's blocked-first backlog walk was already the rule.
 - **goals-status** (v5.2.0; simplified in v6.0.0) — read-only view of the
   docs/goals queue. Prints
   every OPEN goal — `in_progress`, `blocked`, `not_started` — with its title and

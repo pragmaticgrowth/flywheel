@@ -859,7 +859,14 @@ near-misses.
 
 ## Phase 4 — report (the report IS the message — nothing rides along)
 
-`[dispatch] <done>/<total> done [<bar>] · ready: <count> · blocked: <count> · inbox: <unconverted inbox lines, omit when zero> · current: <id or none> · last: <id PASS (reviewed, <N>m | review-skipped: mechanical, <N>m)|FAIL (<N>m)|none> · needs-you: <blocked goals + human decisions, or nothing>`
+`[dispatch] <done>/<total> done [<bar>] · ready: <count> · waiting: <count, omit when zero> · blocked: <count> · inbox: <unconverted inbox lines, omit when zero> · current: <id or none> · last: <id PASS (reviewed, <N>m | review-skipped: mechanical, <N>m)|FAIL (<N>m)|none> · needs-you: <blocked goals + human decisions, or nothing>`
+
+**`waiting` is not `blocked` — never conflate them.** `waiting` counts goals queued
+behind an unfinished dependency: the normal shape of a chained plan, self-resolving as
+the chain advances, nothing for anyone to fix. `blocked` counts goals a verdict or a
+human actually stopped. A healthy 12-goal chain being worked at its head is
+`waiting: 11 · blocked: 0` — the old combined count rendered exactly that state as
+`blocked: 11`, which reads as eleven failures being ignored while new work is claimed.
 
 **The output envelope:**
 
@@ -886,7 +893,8 @@ Re-read the index when composing the line and derive every counter — `done`, `
 `blocked`, `total` — from that single read (a remembered `done += 1` drifts the first
 time a Phase 1 settle, a retire, or a requeue changes the index):
 - `done` = completed · `ready` = not_started with all `depends_on` completed ·
-  `blocked` = `blocked` status or not_started with an unmet dependency · `current` =
+  `waiting` = not_started with an unmet dependency (dep-queued, self-resolving) ·
+  `blocked` = `blocked` status only · `current` =
   the goal being worked this fire (parallel mode: the live lane ids, `+`-joined) ·
   `last` = the most recently gated goal and its verdict (a goal settled WITHOUT a gate
   run — a live BLOCKED / GOAL_UNREACHABLE / CONTRACT_AMBIGUOUS short-circuit — reports
@@ -899,7 +907,9 @@ time a Phase 1 settle, a retire, or a requeue changes the index):
   FIELD, never a sentence — and read it with skepticism: a sitting spanning a
   usage-limit pause looks slow and isn't.
 - Any residual `in_progress` entry this fire could not settle counts into `blocked`
-  (as blocked-pending) so that `done + ready + blocked` always equals `total`.
+  (as blocked-pending) so that `done + ready + waiting + blocked` (+ `current`'s live
+  goals) always equals `total` — the reconciliation the line promises a human never
+  silently breaks.
 
 The bar is 20 cells: `filled = round(20 × done ÷ total)` (0.5 rounds up), clamped to
 [0, 20]; empty = 20 − filled. Filled cells = █, empty = ░; omit the whole bar when
@@ -926,9 +936,10 @@ exhausted`, an environment the run could not clear. The non-blocking observation
 red CI run, a `recurring lesson`, every criterion marked **needs independent review**
 on a goal this fire PASSed (those goals are `completed`, so the item asks for a look,
 not a decision), a goal this run retired — render under **`fyi:`** instead: same line
-shape, after the needs-you bullets, never counted in `outstanding:`. A dep-blocked
-goal (waiting on another goal) is NOT human-blocked — it appears only as a "dependent
-stuck behind" a goal that is. Every item uses the canonical needs-you format — the
+shape, after the needs-you bullets, never counted in `outstanding:`. A `waiting`
+(dep-queued) goal is NOT human-blocked — it unblocks on its own as its chain
+advances, so it never appears here on its own, only as a "dependent stuck behind" a
+goal that genuinely is blocked. Every item uses the canonical needs-you format — the
 `→ <what to run>` half is not optional.
 
 **Stalled factory → one real notification.** The fire that first finds the factory

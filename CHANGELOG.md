@@ -13,6 +13,23 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [14.1.0] — 2026-09-01
+
+### Changed
+
+- **The report line stops calling a healthy chain "blocked".** Field case (nonresidenttax
+  admin-refactoring drain, same day): `blocked: 16` alarmed the owner into asking why the
+  agent ignores blocks before claiming new goals — and the queue held ZERO blocked goals.
+  All 15+ were `not_started` entries queued behind unfinished dependencies in two long
+  chains, with the two chain HEADS being built in parallel lanes at that very moment: the
+  factory operating exactly as designed, labeled as 16 failures. The line format gains a
+  `waiting:` counter (dep-queued, self-resolving — omitted when zero) and `blocked:` now
+  counts only goals a verdict or a human actually stopped; the sum invariant becomes
+  done + ready + waiting + blocked (+ current) = total. No behavior changes — the
+  blocked-first rule already exists (Self-heal walks the real blocked backlog before the
+  first claim), and dep-queued goals were never claimable anyway. This is a label fix,
+  deliberately nothing more.
+
 ## [14.0.0] — 2026-09-01
 
 The de-engineering release. A full-estate audit (two machines, ~1,050 measured goal
