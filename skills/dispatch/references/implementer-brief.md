@@ -108,7 +108,11 @@ Skills are mandatory — invoke each via the Skill tool:
 Finish: before your final commit, review the FULL diff of your work (every increment
 commit plus anything staged) and stage only the files you meant to change — revert
 stray lockfile / dependency-manager / formatter churn, or any file you didn't intend to
-touch (never `git add -A` blind). Commit your intended files on the current branch.
+touch (never `git add -A` blind). Kill every background process or watcher you
+started before ending your turn: when a suite has already printed its result, use
+that result — a watcher left waiting on a log line that may never come blocks nothing
+and burns your window (a real one sat 37 minutes past its own report), and your
+STATUS never waits on one. Commit your intended files on the current branch.
 Then write your FULL report to
 ~/.local/state/pg-dispatch/<SLUG>/reports/<id>-report.md (mkdir -p the directory first;
 overwrite any prior attempt's file): the acceptance commands you ran with their

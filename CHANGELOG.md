@@ -13,6 +13,42 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [14.2.0] — 2026-09-01
+
+Forensics on v14.0.0's first field run (nonresidenttax admin-refactoring drain, 117
+minutes fully parsed). The new gate design held — panel-vs-reviewer sizing correct on
+all three goals, zero named spawns, zero polling, envelope intact, real-clock stamps —
+and the read found three receipt-backed gaps, each fixed in a sentence or two.
+
+### Fixed
+
+- **The panel replaces the reviewer, never Arm A.** A 1,008-line auth diff went
+  FAIL→repair→PASS entirely on lens review; the deterministic build/test arm was never
+  invoked in-lane (integration's re-run remained the only net). The panel bullet now
+  states Arm A runs unconditionally and no verdict, repair round, or focused re-check
+  is rendered without its output on record.
+- **A wedged verify command no longer holds the gate hostage.** The known
+  coverage-teardown hang (queued as that repo's goal 219) was re-run three times in one
+  session — Arm A's 13-min deadline kill, a 23-min manual re-run, a 20-min isolation
+  experiment — ~52 minutes for zero information the implementer's own report hadn't
+  already carried. New rule at the join: a command that wedges past its runner's
+  deadline, or in a shape a queued goal already names, is judged on the evidence in
+  hand (a complete green summary before the wedge = passed, wedge named; less = FAIL);
+  the flake protocol's one retry is the only re-run; and fast findings are never held
+  hostage to a slow known-fault command — the repair round goes out with what's in hand.
+- **Implementers kill their watchers.** One implementer left a background poller alive
+  37 minutes (~344k tokens) waiting on a log line it already believed would never come,
+  ended only by an unrelated external kill. The brief's Finish step now requires killing
+  every self-started background process before reporting; a printed suite result is the
+  result.
+
+### Added
+
+- **Fixing the gate outranks queue order.** When a run's gate has already been taxed by
+  a fault a READY goal exists to fix, dispatch claims that goal next regardless of file
+  position — the session had independent evidence of the hang a full hour before it
+  pivoted to the fix goal, and only when the owner asked.
+
 ## [14.1.0] — 2026-09-01
 
 ### Changed

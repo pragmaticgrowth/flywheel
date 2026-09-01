@@ -643,6 +643,16 @@ never authoritative — 1–3 spawns per goal buying nothing.
   two-chain drain with ZERO real blocks reported `blocked: 16` and read as sixteen
   ignored failures. Sum invariant: done + ready + waiting + blocked (+ current) =
   total. Label fix only — self-heal's blocked-first backlog walk was already the rule.
+  v14.2.0 — first-field-run forensics of the v14 gate (117-min transcript, fully
+  parsed; sizing/spawn/envelope/stamp discipline all held): the panel bullet now says
+  it replaces ONLY the reviewer, never Arm A (a panel-only path had passed an auth
+  diff with the deterministic arm never invoked in-lane); a WEDGED verify command is
+  judged on evidence in hand, never re-run past the flake protocol's once (a known
+  hang was re-run three times, ~52 min for nothing), and fast findings ship in the
+  repair round without waiting on a slow known-fault command; the implementer brief's
+  Finish step kills self-started background watchers (one sat 37 min/~344k tokens past
+  its own report); and Phase 2 claims a ready goal that FIXES a fault currently taxing
+  the gate ahead of queue order.
 - **goals-status** (v5.2.0; simplified in v6.0.0) — read-only view of the
   docs/goals queue. Prints
   every OPEN goal — `in_progress`, `blocked`, `not_started` — with its title and

@@ -577,8 +577,12 @@ For each claimed goal, in order:
      interfaces: spawn 2–3 fresh-check plugin agents (else generic) as concurrent
      foreground lenses in ONE message — (a) contract-conformance, (b) tests +
      overbuild, (c) stray files + regressions — each read-only, no model parameter.
-     The panel REPLACES the single reviewer, never follows it. On Droid the panel is
-     K awaited Task calls in one message, exactly like a wave.
+     The panel REPLACES the single reviewer, never follows it — and it replaces ONLY
+     the reviewer, never Arm A: the deterministic arm runs unconditionally for every
+     gated goal, and no verdict, repair round, or focused re-check is rendered
+     without its output on record (the panel-only path once passed an auth diff
+     whose build/test arm had never been invoked). On Droid the panel is K awaited
+     Task calls in one message, exactly like a wave.
    - **The mechanical carve-out (the ONLY legal review skip).** A genuinely one-file
      mechanical edit skips Arm B — legal ONLY when (a) the diff touches exactly one
      file, AND (b) the change is mechanical (a rename, a constant/config value, a
@@ -632,6 +636,19 @@ For each claimed goal, in order:
    one session surface a `recurring lesson` proposing quarantine/deflake; an isolated
    fail is a real FAIL. One retry maximum, never a repair spawn for a flake. A failure
    in anything the diff DOES touch gets no retry: that is the gate working.
+   **A wedged command never holds the gate hostage.** A verify command that hangs
+   past its own runner's deadline — or wedges in a shape a QUEUED goal already names
+   as a known environmental fault — is judged on the evidence in hand, not re-run:
+   output carrying the suite's complete green summary before the wedge counts as
+   passed with the wedge named in the report (and a `recurring lesson` when no goal
+   tracks it yet); anything less is that command's FAIL. The flake protocol's one
+   isolated retry is the ONLY re-run it gets — never a third attempt, and never an
+   isolation experiment to prove what the implementer's evidence and the tracking
+   goal already establish. And the join never holds FAST findings hostage to a SLOW
+   one: when Arm A has already returned findings and only a known-fault command is
+   still pending, send the repair round with what is in hand and judge the pending
+   command by this rule when it resolves — a trivial scope fix must not wait an hour
+   behind a wedge a queued goal will fix.
 4. PASS → `git reset --soft <gate_base> && git commit -m "feat(goal <id>): <slug>"`
    (squash to one), then `chore(goals): complete <id>`; push if a remote exists
    (non-blocking).
@@ -814,7 +831,11 @@ whether work commits exist after that claim commit:
 
 Ready = `status: not_started` AND every `depends_on` entry is `completed` — a `blocked`
 dependency makes dependents not-ready; report the stuck chain. Pick `priority: high`
-first, then top-most in the file; claim via the protocol BEFORE spawning. A per-goal
+first, then top-most in the file — with ONE exception: when this run's gate has
+already been taxed by a fault that a READY goal exists to fix (its title or Context
+names the failing check or hang), claim THAT goal next, whatever its file position —
+fixing the gate outranks queue order, because every later goal pays the fault's tax
+until it lands. Claim via the protocol BEFORE spawning. A per-goal
 `base:` field overrides `config.base` for that goal — but since dispatch works on the
 currently-checked-out branch, a goal whose `base:` differs from the started branch is
 surfaced as class `base: mismatch`, never silently worked.
