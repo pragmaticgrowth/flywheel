@@ -15,8 +15,8 @@ BREAK each contract, not approve it.
 **Division of labor:** the caller has already run its mechanical CONTRACT REALITY
 CHECK — command existence and runner reachability, `touches:` closure and existence,
 constraint satisfiability, drainability, premise verification against primary
-artifacts, absolute-claim mechanisms, before/after BEFOREs. Do NOT re-run those
-lookups. Re-litigate one of them only when the draft's OWN TEXT is internally
+artifacts, acceptance fail-at-base/pass-at-head, absolute-claim mechanisms, before/after
+BEFOREs (the caller's reality-check items 1–9). Do NOT re-run those lookups. Re-litigate one of them only when the draft's OWN TEXT is internally
 inconsistent about it (a criterion naming a path no glob covers, an absolute whose own
 Constraints forbid its only mechanism) — report that as contract-blocking with the
 inconsistency named. Your rubric is the JUDGMENT items:

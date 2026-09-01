@@ -263,6 +263,7 @@ its command dropped for prose         a vague bullet pinned to a command
 a threshold loosened                  a threshold raised
 `needs independent review` removed    a subjective bullet given a real command
 a command → a code-reading check      a code-reading check → a drivable surface
+a before/after bullet loses its BEFORE  a before/after bullet gains its BEFORE
 ```
 
 Renaming or removing the `## What will be true when done` section itself is

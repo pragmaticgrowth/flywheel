@@ -10,7 +10,7 @@ architecture — one harness-neutral **execution-tier vocabulary
 `heavy|medium|light`** plus one small harness-mapping block per skill,
 instead of the v4.x dual-branch prose).
 The repo publishes ONE plugin from the `pragmatic-growth` marketplace:
-`flywheel` v12.0.0.
+`flywheel` (version: root `plugin.json`, the only place it is stated).
 (The `html-artifacts`, `autoresearch`, `human-writing` plugins were **removed**
 from the marketplace in v8.0.0, owner decision
 2026-07-25 — the marketplace is the goal-factory only now; git history keeps
@@ -289,7 +289,7 @@ is no `plugins/` directory — the repo root IS the flywheel plugin.
   RED-TEAM RUBRIC IS NARROWED TO THE JUDGMENT ITEMS — Gameability, Placeholders,
   Type shape, Termination, Size, Slice, Cross-goal, Plan-question, Ratchet (incl.
   the plan back-door shape) — and no longer re-runs the reality check's mechanical
-  lookups (the audit found 7 of its 15 items duplicating them; a deterministic
+  lookups (the audit found 6 of its 15 items duplicating them; a deterministic
   glob/config lookup gains nothing from an independent spawn); it re-litigates a
   mechanical fact only on an internal inconsistency in the draft's own text, budget
   ~10 calls. REALITY CHECK 3 now requires acceptance to EXIST, not just resolve: a
@@ -685,6 +685,15 @@ never authoritative — 1–3 spawns per goal buying nothing.
   flagged every integrated lane's report as stale (three goals in a row passed only
   on a `gate-defect` override — the trace working exactly as designed, and pointing
   at the validator).
+  v14.4.0 (2026-09-02, forensics on the three stuck sessions of 2026-09-01 + a
+  corpus consistency sweep): the checkout lock deletion is named IN the terminal-stop
+  and heartbeat procedures (a drained romy run rewrote it instead); every orchestrator
+  background command is `timeout`-bounded, Arm A or not (romy 242's unbounded chained
+  gate wedged 54 silent minutes; nonresidenttax 207's ad-hoc coverage runs 55 + 17);
+  the ship step retries an SSH-refused push once over gh-credentialed HTTPS (review by
+  2026-09-30); "work commit" defined; the Phase 4 template carries `gate-defect:`.
+  define-goal's drain waiver now explicitly covers question rounds; the red-team
+  carve-out names all nine mechanical items.
 - **goals-status** (v5.2.0; simplified in v6.0.0) — read-only view of the
   docs/goals queue. Prints
   every OPEN goal — `in_progress`, `blocked`, `not_started` — with its title and

@@ -62,7 +62,9 @@ verify-and-complete, and the contract review runs unchanged.
 **Drain waiver.** When the convert list arrives from a flagless `/process-inbox` DRAIN,
 the approval table / draft confirmation is WAIVED — the owner approved the whole drain
 by invoking it, and dispatch's gate remains the second view. The waiver covers the
-owner touch ONLY: the red-team still reviews every draft (contract-blocking findings
+owner touch ONLY — and that includes BOTH question rounds: under it a round-2 fork that
+is not an owner fork takes the recommended reading, recorded as an assumption in
+Context, never a question. The red-team still reviews every draft (contract-blocking findings
 still block — an unfixable one sends the item back to triage as KEEP with the finding
 as its reason), tier stamps and every intake rule stand, and assumptions that would
 have gone in the confirmation are recorded in the goal's Context with
@@ -716,10 +718,10 @@ definition, so the spawn prompt carries only the drafts and repo specifics), els
 generic type with the rubric stated inline; no model override either way — it inherits
 the session model. Spawn it plain per the Spawning-and-waiting rule (Recon above) and
 let the turn end. Its brief: try to BREAK the contract, not approve it. **The rubric
-is the JUDGMENT items only — the mechanical facts (command existence/reachability,
-touches closure/existence, constraint satisfiability, drainability, premise
-verification, absolute-claim mechanisms) are the orchestrator's reality check, already
-run; the red-team re-litigates one only when the draft's own text contradicts itself
+is the JUDGMENT items only — the mechanical facts (reality-check items 1–9: `touches:`
+closure/existence, acceptance existence/runnability, constraint satisfiability,
+before/after BEFOREs, drainability, premise verification, fail-at-base/pass-at-head,
+absolute-claim mechanisms) are the orchestrator's reality check, already run; the red-team re-litigates one only when the draft's own text contradicts itself
 on it, reporting that as contract-blocking with the inconsistency named.**
 
 - **Gameability**: can any criterion be satisfied without the outcome being true — a

@@ -208,7 +208,9 @@ panel spawn on Droid.
   foreground of the `run_in_background` call, never detached with `&`, `nohup`, or
   `setsid` on Claude Code), and whether it has finished is read from its OUTPUT FILE,
   never from the process table — `pgrep -f <pattern>` matches the probing shell's own
-  command line and answers RUNNING forever.
+  command line and answers RUNNING forever. And every background command you start is
+  BOUNDED — `timeout <N>` on the command itself, Arm A or not: a wedged unbounded command
+  never completes, so no notification ever comes and the run's only wake-up is the owner.
   **When may you stop waiting?** Only on the Death-needs-evidence test in Re-entrancy
   below, which governs EVERY spawn this skill makes: a returned spawn or a terminal
   notification, else two checks with real minutes between them showing zero new records
@@ -369,8 +371,10 @@ off:
 
 1. **The index is the claim ledger.** A claim is a committed status flip made BEFORE
    the implementer runs.
-2. **Stale claim**: an `in_progress` entry with no work commits since its claim and no
-   active agent means a prior implementer died — re-run it (re-spawn from its
+2. **Stale claim**: an `in_progress` entry with no work commits since its claim (a work
+   commit = any commit in `gate_base..HEAD` that is not a `chore(goals):` flip or a
+   `chore(wip):` quarantine commit — the definition pg_validate's `report-file` anchor
+   uses too) and no active agent means a prior implementer died — re-run it (re-spawn from its
    `gate_base`, the current HEAD since no work landed). If the implementer's final
    report named a blocker, set `blocked` with that reason. `GOAL_UNREACHABLE` and
    `CONTRACT_AMBIGUOUS` declarations are contract defects, not work failures: block
@@ -459,15 +463,22 @@ run — never both: a run that worked ≥1 goal closes with Phase 4's final summ
 (`stopped: drained`, inbox pointer per Phase 4); a run that finds the queue already
 drained at start (zero goals worked) emits `factory drained — <done>/<total> done`
 instead (appending ` · inbox: <N> captured → /process-inbox` when `docs/goals/inbox.md`
-has unconverted items) and stops. A terminal stop still runs Phase 4 first. A later
-`/dispatch` re-run picks up newly-added goals.
+has unconverted items) and stops. A terminal stop still runs Phase 4 first, and its
+heartbeat append is the lock's LAST rewrite: every terminal stop — drained, `--count`
+exhausted, solo goal settled, environment death — ends with
+`rm ~/.local/state/pg-dispatch/<SLUG>/lock` before the closing line (a lock left behind
+is the next run's `checkout busy` for ~2 hours). A later `/dispatch` re-run picks up
+newly-added goals.
 
 **Ship step — every terminal stop: unshipped is not done.** Before the closing line, if
 the target repo's OWN CLAUDE.md/AGENTS.md carries a standing authorization to publish —
 "push every time", "commit and push without asking", a named release command declared
 pre-authorized — RUN that path now and put the outcome in the closing line
 (`shipped: <push|command> ok` / `ship FAILED: <one clause>` as needs-you class
-`environment failure`). When those docs declare more than one publish path, run every
+`environment failure`). A push refused on SSH auth or agent signing while `gh auth
+status` is green is retried ONCE over HTTPS — `git push
+https://github.com/<owner>/<repo>.git HEAD:<branch>` (gh's credential helper
+authenticates) — before any `ship FAILED`. When those docs declare more than one publish path, run every
 declared path the diff touched and report per-service (a path is touched when
 `gate_base..HEAD` — or, at a terminal drain stop, the commits this run produced —
 intersects a path the declaring doc ties to that publish command; if the docs do not
@@ -568,7 +579,7 @@ For each claimed goal, in order:
 
    ```bash
    cd <checkout or lane> || exit 99
-   timeout 60m python3 "$PGVALIDATE" --head HEAD --base <gate_base> --goal <id> --goal-file docs/goals/<id>.md; echo "PGV_EXIT=$?"
+   timeout 60m python3 "$PGVALIDATE" --head HEAD --base <gate_base> --goal <id> --goal-file docs/goals/<id>.md; echo "PGV_EXIT=$?"   # 60m bounds the whole call; pg_validate caps each acceptance command at 30m itself (PG_VALIDATE_TIMEOUT)
    timeout 60m <config.verify command 1>; echo "VERIFY1_EXIT=$?"
    # … one line per further config.verify command, in order
    echo "=== ARM A COMPLETE ==="
@@ -723,9 +734,10 @@ AND the `config.verify` commands (any non-zero exit = FAIL_FIXABLE for that comm
 failure). You run the gate — the implementer's verification summary is evidence, not
 the verdict.
 
-**Arm A's checks are read, not adjudicated.** A failing `pg_validate.py` check is a
-FAIL_FIXABLE finding for the repair round like any reviewer finding — `blast-radius`
-above all: an undeclared path is out of scope until `touches:` says otherwise, whatever
+**Arm A's checks are read, not adjudicated.** A failing `pg_validate.py` check
+(`resolve-refs`, `queue-untouched`, `blast-radius`, `forbidden-content`, `report-file`,
+`repro-direction`, `acceptance-green`) is a FAIL_FIXABLE finding for the repair round
+like any reviewer finding — `blast-radius` above all: an undeclared path is out of scope until `touches:` says otherwise, whatever
 the implementer's reason. The ONE exception is a check whose failure is provably the
 validator's own error (its evidence names a path or fact one command disproves): pass
 the goal on THAT check only, record `gate-defect: <check>` in the fire's `last:` field
@@ -916,7 +928,7 @@ near-misses.
 
 ## Phase 4 — report (the report IS the message — nothing rides along)
 
-`[dispatch] <done>/<total> done [<bar>] · ready: <count> · waiting: <count, omit when zero> · blocked: <count> · inbox: <unconverted inbox lines, omit when zero> · current: <id or none> · last: <id PASS (reviewed, <N>m | review-skipped: mechanical, <N>m)|FAIL (<N>m)|none> · needs-you: <blocked goals + human decisions, or nothing>`
+`[dispatch] <done>/<total> done [<bar>] · ready: <count> · waiting: <count, omit when zero> · blocked: <count> · inbox: <unconverted inbox lines, omit when zero> · current: <id or none> · last: <id PASS (reviewed, <N>m | review-skipped: mechanical, <N>m)|FAIL (<N>m)|none>[, gate-defect: <check>] · needs-you: <blocked goals + human decisions, or nothing>`
 
 **`waiting` is not `blocked` — never conflate them.** `waiting` counts goals queued
 behind an unfinished dependency: the normal shape of a chained plan, self-resolving as
@@ -1011,7 +1023,8 @@ send none, though the report line still goes out every fire.
 APPEND one line — `<UTC timestamp> · <done>/<total> · current <id or none> · drained
 <yes|no>` — to `~/.local/state/pg-dispatch/<SLUG>/heartbeat` (`mkdir -p` first; then
 trim to the newest ~50 lines) — and re-write the checkout lock's line in the same
-step. Two readers: (1) liveness — a silently-dead orchestrator emits nothing, so the
+step, EXCEPT on a terminal stop, where the lock is deleted instead (Phase 0, terminal
+stop). Two readers: (1) liveness — a silently-dead orchestrator emits nothing, so the
 next `/dispatch` or an external watcher compares the newest line's age to the expected
 cadence; (2) the cross-fire brake counts lines after a stale claim's date to measure
 fires observed — which is how a usage-limit pause is told apart from a goal failing

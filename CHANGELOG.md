@@ -13,6 +13,65 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [14.4.0] — 2026-09-02
+
+Forensics on the three sessions the owner was stuck in on 2026-09-01 (romy,
+nonresidenttax, mfa — mfa never invoked flywheel; its sessions were ad-hoc work), plus a
+consistency sweep of the whole skill corpus after five releases landed from different
+sessions in one day.
+
+### Fixed
+
+- **The checkout lock is deleted at a normal terminal stop.** The delete rule was stated
+  once, in Phase 0; the drained-stop and heartbeat procedures never mentioned it, and the
+  romy drain (6/6 drained, 17:46Z) ended with its closing Bash REWRITING the lock — the
+  next run on that checkout would have stopped `checkout busy` for two hours. Both
+  procedures now name the deletion.
+- **The Phase 4 template shows the `gate-defect:` token** v14.3.0 told the `last:` field
+  to append; the line format had not been updated.
+- **The red-team carve-out lists all nine mechanical items.** define-goal's carve-out and
+  `agents/contract-red-team.md` both omitted acceptance fail-at-base/pass-at-head
+  (reality-check item 8), leaving it unassigned between "already checked" and "yours".
+- **CLAUDE.md**: the red-team narrowing count reads 6 (as the v14.0.0 entry says), not 7;
+  the stale "flywheel v12.0.0" opener now points at `plugin.json`.
+
+### Changed
+
+- **Every background command the orchestrator starts is bounded by `timeout`, Arm A or
+  not.** Two independent incidents, 2026-09-01: romy goal 242's gate chained four verify
+  commands in ONE tracked call with no per-command bound, vitest wedged at 0% CPU, the
+  call never exited — no completion notification, 54 silent minutes ended only by the
+  owner asking "are you stucked?"; nonresidenttax goal 207's orchestrator ran ad-hoc
+  coverage diagnostics in the background with no bound — 55 and 17+ minutes, both ended
+  by the owner. v14.3.0 bounded the canonical Arm A script; this is the one-sentence
+  generalization in the wait rule.
+- **The drain waiver covers question rounds too.** process-inbox promised "no question
+  rounds" during a drain while define-goal's round-2 fork rule was never waived — a
+  literal reading could stop an unattended drain to ask. Under the waiver a non-owner
+  fork takes the recommended reading, recorded as an assumption in Context.
+- **Ship step: an SSH push failure retries once over HTTPS.** Two romy sessions hit the
+  identical SSH-agent signing failure at push; one found the `gh`-credentialed HTTPS
+  push and shipped, the other reported `ship FAILED` and left 24 commits unpushed. With
+  `gh auth status` green, the push is retried ONCE as
+  `git push https://github.com/<owner>/<repo>.git HEAD:<branch>` before any failure
+  report. One machine so far — **review by 2026-09-30**; fold back if no second
+  machine trips it.
+- **Definitions where two careful agents diverged:** a "work commit" (any commit in
+  `gate_base..HEAD` other than a `chore(goals):` flip or `chore(wip):` quarantine — the
+  definition pg_validate's `report-file` anchor uses); the seven `pg_validate.py` check
+  names in the read-not-adjudicated rule; the nested Arm A timeouts (60m per call, 30m
+  per acceptance command inside); ideate's ratchet table gains the before/after row.
+
+### Audit notes (no change)
+
+- The corpus is clean of every mechanism v14.0.0 removed; all three skill→script
+  contracts verified live against a real queue; 476 tests pass.
+- 30-day usage census, both harnesses (sessions/repos): dispatch 19/5, define-goal 18/6,
+  ideate 8/2, factory-doctor 4/3, goals-status 3/2, process-inbox 2/2, loop-architect
+  1/1, factory-report 1/1 (one day old), show-me 0/0.
+- The nonresidenttax stall (goals 207/228, ~97 min of orchestrator-run coverage
+  experiments) is the incident v14.2.0 and v14.3.0 already encoded; no further rule.
+
 ## [14.3.1] — 2026-09-01
 
 Forensics on the same v14 field run (nonresidenttax, 2026-09-01), the integration

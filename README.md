@@ -4,7 +4,7 @@
 A skills-first plugin for [Claude Code](https://claude.com/claude-code) and
 [Factory Droid](https://factory.ai), from Pragmatic Growth.
 
-[![Version](https://img.shields.io/badge/version-14.3.0-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-14.4.0-8b5cf6)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
 ---
