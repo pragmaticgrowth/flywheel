@@ -40,7 +40,9 @@ goal and each cost an orchestrator override.
   the owner ruled the resulting `blast-radius` finding REAL — the contract must declare
   the path. Mechanical check 1 now lists it beside the manifest/ledger regen and the
   linked plan file, so define-goal stamps it instead of dispatch amending it at gate
-  time.
+  time. One-incident rule (two goals, one run, one repo): **review by 2026-09-15**
+  against fresh drains — if no second repo trips it, fold it back into the generic
+  "repo-mandated companions" clause.
 
 ## [14.3.0] — 2026-09-01
 

@@ -639,8 +639,7 @@ re-run these:
    index a repo REGENERATES from its tracked docs (e.g. `docs/README.md` behind a
    generator `--check` in the repo's gate): the implementer brief's own plan doc
    lands under `docs/` and stales that index, so every goal in such a repo must
-   declare it — field-verified on two consecutive goals that tripped `blast-radius`
-   on exactly this path with correct, finished work.
+   declare it.
 2. **`touches:` existence.** Every glob must match at least one existing path (glob
    it), OR the goal's Context declares it a new file (`new file: <path>`). A glob
    matching nothing is a typo or an undeclared new file — the contract must say

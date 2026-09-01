@@ -300,6 +300,13 @@ is no `plugins/` directory — the repo root IS the flywheel plugin.
   two Size count triggers (bands, units) merged into one template block, stated
   once. And the SKILL went on the diet the goal files got in v11: 13.9k → 10.2k
   words, incident narration moved to CHANGELOG, rules unchanged.
+
+  v14.3.1: reality-check item 1 (`touches:` closure) also names the docs index a repo
+  REGENERATES from its tracked docs (e.g. `docs/README.md` behind a generator
+  `--check`) — the implementer brief's plan doc lands under `docs/` and stales it, so
+  every goal in such a repo declares it up front instead of tripping `blast-radius`
+  on finished work. One-incident rule, review by 2026-09-15 (CHANGELOG 14.3.1).
+
 **Harness note (v8.2.0; depth corrected v8.3.0; SUPERSEDED in v14.0.0):** on Claude Code
 a subagent can spawn further subagents (Agent nests — official docs put the default
 nesting depth at 3 layers below the main conversation; the old
@@ -671,6 +678,13 @@ never authoritative — 1–3 spawns per goal buying nothing.
   from the PRIMARY checkout (`git rev-parse --git-common-dir`, `PG_DISPATCH_SLUG`
   overrides) so lane worktrees find the report — 16/16 lane gates had failed
   `report-file` on the lane's own basename, which is what bred the override habit.
+  v14.3.1 (same day, shipped from the nonresidenttax session's own gate forensics):
+  `report-file` anchors on the EARLIER of the `--base` commit time and the sitting's
+  first work commit AUTHOR time — parallel-mode integration rebases the lane onto a
+  branch HEAD that moved after the implementer wrote its report, so `--base` alone
+  flagged every integrated lane's report as stale (three goals in a row passed only
+  on a `gate-defect` override — the trace working exactly as designed, and pointing
+  at the validator).
 - **goals-status** (v5.2.0; simplified in v6.0.0) — read-only view of the
   docs/goals queue. Prints
   every OPEN goal — `in_progress`, `blocked`, `not_started` — with its title and
