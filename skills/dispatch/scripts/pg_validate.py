@@ -284,9 +284,32 @@ def queue_untouched(changed_paths):
             "evidence": "implementer left docs/goals/ untouched"}
 
 
+def _main_checkout_root(repo_root):
+    """The PRIMARY checkout's directory for repo_root — repo_root itself when it is the
+    primary checkout, the primary's directory when repo_root is a linked worktree (a
+    dispatch lane at ~/.local/state/pg-dispatch/<slug>/lanes/<goal-id>). `git rev-parse
+    --git-common-dir` answers `<primary>/.git` from any linked worktree; anything else
+    (not a repo, a bare repo, git missing) falls back to repo_root unchanged."""
+    try:
+        rc, out, _ = _git(["rev-parse", "--git-common-dir"], cwd=repo_root)
+    except Exception:
+        return os.path.abspath(repo_root)
+    common = (out or "").strip()
+    if rc != 0 or not common:
+        return os.path.abspath(repo_root)
+    if not os.path.isabs(common):
+        common = os.path.join(repo_root, common)
+    common = os.path.abspath(common)
+    if os.path.basename(common) == ".git":
+        return os.path.dirname(common)
+    return os.path.abspath(repo_root)
+
+
 def report_path(goal_id, repo_root):
-    """~/.local/state/pg-dispatch/<cwd-basename>/reports/<goal-id>-report.md"""
-    slug = os.path.basename(os.path.abspath(repo_root))
+    """~/.local/state/pg-dispatch/<SLUG>/reports/<goal-id>-report.md, where <SLUG> is the
+    repo dir name — the PRIMARY checkout's basename even when validating inside a lane
+    worktree, whose own basename is the goal id. `PG_DISPATCH_SLUG` overrides."""
+    slug = os.environ.get("PG_DISPATCH_SLUG") or os.path.basename(_main_checkout_root(repo_root))
     return os.path.join(os.path.expanduser("~"), ".local", "state", "pg-dispatch",
                         slug, "reports", f"{goal_id}-report.md")
 

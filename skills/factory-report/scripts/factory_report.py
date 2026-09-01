@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Factory performance report — goal timing, agent cost, and the three failure modes.
+"""Factory performance report — goal timing, agent cost, and the four failure signals.
 
 Reads three sources and prefers the most trustworthy one for each number:
 
@@ -21,6 +21,7 @@ DEFAULT_LOG = os.path.expanduser("~/.local/state/pg-factory/events.ndjson")
 # Failure-mode thresholds. Deliberately reporting-only — nothing here stops an agent.
 RUNAWAY_TOOLS = 300      # p90 of a healthy worker is ~105; 300 is 3x headroom
 HUNG_GAP_MIN = 15.0      # a working agent's largest normal gap is ~1 min
+STALL_MIN = 15.0         # a whole run silent this long with claims open is idle, not slow
 LONG_GOAL_MIN = 90.0
 
 
@@ -197,6 +198,45 @@ def agents(rows):
     return sorted(out, key=lambda a: a["start"])
 
 
+def stalled_runs(rows, now):
+    """Dispatch runs that went quiet with claims still open — the failure shape neither
+    `hung` (an agent silent mid-run) nor `oversized` (healthy but big) can see, because
+    nothing is running: the orchestrator ended its turn believing a gate command was
+    still going (a detached command with no completion notification, a `pgrep -f`
+    probe matching its own shell) and nothing ever woke it. Field case: 70+ minutes
+    idle with two goals claimed and both lane gates long finished.
+
+    A run is a session that logged a `chore(goals): claim` flip. A claim is OPEN until
+    a later complete/block/retire flip for the same repo+goal appears in ANY session
+    (the next /dispatch's Phase 1 settles orphaned claims, and that closes them here
+    too). A run whose whole session — orchestrator and every subagent — has been silent
+    STALL_MIN+ minutes with open claims is STALLED. Reporting-only, like every signal.
+    """
+    by_sid = collections.defaultdict(list)
+    settled_at = {}
+    for r in rows:
+        by_sid[r.get("sid")].append(r)
+        if r.get("gv") in ("complete", "block", "retire") and r.get("gid"):
+            k = (repo_of(r.get("cwd") or ""), r["gid"])
+            settled_at[k] = max(settled_at.get(k, r["_t"]), r["_t"])
+    out = []
+    for sid, evs in by_sid.items():
+        evs.sort(key=lambda r: r["_t"])
+        claims = [(r["_t"], repo_of(r.get("cwd") or ""), r["gid"])
+                  for r in evs if r.get("gv") == "claim" and r.get("gid")]
+        if not claims:
+            continue
+        open_ = sorted({gid for t, repo, gid in claims
+                        if settled_at.get((repo, gid)) is None or settled_at[(repo, gid)] <= t})
+        if not open_:
+            continue
+        silent = (now - evs[-1]["_t"]).total_seconds() / 60
+        if silent >= STALL_MIN:
+            out.append(dict(sid=sid, repo=claims[-1][1], open=open_, start=evs[0]["_t"],
+                            last=evs[-1]["_t"], silent=silent))
+    return sorted(out, key=lambda x: -x["silent"])
+
+
 def bar(frac, width=20):
     filled = max(0, min(width, round(frac * width)))
     return "█" * filled + "·" * (width - filled)
@@ -231,6 +271,7 @@ def main():
 
     rows = read_log(a.log, cutoff)
     ags = agents(rows) if rows else []
+    stalled = stalled_runs(rows, dt.datetime.now(UTC)) if rows else []
 
     if a.json:
         print(json.dumps(dict(
@@ -240,6 +281,8 @@ def main():
             agents=[dict(a2, start=a2["start"].isoformat(), end=a2["end"].isoformat())
                     for a2 in ags],
             inbox_debt=inbox_debt,
+            stalled=[dict(x, start=x["start"].isoformat(), last=x["last"].isoformat(),
+                          silent=round(x["silent"], 1)) for x in stalled],
         ), indent=2, default=str))
         return 0
 
@@ -324,6 +367,11 @@ def main():
         for x in hung[:5]:
             print(f"           {x['start']:%m-%d %H:%M} {x['repo'][:12]:12} "
                   f"{x['maxgap']:>5.0f}m gap / {x['mins']:.0f}m  {(x['task'] or x['at'] or '')[:28]}")
+        print(f"  stalled  {len(stalled):>3}  runs silent {STALL_MIN:.0f}m+ with claims still open"
+              f"{'  (next /dispatch settles them)' if stalled else ''}")
+        for x in stalled[:5]:
+            print(f"           {x['start']:%m-%d %H:%M} {x['repo'][:12]:12} "
+                  f"{x['silent']:>5.0f}m silent  open: {', '.join(x['open'])[:34]}")
 
     long_goals = sorted([g for g in all_goals if g[5] >= LONG_GOAL_MIN], key=lambda g: -g[5])
     # Idle-inflation check: only for the genuinely slow ones (>4h), and only a `git log`

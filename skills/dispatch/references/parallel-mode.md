@@ -31,11 +31,15 @@ Two Droid-only lane rules:
   `cd <lane> && …`) — never assume the lane is the working directory. A lane
   implementer that commits into the main checkout because it assumed cwd is exactly
   the two-writers-in-one-tree failure lanes exist to prevent.
-- **Long in-lane commands must be detached, then waited on ONCE.** Droid's foreground
-  shell has been observed killing a long-running command with its process group at
-  roughly a minute. An in-lane build/test run that can outlive that goes
-  `setsid <cmd> > <log> 2>&1 &`, then ONE wait, then read `<log>` — the Arm A join
-  rule verbatim. One wait, never a `sleep`+`ps` or task-status poll loop.
+- **Long in-lane commands must be detached, then waited on ONCE — Droid ONLY.** Droid's
+  foreground shell has been observed killing a long-running command with its process
+  group at roughly a minute. An in-lane build/test run that can outlive that goes
+  `setsid <cmd> > <log> 2>&1 &`, then ONE wait, then read `<log>` for the Arm A
+  sentinel — the join rule verbatim. One wait, never a `sleep`+`ps` or task-status poll
+  loop, and never `pgrep -f <script>` as the liveness check (the probing shell matches
+  itself). On Claude Code NEVER detach: Arm A is one tracked `run_in_background` task
+  (SKILL.md, Working a goal step 3) — `setsid` or a trailing `&` there yields a call
+  that reports done at once and a gate nobody is notified about.
 
 **Lane creation blocked by trust or permission (Droid).** Lane worktrees live outside
 the repo under `~/.local/state/pg-dispatch/`, which must sit inside a Droid trusted
@@ -102,7 +106,9 @@ remaining budget allows.
    single reviewer or the escalated lens panel, sized by the diff exactly as SKILL.md
    Working a goal step 3 (read-only reviewers of DIFFERENT lanes may spawn
    concurrently in one message; Arm A background commands run inside each lane
-   directory). Verified findings → ONE repair round IN the lane (warm resume first,
+   directory — `cd <lane>` first; `pg_validate.py` resolves the report directory from
+   the PRIMARY checkout, `~/.local/state/pg-dispatch/<SLUG>/reports/`, so the lane's
+   own basename — the goal id — never enters the path). Verified findings → ONE repair round IN the lane (warm resume first,
    per the escalation-and-repair reference); focused re-check in the lane. At most one
    writing agent per lane at any moment — reviews of lane A may overlap a repair in
    lane B freely. A goal is integration-ready when its lane gate has no open findings.

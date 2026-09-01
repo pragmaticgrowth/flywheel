@@ -112,7 +112,10 @@ touch (never `git add -A` blind). Kill every background process or watcher you
 started before ending your turn: when a suite has already printed its result, use
 that result — a watcher left waiting on a log line that may never come blocks nothing
 and burns your window (a real one sat 37 minutes past its own report), and your
-STATUS never waits on one. Commit your intended files on the current branch.
+STATUS never waits on one. Never test whether a process is still running with
+`pgrep -f <name>`: the probing shell's own command line carries the pattern, so it
+answers "running" forever — read the command's own output instead. Commit your
+intended files on the current branch.
 Then write your FULL report to
 ~/.local/state/pg-dispatch/<SLUG>/reports/<id>-report.md (mkdir -p the directory first;
 overwrite any prior attempt's file): the acceptance commands you ran with their

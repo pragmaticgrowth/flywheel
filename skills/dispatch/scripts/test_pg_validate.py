@@ -1158,3 +1158,40 @@ if __name__ == "__main__":
     for fn in fns:
         fn(); print(f"ok  {fn.__name__}")
     print(f"\n{len(fns)} passed")
+
+
+# --- report path from inside a lane worktree ------------------------------------
+# Field defect (nonresidenttax, 2026-08-31 → 2026-09-01): every one of 16 lane-mode Arm A
+# runs FAILED `report-file` because the slug was taken from the cwd basename, and in a
+# lane worktree that basename is the GOAL id (~/.local/state/pg-dispatch/<slug>/lanes/<id>).
+# The check looked under pg-dispatch/<goal-id>/reports/ and never found the report the
+# brief mandates under pg-dispatch/<repo>/reports/. The orchestrator learned to override
+# exit 3 — and waved a real blast-radius violation through in the same breath.
+
+def test_report_path_in_a_lane_worktree_uses_the_main_checkout_slug():
+    def inner(home, repo):
+        main = os.path.join(repo, "myrepo")
+        os.makedirs(main)
+        _make_repo(main)
+        open(os.path.join(main, "a.txt"), "w").write("a\n")
+        _git_local(main, "add", "."); _git_local(main, "commit", "-qm", "base")
+        lane = os.path.join(home, ".local", "state", "pg-dispatch", "myrepo", "lanes", "004-slug")
+        os.makedirs(os.path.dirname(lane), exist_ok=True)
+        r = _git_local(main, "worktree", "add", lane, "-b", "lane/004-slug")
+        assert r.returncode == 0, r.stderr
+        expected = os.path.join(home, ".local", "state", "pg-dispatch", "myrepo", "reports", "004-slug-report.md")
+        assert pgv.report_path("004-slug", lane) == expected
+        # and the primary checkout itself is unchanged
+        assert pgv.report_path("004-slug", main) == expected
+    _with_home(inner)
+
+
+def test_report_path_honours_pg_dispatch_slug_override():
+    def inner(home, repo):
+        os.environ["PG_DISPATCH_SLUG"] = "forced-slug"
+        try:
+            expected = os.path.join(home, ".local", "state", "pg-dispatch", "forced-slug", "reports", "004-report.md")
+            assert pgv.report_path("004", repo) == expected
+        finally:
+            os.environ.pop("PG_DISPATCH_SLUG", None)
+    _with_home(inner)

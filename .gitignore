@@ -22,3 +22,4 @@ __pycache__/
 # ignored. The pre-push hook now guards against secrets/credentials, not docs/.
 CLAUDE.local.md
 .claude/settings.json
+.pytest_cache/

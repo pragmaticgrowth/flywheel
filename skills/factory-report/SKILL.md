@@ -1,6 +1,6 @@
 ---
 name: factory-report
-description: Use when the user runs "/factory-report" or asks how the factory is performing — "how long are goals taking", "check timing", "monitor performance", "what's the factory costing", "which goals are slow", "are agents getting stuck". Reports goal timing, agent cost, and the three execution failure modes (runaway, hung, oversized) across every repo with a docs/goals queue, from git history plus the factory event log. Strictly read-only — it measures the factory, never changes the queue, and never implements anything.
+description: Use when the user runs "/factory-report" or asks how the factory is performing — "how long are goals taking", "check timing", "monitor performance", "what's the factory costing", "which goals are slow", "are agents getting stuck". Reports goal timing, agent cost, and the four execution failure signals (runaway, hung, stalled, oversized) across every repo with a docs/goals queue, from git history plus the factory event log. Strictly read-only — it measures the factory, never changes the queue, and never implements anything.
 ---
 
 # Factory Report
@@ -54,9 +54,9 @@ repos (default: `~` and `~/*`).
 Exit `2` means no repo with a `docs/goals` queue was found — say so plainly and
 stop; do not invent numbers from anywhere else.
 
-## Reading the three failure signals
+## Reading the four failure signals
 
-The report separates three things that all look identical from the outside —
+The report separates four things that all look identical from the outside —
 "the goal took two hours". Each has its own signal and its own fix, and
 confusing them is how the wrong fix gets applied.
 
@@ -64,6 +64,7 @@ confusing them is how the wrong fix gets applied.
 |---|---|---|
 | **Runaway** | tool calls far above normal, no gaps | The agent worked flat out and got nowhere. A healthy worker's p90 is ~105 tool calls; the threshold is 300. Measured on 494 workers, only two ever passed 300 and **both failed** — it is close to a certain predictor. The goal is too big or the agent is thrashing. |
 | **Hung** | a long silence mid-run | The agent stopped emitting events entirely. Inside a working agent the largest normal gap is about a minute, so a 15-minute silence is never work in progress. Field cases ran 5 and 8 hours silent. |
+| **Stalled** | a whole run silent 15m+ with claims still open | Nothing is running and nothing is waiting on anything: the orchestrator ended its turn believing a gate command was still going — a detached command with no completion notification, a `pgrep -f` probe matching its own shell — and nothing ever woke it. The goals stay `in_progress` until the next `/dispatch` Phase 1 settles them; that settle closes the signal. Field case: 70+ minutes idle with two goals claimed and both lane gates long finished. |
 | **Oversized** | long but healthy | Many tool calls spread evenly, no gaps, and it finishes. Nothing is broken — the contract was simply too big for one sitting. The fix is upstream, in define-goal. |
 
 **Idle-inflation guard.** Wall-clock claim→settle time includes idle gaps —

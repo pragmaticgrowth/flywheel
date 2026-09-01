@@ -653,6 +653,24 @@ never authoritative — 1–3 spawns per goal buying nothing.
   Finish step kills self-started background watchers (one sat 37 min/~344k tokens past
   its own report); and Phase 2 claims a ready goal that FIXES a fault currently taxing
   the gate ahead of queue order.
+  v14.3.0 — the stalled-run forensics (second v14 field run, 2026-09-01; two lane
+  re-gates of ~5 min each were believed still running for 41 min and then indefinitely,
+  the session idle 70+ min with two goals claimed): Arm A is ONE TRACKED background
+  task — the gate script in the FOREGROUND of the `run_in_background` call, never
+  `&`/`nohup`/`setsid` on Claude Code (a detached command has no completion
+  notification; the harness reported the call done in 2 s), with a canonical script
+  shape (per-command `timeout`, echoed exit codes, `=== ARM A COMPLETE ===` sentinel);
+  FINISHED is read from the output file, never the process table — `pgrep -f <script>`,
+  `ps | grep`, `kill -0` are banned as liveness checks because the probing shell's own
+  argv carries the pattern (8 probes across two goals said RUNNING after both logs had
+  closed; reproduced with nothing running), and a turn never ends on "still running"
+  without a tracked task existing for it; Arm A's checks are READ, not adjudicated
+  (`blast-radius` above all — a real violation was waved through twice), the one
+  exception being a provably wrong check passed with `gate-defect: <check>` on the
+  report line plus an `fyi: recurring lesson`; and `pg_validate.py` resolves `<SLUG>`
+  from the PRIMARY checkout (`git rev-parse --git-common-dir`, `PG_DISPATCH_SLUG`
+  overrides) so lane worktrees find the report — 16/16 lane gates had failed
+  `report-file` on the lane's own basename, which is what bred the override habit.
 - **goals-status** (v5.2.0; simplified in v6.0.0) — read-only view of the
   docs/goals queue. Prints
   every OPEN goal — `in_progress`, `blocked`, `not_started` — with its title and
@@ -790,7 +808,13 @@ never authoritative — 1–3 spawns per goal buying nothing.
   commit record shows a >3h gap is labeled `idle-inflated (~Xh gap)` and excluded
   from OVERSIZED (the audit measured ~90% of the 4h+ tail as idle claims across dead
   sessions/usage-limit pauses, not slow work); `read_log()` also stopped
-  JSON-decoding the whole 64MB file (lexicographic ts pre-filter).
+  JSON-decoding the whole 64MB file (lexicographic ts pre-filter). v14.3.0 adds the
+  FOURTH signal, STALLED — a run whose whole session (orchestrator + every subagent) is
+  silent 15m+ with claims still open: nothing running, nothing waited on (the
+  orchestrator lost a gate command's completion notification and nothing woke it; 70+
+  min idle with two goals claimed). Computed from the event log's `chore(goals):` flips
+  across sessions, closed when the next /dispatch Phase 1 settles the claim;
+  reporting-only like the other three.
   Strictly read-only — never claims, amends, or implements, and never rewrites a
   contract on the strength of a slow number.
 - **loop-architect** — designs loop contracts (prompt + verification +

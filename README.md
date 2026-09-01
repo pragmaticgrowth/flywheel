@@ -4,7 +4,7 @@
 A skills-first plugin for [Claude Code](https://claude.com/claude-code) and
 [Factory Droid](https://factory.ai), from Pragmatic Growth.
 
-[![Version](https://img.shields.io/badge/version-12.4.2-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-14.3.0-8b5cf6)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
 ---
@@ -63,7 +63,7 @@ Update later with `/plugin marketplace update pragmatic-growth`, or
 | **define-goal** | Plain-language want → a measurable, red-teamed goal contract in the queue (or a whole document of them). `--amend <id>` repairs a blocked goal's contract and requeues it. Never writes code. |
 | **dispatch** | The orchestrator: claim, implement with TDD, review, gate, keep or roll back. Drains the queue by default and **self-heals**: contract-defect blocks are amended in-run (red-team intact), disproven goals are retired, and the run ends `all complete` or with the short list of true owner decisions. `--count N` limits the run, `--serial` forces one goal at a time, `--parallel [K]` builds disjoint goals concurrently. |
 | **process-inbox** | One-command sweep for the follow-ups dispatch captures in `docs/goals/inbox.md`: re-verifies every item against current code, batch-fixes the trivial ones, deletes the dead ones, converts the real ones via define-goal, then drains the queue via dispatch — end to end by default (`--triage-only` stops at the handoff). Only spend/irreversible items wait for you. |
-| **factory-report** | Read-only performance view across every repo with a queue: goal timing from git, agent cost from the opt-in event log, and the three execution failure modes — runaway, hung, oversized — told apart instead of lumped as "it took two hours". |
+| **factory-report** | Read-only performance view across every repo with a queue: goal timing from git, agent cost from the opt-in event log, and the four execution failure signals — runaway, hung, stalled, oversized — told apart instead of lumped as "it took two hours". |
 | **goals-status** | Read-only view of what's open — in progress, blocked, not started — ending with one `next:` line naming the command to run next. |
 | **show-me** | Visual explainer: "show me how X works / what would change" answered with the smallest diagram, tree, pseudocode, or diff that lands the point instead of prose. Read-only. |
 | **loop-architect** | Designs the loop contract (prompt + verification + stop conditions) for unattended runs. |

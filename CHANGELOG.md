@@ -13,6 +13,60 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [14.3.0] — 2026-09-01
+
+Forensics on the SECOND v14 field run (nonresidenttax, 2026-09-01, the four-lane
+console drain, live transcript + gate logs). Two goals' lane re-gates finished in about
+five minutes each, and the run believed both were still running — 41 minutes on goal
+220, then indefinitely on goal 209: the session sat idle 70+ minutes with two goals
+claimed and both gates green on disk. Two independent defects, plus the habit they bred.
+
+### Fixed
+
+- **The gate command is a TRACKED task, never a detached one.** The re-gate was started
+  as `script > log 2>&1 &` inside a `run_in_background` Bash call so a `git diff --stat`
+  could ride along; the harness reported that call done in two seconds, and no completion
+  notification for the real five-minute gate ever existed. Arm A is now ONE background
+  call whose command IS the gate script, in the call's foreground — `&`, `nohup`, `setsid`
+  banned on Claude Code (detach-then-ONE-wait stays the Droid-only rule it always was) —
+  with a canonical script shape: a hard `timeout` per command (exit 124 = wedged, the
+  v14.2.0 rule), every exit code echoed, and an `=== ARM A COMPLETE ===` sentinel.
+- **"Is it finished?" is read from the output file, never the process table.** Every
+  liveness probe the run made was `pgrep -f 'armA-<id>.sh'`, which matches the probing
+  shell's OWN command line (the harness passes the command as `bash -c '…'` argv) and
+  answers RUNNING forever — reproduced on this machine with nothing running. Eight probes
+  across two goals said RUNNING after both logs had closed. `pgrep -f`, `ps | grep`, and
+  `kill -0` on a pgrep'd pid are banned as liveness checks in the join, the Hard rules,
+  the parallel-mode reference, and the implementer brief; the join reads the sentinel;
+  and before ending a turn on "still running" the orchestrator confirms a tracked task
+  exists — none means read the log now, it has probably finished.
+- **`pg_validate.py` looked for the report in the wrong directory inside a lane.** The
+  `report-file` check took `<SLUG>` from the cwd basename, and a lane worktree's basename
+  is the GOAL id — so all 16 lane-mode Arm A runs since 2026-08-31 FAILED exit 3 on a
+  report that existed exactly where the brief mandates it. The slug now comes from the
+  PRIMARY checkout (`git rev-parse --git-common-dir`); `PG_DISPATCH_SLUG` overrides. Two
+  tests, RED first.
+- **Arm A's checks are read, not adjudicated.** Overriding that false `report-file`
+  failure on every gate taught the orchestrator to grade pg_validate by reasoning — and
+  in the same breath it passed a REAL `blast-radius` violation (an undeclared
+  `docs/README.md`) twice. A failing check is now a FAIL_FIXABLE finding like any
+  reviewer finding, `blast-radius` above all; the ONE exception — a check provably wrong
+  on its own evidence — passes that check only with `gate-defect: <check>` on the report
+  line and an `fyi: recurring lesson` naming the validator bug.
+
+### Added
+
+- **factory-report's fourth signal: STALLED.** A run whose whole session — orchestrator
+  and every subagent — has been silent 15m+ with claims still open: nothing running,
+  nothing waited on. Neither `hung` (an agent silent mid-run) nor `oversized` could see
+  it; on the day's live log it names exactly the run above (82m silent, goal 209 open).
+  It closes when the next `/dispatch` Phase 1 settles the claim. Reporting-only like the
+  other three; seven unit tests.
+
+Permanence per the v14.0.0 policy: two independent incidents in one session (goals 220
+and 209), and the same probe shape appears in 74 Bash calls across sessions in four
+repos on this machine.
+
 ## [14.2.0] — 2026-09-01
 
 Forensics on v14.0.0's first field run (nonresidenttax admin-refactoring drain, 117

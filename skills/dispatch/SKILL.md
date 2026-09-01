@@ -203,7 +203,12 @@ panel spawn on Droid.
   session teammate whose report goes to a mailbox instead of the notification channel,
   where it can sit unread while the orchestrator wastes the wait or re-does the work.
   Droid is unchanged: awaited `Task` calls return together — K spawns, ONE wait, zero
-  polls.
+  polls. A background COMMAND is waited on the same way: its completion notification
+  exists only for a TRACKED task (Working a goal, step 3 — the command itself in the
+  foreground of the `run_in_background` call, never detached with `&`, `nohup`, or
+  `setsid` on Claude Code), and whether it has finished is read from its OUTPUT FILE,
+  never from the process table — `pgrep -f <pattern>` matches the probing shell's own
+  command line and answers RUNNING forever.
   **When may you stop waiting?** Only on the Death-needs-evidence test in Re-entrancy
   below, which governs EVERY spawn this skill makes: a returned spawn or a terminal
   notification, else two checks with real minutes between them showing zero new records
@@ -554,16 +559,30 @@ For each claimed goal, in order:
    independent review (Arm B) — and neither consumes the other's output, so OVERLAP
    them: start Arm A as a background command, spawn Arm B, and join both before any
    verdict (the join obeys the Spawning-and-waiting rule).
-   **Arm A — the gate commands, started FIRST, in the background.** ONE Bash call,
-   `run_in_background: true`, that runs
-   `python3 "$PGVALIDATE" --head HEAD --base <gate_base> --goal <id> --goal-file docs/goals/<id>.md`
-   then each `config.verify` command in order, echoing every exit code, so the join
-   reads one output file and reconstructs the full result. A background COMMAND is safe
-   where a background review spawn is banned: its exit codes and log land in an output
-   file you Read at join time — nothing returns through a turn that can be discarded.
-   The overlap is an optimization, never a requirement: with no reliable
-   background-shell mode (run it foreground on Droid), or when the mechanical carve-out
-   skips Arm B, run the same commands in the foreground; the verdict rule is identical.
+   **Arm A — the gate commands, started FIRST, as ONE tracked background task.** ONE
+   Bash call, `run_in_background: true`, whose command IS the gate script and nothing
+   else (a `git diff --stat` you want now is its own foreground call), with the script
+   in that call's FOREGROUND — never `… &`, `nohup`, or `setsid` on Claude Code: a
+   detached command has no task and no completion notification, so the harness reports
+   the call done at once and the gate's only wake-up is gone. The script shape:
+
+   ```bash
+   cd <checkout or lane> || exit 99
+   timeout 60m python3 "$PGVALIDATE" --head HEAD --base <gate_base> --goal <id> --goal-file docs/goals/<id>.md; echo "PGV_EXIT=$?"
+   timeout 60m <config.verify command 1>; echo "VERIFY1_EXIT=$?"
+   # … one line per further config.verify command, in order
+   echo "=== ARM A COMPLETE ==="
+   ```
+
+   Every command carries a hard `timeout` (exit 124 = wedged, judged by the wedged rule
+   below) and echoes its exit code, so the join reads ONE output file and reconstructs
+   the full result, and the sentinel line is how "finished" is READ. A background
+   COMMAND is safe where a background review spawn is banned: its log lands in a file
+   you Read at join time — nothing returns through a turn that can be discarded. The
+   overlap is an optimization, never a requirement: with no reliable background-shell
+   mode (Droid — see the parallel-mode reference's detach-then-ONE-wait rule), or when
+   the mechanical carve-out skips Arm B, run the same commands in the foreground; the
+   verdict rule is identical.
    **Arm B — independent review, sized by the DIFF (maker–checker, ALWAYS for
    non-trivial work).** Decide the review's size from `git diff <gate_base>..HEAD
    --stat` plus the diff body — never from the implementer's claims about its own work:
@@ -625,10 +644,18 @@ For each claimed goal, in order:
    needs-you class `contract defect`) — a repair agent cannot fix code into a
    defective contract.
    **Join — no verdict before BOTH arms are in hand.** When Arm B returns, Read Arm
-   A's output file (commands still running → wait on that task ONCE, then read the
-   output — never a repeated sleep+`ps` / task-status poll loop on EITHER harness:
-   one wait, then read the output; never grade a partial gate). Show the command
-   output. Every `config.verify` command must exit 0.
+   A's output file. FINISHED is read from that file — the `=== ARM A COMPLETE ===`
+   sentinel with every `*_EXIT=` line present — never from the process table:
+   `pgrep -f <script>`, `ps | grep <script>`, and `kill -0` on a pgrep'd pid are banned
+   as liveness checks, because the probing shell's own command line carries the
+   pattern and matches itself. No sentinel yet → the task's completion notification is
+   the wait: let the turn end (Spawning and waiting); on Droid wait on that task ONCE,
+   then read the output — never a repeated sleep+`ps` / task-status poll loop on
+   EITHER harness: one wait, then read the output; never grade a partial gate. Before
+   ending ANY turn on the belief that Arm A is still running,
+   confirm a tracked task exists for it; none (you detached it) → Read the log now, it
+   has probably finished. Show the command output. Every `config.verify` command must
+   exit 0.
    **Flake protocol (bounded, logged — never a repair).** When a verify command fails
    on a test the diff does not touch and the goal's surfaces do not reach, re-run THAT
    test once in isolation before the verdict: an isolated pass is a flake — count the
@@ -695,6 +722,15 @@ FAIL_FIXABLE/FAIL_CONTRACT=exit 3 — read the JSON to split them, INCONCLUSIVE=
 AND the `config.verify` commands (any non-zero exit = FAIL_FIXABLE for that command's
 failure). You run the gate — the implementer's verification summary is evidence, not
 the verdict.
+
+**Arm A's checks are read, not adjudicated.** A failing `pg_validate.py` check is a
+FAIL_FIXABLE finding for the repair round like any reviewer finding — `blast-radius`
+above all: an undeclared path is out of scope until `touches:` says otherwise, whatever
+the implementer's reason. The ONE exception is a check whose failure is provably the
+validator's own error (its evidence names a path or fact one command disproves): pass
+the goal on THAT check only, record `gate-defect: <check>` in the fire's `last:` field
+and report file, and surface an `fyi:` `recurring lesson` naming the validator bug —
+never a silent override, and never for a check that measures the work.
 
 **Windows note.** `type: bug` goals build a temporary base worktree with symlinked dep
 dirs, which needs the Windows symlink privilege (Developer Mode or an elevated
@@ -921,7 +957,9 @@ time a Phase 1 settle, a retire, or a requeue changes the index):
   run — a live BLOCKED / GOAL_UNREACHABLE / CONTRACT_AMBIGUOUS short-circuit — reports
   `<id> FAIL`; needs-you carries the detail). A gated `last` also names its review
   decision — `reviewed` or `review-skipped: mechanical` — so the carve-out leaves an
-  audit trail in every fire's report. `last` also carries the goal's claim-to-settle
+  audit trail in every fire's report, and appends `, gate-defect: <check>` — on a PASS
+  or a FAIL alike — when a validator check was passed on its own error (Working a goal,
+  the verdict rule). `last` also carries the goal's claim-to-settle
   wall-clock as `<N>m` (integer minutes; `settled_at` − `claimed_at` from the entry
   the settle just wrote; fall back to the claim/settle commit author dates) — e.g.
   `last: 172 PASS (reviewed, 41m)`. A retirement shows no duration. A duration is a
