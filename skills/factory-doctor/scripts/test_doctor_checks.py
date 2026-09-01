@@ -218,6 +218,35 @@ def test_scheduler_evidence_still_ignores_unrelated_crontab(monkeypatch):
     monkeypatch.setattr(dc.glob, "glob", lambda g: [])
     assert not dc._external_scheduler_evidence()
 
+def test_scheduler_evidence_bare_dispatch_path_is_not_evidence(monkeypatch):
+    # the false positive this tightening fixes: a cron line whose PATH just happens
+    # to contain the substring "/dispatch" but never mentions claude or droid at all.
+    monkeypatch.setattr(dc, "_run",
+                        lambda cmd: (0, "0 3 * * * /opt/app/dispatch/cleanup.sh", ""))
+    monkeypatch.setattr(dc.glob, "glob", lambda g: [])
+    assert not dc._external_scheduler_evidence()
+
+def test_scheduler_evidence_claude_and_dispatch_same_line_matches_via_regex(tmp_path, monkeypatch):
+    # covers the combined regex path specifically — not one of the three exact
+    # substrings ("claude -p" / "claude --print" / "droid exec") — a claude-named
+    # wrapper script invoking /dispatch on the SAME line is still real evidence.
+    unit = tmp_path / "flywheel.plist"
+    unit.write_text("ExecStart=/usr/local/bin/claude_wrapper.sh --do /dispatch\n")
+    monkeypatch.setattr(dc, "_run", lambda cmd: (1, "", ""))
+    monkeypatch.setattr(dc.glob, "glob",
+                        lambda g: [str(unit)] if "LaunchAgents" in g else [])
+    assert dc._external_scheduler_evidence()
+
+def test_scheduler_evidence_dispatch_and_claude_on_different_lines_does_not_match(tmp_path, monkeypatch):
+    # the two mentions must share a line — "/dispatch" on one line and "claude" on a
+    # completely unrelated line elsewhere in the same file is not evidence of a rail.
+    unit = tmp_path / "other.plist"
+    unit.write_text("claude desktop app config\nExecStart=/opt/app/dispatch/run.sh\n")
+    monkeypatch.setattr(dc, "_run", lambda cmd: (1, "", ""))
+    monkeypatch.setattr(dc.glob, "glob",
+                        lambda g: [str(unit)] if "LaunchAgents" in g else [])
+    assert not dc._external_scheduler_evidence()
+
 def test_stop_failure_hook_found_in_factory_settings(monkeypatch):
     with tempfile.TemporaryDirectory() as repo:
         proj = os.path.join(repo, ".factory")
@@ -445,14 +474,154 @@ def test_event_log_enabled_long_ago_but_empty_warns_about_the_silent_failure():
     assert "restart" in r["fix"] and "async" in r["fix"]
 
 def test_event_log_stale_events_warn_with_age_in_days():
+    # size_bytes replaces the old exact line count (v13.3.0: the probe no longer
+    # scans the whole file) — the detail text now carries a human-readable size.
     r = dc.event_log_check(True, 4200, 300.0, 900.0)
     assert r["level"] == "WARN" and "12 days old" in r["detail"]
+    assert "KB" in r["detail"] or "logged" in r["detail"]
 
-def test_event_log_healthy_is_info_with_the_count():
+def test_event_log_healthy_is_info_with_the_size():
     r = dc.event_log_check(True, 4200, 0.3, 900.0)
-    assert r["level"] == "INFO" and "4200 events" in r["detail"] and "just now" in r["detail"]
+    assert r["level"] == "INFO" and "logged" in r["detail"] and "just now" in r["detail"]
+    assert "4200 events" not in r["detail"]     # the old exact-count phrasing is gone
 
 def test_event_log_probe_never_raises_when_absent(tmp_path, monkeypatch):
     monkeypatch.setenv("HOME", str(tmp_path))
     enabled, n, newest, age = dc._event_log_state()
     assert enabled is False and n == 0 and newest is None
+
+# ---- inbox-debt (v13.3.0 — a heavy docs/goals/inbox.md pile-up factory-doctor can see) --
+
+def test_inbox_debt_no_check_when_absent_or_empty():
+    assert dc.inbox_debt_check([]) is None
+
+def test_inbox_debt_lines_reads_open_lines_and_leading_dates(tmp_path):
+    g = tmp_path / "docs" / "goals"; g.mkdir(parents=True)
+    (g / "inbox.md").write_text(
+        "# Inbox\n\n"
+        "- [ ] 2026-08-01 fix the flaky login test (earn: live-defect)\n"
+        "- [x] already triaged\n"
+        "- [ ] no leading date on this one\n")
+    lines = dc._inbox_debt_lines(str(g))
+    assert lines == ["2026-08-01", None]
+
+def test_inbox_debt_lines_empty_when_file_absent(tmp_path):
+    assert dc._inbox_debt_lines(str(tmp_path)) == []
+
+def test_inbox_debt_info_for_small_undated_backlog():
+    r = dc.inbox_debt_check([None] * 5)
+    assert r["level"] == "INFO" and "5 open" in r["detail"]
+    assert r["fix"] == ""
+
+def test_inbox_debt_warns_at_count_threshold():
+    r = dc.inbox_debt_check([None] * 10)
+    assert r["level"] == "WARN" and "10 open" in r["detail"]
+    assert "/process-inbox" in r["fix"]
+
+def test_inbox_debt_warns_on_stale_oldest_line_even_under_count_threshold():
+    import datetime
+    now = datetime.datetime(2026, 9, 1, tzinfo=datetime.timezone.utc)
+    r = dc.inbox_debt_check(["2026-08-10", None], now=now)   # 22 days old, only 2 items
+    assert r["level"] == "WARN"
+    assert "22d old" in r["detail"]
+
+def test_inbox_debt_info_when_dated_but_not_stale_enough():
+    import datetime
+    now = datetime.datetime(2026, 9, 1, tzinfo=datetime.timezone.utc)
+    r = dc.inbox_debt_check(["2026-08-25"], now=now)   # 7 days old, well under 14
+    assert r["level"] == "INFO"
+
+def test_inbox_debt_runs_alongside_other_queue_checks(tmp_path, monkeypatch):
+    # end-to-end through run_checks: a heavy inbox must surface without needing an
+    # index.yaml at all (a repo can pile up an inbox with nothing queued).
+    g = tmp_path / "docs" / "goals"; g.mkdir(parents=True)
+    (g / "inbox.md").write_text("\n".join(f"- [ ] item {i}" for i in range(12)) + "\n")
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(dc, "_run", lambda cmd: (1, "", ""))   # no real git repo here
+    checks, _ = dc.run_checks("main", skip_verify_run=True)
+    ib = [c for c in checks if c["check"] == "inbox-debt"]
+    assert len(ib) == 1 and ib[0]["level"] == "WARN", checks
+
+# ---- event-log jq dependency (v13.3.0 — the "async" diagnosis can never see this) --
+
+def test_event_log_blocker_when_jq_missing_outranks_everything_else():
+    # even with plenty of healthy-looking data, a currently-missing jq means the
+    # hook has been failing silently since — this must win over the INFO verdict.
+    r = dc.event_log_check(True, 4200, 0.3, 900.0, jq_missing=True)
+    assert r["level"] == "BLOCKER"
+    assert "jq" in r["detail"]
+    assert "brew install jq" in r["fix"] and "apt-get install -y jq" in r["fix"]
+
+def test_event_log_blocker_when_jq_missing_outranks_just_enabled_info():
+    r = dc.event_log_check(True, 0, None, 0.2, jq_missing=True)
+    assert r["level"] == "BLOCKER"
+
+def test_event_log_off_ignores_jq_missing():
+    # the on/off switch still wins first — jq status is irrelevant when the log
+    # directory doesn't even exist.
+    r = dc.event_log_check(False, 0, None, None, jq_missing=True)
+    assert r["level"] == "INFO" and "off" in r["detail"]
+
+def test_event_log_jq_present_keeps_old_verdicts_unchanged():
+    # default jq_missing=False must reproduce the exact pre-v13.3.0 verdicts —
+    # callers that never pass the new kwarg see no behavior change.
+    r = dc.event_log_check(True, 0, None, 9.0)
+    assert r["level"] == "WARN" and "NOTHING has been recorded" in r["detail"]
+
+def test_jq_missing_true_when_jq_not_on_path(monkeypatch, tmp_path):
+    monkeypatch.setattr(dc.shutil, "which", lambda name: None)
+    assert dc._jq_missing(str(tmp_path)) is True
+
+def test_jq_missing_true_when_marker_present_even_if_jq_now_found(tmp_path, monkeypatch):
+    monkeypatch.setattr(dc.shutil, "which", lambda name: "/usr/bin/jq")
+    (tmp_path / "jq-missing").write_text("")
+    assert dc._jq_missing(str(tmp_path)) is True
+
+def test_jq_missing_false_when_jq_present_and_no_marker(tmp_path, monkeypatch):
+    monkeypatch.setattr(dc.shutil, "which", lambda name: "/usr/bin/jq")
+    assert dc._jq_missing(str(tmp_path)) is False
+
+# ---- _event_log_state: tail-only read, no full scan (v13.3.0) -----------------
+
+def test_event_log_state_reads_size_via_stat_not_a_full_scan(tmp_path, monkeypatch):
+    d = tmp_path / ".local" / "state" / "pg-factory"
+    d.mkdir(parents=True)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    log = d / "events.ndjson"
+    lines = [f'{{"ts":"2026-08-20T00:00:0{i % 10}Z","ev":"PostToolUse"}}' for i in range(400)]
+    log.write_text("\n".join(lines) + "\n")
+    enabled, size, newest, age = dc._event_log_state()
+    assert enabled is True
+    assert size == os.path.getsize(log)         # size comes straight from stat
+    assert newest is not None                    # newest timestamp still recovered
+
+def test_event_log_state_finds_newest_line_in_large_file_tail(tmp_path, monkeypatch):
+    import datetime as _dt
+    d = tmp_path / ".local" / "state" / "pg-factory"
+    d.mkdir(parents=True)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    log = d / "events.ndjson"
+    old_lines = ['{"ts":"2020-01-01T00:00:00Z","ev":"PostToolUse"}'] * 2000  # >> 8KB
+    now_ts = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    newest_line = '{"ts":"%s","ev":"Stop"}' % now_ts
+    log.write_text("\n".join(old_lines + [newest_line]) + "\n")
+    assert os.path.getsize(log) > 8192            # actually exercises the tail-seek path
+    enabled, size, newest, age = dc._event_log_state()
+    assert enabled is True
+    assert newest is not None and newest < 0.1     # newest_line is right now -> ~0h age
+
+def test_event_log_state_ignores_trailing_partial_line(tmp_path, monkeypatch):
+    # a write in progress (or the tail seek landing mid-line) must not be parsed as
+    # the newest event — fall back to the last COMPLETE line before it.
+    import datetime as _dt
+    d = tmp_path / ".local" / "state" / "pg-factory"
+    d.mkdir(parents=True)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    log = d / "events.ndjson"
+    now_ts = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    good_line = '{"ts":"%s","ev":"Stop"}' % now_ts
+    padding = "x" * 9000   # push the file past the 8KB tail window
+    log.write_text(padding + "\n" + good_line + '\n{"ts":"2026-08-31T99:99:99Z"')  # truncated tail
+    enabled, size, newest, age = dc._event_log_state()
+    assert enabled is True
+    assert newest is not None and newest < 0.1      # recovered from good_line, not the garbage tail

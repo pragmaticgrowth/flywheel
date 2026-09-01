@@ -43,6 +43,18 @@ def find_repos(roots):
     return sorted(out)
 
 
+def inbox_open_count(repo):
+    """Unchecked `- [ ]` lines in <repo>/docs/goals/inbox.md — the same pile-up
+    goals-status and factory-doctor surface per-repo, rolled up machine-wide here.
+    0 when the file is absent, empty, or unreadable."""
+    path = os.path.join(repo, "docs", "goals", "inbox.md")
+    try:
+        text = open(path, encoding="utf-8", errors="ignore").read()
+    except OSError:
+        return 0
+    return sum(1 for ln in text.splitlines() if ln.strip().startswith("- [ ]"))
+
+
 def goal_events(repo, since):
     """Every queue flip in this repo, from git. The honest clock."""
     out = sh(["git", "-C", repo, "log", "--format=%aI\t%s", f"--since={since}",
@@ -74,15 +86,64 @@ def settled(evs):
     return out
 
 
+# Idle-inflation: wall-clock claim->settle time includes idle gaps (a dead session, an
+# account usage-limit pause) that have nothing to do with the goal's own size — measured
+# ~90% of 4h+ cycles are idle-inflated. Only worth a `git log` for the genuinely slow
+# ones (IDLE_GAP_CHECK_MIN), and only relabeled when the largest gap explains most of
+# the wall clock (IDLE_GAP_WARN_MIN).
+IDLE_GAP_CHECK_MIN = 240.0
+IDLE_GAP_WARN_MIN = 180.0
+
+
+def idle_gap_minutes(repo, claimed, settled_at):
+    """Largest gap (minutes) in commit activity across a goal's claim->settle window,
+    including the lead-in (claim -> first commit) and lead-out (last commit -> settle).
+    Read-only `git log`; called only for the handful of slow cycles above
+    IDLE_GAP_CHECK_MIN, so a full-history scan per goal stays cheap in practice.
+    0.0 when git has nothing to say (no commits in range, or the command fails) —
+    never raises.
+    """
+    out = sh(["git", "-C", repo, "log", "--all", "--pretty=%ad", "--date=iso-strict",
+              f"--since={claimed.isoformat()}", f"--until={settled_at.isoformat()}"])
+    times = []
+    for line in out.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            times.append(dt.datetime.fromisoformat(line).astimezone(UTC))
+        except ValueError:
+            continue
+    if not times:
+        return 0.0
+    times.sort()
+    bounds = [claimed] + times + [settled_at]
+    gaps = [(bounds[i + 1] - bounds[i]).total_seconds() / 60 for i in range(len(bounds) - 1)]
+    return max(gaps) if gaps else 0.0
+
+
 def read_log(path, cutoff):
     rows = []
     if not os.path.exists(path):
         return rows
+    # Cheap pre-filter: pg-log.sh always writes `"ts":"YYYY-MM-DDTHH:MM:SSZ"`, a fixed-
+    # width ISO stamp — the 19 chars right after the marker sort lexicographically the
+    # same as they sort chronologically, so a plain string compare against the same
+    # fixed-width cutoff can reject an old line without ever calling json.loads on it.
+    # This is a fast-skip only: a line that isn't clearly older (or doesn't match the
+    # marker at all) still goes through the real parse below, unchanged from before.
+    marker = '"ts":"'
+    cutoff_s = cutoff.strftime("%Y-%m-%dT%H:%M:%S")
     with open(path, errors="ignore") as fh:
         for line in fh:
             line = line.strip()
             if not line:
                 continue
+            i = line.find(marker)
+            if i != -1:
+                ts_s = line[i + len(marker): i + len(marker) + 19]
+                if len(ts_s) == 19 and ts_s < cutoff_s:
+                    continue
             try:
                 r = json.loads(line)
                 r["_t"] = dt.datetime.fromisoformat(r["ts"].replace("Z", "+00:00"))
@@ -156,12 +217,17 @@ def main():
         print("no repos with a docs/goals queue found", file=sys.stderr)
         return 2
 
-    per_repo, all_goals = {}, []
+    per_repo, all_goals, repo_path_by_name, inbox_debt = {}, [], {}, {}
     for repo in repos:
+        name = os.path.basename(repo)
+        repo_path_by_name[name] = repo
         s = [g for g in settled(goal_events(repo, since)) if g[2] >= cutoff]
         if s:
-            per_repo[os.path.basename(repo)] = s
-            all_goals += [(os.path.basename(repo),) + g for g in s]
+            per_repo[name] = s
+            all_goals += [(name,) + g for g in s]
+        n_inbox = inbox_open_count(repo)
+        if n_inbox:
+            inbox_debt[name] = n_inbox
 
     rows = read_log(a.log, cutoff)
     ags = agents(rows) if rows else []
@@ -173,6 +239,7 @@ def main():
                         verb=v, minutes=round(m, 1)) for r, g, c, t, v, m in all_goals],
             agents=[dict(a2, start=a2["start"].isoformat(), end=a2["end"].isoformat())
                     for a2 in ags],
+            inbox_debt=inbox_debt,
         ), indent=2, default=str))
         return 0
 
@@ -185,8 +252,10 @@ def main():
         print("\nNo goals settled in the window.")
     else:
         mins = [g[5] for g in all_goals]
+        inbox_tail = (f"   inbox {sum(inbox_debt.values())} open across {len(inbox_debt)} repos"
+                     if inbox_debt else "")
         print(f"\nGOALS  {len(all_goals)} settled across {len(per_repo)} repos"
-              f"   median {st.median(mins):.0f}m   mean {st.mean(mins):.0f}m")
+              f"   median {st.median(mins):.0f}m   mean {st.mean(mins):.0f}m{inbox_tail}")
         by_day = collections.defaultdict(list)
         for r, g, c, t, v, m in all_goals:
             by_day[t.strftime("%m-%d")].append(m)
@@ -196,14 +265,26 @@ def main():
             v = by_day[d]
             med = st.median(v)
             print(f"  {d}  {len(v):>4}   {bar(med / worst)} {med:>6.0f}m")
-        print("\n  repo                 n   median     max")
+        print("\n  repo                 n   median     max   inbox")
         for name, s in sorted(per_repo.items(), key=lambda kv: -len(kv[1])):
             v = [x[4] for x in s]
-            print(f"  {name[:18]:18} {len(v):>3}   {st.median(v):>6.0f}m  {max(v):>6.0f}m")
+            print(f"  {name[:18]:18} {len(v):>3}   {st.median(v):>6.0f}m  {max(v):>6.0f}m   "
+                  f"{inbox_debt.get(name, 0):>5}")
         blocked = [g for g in all_goals if g[4] == "block"]
         if blocked:
             print(f"\n  blocked: {len(blocked)} of {len(all_goals)} "
                   f"({100 * len(blocked) / len(all_goals):.0f}%)")
+
+    # inbox debt across every repo carrying a docs/goals queue, not just the ones with
+    # goals settled this window — a heavy inbox with zero recent dispatch activity is
+    # exactly the pile-up this exists to surface, and the table above only shows repos
+    # that already appear there.
+    silent_debt = {k: v for k, v in inbox_debt.items() if k not in per_repo}
+    if silent_debt:
+        print(f"\nINBOX  {sum(silent_debt.values())} open, no goals settled this window "
+              f"— /process-inbox")
+        for name, n in sorted(silent_debt.items(), key=lambda kv: -kv[1])[:10]:
+            print(f"  {name[:18]:18} {n:>5}")
 
     print("\n" + "-" * W)
     if not rows:
@@ -245,9 +326,23 @@ def main():
                   f"{x['maxgap']:>5.0f}m gap / {x['mins']:.0f}m  {(x['task'] or x['at'] or '')[:28]}")
 
     long_goals = sorted([g for g in all_goals if g[5] >= LONG_GOAL_MIN], key=lambda g: -g[5])
-    print(f"  oversized{len(long_goals):>3}  goals over {LONG_GOAL_MIN:.0f} minutes")
+    # Idle-inflation check: only for the genuinely slow ones (>4h), and only a `git log`
+    # per goal — cheap because there are always a handful, never the whole window.
+    idle_gap = {}
+    for r, g, c, t, v, m in long_goals:
+        if m > IDLE_GAP_CHECK_MIN:
+            repo_path = repo_path_by_name.get(r)
+            if repo_path:
+                gap = idle_gap_minutes(repo_path, c, t)
+                if gap > IDLE_GAP_WARN_MIN:
+                    idle_gap[(r, g, c, t)] = gap
+    oversized_n = len(long_goals) - len(idle_gap)
+    idle_tail = f"  ({len(idle_gap)} idle-inflated, excluded)" if idle_gap else ""
+    print(f"  oversized{oversized_n:>3}  goals over {LONG_GOAL_MIN:.0f} minutes{idle_tail}")
     for r, g, c, t, v, m in long_goals[:5]:
-        print(f"           {t:%m-%d %H:%M} {r[:12]:12} {m:>5.0f}m  {g[:34]}")
+        gap = idle_gap.get((r, g, c, t))
+        tag = f"  [idle-inflated (~{gap / 60:.0f}h gap)]" if gap else ""
+        print(f"           {t:%m-%d %H:%M} {r[:12]:12} {m:>5.0f}m  {g[:34]}{tag}")
     print()
     return 0
 

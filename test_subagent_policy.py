@@ -2,11 +2,11 @@
 
 Two platform facts drive these tests:
 
-1. Droid subagents CANNOT spawn subagents ("a subagent cannot spawn its own subagents
-   (the Task tool is not available to it)" — docs.factory.ai custom-droids). Claude Code
-   subagents CAN (Agent nests; default cap 3 layers below the main conversation, per the
-   v8.3.0 correction). Dispatch's implementer panel therefore needs
-   an explicit per-harness path, and the fallback must never be self-review.
+1. Droid subagents CANNOT spawn subagents (docs.factory.ai custom-droids). Since
+   v14.0.0 the review panel lives on the GATE side (the orchestrator is a main session
+   on both harnesses), so the implementer needs no spawn capability for review at all —
+   the brief must acknowledge the Droid limit for its optional recon helpers and must
+   never route around it with self-review.
 2. Tool IDs differ per harness. Claude Code uses `Bash`; Droid uses `Execute` and validates
    `tools:` entries against a fixed table, where an unknown ID is a validation error.
    Each harness silently ignores the other's shell tool, so naming both is safe — naming
@@ -104,30 +104,31 @@ def test_agents_do_not_depend_on_a_message_tool_for_delivery():
         )
 
 
-def test_dispatch_documents_the_droid_nesting_limit():
-    """Droid subagents have no Task tool, so the implementer panel needs a real
-    per-harness path rather than an impossible mandate."""
+def test_dispatch_documents_the_droid_subagent_limit():
+    """Droid subagents have no Task tool; since v14.0.0 the brief acknowledges the
+    limit for its optional recon helpers instead of shipping a lens workaround."""
     text = dispatch_full_text()
-    assert "cannot spawn its own subagents" in text, (
-        "dispatch must state Droid's nested-spawn limit"
+    assert "On Droid you have no Task tool" in text, (
+        "the implementer brief must state Droid's nested-spawn limit"
     )
-    assert "droid exec" in text, "dispatch must name the sanctioned Droid fresh-context path"
+    assert "droid exec" not in " ".join(
+        (ROOT / "skills" / "dispatch" / "references" / "implementer-brief.md")
+        .read_text()
+        .split()
+    ), "the removed Droid lens mechanism must not leak back into the brief"
 
 
-def test_dispatch_forbids_self_review_as_the_panel_fallback():
-    """Self-review is the maker grading its own work — the exact failure the panel prevents."""
+def test_dispatch_forbids_self_review_by_the_implementer():
+    """Self-review is the maker grading its own work — v14.0.0 bans it outright:
+    the gate's independent review is the second view, sized by the diff."""
     text = dispatch_full_text()
-    assert "not run (no fresh-context mechanism available)" in text, (
-        "dispatch must give implementers an honest 'not run' verdict instead of self-review"
-    )
-    assert "self-review is the maker" in text.lower(), (
-        "dispatch must name self-review as the failure mode the fallback avoids"
-    )
+    assert "Do NOT review your own finished diff in a subagent" in text
+    assert "a self-arranged review would only duplicate it" in text
 
 
-def test_honest_not_run_is_not_treated_as_a_compliance_miss():
-    """A truthful 'not run' escalates the orchestrator's review; it is not a violation."""
+def test_gate_review_is_sized_by_the_diff_never_by_implementer_claims():
+    """The old escalation keyed on the implementer's self-report; v14.0.0 keys it
+    on the diff alone."""
     text = " ".join(DISPATCH.read_text().split())
-    assert "is NOT a compliance miss" in text, (
-        "dispatch must distinguish an honest 'not run' from a silently skipped panel"
-    )
+    assert "sized by the DIFF" in text
+    assert "never from the implementer's claims about its own work" in text

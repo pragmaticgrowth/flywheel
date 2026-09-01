@@ -18,6 +18,9 @@ hand-rolling a second, weaker YAML reader.
 The view ends with one `next:` line naming the command the owner runs next —
 derived in next_command(), first match: /dispatch when anything is open,
 else /process-inbox when the inbox carries unchecked items, else /ideate.
+Just above that line, an `inbox: <N> open — /process-inbox` line prints
+whenever docs/goals/inbox.md carries N>0 unchecked `- [ ]` lines — independent
+of next:'s priority order, so an open queue no longer hides a heavy inbox.
 """
 import argparse, datetime, os, re, subprocess, sys, textwrap
 try:
@@ -277,6 +280,7 @@ def build_report(goals_dir):
     records.sort(key=lambda r: (STATUS_ORDER.index(r["status"]), r["id"]))
     report = {"open": len(records), "completed": completed, "retired": retired,
               "goals": records}
+    report["inbox_open"] = _inbox_open_count(goals_dir)
     report["next"] = next_command(report, goals_dir)
     return report
 
@@ -347,8 +351,12 @@ def render_detailed(report):
                 out.append(_detailed_goal(r))
                 out.append("")
         body = "\n".join(out).rstrip()
+    # inbox pile-up: one line, only when there's something to see — independent of
+    # the next: priority logic (an open queue still hides a heavy inbox otherwise).
+    inbox_line = ("inbox: %d open — /process-inbox\n" % report["inbox_open"]
+                  if report.get("inbox_open", 0) > 0 else "")
     # the front-door answer: exactly one next line, last, queue-derived
-    return "%s\n\nnext: %s\n" % (body, report["next"])
+    return "%s\n\n%snext: %s\n" % (body, inbox_line, report["next"])
 
 
 # ---- CLI ----------------------------------------------------------------------

@@ -71,10 +71,12 @@ def test_the_named_agent_failure_mode_is_stated():
     assert "mailbox instead of the notification channel" in text
 
 
-def test_subagent_spawns_return_inline_so_a_named_lens_is_lost():
+def test_subagent_spawns_return_inline_so_a_named_helper_is_lost():
+    # v14.0.0: the brief's spawns are recon helpers (the lens panel moved to the
+    # gate); the inline-return-vs-mailbox rule is unchanged.
     text = unwrapped(BRIEF)
     assert "spawn them PLAIN" in text
-    assert "returns the lens report INLINE as its tool result" in text
+    assert "returns its report INLINE as its tool result" in text
     assert "a channel you, as a subagent, never read" in text
 
 

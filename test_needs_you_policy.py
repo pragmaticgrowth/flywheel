@@ -31,12 +31,23 @@ def test_dispatch_defines_the_line_shape_exactly_once():
 
 
 def test_dispatch_maps_every_blocker_class_to_a_resolving_command():
+    # v14.0.0 merged the four `contract defect (…)` rows into ONE `contract
+    # defect` class — the reason string carries the distinction, the command was
+    # always identical. The merged row must still name every defect shape.
     text = read("skills/dispatch/SKILL.md")
+    defect_row = [
+        ln
+        for ln in text.splitlines()
+        if "`contract defect`" in ln and "/define-goal --amend <id>" in ln
+    ]
+    assert defect_row, "no merged contract-defect row maps to /define-goal --amend"
+    unwrapped = read_unwrapped("skills/dispatch/SKILL.md")
+    row_start = unwrapped.index("| `contract defect` |")
+    row = unwrapped[row_start : unwrapped.index("| `no runnable local gate`")]
+    for shape in ("ambiguous", "unreachable", "verified contract-mandated finding",
+                  "too-large", "NEEDS_CONTEXT"):
+        assert shape in row, f"merged contract-defect row lost the {shape!r} shape"
     for trigger, command in (
-        ("contract defect: <criterion> ambiguous", "/define-goal --amend <id>"),
-        ("contract defect: <criterion> unreachable", "/define-goal --amend <id>"),
-        ("contract defect: <the verified finding>", "/define-goal --amend <id>"),
-        ("contract defect: <reason>", "/define-goal --amend <id>"),
         ("no runnable local gate: <evidence>", "/factory-doctor"),
         ("environment brake", "/factory-doctor"),
         ("repeated transient death", "/dispatch <id>"),
@@ -50,8 +61,8 @@ def test_dispatch_maps_every_blocker_class_to_a_resolving_command():
 
 
 def test_dispatch_names_the_class_at_every_emission_site():
-    # Each site names its class so a reader (and goal 003) can look the
-    # resolving command up in the one table.
+    # Each site names its class so a reader can look the resolving command up in
+    # the one table (v14.0.0: the contract-defect family is one class).
     text = read_unwrapped("skills/dispatch/SKILL.md") + " " + " ".join(
         " ".join(f.read_text().split())
         for f in sorted((ROOT / "skills" / "dispatch" / "references").glob("*.md"))
@@ -59,21 +70,24 @@ def test_dispatch_names_the_class_at_every_emission_site():
     for marker in (
         "class `environment brake`",
         "class `conflict`",
-        "class `budget exhausted`",
-        "class `contract defect (unreachable)`",
+        "class `contract defect`",
         "class `CI failure`",
         "class `environment failure`",
-        "class `contract defect (finding)`",
         "class `no runnable local gate`",
-        "class `multiple in_progress`",
         "class `base: mismatch`",
-        "class `contract defect (ambiguous)`",
-        "class `needs context`",
-        "class `contract defect (too large / wrong)`",
         "class `unmet dependency`",
         "class `recurring lesson`",
+        "class `needs independent review`",
     ):
         assert marker in text, f"no emission site names {marker}"
+    for retired in (
+        "class `contract defect (unreachable)`",
+        "class `contract defect (finding)`",
+        "class `contract defect (ambiguous)`",
+        "class `contract defect (too large / wrong)`",
+        "class `needs context`",
+    ):
+        assert retired not in text, f"retired class label leaked back: {retired}"
 
 
 def test_dispatch_attended_question_rule_requires_all_three_conditions():

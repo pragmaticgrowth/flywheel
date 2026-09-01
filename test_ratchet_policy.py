@@ -132,8 +132,9 @@ def test_reality_check_header_count_matches_its_items():
 # ---- red-team item 15 ---------------------------------------------------------
 
 def test_red_team_has_a_ratchet_item():
+    # v14.0.0 narrowed the rubric to the judgment items; Ratchet is item 9.
     text = unwrapped(RED_TEAM)
-    assert "15. **Ratchet**" in text
+    assert "9. **Ratchet**" in text
     assert "a standard may only get stricter" in text
 
 

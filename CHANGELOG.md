@@ -13,6 +13,95 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [14.0.0] — 2026-09-01
+
+The de-engineering release. A full-estate audit (two machines, ~1,050 measured goal
+cycles, two independent full-text audits of every skill, script, agent, and hook) found
+the factory's outcomes healthy — median cycle 40–65 min, 92% completion — and its costs
+not: duplicate review layers, a rulebook 25–35% incident narration reloaded on every
+invocation, and inbox debt invisible to every status surface. This release removes the
+duplication, halves the hot-path text, and makes the debt self-announcing. Every
+operative rule, format, and safety invariant is preserved; what changed is who does the
+work and how many words carry it.
+
+### Changed — the review pipeline (BREAKING for readers of the old shapes)
+
+- **The fresh-check panel moved from the implementer to the gate.** The implementer no
+  longer spawns its own review panel (its verdicts were defined as "corroborating
+  evidence, never the verdict" — a spawn that decided nothing, 1–3 per goal). Arm B is
+  now sized by the DIFF: one gate-reviewer by default; a 2–3-lens fresh-check panel
+  REPLACES the single reviewer when the diff spans >3 files, changes test logic, or
+  touches architecture. The `Fresh-check:` STATUS line is gone from the implementer
+  report; the missing-line escalation rule is gone with it. On Droid this also deletes
+  the entire in-lane `droid exec` lens mechanism — the orchestrator spawns panel lenses
+  as ordinary awaited Tasks. `agents/fresh-check.md` is now the gate's panel lens.
+- **The contract red-team no longer re-runs the reality check.** Six mechanical rubric
+  items (Command reality, Gate fit, Constraints reality, Drainability, Premise,
+  Absolute claims) duplicated define-goal's own ten-item mechanical check — a
+  deterministic lookup gains nothing from an independent spawn. The red-team keeps the
+  judgment items (Gameability, Placeholders, Type shape, Termination, Size, Slice,
+  Cross-goal, Plan-question, Ratchet — including the plan-back-door shape), re-litigates
+  a mechanical fact only when the draft's own text is internally inconsistent, and its
+  budget drops ~15 → ~10 tool calls. `agents/contract-red-team.md` updated in lockstep.
+- **The four `contract defect (…)` needs-you classes merged into one** `contract defect`
+  row — the reason string already carried the distinction; the four rows only added
+  table surface.
+- **The two Size count triggers merged into one block** (bands + units), stated once in
+  the template and once in the red-team rubric.
+
+### Added — the missing acceptance check and inbox visibility
+
+- **Reality check 3 now requires acceptance to EXIST, not just resolve.** A queued
+  feature/bug goal must carry at least one runnable `acceptance:` command that executes
+  the behavior it ships (typecheck/lint/build alone prove nothing about the outcome);
+  chores must name their mechanical proving check. Grounded the same day it shipped: a
+  field goal passed every check and reached the gate with no runnable acceptance at all.
+- **Inbox debt is now visible everywhere it was invisible.** Audit finding: 101 open
+  inbox items across the estate, and no surface showed them — goals-status's `next:`
+  line only mentioned `/process-inbox` at zero open goals (a busy repo never qualifies),
+  and neither factory-doctor nor factory-report read the inbox at all. Now: goals-status
+  prints an `inbox: <N> open — /process-inbox` line whenever N>0; factory-doctor gains
+  an `inbox-debt` check (WARN at ≥10 open lines or a ≥14-day-old line); factory-report
+  counts inbox debt per repo and in totals.
+- **factory-report separates slow from idle.** ~90% of measured 4h+ cycles were
+  idle-inflated (claims sitting across dead sessions and usage-limit pauses), not slow
+  work. Slow cycles whose commit record shows a >3h gap are now labeled
+  `idle-inflated (~Xh gap)` and excluded from the OVERSIZED count — only gap-free slow
+  goals indict the contract.
+
+### Fixed — small real defects from the audit
+
+- **The event log could die silently on missing `jq`.** The hook exited 0 with no
+  trace — indistinguishable from opt-out, and undiagnosable by the documented fix path.
+  Now the hook drops a `jq-missing` marker (no jq needed to write it) and factory-doctor
+  reports a BLOCKER naming the install.
+- **Log rotation now also fires on Stop events** — one marathon drain could previously
+  blow past the 64MB cap between session starts.
+- **`_event_log_state()` and `read_log()` no longer scan the whole log** — the doctor
+  tail-reads the last 8KB; the report pre-filters lines lexicographically by timestamp
+  before JSON-decoding.
+- **The external-scheduler detector no longer matches any file containing `/dispatch`** —
+  a line must also mention claude/droid.
+
+### Changed — the rulebook diet
+
+- **dispatch SKILL.md 15.4k → 11.0k words; define-goal 13.9k → 10.3k; total skill corpus
+  49.9k → 40.3k** (~12k tokens less loaded per factory invocation). What left: dated
+  incident narration, owner quotes, version-tag archaeology, and five of the six
+  restatements of the `name:` ban (dispatch's Hard rules is the canonical statement;
+  every other file cross-references it). What stayed: every rule, table, line format,
+  and budget number. The implementer brief and the three reference files went through
+  the same pass. CHANGELOG.md and CLAUDE.md remain the history's home.
+- **New maintainer policy (CLAUDE.md):** a new permanent rule needs two independent
+  incidents or a named sunset review — the audit counted 11 single-incident rules whose
+  costs outlived their causes.
+
+### Audit
+
+The full audit (timing forensics, over-engineering findings, and the fix list this
+release implements) is published as the owner's report artifact and summarized in the
+2026-09-01 session; timing method and estate numbers live with it.
+
 ## [13.2.0] — 2026-09-01
 
 ### Added

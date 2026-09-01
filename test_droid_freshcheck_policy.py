@@ -1,60 +1,53 @@
-"""Policy tests for Droid fresh-check command safety and fallback honesty."""
+"""Policy tests: the implementer-side Droid lens mechanism stays REMOVED (v14.0.0).
 
-import re
+Until v13 the implementer reviewed its own diff — on Droid via sanctioned
+`droid exec` lens commands, with an honesty fallback verdict when `droid` was
+absent. v14.0.0 moved the whole review to the gate: the orchestrator (a main
+session on both harnesses) spawns the single gate-reviewer or the escalated
+2–3-lens panel directly, so no implementer-side lens machinery may exist. These
+tests guard the REMOVAL — a regression here is the old machinery leaking back.
+"""
+
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent
 BRIEF = ROOT / "skills" / "dispatch" / "references" / "implementer-brief.md"
-HARNESS_START = "**Harness note — nested spawning.**"
-HARNESS_END = "\n\nWorkspace:"
-TOOLS_FLAG = '--enabled-tools "Read,Grep,Glob,LS,Execute"'
-EXPECTED_LENS_COMMANDS = [
-    f"droid exec -f <prompt-file> {TOOLS_FLAG}",
-    f'droid exec "<prompt>" {TOOLS_FLAG}',
-]
-VERDICT = "Fresh-check: not run (no fresh-context mechanism available)"
-VERDICT_BODY = "not run (no fresh-context mechanism available)"
+DISPATCH = ROOT / "skills" / "dispatch" / "SKILL.md"
+PARALLEL = ROOT / "skills" / "dispatch" / "references" / "parallel-mode.md"
 
 
-def harness_note() -> str:
-    text = BRIEF.read_text()
-    return text.split(HARNESS_START, 1)[1].split(HARNESS_END, 1)[0]
+def unwrapped(path: Path) -> str:
+    return " ".join(path.read_text().split())
 
 
-def sanctioned_droid_lens_commands() -> list[str]:
-    """Enumerate every code span that sanctions a Droid exec lens command."""
-    code_spans = re.findall(r"`([^`\n]+)`", harness_note())
-    return [span for span in code_spans if re.search(r"\bdroid exec(?:\s|$)", span)]
+def test_brief_carries_no_droid_lens_machinery():
+    text = unwrapped(BRIEF)
+    assert "droid exec" not in text
+    assert "Fresh-check" not in text
+    assert "no fresh-context mechanism available" not in text
+    assert "Harness note — nested spawning" not in text
 
 
-def test_harness_sanctions_exactly_two_tool_enabled_droid_lens_commands():
-    commands = sanctioned_droid_lens_commands()
-
-    assert commands == EXPECTED_LENS_COMMANDS
-    assert all(command.endswith(TOOLS_FLAG) for command in commands)
-
-
-def test_no_fresh_context_verdict_requires_failed_droid_path_probe():
-    """The fallback verdict is legal only via a failed `command -v droid` probe.
-
-    A presence-only check is not enough: any second, unconditional
-    authorization of the verdict (a legacy "If neither path is available, say
-    ..." sentence, or any reworded duplicate) must fail this test.
-    """
-    normalized = " ".join(harness_note().split())
-    required_rule = (
-        "Only when `command -v droid` fails may you say "
-        f"`{VERDICT}`"
+def test_brief_forbids_self_review_and_names_the_gate_review():
+    text = unwrapped(BRIEF)
+    assert "Do NOT review your own finished diff in a subagent" in text
+    assert (
+        "the orchestrator runs the independent review over your work regardless"
+        in text
     )
 
-    assert required_rule in normalized
-    # required_rule embeds the verdict string, so with this count the single
-    # occurrence is provably the one inside the Only-when clause — any second
-    # occurrence anywhere in the note is rejected.
-    assert normalized.count(VERDICT) == 1
-    # The legacy wording split the verdict across two code spans
-    # ("`Fresh-check:` line — `not run (no fresh-context mechanism
-    # available)`"), invisible to a full-string count; the body count rejects
-    # that form and any other verdict-granting sentence alongside the rule.
-    assert normalized.count(VERDICT_BODY) == 1
+
+def test_gate_panel_replaces_the_single_reviewer_and_is_diff_sized():
+    text = unwrapped(DISPATCH)
+    assert "Escalate to the 2–3-lens PANEL instead of the single reviewer" in text
+    assert "The panel REPLACES the single reviewer, never follows it" in text
+    assert (
+        "never from the implementer's claims about its own work" in text
+    )
+
+
+def test_parallel_lane_review_is_orchestrator_side_with_no_droid_lens_path():
+    text = unwrapped(PARALLEL)
+    assert "droid exec" not in text
+    assert "single reviewer or the escalated lens panel, sized by the diff" in text

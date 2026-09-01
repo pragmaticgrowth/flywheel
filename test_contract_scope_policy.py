@@ -97,19 +97,24 @@ def test_the_exemption_records_why_it_exists():
 # --- 2. an absolute criterion must name its enforcing mechanism ---------------
 
 
+# v14.0.0: the absolute-claims check is the orchestrator's mechanical reality
+# check (define-goal item 9); the red-team's division-of-labor paragraph names it
+# as excluded and re-litigates only on internal inconsistency.
 ABSOLUTE_RULE_DOCS = [
     "skills/define-goal/SKILL.md",
-    "agents/contract-red-team.md",
 ]
 
 
 def test_both_the_skill_and_its_red_team_agent_carry_the_absolute_rule():
-    # The check has to fire in BOTH places or it only half-exists: define-goal runs
-    # it mechanically before drafting, the agent re-checks it on the draft.
+    # v14.0.0: define-goal owns the check mechanically; the red-team names it in
+    # its excluded-mechanical list and keeps the internal-inconsistency hook.
     for path in ABSOLUTE_RULE_DOCS:
         body = read_unwrapped(path)
         assert '"cannot", "impossible", or "never"' in body, path
         assert "contract-blocking" in body, path
+    agent = read_unwrapped("agents/contract-red-team.md")
+    assert "absolute-claim mechanisms" in agent
+    assert "an absolute whose own Constraints forbid its only mechanism" in agent
 
 
 def test_the_rule_demands_the_mechanism_be_inside_touches():
@@ -140,8 +145,11 @@ def test_the_rule_is_distinguished_from_the_constraints_reality_check():
         assert "CONSTRAINT" in body, path
 
 
-def test_define_goal_hands_the_new_check_to_the_red_team():
-    # The hand-off line enumerates which mechanical checks the red-team re-checks;
-    # a new check that is not listed there is silently orchestrator-only.
+def test_define_goal_no_longer_hands_mechanical_checks_to_the_red_team():
+    # v14.0.0 inverted the hand-off: the reality check is the orchestrator's alone
+    # and the red-team does NOT re-run it — both sides must state the division.
     body = read_unwrapped("skills/define-goal/SKILL.md")
-    assert "The red-team re-checks 1–3 and 6–9" in body
+    assert "The red-team re-checks 1–3 and 6–9" not in body
+    assert "the red-team (next section) covers the judgment calls and does NOT re-run these" in body
+    agent = read_unwrapped("agents/contract-red-team.md")
+    assert "Do NOT re-run those lookups" in agent

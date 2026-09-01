@@ -17,7 +17,17 @@ set -u
 
 DIR="${PG_FACTORY_LOG_DIR:-$HOME/.local/state/pg-factory}"
 [ -d "$DIR" ] || exit 0
-command -v jq >/dev/null 2>&1 || exit 0
+
+# A missing jq is otherwise a SILENT death: every jq-shaped line below would fail and
+# the log would just stay empty (or stop growing) forever, with no visible error and
+# no way to tell "opted out" from "broken" apart. Leave a marker factory-doctor's
+# event-log check can see (and BLOCK on) even from a different shell/session than the
+# one that noticed jq was gone; clear it once jq is back so the check stays honest.
+if ! command -v jq >/dev/null 2>&1; then
+  : > "$DIR/jq-missing" 2>/dev/null
+  exit 0
+fi
+[ -f "$DIR/jq-missing" ] && rm -f "$DIR/jq-missing" 2>/dev/null
 
 input=$(cat 2>/dev/null) || exit 0
 [ -n "$input" ] || exit 0
@@ -30,9 +40,11 @@ esac
 
 LOG="$DIR/events.ndjson"
 
-# Rotate on session start only — one stat per session, not per tool call.
+# Rotate on SessionStart AND Stop — a stat per turn is cheap, and SessionStart alone
+# only checks once per session: one marathon session can blow past 64MB long before
+# it ever ends.
 case "$input" in
-  *'"SessionStart"'*)
+  *'"SessionStart"'*|*'"Stop"'*)
     if [ -f "$LOG" ]; then
       sz=$(wc -c <"$LOG" 2>/dev/null || echo 0)
       [ "$sz" -gt 67108864 ] && mv -f "$LOG" "$DIR/events.$(date -u +%Y%m%d%H%M%S).ndjson"

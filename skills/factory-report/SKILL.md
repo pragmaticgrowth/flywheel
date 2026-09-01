@@ -30,6 +30,11 @@ Three sources, and the skill prefers the most trustworthy one for each number:
    `claimed_at` / `settled_at` are cross-checked against git and never trusted
    over it (they were measurably fabricated before v12.7.0).
 
+The report also counts each repo's **inbox debt** — open `- [ ]` lines in
+`docs/goals/inbox.md` — per repo and in the totals, including repos with debt
+but no recent goal activity. A piling inbox is a factory-health signal exactly
+like a slow goal; `/process-inbox` is its fix.
+
 ## Run
 
 One command. Run it as a single block — don't split the resolution into
@@ -60,6 +65,13 @@ confusing them is how the wrong fix gets applied.
 | **Runaway** | tool calls far above normal, no gaps | The agent worked flat out and got nowhere. A healthy worker's p90 is ~105 tool calls; the threshold is 300. Measured on 494 workers, only two ever passed 300 and **both failed** — it is close to a certain predictor. The goal is too big or the agent is thrashing. |
 | **Hung** | a long silence mid-run | The agent stopped emitting events entirely. Inside a working agent the largest normal gap is about a minute, so a 15-minute silence is never work in progress. Field cases ran 5 and 8 hours silent. |
 | **Oversized** | long but healthy | Many tool calls spread evenly, no gaps, and it finishes. Nothing is broken — the contract was simply too big for one sitting. The fix is upstream, in define-goal. |
+
+**Idle-inflation guard.** Wall-clock claim→settle time includes idle gaps —
+sessions dying at usage limits, machines asleep — and field measurement showed
+~90% of 4h+ cycles were idle-inflated, not slow work. For any slow cycle the
+report checks the commit record between claim and settle: a gap over ~3h labels
+it `idle-inflated (~Xh gap)` and it does NOT count toward OVERSIZED. Only
+gap-free slow goals indict the contract.
 
 **These are reporting-only.** Nothing in this skill or in dispatch stops an
 agent on these thresholds. They were set from one repo mix and need real data
@@ -106,9 +118,12 @@ the fact that a prompt happened; a slash command leaves only its name.
 
 The log rotates at 64 MB and costs about 9 ms and 100 bytes per tool call.
 
-If the log stays empty after enabling, the hook path failed silently — `async: true`
-hides hook errors on Claude Code. Re-run one probe with `async` removed from the
-installed `hooks/hooks.json` and the real error prints.
+If the log stays empty after enabling, check `jq` first: the hook script needs
+it and exits silently without it (it leaves a `jq-missing` marker file in the
+state dir; `/factory-doctor` reports this as a BLOCKER). With `jq` present, the
+other silent killer is `async: true` hiding hook errors on Claude Code — re-run
+one probe with `async` removed from the installed `hooks/hooks.json` and the
+real error prints.
 
 ## Boundaries
 

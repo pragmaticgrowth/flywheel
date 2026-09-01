@@ -292,6 +292,65 @@ def verify_run_check(verify_cmds, results, skipped=False):
                       "the declared local gate really runs", "fix": ""}
 
 
+INBOX_DEBT_COUNT_WARN = 10
+INBOX_DEBT_AGE_WARN_DAYS = 14
+
+
+def _inbox_debt_lines(goals_dir):
+    """Every unchecked `- [ ]` line in docs/goals/inbox.md, as its leading
+    YYYY-MM-DD date (str) or None when the line carries no leading date.
+    Read-only; [] when the file is absent or unreadable — same shape
+    goals-status's `_inbox_open_count` uses for "is there anything here"."""
+    path = os.path.join(goals_dir, "inbox.md")
+    try:
+        text = open(path, encoding="utf-8", errors="replace").read()
+    except OSError:
+        return []
+    out = []
+    for ln in text.splitlines():
+        s = ln.strip()
+        if not s.startswith("- [ ]"):
+            continue
+        m = re.match(r"^-\s*\[\s\]\s*(\d{4}-\d{2}-\d{2})", s)
+        out.append(m.group(1) if m else None)
+    return out
+
+
+def inbox_debt_check(open_lines, now=None):
+    """docs/goals/inbox.md pile-up: dispatch appends follow-ups here at settle
+    time and /process-inbox is the only thing that drains it — nothing else in
+    the factory surfaces a growing backlog. Pure; caller supplies the dates via
+    _inbox_debt_lines(). WARN at >=10 open lines OR an oldest dated line
+    >=14 days old; INFO for 1-9 with nothing stale; None (no check emitted at
+    all) when the inbox is empty or absent — there is nothing to report.
+    """
+    n = len(open_lines)
+    if n == 0:
+        return None
+    now = now or datetime.datetime.now(datetime.timezone.utc)
+    oldest_days = None
+    for d in open_lines:
+        if not d:
+            continue
+        try:
+            stamp = datetime.datetime.strptime(d, "%Y-%m-%d").replace(
+                tzinfo=datetime.timezone.utc)
+        except ValueError:
+            continue
+        age = (now - stamp).days
+        if oldest_days is None or age > oldest_days:
+            oldest_days = age
+    stale = oldest_days is not None and oldest_days >= INBOX_DEBT_AGE_WARN_DAYS
+    if n >= INBOX_DEBT_COUNT_WARN or stale:
+        detail = f"{n} open inbox item(s)"
+        if stale:
+            detail += f", oldest {oldest_days}d old"
+        return {"check": "inbox-debt", "level": "WARN", "detail": detail,
+                "fix": f"FIX: run /process-inbox to triage the {n} captured item(s)"}
+    return {"check": "inbox-debt", "level": "INFO",
+            "detail": f"{n} open inbox item(s), none stale", "fix": ""}
+
+
 def limit_resilience_check(active_goals, heartbeat_lines, signal_configured, scheduler_evidence):
     # Subscription usage limits (the 5-hour/weekly windows) block ALL turns until reset;
     # an in-session /loop dies with the session and nothing inside the CLI restarts it
@@ -357,15 +416,27 @@ def _has_stop_failure_hook(repo_root):
     return False
 
 
+_SCHEDULER_UNAMBIGUOUS = ("claude -p", "claude --print", "droid exec")
+# "/dispatch" alone false-positives on any unrelated path containing that substring
+# (e.g. /opt/app/dispatch/cleanup.sh) — only count it on a line that ALSO names the
+# CLI it would be dispatching for. `.` excludes newlines by default, so this can
+# never span two separate lines even applied to the whole multi-line file at once.
+_SCHEDULER_DISPATCH_RE = re.compile(r"(claude|droid).*/dispatch|/dispatch.*(claude|droid)",
+                                    re.IGNORECASE)
+
+
 def _external_scheduler_evidence():
     # Best-effort, read-only sweep for an OS-level scheduler that fires fresh CLI
     # sessions (the limit-proof loop shape): user crontab, macOS LaunchAgents, and
     # systemd user timers. Match only unambiguous patterns — a bare "claude" or
     # "droid" would false-positive on desktop-app agents.
-    patterns = ("claude -p", "claude --print", "droid exec", "/dispatch")
-
     def hit(text):
-        return any(p in (text or "") for p in patterns)
+        for line in (text or "").splitlines():
+            if any(p in line for p in _SCHEDULER_UNAMBIGUOUS):
+                return True
+            if _SCHEDULER_DISPATCH_RE.search(line):
+                return True
+        return False
 
     rc, out, _ = _run(["crontab", "-l"])
     if rc == 0 and hit(out):
@@ -384,24 +455,59 @@ def _external_scheduler_evidence():
     return False
 
 
-def event_log_check(enabled, event_count, newest_age_hours, enabled_age_hours):
+def _human_size(n):
+    """Bytes -> a short human string ('842B', '4.1KB', '2.3MB'). Never raises."""
+    n = float(max(0, n))
+    for unit in ("B", "KB", "MB"):
+        if n < 1024.0:
+            return f"{n:.0f}{unit}" if unit == "B" else f"{n:.1f}{unit}"
+        n /= 1024.0
+    return f"{n:.1f}GB"
+
+
+def _jq_missing(state_dir):
+    """True when the pg-log.sh hook cannot run jq — either jq is not on PATH right
+    now, or the hook already recorded the failure itself via a `jq-missing` marker
+    in the log dir (pg-log.sh creates one on a failed `command -v jq` and removes it
+    once jq is available again). Read-only; either condition alone is disqualifying,
+    since a marker can outlive a jq reinstall this process's PATH doesn't see yet.
+    """
+    if shutil.which("jq") is None:
+        return True
+    return os.path.isfile(os.path.join(state_dir, "jq-missing"))
+
+
+def event_log_check(enabled, size_bytes, newest_age_hours, enabled_age_hours,
+                    jq_missing=False):
     """Health of the opt-in factory event log (v13.0.0+; /factory-report reads it).
 
     Pure — the caller does the I/O. The failure this exists to catch is SILENT: a hook
-    whose command path does not resolve fails with no visible error (Claude Code's
-    `async: true` swallows it), so the log stays empty forever and nothing complains.
+    whose command path does not resolve, or whose `jq` dependency is missing, fails
+    with no visible error (Claude Code's `async: true` swallows it), so the log stays
+    empty forever and nothing complains.
 
       enabled           -- the log directory exists; it is the on/off switch
-      event_count       -- lines in events.ndjson (0 when absent or empty)
+      size_bytes        -- size of events.ndjson in bytes (0 when absent or empty)
       newest_age_hours  -- hours since the newest event, None when there are none
       enabled_age_hours -- hours since the log directory was created
+      jq_missing        -- jq unavailable to the hook right now, or it already said so
     """
     if not enabled:
         return {"check": "event-log", "level": "INFO",
                 "detail": "off — /factory-report still reports goal timing from git, "
                           "but no agent or session numbers",
                 "fix": "mkdir -p ~/.local/state/pg-factory   (opt in; delete the dir to opt out)"}
-    if event_count == 0:
+    if jq_missing:
+        # This must outrank every other verdict below: the documented "drop async and
+        # rerun" diagnosis can never surface a missing jq (the hook exits before it
+        # would print anything either way), so this is the ONE path that catches it.
+        return {"check": "event-log", "level": "BLOCKER",
+                "detail": "on, but jq is not available to the hook — pg-log.sh exits "
+                          "silently without it, so the log stays empty (or stops growing) "
+                          "with no error at all",
+                "fix": "FIX: brew install jq   (macOS)  or  apt-get install -y jq   "
+                       "(Debian/Ubuntu) — then restart the session"}
+    if size_bytes == 0:
         # Just switched on: empty is expected, not a finding.
         if enabled_age_hours is not None and enabled_age_hours <= 1:
             return {"check": "event-log", "level": "INFO",
@@ -417,18 +523,26 @@ def event_log_check(enabled, event_count, newest_age_hours, enabled_age_hours):
     if newest_age_hours is not None and newest_age_hours > 168:
         return {"check": "event-log", "level": "WARN",
                 "detail": f"on, but the newest event is {newest_age_hours / 24:.0f} days old "
-                          f"({event_count} events) — logging may have broken since",
+                          f"({_human_size(size_bytes)} logged) — logging may have broken since",
                 "fix": "FIX: restart the session (hooks load at session start); if it stays "
                        "stale, check that the flywheel plugin is installed and enabled."}
     return {"check": "event-log", "level": "INFO",
-            "detail": f"on — {event_count} events, newest "
+            "detail": f"on — {_human_size(size_bytes)} logged, newest "
                       + ("just now" if newest_age_hours is not None and newest_age_hours < 1
                          else f"{newest_age_hours:.0f}h ago"),
             "fix": ""}
 
 
 def _event_log_state():
-    """Read-only probe for event_log_check. Never raises."""
+    """Read-only probe for event_log_check. Never raises.
+
+    Avoids a full scan of a log that can grow to 64MB: os.path.getsize gives the
+    size with no read at all, and only the last ~8KB (seek from EOF) is read to
+    recover the newest COMPLETE line for the last-event timestamp. When the seek
+    lands mid-file, the first fragment in that tail is presumed to be a partial
+    line (the seek offset landed inside it, or a concurrent writer is mid-append)
+    and is dropped in favor of the complete line before it.
+    """
     d = os.path.join(os.path.expanduser("~"), ".local", "state", "pg-factory")
     if not os.path.isdir(d):
         return False, 0, None, None
@@ -438,23 +552,41 @@ def _event_log_state():
     except OSError:
         enabled_age = None
     f = os.path.join(d, "events.ndjson")
-    n, newest = 0, None
     try:
-        with open(f, errors="ignore") as fh:
-            last = None
-            for line in fh:
-                if line.strip():
-                    n += 1
-                    last = line
-        if last:
-            ts = json.loads(last).get("ts")
-            if ts:
+        size = os.path.getsize(f)
+    except OSError:
+        return True, 0, None, enabled_age
+    newest = None
+    if size > 0:
+        chunk = 8192
+        seek_to = max(0, size - chunk)
+        try:
+            with open(f, "rb") as fh:
+                fh.seek(seek_to)
+                tail = fh.read()
+        except OSError:
+            tail = b""
+        lines = tail.split(b"\n")
+        if seek_to > 0 and lines:
+            lines = lines[1:]   # drop the (likely partial) leading fragment
+        for raw in reversed(lines):
+            raw = raw.strip()
+            if not raw:
+                continue
+            try:
+                ts = json.loads(raw).get("ts")
+            except ValueError:
+                continue
+            if not ts:
+                continue
+            try:
                 t = datetime.datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ").replace(
                     tzinfo=datetime.timezone.utc)
-                newest = (datetime.datetime.now(datetime.timezone.utc) - t).total_seconds() / 3600.0
-    except (OSError, ValueError):
-        pass
-    return True, n, newest, enabled_age
+            except ValueError:
+                continue
+            newest = (datetime.datetime.now(datetime.timezone.utc) - t).total_seconds() / 3600.0
+            break
+    return True, size, newest, enabled_age
 
 
 def lane_hygiene_check(lane_branches, worktree_lane_paths, in_progress_ids, lanes_dir_entries):
@@ -588,7 +720,8 @@ def run_checks(base, skip_verify_run=False):
         "" if rc == 0 else "gh auth login -h github.com")
 
     # event log (v13.0.0+) — /factory-report's only source for agent numbers
-    C.append(event_log_check(*_event_log_state()))
+    _pg_factory_dir = os.path.join(os.path.expanduser("~"), ".local", "state", "pg-factory")
+    C.append(event_log_check(*_event_log_state(), jq_missing=_jq_missing(_pg_factory_dir)))
 
     # CI (INFO-only)
     wf = os.path.join(repo_root, ".github", "workflows")
@@ -689,6 +822,12 @@ def run_checks(base, skip_verify_run=False):
                 "tighten via /define-goal before dispatch picks it up" if cprobs else "")
         except yaml.YAMLError as e:
             add("queue", "BLOCKER", f"index.yaml parse error: {e}")
+
+    # inbox debt — independent of index.yaml (a heavy inbox can pile up with no
+    # goals queued at all), so it runs whether or not the block above did.
+    ibd = inbox_debt_check(_inbox_debt_lines(goals_dir))
+    if ibd:
+        C.append(ibd)
 
     # verify check (local gate) — needs active_goals + verify_cmds from queue parse above
     vc = verify_check(verify_cmds, active_goals)

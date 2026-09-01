@@ -129,16 +129,21 @@ project + user scope) and no pre-existing OS scheduler (still detected as a rail
 one exists). Its `fix` field carries loop-architect Step 5's current guidance:
 window-timed attended drains — `/dispatch` (drains by default since v10.0.0) right after each limit reset —
 rather than headless scheduling. INFO-only when no
-loop has fired here or a rail is detected). Fifth, `event-log` (v13.2.0) reports the health
-of the opt-in factory event log that `/factory-report` reads for its agent numbers: INFO when
-it is off (with the one-line `mkdir` to opt in — never enabled for the user, it starts
-recording on their machine), INFO when it is on and healthy or was enabled within the hour,
-and WARN in the two states that mean it is broken — enabled more than an hour ago with
-NOTHING recorded, or a newest event older than a week. That WARN exists because the failure is
-SILENT: a hook whose command path does not resolve dies with no visible error (Claude Code's
-`async: true` swallows it), so a permanently empty log is the only symptom, and its `fix`
-carries the two-step diagnosis (restart, since hooks load at session start; then drop `async`
-from the installed `hooks/hooks.json` to make the real error print). The `verify` check WARNs if `config.verify` is
+loop has fired here or a rail is detected). Fifth, `event-log` reports the health of the
+opt-in factory event log that `/factory-report` reads for its agent numbers: INFO when it is
+off (with the one-line `mkdir` to opt in — never enabled for the user, it starts recording on
+their machine), INFO when it is on and healthy or was enabled within the hour, BLOCKER when
+logging is enabled but `jq` is missing or the hook has left a `jq-missing` marker (the hook
+script exits silently without `jq`, so the log stays empty with no error ever printing — the
+fix is the one-line `jq` install), and WARN in the two states that mean it is otherwise
+broken — enabled more than an hour ago with NOTHING recorded, or a newest event older than a
+week (the failure is SILENT: `async: true` swallows hook errors on Claude Code, so the `fix`
+carries the diagnosis — restart, then drop `async` from the installed `hooks/hooks.json` to
+make the real error print). Sixth, `inbox-debt` watches dispatch's capture file: WARN when
+`docs/goals/inbox.md` has ≥10 open `- [ ]` lines or its oldest open line is ≥14 days old
+(the fix is `/process-inbox`), INFO on a small fresh backlog, nothing when empty — inbox
+pile-up was measured as the factory's most invisible debt, because open goals used to hide
+it from every status surface. The `verify` check WARNs if `config.verify` is
 absent and there are active goals — copy its `fix` (add a `verify:` list to `index.yaml`). The
 `verify-run` check reports whether those declared commands ACTUALLY run: BLOCKER naming the
 failing or unresolvable command verbatim with its exit code, WARN on a timeout, INFO when all

@@ -1,6 +1,6 @@
 ---
 name: process-inbox
-description: Use when the user runs "/process-inbox" (optionally --triage-only) or asks to process, triage, clean up, or work through docs/goals/inbox.md — the follow-up capture file dispatch appends at settle time ("what's in the inbox", "convert the inbox", "deal with the captured follow-ups", "clear the inbox"). Flagless runs END TO END: verify, triage, fix the mechanical items, convert the real ones through define-goal's machinery, then drain the queue via dispatch — one command, cleared inbox. Always through the factory's own rails — goal conversion stays in define-goal's flow, non-trivial implementation stays behind dispatch's gate; --triage-only stops at the handoff.
+description: Use when the user runs "/process-inbox" (optionally --triage-only) or asks to process, triage, clean up, or work through docs/goals/inbox.md — the follow-up capture file dispatch appends at settle time ("what's in the inbox", "convert the inbox", "deal with the captured follow-ups", "clear the inbox"). Flagless runs END TO END — verify, triage, fix the mechanical items, convert the real ones through define-goal's machinery, then drain the queue via dispatch — one command, cleared inbox. Always through the factory's own rails — goal conversion stays in define-goal's flow, non-trivial implementation stays behind dispatch's gate; --triage-only stops at the handoff.
 argument-hint: "[--triage-only]"
 ---
 
@@ -11,13 +11,10 @@ argument-hint: "[--triage-only]"
 `docs/goals/inbox.md` is dispatch's settle-triage capture file: one `- [ ]` line
 per discovered defect or follow-up that was real but outside its source goal's
 contract (date, source goal id, type guess, description, evidence pointer).
-Dispatch only ever APPENDS. This skill is the sweep that clears it, with
-the discipline the first large field pass proved out (romy, 2026-08-13: 101 items
-→ 31 goals, 20 dead lines deleted, 3 settled by querying production — after EVERY
-item was re-verified against current code).
+Dispatch only ever APPENDS. This skill is the sweep that clears it.
 
-**Flagless = drain (v11.7.0, owner decision 2026-08-17 — "one command, come back
-to a cleared inbox").** A flagless `/process-inbox` runs the WHOLE path in one
+**Flagless = drain ("one command, come back to a cleared inbox").** A flagless
+`/process-inbox` runs the WHOLE path in one
 session: verify → triage → FIX-NOW batch → convert through define-goal's inbox
 intake with the approval table waived (the drain invocation is the standing
 approval; the contract red-team still runs on every draft) → hand the queue to a
@@ -29,16 +26,15 @@ of the report, never mid-run. `--triage-only` restores the pre-v11.7 behavior:
 stop after the ledger commit, present the convert list, queue nothing beyond
 what define-goal is separately asked to take.
 
-**The one law: verify before you route.** Captures age. The measured base rate on
-a weeks-old inbox is ~20% dead — code deleted since capture, fixed in passing, or
-disproved on a closer read. An item's evidence pointer is where verification
+**The one law: verify before you route.** Captures age — the measured base rate
+on a weeks-old inbox is ~20% dead (code deleted since capture, fixed in passing,
+or disproved on a closer read). An item's evidence pointer is where verification
 STARTS, never a substitute for reading the code as it stands today. Converting an
 unverified item queues phantom work; deleting an unverified item loses a real
-defect. ONE exception (v11.6.0): a line a PREVIOUS sweep already stamped
-`KEEP <date>:` is not re-verified — it retires to the ledger (step 1), already
-adjudicated once. (Since dispatch v11.6.0 the settle-time capture bar admits only
-live defects, new work, and owner decisions — latent/nit findings stay in report
-files — so a fresh inbox arrives lean; older inboxes still carry the pre-bar mix.)
+defect. ONE exception: a line a PREVIOUS sweep already stamped `KEEP <date>:` is
+not re-verified — it retires to the ledger (step 1), already adjudicated once.
+(Dispatch's capture bar admits only live defects, new work, and owner decisions,
+so a fresh inbox arrives lean; older inboxes still carry the pre-bar mix.)
 
 **Boundaries.** This skill never writes goal files or index entries in its own
 context (define-goal does, behind its contract review), never implements
@@ -54,25 +50,20 @@ below is the only thing that waits for a human.
 ### 1. Read and cluster
 
 Read `docs/goals/inbox.md`; count open `- [ ]` items (zero → report "inbox
-empty" and stop). **Retire stamped keeps first (v11.6.0 — KEEP is one-cycle
-parole, not residence):** any open line whose tail already carries a
-`KEEP <date>:` stamp from a PREVIOUS sweep skips verification and triage
-entirely — it retires to the `## Triaged` ledger in step 5. It was adjudicated
-once; its full detail lives in the source report file and git history, and if it
-ever becomes live, a fresh dispatch capture re-surfaces it. Measured 2026-08-16:
-a sweep re-verified 28 previously-adjudicated lines at real subagent cost and
-changed almost none of them. **OWNER lines carried over from a previous sweep are
-RE-ADJUDICATED against the v12.0.0 OWNER bar (step 3), never re-listed as-is:** run
-the blast-radius check the bar demands; a line that fails the bar re-triages into a
-normal bucket this sweep (which usually means it gets converted or fixed), and only
-a line that still clears it — a proven, still-live consequence — is re-presented,
-with its check attached. The same five OWNER lines were re-printed verbatim across
-three sweeps until the owner cleared them in one instruction; a parking lot is not
-a bucket. Then cluster
-the remaining unstamped items by the file/subsystem their evidence points at,
-folding obvious duplicates (two captures naming the same function and the same
-change are ONE item). Aim for one cluster per verification subagent, ~5–15 items
-each.
+empty" and stop). **Retire stamped keeps first (KEEP is one-cycle parole, not
+residence):** any open line whose tail already carries a `KEEP <date>:` stamp
+from a PREVIOUS sweep skips verification and triage entirely — it retires to the
+`## Triaged` ledger in step 5. It was adjudicated once; its full detail lives in
+the source report file and git history, and if it ever becomes live, a fresh
+dispatch capture re-surfaces it. **OWNER lines carried over from a previous sweep
+are RE-ADJUDICATED against the OWNER bar (step 3), never re-listed as-is:** run
+the blast-radius check the bar demands; a line that fails the bar re-triages into
+a normal bucket this sweep, and only a line that still clears it — a proven,
+still-live consequence — is re-presented, with its check attached. A parking lot
+is not a bucket. Then cluster the remaining unstamped items by the file/subsystem
+their evidence points at, folding obvious duplicates (two captures naming the
+same function and the same change are ONE item). Aim for one cluster per
+verification subagent, ~5–15 items each.
 
 ### 2. Verify fan-out — every item re-checked against current code
 
@@ -91,49 +82,38 @@ GONE (the code was deleted or the fix already landed — name the commit if
 visible) | UNVERIFIABLE-HERE (only a live/production system can settle it — name
 the exact query that would). Evidence for every verdict; no fixes, no writes."
 
-**Spawning and waiting (v12.6.0).** Spawn PLAIN — `subagent_type`, `model`, brief, and
-nothing else. Never pass `name:`: a named agent becomes a persistent session teammate
-whose report is delivered by mailbox rather than as a completion notification (measured
-2026-08-31: a named verifier's verdict sat unread in that mailbox for 8 minutes and the
-orchestrator re-did the work itself, losing the independence the spawn exists to buy).
-After spawning, do the independent work in hand and otherwise let the turn END — reports
-arrive at turn boundaries, so a wait built from sleep loops, blocking shell waits, or
-repeated agent listings starves the very delivery it is waiting for. And never call a
-silent helper dead without tailing its own transcript
-(`~/.claude/projects/<cwd-slug>/<session-id>/subagents/agent-*.jsonl` on Claude Code,
-`~/.factory/sessions/<cwd-slug>/<childSessionId>.jsonl` on Droid): fresh records, or a
-file ending mid-tool-call, mean it is alive. The other side of that test — the only thing
-that licenses giving up on one — is TWO checks with real minutes between them showing
-zero new transcript records and no completion notification. Then, and only then:
-**retry once, never wait a second round.** Respawn that cluster ONCE, plain; if the
-respawn also delivers nothing, verify that cluster's items in your own context and note
-`verified inline (verifier not delivered)` on them. That fallback is legitimate HERE and
-is not the miss dispatch names, because a verification subagent buys context economy and
-parallelism, not independence — nothing is grading its own work. It is NOT available for
-dispatch's gate review or red-team, where independence is the entire product; those
-wait.
+**Spawning and waiting.** Dispatch's Spawning-and-waiting rule (its Hard rules
+section) is the canonical statement and governs these spawns too: plain spawns
+(`subagent_type`, `model`, brief — never a `name:`, never backgrounded), let the
+turn end rather than building a wait, and death needs evidence — the only thing
+that licenses giving up on a verifier is TWO checks with real minutes between them
+showing zero new transcript records and no completion notification. Then, and only
+then: **retry once,
+never wait a second round.** Respawn that cluster ONCE, plain; if the respawn
+also delivers nothing, verify that cluster's items in your own context and note
+`verified inline (verifier not delivered)` on them. That fallback is legitimate
+HERE and is not the miss dispatch names, because a verification subagent buys
+context economy and parallelism, not independence — nothing is grading its own
+work. It is NOT available for dispatch's gate review or red-team, where
+independence is the entire product; those wait.
 
 Judgment stays with you, on the session model: subagent verdicts are input, the
 triage is yours.
 
 ### 3. Triage — every item into exactly ONE bucket
 
-- **CONVERT** — confirmed and worth a factory cycle. **Mechanism check (v12.0.0):**
-  an item whose fix names a specific mechanism — an alert channel, a queue, a
-  binding, a secret — gets that mechanism verified LIVE (read-only) before it enters
-  a contract; a measured item's recommended `sendOpsAlert` fix would have paged
-  nobody (`ALERT_WEBHOOK_URL` unset in both environments), and only the session that
-  checked caught it. Folding rules (measured):
-  captures that are one change to one function fold into ONE goal; a cluster
-  still carrying more than two independent findings splits — the repair-cost
-  rule wins ties (a goal closing more than two independent findings costs more
-  repair rounds than it saves). **One class never converts (v11.6.0):
-  caption/comment-wording items** — a test name or comment overclaiming what
-  its assertion pins, doc phrasing — go FIX-NOW or DROP, never to a goal:
-  measured on the first field batch (romy goal 106), four of five findings in a
-  caption-class goal resolved by narrowing the wording, so the factory cycle
-  bought no coverage; define-goal's intake refuses the class for the same
-  reason.
+- **CONVERT** — confirmed and worth a factory cycle. **Mechanism check:** an item
+  whose fix names a specific mechanism — an alert channel, a queue, a binding, a
+  secret — gets that mechanism verified LIVE (read-only) before it enters a
+  contract (a measured recommended fix would have paged nobody: the webhook was
+  unset in both environments). Folding rules: captures that are one change to one
+  function fold into ONE goal; a cluster still carrying more than two independent
+  findings splits — a goal closing more than two independent findings costs more
+  repair rounds than it saves. **One class never converts:
+  caption/comment-wording items** — a test name or comment overclaiming what its
+  assertion pins, doc phrasing — go FIX-NOW or DROP, never to a goal (a measured
+  caption-class goal bought no coverage; define-goal's intake refuses the class
+  too).
 - **FIX-NOW** — confirmed, and genuinely mechanical with no behavior change: a
   wrong comment or caption, a stale doc sentence, a dead constant, a
   typo-class rename. The bar is dispatch's review-skip bar, judged from the
@@ -151,23 +131,21 @@ triage is yours.
   captured, reason appended to its line.
 - **OWNER** — a decision that is provably the human's: it spends money, deletes or
   exposes data that EXISTS today, or is irreversible/externally visible outside the
-  repo's own gated path. **The bar (v12.0.0) — a proven consequence, not a matching
-  topic.** Before anything is routed OWNER, run the read-only check that sizes the
-  blast radius — the `SELECT` on the table the deletion would touch, the secret/bucket
-  listing the alert depends on, the count of affected rows — and attach the check and
-  its result to the item. An empty or absent target is NOT a data-loss decision —
-  the item then re-triages as ordinary work (a still-real preventive fix CONVERTs,
-  a dissolved claim DROPs); a
-  change confined to code behind the factory's own gate is NEVER an owner item
-  (shipping is what the factory is for); "for convention's sake", "worth your
-  attention", and "recommend X" are CONVERT or FIX-NOW. An item whose own
-  recommendation is a code edit the gate can verify is not an owner item. Measured
-  2026-08-16/19: five items topic-matched into OWNER, sat through three sweeps, and
-  four of the five dissolved under one read-only production query — the fifth's
-  recommended fix was itself WRONG (`sendOpsAlert` would have paged nobody; only the
-  override session checked). The bucket wasn't deferring risk, it was accumulating it.
-  Present each surviving item with a recommendation; never act on it. This is the only
-  bucket that waits for a human — and only items that clear the bar may wait.
+  repo's own gated path. **The bar — a proven consequence, not a matching topic.**
+  Before anything is routed OWNER, run the read-only check that sizes the blast
+  radius — the `SELECT` on the table the deletion would touch, the secret/bucket
+  listing the alert depends on, the count of affected rows — and attach the check
+  and its result to the item. An empty or absent target is NOT a data-loss
+  decision — the item then re-triages as ordinary work (a still-real preventive
+  fix CONVERTs, a dissolved claim DROPs); a change confined to code behind the
+  factory's own gate is NEVER an owner item (shipping is what the factory is
+  for); "for convention's sake", "worth your attention", and "recommend X" are
+  CONVERT or FIX-NOW. An item whose own recommendation is a code edit the gate
+  can verify is not an owner item. (Field measurement: four of five topic-matched
+  OWNER items dissolved under one read-only production query — the bucket wasn't
+  deferring risk, it was accumulating it.) Present each surviving item with a
+  recommendation; never act on it. This is the only bucket that waits for a
+  human — and only items that clear the bar may wait.
 
 ### 4. Act, in this order
 

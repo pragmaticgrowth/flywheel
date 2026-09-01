@@ -370,6 +370,64 @@ def test_cli_prints_the_next_line_once():
     assert out.count("next:") == 1
 
 
+# ---- inbox: <N> open line (front-door visibility for a heavy inbox) -----------
+
+def test_inbox_line_prints_when_inbox_has_open_items():
+    d = _make_queue()          # open queue → next: /dispatch
+    _write_inbox(d, ["- [ ] fix the flaky login test (earn: live-defect)",
+                     "- [ ] stale currency cache (earn: live-defect)"])
+    rep = gs.build_report(d)
+    assert rep["inbox_open"] == 2
+    out = gs.render_detailed(rep)
+    assert "inbox: 2 open — /process-inbox" in out
+    # the inbox line renders before the next: line, both present exactly once
+    assert out.index("inbox: 2 open") < out.index("next:")
+    assert out.count("inbox:") == 1
+
+
+def test_inbox_line_absent_when_inbox_file_missing():
+    d = _make_queue()          # no inbox.md written at all
+    rep = gs.build_report(d)
+    assert rep["inbox_open"] == 0
+    out = gs.render_detailed(rep)
+    assert "inbox:" not in out
+    assert "next: /dispatch" in out
+
+
+def test_inbox_line_absent_when_inbox_has_zero_open_items():
+    d = _make_queue()
+    _write_inbox(d, ["- [x] already triaged", "## Triaged", "retired keep: x — y"])
+    rep = gs.build_report(d)
+    assert rep["inbox_open"] == 0
+    out = gs.render_detailed(rep)
+    assert "inbox:" not in out
+
+
+def test_inbox_line_prints_alongside_settled_queue_and_process_inbox_next():
+    # settled queue + unchecked inbox already drives next: /process-inbox (existing
+    # behavior); the new inbox: line must render too, without changing that verdict.
+    d = _queue_dir(ALL_COMPLETED)
+    _write_inbox(d, ["- [ ] fix the flaky login test (earn: live-defect)"])
+    rep = gs.build_report(d)
+    assert rep["next"] == "/process-inbox"
+    out = gs.render_detailed(rep)
+    assert "inbox: 1 open — /process-inbox" in out
+    assert "next: /process-inbox" in out
+    assert out.index("inbox: 1 open") < out.index("next:")
+
+
+def test_inbox_line_does_not_change_next_command_priority():
+    # next:'s first-match-wins logic is unchanged by the new inbox line: an open
+    # queue still names /dispatch even with a heavy inbox sitting alongside it.
+    d = _make_queue()
+    _write_inbox(d, ["- [ ] a", "- [ ] b", "- [ ] c"])
+    rep = gs.build_report(d)
+    assert rep["next"] == "/dispatch"
+    out = gs.render_detailed(rep)
+    assert "inbox: 3 open — /process-inbox" in out
+    assert "next: /dispatch" in out
+
+
 if __name__ == "__main__":
     fns = [g for n, g in sorted(globals().items()) if n.startswith("test_")]
     for fn in fns:

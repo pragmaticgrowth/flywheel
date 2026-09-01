@@ -181,11 +181,15 @@ def test_inbox_intake_refuses_unconfirmed_premises():
 
 # ---- red-team lockstep --------------------------------------------------------
 
-def test_red_team_carries_drainability_and_premise():
-    text = unwrapped(RED_TEAM)
-    assert "Drainability" in text
-    assert "Premise" in text
+def test_reality_check_carries_drainability_and_premise():
+    # v14.0.0: Drainability and Premise are reality-check items 6–7 (the
+    # red-team's excluded-mechanical list names them; it no longer re-runs them).
+    text = unwrapped(DEFINE)
+    assert "Drainability — no criterion needs a human's word" in text
+    assert "Premise — the justifying claim was verified against a primary" in text
     assert "blocks by construction" in text
+    agent = unwrapped(RED_TEAM)
+    assert "drainability" in agent and "premise verification" in agent
 
 
 def test_red_team_no_longer_endorses_criteria_path_gates():
@@ -201,7 +205,7 @@ def test_owner_bar_requires_a_proven_consequence():
 
 
 def test_owner_lines_are_readjudicated_not_relisted():
-    assert "RE-ADJUDICATED against the v12.0.0 OWNER bar" in unwrapped(INBOX)
+    assert "RE-ADJUDICATED against the OWNER bar" in unwrapped(INBOX)
 
 
 def test_inbox_report_is_a_hard_envelope():

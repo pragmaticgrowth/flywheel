@@ -61,6 +61,13 @@ The helper derives the line itself — print it with the verbatim output. An
 all-completed queue pointing at `/ideate` is the front door working, not an
 error.
 
+And whenever `docs/goals/inbox.md` has unchecked `- [ ]` lines, the view prints
+one `inbox: <N> open — /process-inbox` line directly before `next:` — regardless
+of what `next:` says. Open goals used to hide inbox debt entirely (a busy repo
+always has open goals, so the first-match derivation above never surfaced a
+40-line backlog); the inbox line makes the debt visible without changing what to
+run first.
+
 ## Boundaries
 
 Read-only and reporting only. This skill never claims, completes, blocks, or

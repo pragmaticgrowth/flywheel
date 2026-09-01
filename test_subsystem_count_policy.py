@@ -122,10 +122,11 @@ def test_both_define_goal_size_copies_carry_the_count_trigger():
 
 
 def test_the_red_team_agent_item_7_carries_the_full_trigger():
+    # v14.0.0 renumbered the narrowed rubric: Size is item 5, Slice item 6.
     item7 = (
         unwrapped(RED_TEAM)
-        .partition("7. **Size (one-sitting test)**")[2]
-        .partition("8. **Slice")[0]
+        .partition("5. **Size (one-sitting test)**")[2]
+        .partition("6. **Slice")[0]
     )
     for phrase in [
         "≥3 of the three product bands",

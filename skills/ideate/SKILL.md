@@ -16,14 +16,12 @@ to become goal contracts. This is the pipeline's front door:
 (plan)      (contract)       (execute+gate)  (observe)
 ```
 
-The plan (v11.0.0) is the factory's design tier: one document that resolves design
-forks BEFORE contracts exist. Forensics across this factory's real repos
-(2026-08-12) found the dominant cycle-time tail was never implementation — it was
-contract defects surfacing at dispatch time: goals blocked on two-readable criteria
-took 10–85 hours of block→amend→requeue thrash, with the owner dragged into every
-round. Both of the estate's currently-blocked goals are design forks ("derive-it or
-author-it") that a plan's Open-questions section settles in one attended minute.
-The plan moves that resolution to the cheapest possible place.
+The plan is the factory's design tier: one document that resolves design forks
+BEFORE contracts exist. Field forensics found the dominant cycle-time tail was
+never implementation — it was design forks surfacing at dispatch time as
+block→amend→requeue thrash, with the owner dragged into every round. The plan
+moves that resolution to the cheapest possible place: one attended minute at
+design time.
 
 The user may not be an engineer — plain language with them; the plan's Design
 section carries the precision.
@@ -103,10 +101,9 @@ it: at that size the pieces and the whole are the same thing.
 
 Derive everything the repo can answer yourself — never ask the owner a question
 the repo answers. For what the repo CANNOT answer, this is the ONE skill in the
-pipeline where asking is the tool, not a failure (owner decision 2026-08-13: the
-factory-wide question diet — "don't ask me questions, you decide" — stands in
-every other skill; here the owner wants to shape the idea in dialogue). Three
-rules govern the dialogue:
+pipeline where asking is the tool, not a failure (the factory-wide question
+diet — "don't ask me questions, you decide" — stands in every other skill; here
+the owner wants to shape the idea in dialogue). Three rules govern the dialogue:
 
 - **Owner-language questions only.** Ask about intent, audience, scope, taste —
   what it should do, who it's for, what matters, what to cut — in plain

@@ -285,17 +285,33 @@ is no `plugins/` directory — the repo root IS the flywheel plugin.
   no-behavior-change proof; `depends_on` every other phase), and warns that a
   `-k` selector exits 5 on no match, so any test name an outcome bullet selects
   must be pinned by a criterion in the goal that CREATES it.
-**Harness note (v8.2.0; depth corrected v8.3.0):** on Claude Code a subagent can spawn
-further subagents (Agent nests — official docs put the default nesting depth at 3 layers
-below the main conversation, not the 5 previously claimed here; dispatch's
-main → implementer → lens chain uses 2 and fits either way), so a dispatch implementer
-runs its fresh-check panel directly.
-On Droid a subagent has NO Task tool — Factory's docs state "a subagent cannot spawn its
-own subagents" — so the implementer uses the sanctioned `droid exec -f <prompt-file>` path
-for genuinely fresh review contexts (≤2 lenses; it costs a CLI cold start each). Self-review
-in the implementer's own context is NEVER the fallback: an honest
-`Fresh-check: not run (no fresh-context mechanism available)` escalates the orchestrator's
-own review to the full panel, and is explicitly not a compliance miss.
+  v14.0.0 (the de-engineering release, 2026-09-01 full-estate audit): the contract
+  RED-TEAM RUBRIC IS NARROWED TO THE JUDGMENT ITEMS — Gameability, Placeholders,
+  Type shape, Termination, Size, Slice, Cross-goal, Plan-question, Ratchet (incl.
+  the plan back-door shape) — and no longer re-runs the reality check's mechanical
+  lookups (the audit found 7 of its 15 items duplicating them; a deterministic
+  glob/config lookup gains nothing from an independent spawn); it re-litigates a
+  mechanical fact only on an internal inconsistency in the draft's own text, budget
+  ~10 calls. REALITY CHECK 3 now requires acceptance to EXIST, not just resolve: a
+  queued feature/bug goal needs ≥1 runnable `acceptance:` command executing the
+  behavior it ships (typecheck/lint/build alone never qualify; all-subjective goals
+  exempt), a chore its one mechanical proving check — field-grounded the day it
+  shipped, by a goal that reached the gate with no runnable acceptance at all. The
+  two Size count triggers (bands, units) merged into one template block, stated
+  once. And the SKILL went on the diet the goal files got in v11: 13.9k → 10.2k
+  words, incident narration moved to CHANGELOG, rules unchanged.
+**Harness note (v8.2.0; depth corrected v8.3.0; SUPERSEDED in v14.0.0):** on Claude Code
+a subagent can spawn further subagents (Agent nests — official docs put the default
+nesting depth at 3 layers below the main conversation; the old
+main → implementer → lens chain used 2), and on Droid a subagent has NO Task tool, which
+v8.2–v13 worked around with a `droid exec -f <prompt-file>` in-implementer lens path.
+**v14.0.0 made the whole question moot: the fresh-check panel moved to the GATE side** —
+the implementer spawns no review of its own work, and the orchestrator (a main session on
+both harnesses) spawns the single gate-reviewer or the escalated 2–3-lens panel directly,
+so the Droid droid-exec lens machinery and the `Fresh-check:` STATUS line are gone. The
+2026-09-01 audit grounded the cut: the implementer panel reviewed the identical three
+dimensions the gate-reviewer re-reviewed minutes later, and its verdict was defined as
+never authoritative — 1–3 spawns per goal buying nothing.
 
 - **dispatch** — factory orchestrator for the docs/goals queue: serial
   one-goal-AT-A-TIME on the currently checked-out branch, and since v10.0.0 a
@@ -605,6 +621,22 @@ own review to the full panel, and is explicitly not a compliance miss.
   ban on repeated task-status polling, previously written as a Droid rule, is now
   explicitly both-harness. Droid's awaited `Task` contract is unchanged — K spawns, ONE
   wait, results together.
+  v14.0.0 — THE DE-ENGINEERING RELEASE (2026-09-01 full-estate audit: ~1,050 measured
+  cycles on two machines, median 40–65 min, 92% completion, ~90% of the 4h+ tail
+  idle-inflated claims rather than slow work; two independent full-text audits of the
+  whole plugin). THE GATE ABSORBS THE PANEL: the implementer no longer spawns any
+  review of its own diff — Arm B is sized by the DIFF at the gate: ONE gate-reviewer
+  by default, and a 2–3-lens fresh-check panel REPLACING the single reviewer (never
+  following it) when the diff spans >3 files, changes test logic, or touches
+  architecture; the `Fresh-check:` STATUS line, the missing-line escalation, the
+  medium-tier lens pin, and Droid's whole in-implementer `droid exec` lens mechanism
+  are all deleted (the audit measured the panel deciding nothing by its own
+  definition, 1–3 spawns per goal). The four `contract defect (…)` needs-you rows
+  merged to ONE `contract defect` row (the reason string already distinguishes). The
+  SKILL and its three references went on the goal-file diet: 15.4k → 10.5k words,
+  incident narration to CHANGELOG, every rule/format/budget preserved — the `name:`
+  ban now lives ONCE in Hard rules with cross-references elsewhere. Chain-to-inbox
+  and everything else unchanged.
 - **goals-status** (v5.2.0; simplified in v6.0.0) — read-only view of the
   docs/goals queue. Prints
   every OPEN goal — `in_progress`, `blocked`, `not_started` — with its title and
@@ -627,7 +659,12 @@ own review to the full panel, and is explicitly not a compliance miss.
   `next: <command>` line the helper derives first-match from queue state — any
   open goal → `/dispatch`, else unchecked `- [ ]` lines in `docs/goals/inbox.md`
   → `/process-inbox`, else `/ideate`; an all-completed queue pointing at
-  `/ideate` is the front door working, not an error. Strictly
+  `/ideate` is the front door working, not an error. v14.0.0: the view ALSO
+  prints one `inbox: <N> open — /process-inbox` line directly before `next:`
+  whenever the inbox has N>0 open lines — the 2026-09-01 audit found the
+  first-match `next:` logic structurally hid inbox debt (a busy repo always has
+  open goals, so `/process-inbox` never surfaced; 101 open items across the
+  estate and no surface showed them). Strictly
   read-only — never claims, changes, or implements a goal (that's
   `dispatch`) and never writes `index.yaml`.
 - **process-inbox** (v11.5.0, owner ask 2026-08-13 — "one command so the best
@@ -732,6 +769,12 @@ own review to the full panel, and is explicitly not a compliance miss.
   one repo mix, so nothing in flywheel stops an agent on them until real data backs
   them. Publishes to the same stable artifact each run where the Artifact tool exists
   (same availability gate as ideate's plan), chat output the norm and the fallback.
+  v14.0.0 (audit-driven): the report counts each repo's INBOX DEBT (open `- [ ]`
+  lines) per repo and in totals, and it separates SLOW from IDLE — a 4h+ cycle whose
+  commit record shows a >3h gap is labeled `idle-inflated (~Xh gap)` and excluded
+  from OVERSIZED (the audit measured ~90% of the 4h+ tail as idle claims across dead
+  sessions/usage-limit pauses, not slow work); `read_log()` also stopped
+  JSON-decoding the whole 64MB file (lexicographic ts pre-filter).
   Strictly read-only — never claims, amends, or implements, and never rewrites a
   contract on the strength of a slow number.
 - **loop-architect** — designs loop contracts (prompt + verification +
@@ -750,7 +793,12 @@ own review to the full panel, and is explicitly not a compliance miss.
   state, and loop health (stale claims, underspecified goals, `event-log` (v13.2.0 — WARN when logging is
   enabled but nothing has been recorded for over an hour, or the newest event is a week
   old; the log's failure mode is SILENT because `async` hooks swallow their errors, so an
-  empty file is the only symptom), and
+  empty file is the only symptom; v14.0.0 adds a BLOCKER when logging is enabled but
+  `jq` is missing or the hook left its `jq-missing` marker — the hook exits silently
+  without jq, and the old fix text could never surface that cause — and the state
+  probe now tail-reads the last 8KB instead of scanning the whole file),
+  `inbox-debt` (v14.0.0 — WARN at ≥10 open inbox lines or a ≥14-day-old one, fix
+  `/process-inbox`; the audit's most invisible debt), and
   `limit-resilience` — WARN when a repo's loop demonstrably fires but has no
   usage-limit rail: no `StopFailure` hook, no pre-existing scheduler; its fix
   text recommends the v8.3.0 window-timed attended drain, never headless);
@@ -983,7 +1031,11 @@ re-add a site, a deploy config, or a docs-sync mandate without an explicit ask.
   Droid, which runs the hook synchronously at ~9 ms. Metadata only — never a
   prompt body, tool input, tool output, file content, or environment value; the one
   string it reads out of a command is a `chore(goals):` flip, keeping the verb and
-  goal id. ~9 ms and ~100 bytes per tool call, rotating at 64 MB.
+  goal id. ~9 ms and ~100 bytes per tool call, rotating at 64 MB (v14.0.0: the
+  rotation stat runs on SessionStart AND Stop, so one marathon drain can no longer
+  blow past the cap; and a missing `jq` — which makes the script exit silently —
+  now drops a `jq-missing` marker file in the state dir that factory-doctor
+  reports as a BLOCKER, removed automatically once jq is present).
   (The repo carried a THIRD exception — `hooks/hooks.json` for the
   `telegram-message` notifier, owner decision 2026-07-07 — from v4.11.0 until
   the v6.0.0 sunset removed the skill and the hook bundle; flywheel ships no
@@ -1028,6 +1080,15 @@ re-add a site, a deploy config, or a docs-sync mandate without an explicit ask.
   text decided it differently or left it undecided, so the rule is proven to
   change behavior, not just read well (adopted from superpowers'
   RED-baseline doctrine, 2026-07-17).
+- **New rules earn their permanence (v14.0.0, from the 2026-09-01 audit).** A new
+  permanent skill rule needs TWO independent incidents behind it, or it ships with a
+  named sunset — a "review by <date> against fresh data" line in its CHANGELOG entry.
+  The audit counted 11 standing rules each minted from a single incident, and the
+  rulebook's only direction was growth. One-incident rules are legitimate as
+  provisional entries; what they never get anymore is silent permanence. Incident
+  narration lives in CHANGELOG.md, never in the skill hot path — a SKILL.md states
+  the rule and at most one clause of why (the v14.0.0 diet is the enforcement
+  precedent: ~10k words of narration moved out with zero behavior change).
 
 ## Docs & releases (deliberately minimal — owner decision 2026-08-12)
 
