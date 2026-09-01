@@ -314,9 +314,29 @@ def report_path(goal_id, repo_root):
                         slug, "reports", f"{goal_id}-report.md")
 
 
+def _sitting_start_ts(sha_base, sha_head, base_ts, repo_root):
+    """The clock the report-file check anchors on: the EARLIER of the --base commit
+    time and the sitting's first work commit AUTHOR time. Parallel-mode integration
+    rebases a lane onto a branch HEAD that moved AFTER the implementer wrote its
+    report (queue amend/complete commits), so --base alone flags every integrated
+    lane's report as stale; the first work commit's author time survives the rebase
+    and is when this sitting demonstrably began. No work commits → --base as before."""
+    rc, out, _ = _git(["log", "--format=%at", "--reverse", f"{sha_base}..{sha_head}"], cwd=repo_root)
+    if rc != 0:
+        return base_ts
+    for line in (out or "").splitlines():
+        line = line.strip()
+        if line.isdigit():
+            first = int(line)
+            return min(base_ts, first) if base_ts else first
+    return base_ts
+
+
 def report_file(goal_id, repo_root, base_commit_ts):
     """Require the implementer report on every --goal run: exists, non-empty,
-    mtime after --base commit time. Missing/empty/stale → FAIL_FIXABLE.
+    mtime after the sitting start (`_sitting_start_ts`: --base commit time, or the
+    first work commit's author time when --base moved past it at integration).
+    Missing/empty/stale → FAIL_FIXABLE.
 
     A short report is enough; one-file mechanical edits are not exempt. Phase 1
     crash recovery regenerates a stub before this check so a sitting that only
@@ -334,10 +354,10 @@ def report_file(goal_id, repo_root, base_commit_ts):
     mtime = os.path.getmtime(path)
     if mtime <= float(base_commit_ts):
         return {"name": "report-file", "pass": False, "kind": "fixable",
-                "evidence": f"implementer report older than --base: {path}",
+                "evidence": f"implementer report stale: older than the sitting start (--base, or its first work commit's author time): {path}",
                 "violations": [f"stale: {path}"]}
     return {"name": "report-file", "pass": True, "kind": "fixable",
-            "evidence": f"implementer report present and newer than --base: {path}",
+            "evidence": f"implementer report present and newer than the sitting start: {path}",
             "violations": []}
 
 
@@ -757,7 +777,7 @@ def run_validation(head, goal_id, base, goal_file, repo_root):
         base_ts = int((out_ct or "").strip())
     except ValueError:
         base_ts = 0
-    checks.append(report_file(goal_id, repo_root, base_ts))
+    checks.append(report_file(goal_id, repo_root, _sitting_start_ts(sha_base, sha_head, base_ts, repo_root)))
 
     if gtype == "bug":
         # Overlay the head's changed test files onto the base checkout so a TDD test

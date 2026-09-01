@@ -1195,3 +1195,57 @@ def test_report_path_honours_pg_dispatch_slug_override():
         finally:
             os.environ.pop("PG_DISPATCH_SLUG", None)
     _with_home(inner)
+
+
+def test_report_file_survives_an_integration_rebase_that_moves_base_past_it():
+    # Parallel-mode integration rebases the lane onto a base commit made AFTER the
+    # implementer wrote its report (the queue's amend/complete commits land there).
+    # The report is newer than the sitting's first work commit (author time survives
+    # the rebase), so it IS this sitting's report — the check must anchor on that,
+    # not on a --base that moved past it. Field case: nonresidenttax 208/209/222.
+    d = tempfile.mkdtemp(); _make_repo(d)
+    open(os.path.join(d, "app.py"), "w").write("x = 1\n")
+    _git_local(d, "add", "app.py"); _git_local(d, "commit", "-qm", "claim")
+    claim = _git_local(d, "rev-parse", "HEAD").stdout.strip()
+    t_work = 1_700_000_000
+    env_work = dict(os.environ, GIT_AUTHOR_DATE=f"@{t_work} +0000", GIT_COMMITTER_DATE=f"@{t_work} +0000")
+    open(os.path.join(d, "app.py"), "w").write("x = 2\n")
+    subprocess.run(["git", "add", "app.py"], cwd=d, check=True)
+    subprocess.run(["git", "commit", "-qm", "work"], cwd=d, env=env_work, check=True)
+    work = _git_local(d, "rev-parse", "HEAD").stdout.strip()
+    # The branch moves on without the lane: a queue-only commit an hour later.
+    _git_local(d, "checkout", "-q", claim)
+    t_base = t_work + 3600
+    env_base = dict(os.environ, GIT_AUTHOR_DATE=f"@{t_base} +0000", GIT_COMMITTER_DATE=f"@{t_base} +0000")
+    open(os.path.join(d, "queue.txt"), "w").write("amend\n")
+    subprocess.run(["git", "add", "queue.txt"], cwd=d, check=True)
+    subprocess.run(["git", "commit", "-qm", "chore(goals): amend"], cwd=d, env=env_base, check=True)
+    new_base = _git_local(d, "rev-parse", "HEAD").stdout.strip()
+    # Integration: rebase the lane onto the moved base (author date kept, committer fresh).
+    _git_local(d, "checkout", "-q", "-b", "lane", work)
+    r = _git_local(d, "rebase", "-q", new_base)
+    assert r.returncode == 0, r.stderr
+    head = _git_local(d, "rev-parse", "HEAD").stdout.strip()
+    assert head != work
+    gf = os.path.join(d, "goal.md")
+    open(gf, "w").write("---\ntype: chore\nacceptance:\n  - \"true\"\n---\nbody\n")
+    home = tempfile.mkdtemp(); goal = "004"
+    path = _report_home(home, d, goal)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    open(path, "w").write("STATUS: DONE\n")
+    os.utime(path, (t_work + 10, t_work + 10))   # after the work, before the moved base
+    script = os.path.join(os.path.dirname(__file__), "pg_validate.py")
+    res = subprocess.run([sys.executable, script, "--head", head, "--base", new_base,
+                          "--goal", goal, "--goal-file", gf],
+                         capture_output=True, text=True, cwd=d, env=_pgv_env(home))
+    out = json.loads(res.stdout)
+    rf = next(c for c in out["checks"] if c["name"] == "report-file")
+    assert rf["pass"] is True, rf
+    assert out["verdict"] == "PASS", res.stdout
+    # A report older than the sitting's first work commit is still stale.
+    os.utime(path, (t_work - 10, t_work - 10))
+    res2 = subprocess.run([sys.executable, script, "--head", head, "--base", new_base,
+                           "--goal", goal, "--goal-file", gf],
+                          capture_output=True, text=True, cwd=d, env=_pgv_env(home))
+    rf2 = next(c for c in json.loads(res2.stdout)["checks"] if c["name"] == "report-file")
+    assert rf2["pass"] is False, rf2

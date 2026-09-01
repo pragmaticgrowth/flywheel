@@ -13,6 +13,35 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [14.3.1] — 2026-09-01
+
+Forensics on the same v14 field run (nonresidenttax, 2026-09-01), the integration
+step of three consecutive lanes (208, 209, 222). Two gate artifacts recurred on every
+goal and each cost an orchestrator override.
+
+### Fixed
+
+- **`report-file` no longer flags every integrated lane's report as stale.** The check
+  compared the report's mtime with the `--base` commit time, but parallel-mode
+  integration rebases the lane onto a branch HEAD that moved AFTER the implementer
+  finished (the queue's amend/complete commits), so the report was "older than --base"
+  by construction — three goals in a row passed only on a `gate-defect` override.
+  `pg_validate.py` now anchors on the EARLIER of the `--base` commit time and the
+  sitting's first work commit AUTHOR time (which survives a rebase): a report written
+  after the work began is this sitting's report; one older than its first work commit is
+  still stale. No work commits → `--base` exactly as before. Test:
+  `test_report_file_survives_an_integration_rebase_that_moves_base_past_it`.
+
+### Changed
+
+- **define-goal's `touches:` closure names the regenerated docs index.** In a repo whose
+  gate regenerates a docs index from tracked docs (`docs/README.md` behind a generator
+  `--check`), the implementer brief's own plan doc stales that index on every goal, and
+  the owner ruled the resulting `blast-radius` finding REAL — the contract must declare
+  the path. Mechanical check 1 now lists it beside the manifest/ledger regen and the
+  linked plan file, so define-goal stamps it instead of dispatch amending it at gate
+  time.
+
 ## [14.3.0] — 2026-09-01
 
 Forensics on the SECOND v14 field run (nonresidenttax, 2026-09-01, the four-lane
