@@ -136,6 +136,15 @@ def test_define_goal_never_auto_fixes_a_whole_outcome_miss():
     assert "a whole-outcome miss is a design fault" in text
 
 
+def test_define_goal_stamps_an_explicit_acceptance_on_outcome_checks():
+    """An omitted `acceptance:` auto-detects the root test script, which in a
+    monorepo runs the whole estate and reds on things the outcome never touched
+    (measured twice on verification-only goals, 2026-09-02)."""
+    text = unwrapped(DEFINE)
+    assert "`acceptance:` is never omitted on an outcome-check goal" in text
+    assert 'acceptance: ["true"]' in text
+
+
 # ---- dispatch: what `status: done` means --------------------------------------
 
 def test_plan_status_done_means_outcome_check_passed():

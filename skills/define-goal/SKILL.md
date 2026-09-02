@@ -79,12 +79,16 @@ verification-only: it builds nothing and its criteria are the plan's own
 `## What will be true when done` bullets, each shown FAILING at the plan's base commit
 and PASSING at HEAD. Contract it `type: chore` (the type-shape rule admits a
 verification goal without a no-behavior-change proof), `depends_on` every other phase,
-and carry the base commit into its Context so "fails at base" names a real sha. Two
+and carry the base commit into its Context so "fails at base" names a real sha. Three
 traps while drafting it: a bullet whose command already passes at base is measuring a
-piece, not the whole — send it back to a phase's Verify line; and a `-k` selector exits
+piece, not the whole — send it back to a phase's Verify line; a `-k` selector exits
 5 when it matches nothing, so any test name a bullet selects must be pinned by a
-criterion in the goal that CREATES that test, never left to Interfaces prose. Never
-contract it to auto-fix what it
+criterion in the goal that CREATES that test, never left to Interfaces prose; and
+**`acceptance:` is never omitted on an outcome-check goal** — an absent field makes
+the gate auto-detect the repo's root test script (a monorepo's `pnpm test` runs
+everything and reds for reasons unrelated to the outcome), so stamp the headless
+outcome commands themselves, or the explicit no-op `acceptance: ["true"]` when every
+bullet is **needs independent review**. Never contract it to auto-fix what it
 finds: a whole-outcome miss is a design fault, and design faults stop for the owner.
 
 Recon on a plan-backed want narrows to verifying and completing what the plan located —
