@@ -126,9 +126,12 @@ remaining budget allows.
    (`git merge --ff-only lane/<id>`). NEVER `git merge --squash`: it re-merges the
    lane against the branch and can conflict on files the rebase already settled — it
    has put conflict markers into a committed `index.yaml`; the rebase-then-ff-only
-   path cannot conflict by construction. Then `chore(goals): complete <id>`, delete
-   the lane and its branch, push (non-blocking), surface needs-independent-review
-   criteria exactly as the canonical sequence's step 4. The branch moves ONLY by
+   path cannot conflict by construction. Then settle triage and, when it routes items
+   to Sweep, the settle sweep (`settle-sweep.md`) ON THE BRANCH from the main
+   checkout — still under this integration lock, never inside the lane, before the
+   next integration. Then `chore(goals): complete <id>`, delete the lane and its
+   branch, push (non-blocking), surface needs-independent-review criteria exactly as
+   the canonical sequence's step 4. The branch moves ONLY by
    fast-forward to verified trees.
 6. Report line + heartbeat per settled goal, exactly as Phase 4 (each settle = one
    fire for the cross-fire brake). In parallel mode `current:` lists the live lane

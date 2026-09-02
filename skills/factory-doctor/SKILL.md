@@ -139,7 +139,7 @@ fix is the one-line `jq` install), and WARN in the two states that mean it is ot
 broken — enabled more than an hour ago with NOTHING recorded, or a newest event older than a
 week (the failure is SILENT: `async: true` swallows hook errors on Claude Code, so the `fix`
 carries the diagnosis — restart, then drop `async` from the installed `hooks/hooks.json` to
-make the real error print). Sixth, `inbox-debt` watches dispatch's capture file: WARN when
+make the real error print). Sixth, `inbox-debt` watches the legacy capture file (pre-v15 dispatch appended it; v15 sweeps in-run): WARN when
 `docs/goals/inbox.md` has ≥10 open `- [ ]` lines or its oldest open line is ≥14 days old
 (the fix is `/process-inbox`), INFO on a small fresh backlog, nothing when empty — inbox
 pile-up was measured as the factory's most invisible debt, because open goals used to hide

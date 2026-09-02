@@ -27,7 +27,7 @@ decision logs, or resume files beyond the goal file itself.
 | `/define-goal <want>` (also just *"I want…"*) | Shape the want into a contract and pick a destination — run-now line or queued goal file (the default). |
 | `/define-goal <document>` | Batch mode: extract many items, one approval table, many goal files. |
 | `/define-goal --amend 004` (also `4`, `004-slug`, or *"fix goal 004's contract"*) | Amend mode: repair a **blocked** goal's defective contract in place and requeue it (see "Amend mode" below). |
-| `/define-goal` (bare, or "convert the inbox") with a non-empty `docs/goals/inbox.md` | Inbox intake: convert dispatch's captured follow-ups into real goals (see "Inbox intake" below). |
+| `/define-goal convert inbox item <N>` (or "make a goal from inbox line …") | Inbox intake — EXPLICIT ask only: turn a named legacy `docs/goals/inbox.md` line into a goal (see "Inbox intake" below). Never offered, never chained. |
 
 Argument rules: `--amend` needs an id — `--amend` with no id, or an id matching no index
 entry, reports the usage line above plus the near-miss ids and stops (never falls
@@ -35,50 +35,25 @@ through to defining a new goal). An id combined with a want or a document → th
 wins; note the ignored text. `--amend` on a goal whose index status is not `blocked` is
 refused (Amend mode, step 1) — it is never a way to edit a live contract.
 
-## Inbox intake — convert dispatch's captured follow-ups
+## Inbox intake — a legacy inbox line, on the owner's explicit ask only
 
-`docs/goals/inbox.md` is dispatch's settle-triage capture file: one `- [ ]` line per
-discovered defect or follow-up that was real but outside its source goal's contract,
-each with a date, source goal id, type guess, one-line description, an earning token,
-and an evidence pointer. Follow-ups surfaced only as chat prose are never queued — the
-inbox is the tracked half of "fully complete".
-
-Whenever this skill is invoked in a repo whose inbox has unconverted lines, say so
-("inbox has N captured follow-ups") and — unless the user's want is unrelated and
-urgent — offer converting them this session. Conversion IS goal definition, not a
-shortcut: each line gets the normal treatment (recon where it touches an existing
-system — the evidence pointer is recon's starting point, not its substitute; type
-shaping; contract review; tier stamp). At ~5+ items run it as batch mode with the inbox
-lines as the item list and one approval table. After a goal file + index entry is
-written (user-approved as usual), DELETE the converted line from `inbox.md` in the same
-commit as the index entry; a line the user declines to convert stays checked off as
-`- [x] declined: <reason>`. Dispatch appends to the inbox; lines are converted or
-removed only by this skill or by `/process-inbox` — the attended triage front door that
-re-verifies every item against current code first, drops disproved/dead lines with a
-recorded why, fixes the genuinely mechanical ones directly, and hands THIS skill only
-the confirmed convert list. Items arriving from it are pre-verified: recon narrows to
-verify-and-complete, and the contract review runs unchanged.
-
-**Drain waiver.** When the convert list arrives from a flagless `/process-inbox` DRAIN,
-the approval table / draft confirmation is WAIVED — the owner approved the whole drain
-by invoking it, and dispatch's gate remains the second view. The waiver covers the
-owner touch ONLY — and that includes BOTH question rounds: under it a round-2 fork that
-is not an owner fork takes the recommended reading, recorded as an assumption in
-Context, never a question. The red-team still reviews every draft (contract-blocking findings
-still block — an unfixable one sends the item back to triage as KEEP with the finding
-as its reason), tier stamps and every intake rule stand, and assumptions that would
-have gone in the confirmation are recorded in the goal's Context with
-`provenance: inbox-drain`. A true owner fork (spend, data loss,
-irreversible/externally-visible) is never resolved under the waiver — the item returns
-to the drain's OWNER bucket unconverted. A `--triage-only` handoff or any direct
-invocation keeps the approval table.
+`docs/goals/inbox.md` is the capture file dispatch versions before v15.0.0 appended at
+settle time. Since v15.0.0 nothing in the factory converts inbox lines into goals:
+dispatch fixes its settle findings in-run (its settle sweep) and `/process-inbox`
+fixes legacy lines directly, parking what it cannot fix with a `→ /define-goal <want>`
+pointer. Intake runs ONLY when the user names a line to convert — a bare invocation
+never mentions or offers the inbox, and no skill hands lines here automatically. A
+named line gets the normal treatment (recon where it touches an existing system — the
+evidence pointer is recon's starting point, not its substitute; type shaping; contract
+review; tier stamp; the approval touch). After the goal file + index entry is written,
+DELETE the converted line from `inbox.md` in the same commit as the index entry.
 
 **Three intake refusals:** (1) caption/comment-wording items — a test name or comment
 overclaiming what its assertion pins, doc phrasing — are fix-directly-or-drop material
-(`/process-inbox`'s FIX-NOW bar), never goals; refuse such an item back to triage.
+(`/process-inbox`'s FIX bucket), never goals; refuse such an item back to triage.
 (2) An item whose factual premise rests only on an aggregate/inferred reading (a metric
 table, a count nobody re-derived) is not converted until the premise is confirmed
-against a primary artifact — refuse it back to triage as KEEP `premise unconfirmed`.
+against a primary artifact — refuse it back to triage as PARK `premise unconfirmed`.
 (3) An item whose fix names a specific mechanism (an alert channel, a queue, a secret)
 has that mechanism verified live, read-only, before it enters the contract.
 
@@ -330,7 +305,7 @@ a one-liner you can already pin with certainty. Recon details:
   needs a human's mid-goal word is unsatisfiable by construction in a drain (dispatch
   drains never ask). Split at authoring time: the reversible/investigative half —
   enumerate, verify, measure, prepare — queues as the goal, and the irreversible act
-  itself goes to the owner as an OWNER item (inbox line or needs-you) that the queued
+  itself goes to the owner as an OWNER item (a needs-you line) that the queued
   half's evidence feeds, with the exact command and a recommendation. A "stop and
   confirm before <action>" Constraints line remains legal ONLY for actions the
   criteria do NOT require. (Run-now `/goal` destinations may keep the interactive

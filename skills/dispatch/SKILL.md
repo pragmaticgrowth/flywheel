@@ -184,8 +184,8 @@ panel spawn on Droid.
   re-gating, squashing, completing, blocking, and the (pre-authorized) push are this
   skill's own specified steps — execute them without asking. "Want me to run the
   repair?" is a compliance miss, not politeness. The ONLY legal interactive ask is the
-  Attended-only rule below; anything else a human must know goes to needs-you or the
-  settle-triage inbox, and the run continues. **Declarative stalls are the same miss:**
+  Attended-only rule below; anything else a human must know goes to needs-you, the settle
+  sweep, or the report file, and the run continues. **Declarative stalls are the same miss:**
   a statement that ends forward motion on a step already licensed ("it needs your
   word", "say the word and I'll…") is an invented permission-ask wearing a period, and
   a run never ends on an offer — an action that is genuinely the owner's is emitted as
@@ -273,6 +273,9 @@ closest table command and say what is uncertain — never drop the `→` half.
 | `CI failure` | the branch's latest CI run is red (a non-blocking observation) | `gh run view --log-failed` |
 | `recurring lesson` | the same gate-failure class recurring across goals | the proposed encoding site — a `config.verify` command, a `config.skills` entry, a CLAUDE.md rule, or `/define-goal --amend <id>` on a goal already `blocked` by it |
 | `needs independent review` | a PASSed goal whose acceptance criteria carry the **needs independent review** marker (a non-blocking observation) | the command or surface from the implementer's report evidence, plus what to look for there (Working a goal, step 4) |
+| `owner decision` | a settle-triage item that spends money, deletes or exposes existing data, or is irreversible/externally visible (Settle triage, disposition 4) | the exact command or action, with the recommendation |
+| `follow-up` | goal-sized new work a settle surfaced that no sweep sitting can land, or a whole-outcome falsifier the sweep could not fix (a non-blocking observation) | `/define-goal <one-line want>` — the owner decides whether it becomes a goal |
+| `sweep failed` | a settle sweep whose gate failed after its repair round; the sweep was reset and its items are Report-only (a non-blocking observation) | the goal's report file `## Sweep` section |
 
 The `contract defect` class keeps its specific detail in the `<reason>` half — the one
 row covers every contract-defect shape, and the reason string tells them apart.
@@ -288,14 +291,13 @@ renders under `needs-you:` ONLY when a human decision or human-only action is wh
 unblocks it — an owner fork (spend, data loss, irreversible or externally visible), or
 an item the self-heal pass already tried and could not clear. Pure observations —
 `CI failure` (pre-existing red), `recurring lesson`, `needs independent review` on a
-PASSed goal, a goal this run retired — render as `fyi:` bullets after the needs-you
+PASSed goal, `follow-up`, `sweep failed`, a goal this run retired — render as `fyi:` bullets after the needs-you
 items, same line shape, never counted as waiting on the human.
 
 ## Self-heal — the run fixes its own blockers before naming a human
 
 Most contract-defect blocks need ~10 minutes of factory work and zero owner input, so
-in EVERY dispatch run (the invocation is the standing approval — the same waiver
-precedent process-inbox drains use):
+in EVERY dispatch run (the invocation is the standing approval):
 
 1. **A contract-defect settle routes through define-goal's amend machinery IN-RUN,
    not to a human.** When a goal settles (or already sits) `blocked` with a
@@ -460,10 +462,10 @@ the wrong branch.
 **Drained-queue terminal stop.** Dispatch stops when there is nothing left to do: when
 Phase 2 finds no ready goals AND needs-you is empty. Exactly ONE closing line ends the
 run — never both: a run that worked ≥1 goal closes with Phase 4's final summary line
-(`stopped: drained`, inbox pointer per Phase 4); a run that finds the queue already
-drained at start (zero goals worked) emits `factory drained — <done>/<total> done`
-instead (appending ` · inbox: <N> captured → /process-inbox` when `docs/goals/inbox.md`
-has unconverted items) and stops. A terminal stop still runs Phase 4 first, and its
+(`stopped: drained`); a run that finds the queue already drained at start (zero
+goals worked) emits `factory drained — <done>/<total> done` instead (appending
+` · inbox: <N> legacy → /process-inbox` only when a pre-v15 `docs/goals/inbox.md`
+still has open lines) and stops. A terminal stop still runs Phase 4 first, and its
 heartbeat append is the lock's LAST rewrite: every terminal stop — drained, `--count`
 exhausted, solo goal settled, environment death — ends with
 `rm ~/.local/state/pg-dispatch/<SLUG>/lock` before the closing line (a lock left behind
@@ -487,13 +489,6 @@ map paths to services, run every declared path). One shipped and one not is
 standing authorization in the repo's docs → one clause, `not shipped (no standing
 authorization)`, and nothing more — never an offer. The rule keys STRICTLY off the
 target repo's own docs; dispatch never invents a deploy.
-
-**Chain to the inbox — a user-invoked flagless drain finishes the loop.** When a
-flagless drain the USER invoked ends `stopped: drained` with ≥1 unconverted inbox line,
-do not point at `/process-inbox` — INVOKE it, flagless, once. Chain guards, both hard:
-never when THIS dispatch run was itself invoked by process-inbox step 6 (the chain
-never loops), and at most one chain per session. Count-limited runs, solo mode, and
-stops other than `drained` keep the pointer instead.
 
 At end-of-drain only (NOT per-goal — no polling), if the working branch has a remote
 AND `gh` is available and authenticated, do ONE non-blocking check of the latest CI run
@@ -688,8 +683,12 @@ For each claimed goal, in order:
    command by this rule when it resolves — a trivial scope fix must not wait an hour
    behind a wedge a queued goal will fix.
 4. PASS → `git reset --soft <gate_base> && git commit -m "feat(goal <id>): <slug>"`
-   (squash to one), then `chore(goals): complete <id>`; push if a remote exists
-   (non-blocking).
+   (squash to one). Then run Settle triage (below); when it routes ≥1 item to Sweep,
+   run the settle sweep (`$DISPATCH_REFS/settle-sweep.md`) NOW, on the branch — one
+   tiered fixer over the swept items, the same two-arm gate over `sweep_base..HEAD`,
+   one repair round, squash to one `chore(sweep <id>)` commit; a failed sweep resets
+   to `sweep_base` and never changes the goal's verdict. Only then
+   `chore(goals): complete <id>`; push if a remote exists (non-blocking).
    **Plan mirror (plan-backed goals only).** If the goal's Context carries a `Plan:`
    link, flip that phase's `- [ ]` to `- [x]` in the plan file INSIDE the same
    `chore(goals): complete <id>` commit (the claim protocol's one sanctioned
@@ -709,8 +708,8 @@ For each claimed goal, in order:
    name the report path — never drop the item. A goal with no such marker surfaces
    nothing. This is an observation, never a completion gate — a PASS still completes
    the goal and an unattended drain keeps claiming.
-   Then run Settle triage (below) and report; the run claims the next ready goal
-   unless a stop condition has fired.
+   Then report; the run claims the next ready goal unless a stop condition has
+   fired.
    FAIL_FIXABLE → one repair round per `$DISPATCH_REFS/escalation-and-repair.md` —
    warm resume of the goal's own implementer when the harness supports it, else one
    fresh repair agent on the same resolved tier; the COMPLETE verified findings list
@@ -751,27 +750,16 @@ session); without it the gate returns an actionable INCONCLUSIVE naming that fix
 tunable via `PG_BASH` and `PG_VALIDATE_TIMEOUT` (seconds per acceptance command,
 default 1800).
 
-## Settle triage — nothing survives as prose (every settle, PASS or FAIL)
+## Settle triage — nothing survives as prose, nothing is parked (every settle, PASS or FAIL)
 
-Chat prose evaporates when the session ends; only committed artifacts survive. BEFORE a
-goal's settle commit, walk every loose end this cycle produced — each `Concerns:` line
-of a DONE_WITH_CONCERNS report, every reviewer finding verified real but out-of-scope,
-every "needs a new goal" / "follow-up" recommendation, every recurring-lesson
-proposal — and give each item exactly ONE of these four dispositions —
-**unsure → Report-only**: Report-only is the DEFAULT — an item that does not clearly
-meet one of the capture bar's three earning shapes is under the bar:
-
-**One carve-out, and it outranks the default.** An item that would FALSIFY a bullet in
-the goal's linked plan `## What will be true when done` is NEVER Report-only, however
-unsure you are. It carries the `live-defect` earning token by construction — so the
-capture item's "if you cannot honestly name one shape → Report-only" cannot re-route
-it — and it earns its inbox line. The operative test is narrow: the item qualifies
-when, if true, it would make an outcome bullet's COMMAND fail, or make a
-`**needs independent review**` bullet false. Being topically related to a bullet is
-not enough. This is a carve-out for the WHOLE outcome, not a rollback of the capture
-bar — nits, latent findings, fail-safe residuals, and contract-mandated tradeoffs
-stay Report-only exactly as they are; the bar filters nits, and an outcome bullet is
-the one thing measuring whether the plan delivered.
+Chat prose evaporates when the session ends; only committed artifacts survive — and a
+finding parked "for a later goal" is work the factory owes and never schedules. BEFORE
+a goal's settle commit, walk every loose end this cycle produced — each `Concerns:`
+line of a DONE_WITH_CONCERNS report, every reviewer finding verified real but
+out-of-scope, every `Follow-ups:` line, every "needs a new goal" recommendation, every
+recurring-lesson proposal — and give each item exactly ONE of these dispositions.
+`docs/goals/inbox.md` is never written: dispatch fixes what it finds, in-run, or says
+in one line why it did not.
 
 1. **Repair now** — it breaches THIS goal's own contract → it is a gate finding; route
    it FAIL_FIXABLE. A DONE_WITH_CONCERNS whose concern invalidates an acceptance
@@ -779,35 +767,46 @@ the one thing measuring whether the plan delivered.
 2. **Dismiss** — verified false or already tracked → one line of reasoning in the
    goal's report file (the `## Orchestrator` section — "the fire's report" always
    means that FILE, never the chat turn). **Dismiss is for items that are NOT REAL**
-   (disproved, or already captured elsewhere). An item that is real but worthless — a
-   wrong test caption, a cosmetic nit — is disposition 4, which names those classes
-   explicitly; when both seem to fit, take 4. The record must not confuse "this was
-   false" with "this was true and under the bar".
-3. **Capture** — real, outside this goal's contract, AND over the capture bar → append
-   ONE line to `docs/goals/inbox.md` (create on first use), commit
-   `chore(goals): inbox <id>`:
-   `- [ ] <YYYY-MM-DD> <source-goal-id> <bug|feature|chore> — <one-line description> (earn: live-defect|new-work|owner-decision) (evidence: <report path or path:line>)`
-   **The capture bar — exactly three shapes earn an inbox line:** (a) a LIVE defect
-   (`live-defect`) — wrong behavior reachable on current code; (b) genuinely NEW work
-   (`new-work`) — missing wiring, a missing consumer, a feature gap the owner would
-   want built; (c) an OWNER decision (`owner-decision`) — spend, data loss, anything
-   irreversible or externally visible.
-   **Capture is legal ONLY when the appended line carries its earning token** — the
-   `(earn: …)` field naming, in the line itself, which of the bar's three shapes the
-   item meets. If you cannot honestly name one shape, the item is not over the bar →
-   Report-only. An inbox line without its earning token is a capture that did not
-   happen — never append it.
-4. **Report-only** (the DEFAULT — unsure lands here) — real but under the bar: latent
-   or unreachable-today findings, fail-safe residuals, deliberate contract-mandated
-   tradeoffs, test-caption/comment-wording nits, watch items. One line in the goal's
-   report file naming the item and this disposition. The bar keeps the inbox a queue
-   of work, not a review archive.
+   (disproved, or already covered by a queued goal). An item that is real but
+   worthless — a wrong test caption, a cosmetic nit — is Report-only; when both seem
+   to fit, take Report-only. The record must not confuse "this was false" with "this
+   was true and under the bar".
+3. **Sweep** — real, outside this goal's contract, and a code change one fixer
+   sitting can land and the gate can verify: a LIVE defect (wrong behavior reachable
+   on current code), genuinely NEW work (missing wiring, a missing consumer, a gap
+   the owner would want closed), or a caption/comment/doc/config nit that states
+   something FALSE (a test name claiming what its assertion does not pin, a doc
+   sentence contradicting the code); pure wording preference is Report-only. **The
+   one-sitting test, same in every skill:** the fix stays inside the files the
+   item's evidence names plus their tests, touches no migration/lockfile/CI/config
+   file, and adds no new drivable surface (route, screen, endpoint, job, command,
+   table); anything else is disposition 5. It goes to the settle sweep — `$DISPATCH_REFS/settle-sweep.md`: one
+   tiered fixer, the goal gate re-pointed at the sweep range, one repair round,
+   squash, then the complete flip. **The whole-outcome carve-out:** an item that
+   would FALSIFY a bullet of the goal's linked plan `## What will be true when done`
+   — if true, an outcome bullet's COMMAND fails or a `**needs independent review**`
+   bullet is false; topical relation is not enough — is ALWAYS swept, never
+   Report-only, however unsure you are; if the sweep cannot fix it, it surfaces as
+   `fyi:` class `follow-up` naming the outcome bullet it threatens.
+4. **Owner decision** — spend, data loss, anything irreversible or externally
+   visible → a `needs-you:` item, class `owner decision`, WITH a recommendation.
+   Never swept, never asked mid-run.
+5. **Follow-up (goal-sized)** — real new work too large for a sweep sitting (a
+   schema/migration change, a conflict-domain file, a new drivable surface — anything
+   failing the one-sitting test above) → ONE `fyi:` line, class `follow-up`, ending
+   `→ /define-goal <one-line want>`. The owner decides whether it becomes a goal;
+   the factory never mints goals from a settle.
+6. **Report-only** (the DEFAULT — unsure lands here) — real but not worth a sweep
+   commit: latent or unreachable-today findings, fail-safe residuals, deliberate
+   contract-mandated tradeoffs, wording-preference nits, watch items. One line in the
+   goal's report file
+   naming the item and this disposition.
 
-A goal does NOT settle `completed` while any loose end is unclassified — that is the
-definition of "complete" this factory ships. The inbox is capture-only: no statuses, no
-priorities, never touched by implementers. define-goal converts items to real goal
-contracts and removes converted lines — that conversion is the ONLY edit anyone but
-dispatch makes.
+A goal does NOT settle `completed` while any loose end is unclassified or its sweep
+is unsettled — that is the definition of "complete" this factory ships. A pre-v15
+`docs/goals/inbox.md` with open lines is legacy debt: `/process-inbox` fixes it
+directly (no goals minted there either); dispatch neither appends to it nor chains
+into it.
 
 ## Parallel mode — the lane model
 
@@ -866,8 +865,14 @@ whether work commits exist after that claim commit:
    Arm B), never a license to complete without a report. Before running the gate, if
    that report is missing, empty, or older than `gate_base`, regenerate a stub report
    from `gate_base..HEAD` at the same path FIRST so Arm A cannot reset a sitting that
-   only lacked the file. Then run the gate (Working a goal, step 3). PASS → squash +
-   `chore(goals): complete <id>`. FAIL_FIXABLE → one repair round, re-gate; still
+   only lacked the file. **First, the mid-sweep crash rule:** a `feat(goal <id>)`
+   commit already inside `gate_base..HEAD` means the goal PASSED its gate and the
+   session died in its settle sweep — reset to the later of that commit and a
+   `chore(sweep <id>)` squash commit (loose `chore(sweep <id>): <gist>` commits are
+   un-gated and are discarded), then `chore(goals): complete <id>`; the sweep is not
+   resumed and the goal gate never re-runs on that range
+   (`$DISPATCH_REFS/settle-sweep.md`, Crash rule). Otherwise run the gate (Working a
+   goal, step 3). PASS → squash, settle triage + sweep, `chore(goals): complete <id>`. FAIL_FIXABLE → one repair round, re-gate; still
    failing → `git reset --hard <gate_base>` + `chore(goals): block <id> — <reason>`.
    FAIL_CONTRACT → reset + block (class `contract defect`). INCONCLUSIVE → reset +
    block (`no runnable local gate: <evidence>`).
@@ -928,7 +933,7 @@ near-misses.
 
 ## Phase 4 — report (the report IS the message — nothing rides along)
 
-`[dispatch] <done>/<total> done [<bar>] · ready: <count> · waiting: <count, omit when zero> · blocked: <count> · inbox: <unconverted inbox lines, omit when zero> · current: <id or none> · last: <id PASS (reviewed, <N>m | review-skipped: mechanical, <N>m)|FAIL (<N>m)|none>[, gate-defect: <check>] · needs-you: <blocked goals + human decisions, or nothing>`
+`[dispatch] <done>/<total> done [<bar>] · ready: <count> · waiting: <count, omit when zero> · blocked: <count> · current: <id or none> · last: <id PASS (reviewed, <N>m | review-skipped: mechanical, <N>m)[, swept: <fixed>/<items>]|FAIL (<N>m)|none>[, gate-defect: <check>] · needs-you: <blocked goals + human decisions, or nothing>`
 
 **`waiting` is not `blocked` — never conflate them.** `waiting` counts goals queued
 behind an unfinished dependency: the normal shape of a chained plan, self-resolving as
@@ -995,8 +1000,10 @@ line appends no extra heartbeat).
 **The closing state is a word, not an essay:** `all complete` when the queue is
 drained, nothing is blocked, and needs-you is empty; otherwise `outstanding: <n> for
 you` where `<n>` counts exactly the needs-you bullets that follow (fyi items never
-count). When the run stops with a non-empty inbox and the chain rule doesn't fire, the
-summary carries `inbox: <N> captured → /process-inbox`. This summary line is the run's
+count). When a pre-v15 `docs/goals/inbox.md` still has open lines at a drained stop, the
+summary carries `inbox: <N> legacy → /process-inbox` — a pointer, never an
+invocation: dispatch does not chain into process-inbox (the chain existed to work
+the goals conversion minted; nothing mints them now). This summary line is the run's
 ONE closing line; Phase 0's `factory drained` line replaces it only when the run worked
 zero goals.
 

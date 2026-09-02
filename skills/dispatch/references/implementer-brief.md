@@ -129,7 +129,7 @@ criterion met but fragile, or an assumption that could invalidate one. These are
 concerns and never earn the status: an out-of-scope boundary you honored, a
 pre-existing baseline failure you correctly did not fix (both belong in the report
 file), or a discovered follow-up outside this contract (list it under a `Follow-ups:`
-heading in the report file — the orchestrator's settle triage captures it). Scope
+heading in the report file — the orchestrator's settle triage sweeps it in-run). Scope
 discipline is conformance, not a concern: report DONE.
 Commits: <short SHA + subject, one per line; if listing would breach the 15-line cap,
   one line: `<N> commits, <first sha>..<last sha>`>

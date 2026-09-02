@@ -33,7 +33,8 @@ Three sources, and the skill prefers the most trustworthy one for each number:
 The report also counts each repo's **inbox debt** — open `- [ ]` lines in
 `docs/goals/inbox.md` — per repo and in the totals, including repos with debt
 but no recent goal activity. A piling inbox is a factory-health signal exactly
-like a slow goal; `/process-inbox` is its fix.
+like a slow goal; `/process-inbox` is its fix (it fixes directly — since v15.0.0 neither
+it nor dispatch mints goals from inbox lines, so debt only ever shrinks).
 
 ## Run
 

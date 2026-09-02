@@ -13,6 +13,72 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [15.0.0] — 2026-09-02
+
+The zero-inbox release (owner decision 2026-09-02): "after a goal completes I don't want
+to see a remaining queue — the orchestrator should fix every inbox item itself with
+subagents, and it should not create new goals; a process-inbox run was turning the
+leftovers into eight or ten goals." A major bump because the pipeline's shape changes:
+the settle → inbox → process-inbox → define-goal → dispatch loop is gone, and
+`docs/goals/inbox.md` stops being a queue.
+
+### Changed
+
+- **dispatch — the settle sweep.** Settle triage's Capture disposition (and the whole
+  capture bar with its `(earn: …)` tokens) is replaced by **Sweep**: every real,
+  out-of-contract, fixable finding — reviewer findings, `Follow-ups:` lines, plan-outcome
+  falsifiers, caption/doc nits — is fixed IN-RUN, before `chore(goals): complete <id>`,
+  by ONE fixer spawned on the strongest tier its items need (heavy for any behavior or
+  test change, medium for rote mechanical, never light), one item per commit, behind the
+  SAME two-arm gate re-pointed at `sweep_base..HEAD` (Arm A: `config.verify` + a
+  `docs/goals/` untouched check; Arm B sized by the diff), one repair round, then a
+  single `chore(sweep <id>)` squash kept separate from the goal's `feat` commit. A failed
+  sweep resets to `sweep_base` and never changes the goal's verdict. "Completed" now
+  means the goal passed AND its sweep settled. The procedure lives in
+  `skills/dispatch/references/settle-sweep.md`; parallel mode runs the sweep on the
+  branch under the integration lock, never in a lane.
+- **Two new settle dispositions, both one line for the owner.** An owner decision
+  (spend, data loss, irreversible/externally visible) is a `needs-you:` item of the new
+  class `owner decision`, with a recommendation; goal-sized new work (a migration, a
+  conflict-domain file, a new surface) is an `fyi:` line of the new class `follow-up`
+  ending `→ /define-goal <want>` — the owner decides whether it becomes a goal, the
+  factory never mints one from a settle. A third class, `sweep failed`, is the fyi for a
+  sweep whose gate did not pass. Report-only stays the default for the unsure.
+- **Phase 1 gains the mid-sweep crash rule.** An `in_progress` claim whose range already
+  holds a `feat(goal <id>)` commit passed its gate; the next run resets to the later of
+  that commit and a `chore(sweep <id>)` squash (loose sweep commits are un-gated and
+  dropped) and completes the goal — it never re-gates a range containing sweep work,
+  which `blast-radius` would fail by construction.
+- **Report line:** the `inbox:` counter is gone; `last:` carries `swept: <fixed>/<items>`
+  when a sweep ran. The **chain into `/process-inbox` at a drained stop is removed**;
+  a pre-v15 inbox with open lines earns one `inbox: <N> legacy → /process-inbox`
+  pointer, never an invocation.
+- **process-inbox no longer creates goals.** CONVERT is gone, FIX-NOW's mechanical-only
+  bar is lifted into **FIX** (any confirmed one-sitting code change, run through the
+  settle-sweep procedure cluster by cluster, one writer at a time, commits
+  `chore(inbox): …`), KEEP becomes **PARK** (leaves the open list for the ledger with a
+  `→ /define-goal <want>` pointer and one `fyi: follow-up` report line). After a sweep
+  the open list holds exactly the OWNER lines. Step 6 (chain into a dispatch drain) is
+  gone with the goals it existed to work. The verify-first law, the OWNER bar, and the
+  hard report envelope are unchanged.
+- **define-goal's inbox intake is explicit-ask only.** A bare invocation no longer
+  mentions or offers the inbox; nothing hands lines to it automatically; the
+  process-inbox drain-waiver paragraph is gone (the amend-mode waiver for dispatch's
+  self-heal is untouched). Intake refusals now name the FIX/PARK buckets.
+- goals-status, factory-doctor (`inbox-debt`), and factory-report keep their inbox
+  counters — they now measure legacy debt, which only shrinks.
+
+### Why this shape
+
+The measured pile-up (v11.6.0: ~1.5–2.5 inbox lines per completed goal; v14.0.0: 101 open
+items across the estate with no surface showing them) was never "too little capture" —
+it was capture as a substitute for finishing. The fix costs the same minutes at settle
+that the inbox deferred to a later session, and every item now meets the gate that
+would have judged its goal. One-incident provenance is not the issue here (this is an
+owner-directed design change), but the sweep's numbers are new: **review by
+2026-09-16** — sweep pass rate, items per goal, and settle-minute growth from
+`/factory-report`, and whether `follow-up` fyi lines are being acted on or ignored.
+
 ## [14.4.0] — 2026-09-02
 
 Forensics on the three sessions the owner was stuck in on 2026-09-01 (romy,

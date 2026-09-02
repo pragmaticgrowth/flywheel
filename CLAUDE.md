@@ -47,8 +47,9 @@ for review roles.
 plain-language → autonomous-execution pipeline around a file-based goal queue
 (`docs/goals/` in target repos): `/ideate → /define-goal → /dispatch →
 /goals-status`, with `loop-architect` and `factory-doctor` as the rails,
-`process-inbox` closing the loop from dispatch's captured follow-ups back into
-define-goal, `factory-report` as the cross-repo performance view over the whole
+`process-inbox` the direct-fix sweep for a legacy `docs/goals/inbox.md` (since
+v15.0.0 dispatch fixes its own settle findings in-run — the settle sweep — and no
+skill mints goals from inbox lines), `factory-report` as the cross-repo performance view over the whole
 estate (v13.0.0), and `show-me` as the one pipeline-adjacent explainer (v11.8.0,
 owner ask 2026-08-18 — adapted from HumanLayer's show-me). There
 is no `plugins/` directory — the repo root IS the flywheel plugin.
@@ -306,6 +307,11 @@ is no `plugins/` directory — the repo root IS the flywheel plugin.
   `--check`) — the implementer brief's plan doc lands under `docs/` and stales it, so
   every goal in such a repo declares it up front instead of tripping `blast-radius`
   on finished work. One-incident rule, review by 2026-09-15 (CHANGELOG 14.3.1).
+
+  v15.0.0: inbox intake is EXPLICIT-ASK only (`convert inbox item N`); a bare invocation
+  never mentions or offers the inbox, nothing hands lines to it automatically, and the
+  process-inbox drain-waiver paragraph is gone (the amend-mode waiver for dispatch's
+  self-heal is untouched).
 
 **Harness note (v8.2.0; depth corrected v8.3.0; SUPERSEDED in v14.0.0):** on Claude Code
 a subagent can spawn further subagents (Agent nests — official docs put the default
@@ -694,6 +700,25 @@ never authoritative — 1–3 spawns per goal buying nothing.
   2026-09-30); "work commit" defined; the Phase 4 template carries `gate-defect:`.
   define-goal's drain waiver now explicitly covers question rounds; the red-team
   carve-out names all nine mechanical items.
+  v15.0.0 (owner decision 2026-09-02 — "the orchestrator should fix every inbox item
+  itself with subagents and never create new goals"): THE SETTLE SWEEP replaces inbox
+  capture. Settle triage's dispositions are Repair / Dismiss / SWEEP / Owner decision /
+  Follow-up / Report-only: every real, out-of-contract, one-sitting-fixable finding is
+  fixed IN-RUN before `chore(goals): complete <id>` by ONE fixer on the strongest tier
+  its items need (heavy for behavior/test changes, medium for rote mechanical, never
+  light; ~5 items per sweep), one item per `chore(sweep <id>)` commit, behind the same
+  two-arm gate re-pointed at `sweep_base..HEAD` (Arm A = `config.verify` + `docs/goals/`
+  untouched; Arm B sized by the diff), one repair round, a single squash kept separate
+  from the goal's `feat` commit; a failed sweep resets to `sweep_base` and never changes
+  the goal's verdict. `docs/goals/inbox.md` is never written by dispatch; the chain into
+  /process-inbox and the `inbox:` report-line counter are gone (`last:` carries
+  `swept: <fixed>/<items>`). Owner decisions → `needs-you:` class `owner decision`;
+  goal-sized new work → `fyi:` class `follow-up` ending `→ /define-goal <want>` (the
+  owner decides; the factory never mints goals from a settle). Phase 1's mid-sweep crash
+  rule: a `feat(goal <id>)` commit already in the range means the gate passed — reset to
+  the later of it and a `chore(sweep <id>)` squash, complete, never re-gate. Procedure:
+  `skills/dispatch/references/settle-sweep.md`; parallel mode sweeps on the branch under
+  the integration lock. Review the sweep's numbers by 2026-09-16 (CHANGELOG 15.0.0).
 - **goals-status** (v5.2.0; simplified in v6.0.0) — read-only view of the
   docs/goals queue. Prints
   every OPEN goal — `in_progress`, `blocked`, `not_started` — with its title and
@@ -791,6 +816,14 @@ never authoritative — 1–3 spawns per goal buying nothing.
   P-lines printed, mirroring `<O>` — step 3 had been sending those queries to a
   report that step 7's envelope then forbade printing, so a compliant report
   could count `<P>` and show none of them; P-lines are not OWNER lines.
+  v15.0.0: NO GOALS FROM THE INBOX. CONVERT is gone; FIX-NOW's mechanical-only bar is
+  lifted into FIX (any confirmed one-sitting code change, run through dispatch's
+  settle-sweep procedure cluster by cluster, one writer at a time, `chore(inbox): …`
+  commits); KEEP becomes PARK (leaves the open list for the ledger with a
+  `→ /define-goal <want>` pointer + one `fyi: follow-up` line); the dispatch-drain step
+  is gone. After a sweep the open list holds exactly the OWNER lines. The inbox itself is
+  legacy since v15 — dispatch never writes it — so the skill exists for pre-v15 debt and
+  hand-added lines.
 - **show-me** (v11.8.0, owner ask 2026-08-18 — adapted from HumanLayer's
   show-me skill) — visual explainer for the current topic: answers
   "how does X work / what talks to what / what would change" with the
