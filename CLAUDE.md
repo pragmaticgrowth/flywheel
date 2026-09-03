@@ -146,7 +146,8 @@ is no `plugins/` directory — the repo root IS the flywheel plugin.
   rubric (v4.15.0; rebalanced v6.2.0, owner decision 2026-07-24; tier
   vocabulary since v7.0.0): the goal
   `type:` picks the lane and wins ties — heavy is the DEFAULT for every
-  feature/bug goal (tightness is never a downgrade reason; an explicit user
+  feature/bug goal UNTIL v17.0.0, which flipped the default to medium once a goal's
+  Implementation steps pass Executability (tightness is never a downgrade reason; an explicit user
   ask for cheap execution is the only route down), medium is rote
   chore-shaped work only (lint/doc/config sweeps, ports with an exact
   source of truth); unsure → the stronger. Every queued goal gets an adversarial contract review first
@@ -998,8 +999,9 @@ never authoritative — 1–3 spawns per goal buying nothing.
   the repo-wide DEFAULT execution tier for code agents dispatch spawns;
   legacy opus/sonnet/haiku values read as heavy/medium/light aliases; each
   goal's frontmatter `model:` — stamped by define-goal from its
-  contract-tightness rubric (heavy default for features/bugs since
-  v6.2.0) — overrides it per goal, and the orchestrator and review agents
+  contract-tightness rubric (heavy default for features/bugs v6.2.0–v16;
+  medium default since v17.0.0 for goals whose Implementation steps pass the
+  Executability review) — overrides it per goal, and the orchestrator and review agents
   always stay on the session model; the depth-vs-limit trade), repo-wide
   `skills`, `verify` (the ordered local
   build+test commands the gate runs after each implementer), and `budget`
