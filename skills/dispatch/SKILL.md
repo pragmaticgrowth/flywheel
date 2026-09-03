@@ -597,9 +597,14 @@ For each claimed goal, in order:
      the role inline (Named review agents above; no model parameter) — over the
      `gate_base..HEAD` diff plus the goal file, handing it the implementer's
      report-file path to challenge. It runs even when the diff looks clean.
-   - **Escalate to the 2–3-lens PANEL instead of the single reviewer** when the diff
-     spans MORE than 3 files, changes test logic, or touches architecture/public
-     interfaces: spawn 2–3 fresh-check plugin agents (else generic) as concurrent
+   - **Escalate to the 2–3-lens PANEL instead of the single reviewer** ONLY when the
+     diff spans MORE than 10 files, EDITS existing tests or test infrastructure
+     (assertions rewritten, helpers/fixtures/config changed — adding new tests for new
+     code is the normal TDD shape and never triggers it), or touches architecture/
+     public interfaces. The prior `>3 files` trigger fired on 8 of 8 goals in one
+     audited drain, so the single-reviewer default never ran once — a panel is 3×
+     the review spend and must stay the exception. Spawn 2–3 fresh-check plugin
+     agents (else generic) as concurrent
      foreground lenses in ONE message — (a) contract-conformance, (b) tests +
      overbuild, (c) stray files + regressions — each read-only, no model parameter.
      The panel REPLACES the single reviewer, never follows it — and it replaces ONLY

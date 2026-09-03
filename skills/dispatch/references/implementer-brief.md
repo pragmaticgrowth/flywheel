@@ -50,8 +50,15 @@ a self-arranged review would only duplicate it.
 
 Workspace: you are on the current branch in this checkout — work on the current branch
 in this checkout, commit your intended files here. Do NOT create a worktree, do NOT
-create a new branch, do NOT open a PR. Run project setup (install deps) and the repo's
-test baseline; a dirty baseline is reported, never built on. Failures that are already
+create a new branch, do NOT open a PR. Run project setup (install deps) and the
+baseline of what your goal touches — the acceptance commands, plus each touched
+package's own test command SCOPED to the files you will change and their tests
+(never the package's whole suite) — NEVER the repo's full verify pipeline
+(`config.verify`, a preflight/CI script, the whole-repo suite, coverage runs): the
+orchestrator's gate runs that exactly once, after you return, and a copy inside your
+sitting was the single largest measured time sink of the factory (6–13 minutes per
+run, run 1–2 times per implementer, on 8 of 8 goals audited 2026-09-03). A dirty
+baseline is reported, never built on. Failures that are already
 red on the current branch before you start (unrelated suites, missing-secret/env
 environments) are pre-existing, not your regression: note them and move on — do not
 fix them, and they do not block your goal.
@@ -72,7 +79,17 @@ Quality loop — keep it lightweight, but do not skip it:
    regressions ship. For an external library/API question, try
    `curl -sL https://<docs-site>/llms.txt` before WebFetch (llms.txt-linked
    `.md`/`.txt` pages read best via curl).
-4. Verify: run the goal acceptance commands and any repo baseline command you touched.
+4. Verify: run the goal acceptance commands and the test files covering what you
+   changed (the touched package's own test command, scoped to those files). NOT the
+   full suite, NOT the repo verify/preflight pipeline — the gate owns those (see
+   Workspace). Waiting is by PROCESS, never by CLOCK: a command you must run detached
+   is waited on with `timeout <its budget> tail --pid=<pid> -f /dev/null`, which
+   returns the instant it exits; a fixed `sleep N` cannot return early and measured
+   50 % of whole sittings (goal 237: 20 of 39 minutes asleep). A test file re-run more
+   than twice with no edit in between is churn — change something or report. External
+   propagation (DNS, CDN, a deploy going live) gets ONE bounded probe of at most two
+   minutes; still pending → record the state in the report and continue or return —
+   never a retry loop (one sitting spent 18 minutes in three `getent` loops).
    For a behavior change with a drivable surface (CLI, endpoint, UI), also run at least
    one off-happy-path probe at that surface — malformed input, empty value,
    double-run — and record what it showed; acceptance commands alone replay the happy
@@ -100,7 +117,10 @@ Skills are mandatory — invoke each via the Skill tool:
    hypotheses, and some will be wrong. If the code is already correct, lock it in with
    a test and say so; never "fix" code you cannot first demonstrate is broken.
 4. `verification-before-completion` before claiming done: run every command in the
-   goal's acceptance criteria and show output. For UI work, run the goal's SCRIPTED
+   goal's acceptance criteria and show output (that skill's "run the full suite"
+   reflex is overridden here — the acceptance commands plus the scoped test runs of
+   step 4 are the complete pre-return check; the gate runs the repo pipeline). For UI
+   work, run the goal's SCRIPTED
    browser check (start the dev server, drive it with `agent-browser`, ASSERT a
    concrete visible result — element/text/count — not just a page-load) and attach the
    screenshot as evidence; a screenshot with no assertion is not verification.

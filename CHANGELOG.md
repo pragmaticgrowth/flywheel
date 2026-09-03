@@ -13,6 +13,51 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [15.1.0] — 2026-09-03
+
+The pace release. Owner ask 2026-09-03: "agents run a shell command like a validation
+that takes many minutes or hours — find the root cause and fix it." Two audits of every
+run since v15.0.0 (one Droid `/dispatch --unlimited` drain of 9 goals, three Claude Code
+drains, ~60 subagent transcripts, the factory event log) found no slow command and no
+hook cost (`pg-log.sh` measures 12 ms per call). The time went to the factory running the
+same 6–13-minute repo verify pipeline three to five times per goal and to sleeping while
+it ran.
+
+### Changed
+
+- **dispatch — the implementer never runs the repo's verify pipeline.** The brief's
+  "run the repo's test baseline" read as "run `config.verify`": 8 of 8 audited
+  implementers ran the full preflight (coverage included) one or two times, the gate ran
+  it again, the sweep gate again. Now the implementer's pre-return check is the goal's
+  acceptance commands plus the tests of the packages it touched, stated in the
+  Workspace paragraph, the Verify step, and the `verification-before-completion` line
+  (that skill's full-suite reflex is overridden by name). The gate runs the pipeline
+  once. Measured: implementer preflights of 6–13 min, one killed at the repo's own
+  13-minute gate deadline and re-run `--serial` on three goals.
+- **dispatch — waits are by process, never by clock.** The Droid detach rule's "ONE
+  wait" was implemented as `sleep 240–290` chunks, which cannot return early: 12–29
+  minutes asleep per goal, 51 % and 54 % of two whole sittings. The wait is now
+  `timeout <budget> tail --pid=$PID -f /dev/null` in `parallel-mode.md` and the
+  implementer brief; a fixed `sleep` is banned as a wait on both harnesses, and a test
+  file re-run more than twice with no edit between is named churn (one fixer ran the
+  same file 8 times). External propagation (DNS, CDN, deploy) gets one bounded probe of
+  at most two minutes, never a retry loop (18 minutes of `getent` loops in one sitting).
+- **dispatch — the review panel is the exception again.** The `>3 files` trigger fired
+  on 8 of 8 goals, so the single gate-reviewer default never ran once and every gate
+  cost three review spawns. The panel now needs >10 files, an EDIT to existing tests or
+  test infrastructure (new tests for new code never count), or an architecture/public-
+  interface change.
+- **dispatch — the sweep fixer follows the same rule**: tests of the files it changed,
+  never the full pipeline, no sleeps, no re-run churn; the sweep gate's Arm A still
+  runs `config.verify` once.
+
+Not changed, reported to the owner: one 225-minute goal was 82 min of implementer work,
+25 min of gate, and ~97 min dead after a Droid provider rate-limit kill (`BYOK Error:
+429 … cooling down`) left the goal claimed until a human typed `continue`; and the
+nonresidenttax preflight kills its coverage gate at its own 13-minute deadline when
+run in parallel — a repo setting, not a plugin rule. Review the per-goal minutes of the
+next drains by 2026-09-17 against these numbers.
+
 ## [15.0.0] — 2026-09-02
 
 The zero-inbox release (owner decision 2026-09-02): "after a goal completes I don't want

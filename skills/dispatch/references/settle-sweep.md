@@ -62,10 +62,12 @@ green cycle as `chore(sweep <id>): <gist>` — ONE item per commit, so a bad ite
 reverted alone; a gist never contains the text ` items — `, which marks the squash). Stay inside the files each item's evidence names plus their tests;
 an item that needs more than that, needs an owner's word, or resists ~3 honest
 attempts is SKIPPED with a one-line why — never widened, never guessed. Never touch
-docs/goals/**, migrations, lockfiles, or CI/config. Run the repo's verify commands
-before you finish. Append your evidence under `## Sweep` in
-~/.local/state/pg-dispatch/<SLUG>/reports/<id>-report.md. Kill any background watcher
-you started. End with, ≤10 lines:
+docs/goals/**, migrations, lockfiles, or CI/config. Before you finish run the tests
+covering the files you changed — NOT the repo's full verify/preflight pipeline (the
+sweep gate runs that once after you return), and never wait by `sleep`; a test file
+re-run more than twice with no edit in between is churn. Append your evidence under
+`## Sweep` in ~/.local/state/pg-dispatch/<SLUG>/reports/<id>-report.md. Kill any
+background watcher you started. End with, ≤10 lines:
 SWEEP:
   <n>. FIXED <short sha> | SKIPPED <why>
 Tests: <one line>

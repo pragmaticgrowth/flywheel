@@ -34,8 +34,12 @@ Two Droid-only lane rules:
 - **Long in-lane commands must be detached, then waited on ONCE — Droid ONLY.** Droid's
   foreground shell has been observed killing a long-running command with its process
   group at roughly a minute. An in-lane build/test run that can outlive that goes
-  `setsid <cmd> > <log> 2>&1 &`, then ONE wait, then read `<log>` for the Arm A
-  sentinel — the join rule verbatim. One wait, never a `sleep`+`ps` or task-status poll
+  `setsid <cmd> > <log> 2>&1 & PID=$!`, then ONE wait BY PROCESS —
+  `timeout <the command's own budget> tail --pid=$PID -f /dev/null` — then read `<log>`
+  for the Arm A sentinel (the join rule verbatim). The wait returns the instant the
+  command exits; a fixed `sleep N` is banned as a wait on both harnesses because it
+  cannot return early (the 2026-09-03 Droid drain slept 240–290 s at a time, 12–29
+  minutes per goal, half of some sittings). Never a `sleep`+`ps` or task-status poll
   loop, and never `pgrep -f <script>` as the liveness check (the probing shell matches
   itself). On Claude Code NEVER detach: Arm A is one tracked `run_in_background` task
   (SKILL.md, Working a goal step 3) — `setsid` or a trailing `&` there yields a call

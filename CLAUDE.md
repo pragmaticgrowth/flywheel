@@ -719,6 +719,16 @@ never authoritative — 1–3 spawns per goal buying nothing.
   the later of it and a `chore(sweep <id>)` squash, complete, never re-gate. Procedure:
   `skills/dispatch/references/settle-sweep.md`; parallel mode sweeps on the branch under
   the integration lock. Review the sweep's numbers by 2026-09-16 (CHANGELOG 15.0.0).
+  v15.1.0 (owner ask 2026-09-03, two transcript audits of every post-v15 run): THE PACE
+  FIXES — no slow command and no hook cost existed; the factory ran the repo's 6–13-min
+  verify pipeline 3–5× per goal and slept while it ran. The implementer (and the sweep
+  fixer) run ONLY the goal's acceptance commands + the touched packages' tests, never
+  `config.verify` (the gate runs it once); waits are by process
+  (`timeout <budget> tail --pid=$PID -f /dev/null`), a fixed `sleep` is banned as a
+  wait on both harnesses, a test file re-run >2× with no edit between is churn; and the
+  Arm B panel trigger is >10 files / edits EXISTING tests or test infra / architecture
+  (the old `>3 files` fired on 8 of 8 goals, so the single-reviewer default never ran).
+  Review by 2026-09-17 (CHANGELOG 15.1.0).
 - **goals-status** (v5.2.0; simplified in v6.0.0) — read-only view of the
   docs/goals queue. Prints
   every OPEN goal — `in_progress`, `blocked`, `not_started` — with its title and
