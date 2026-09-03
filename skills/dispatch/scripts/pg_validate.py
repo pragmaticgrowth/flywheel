@@ -71,16 +71,13 @@ def blast_radius(changed_paths, touches):
         # branches above), or every correct TDD goal FAIL_FIXABLEs on its own regression test.
         if is_test_path(p):
             continue
-        # Plan docs are EXPECTED to land outside `touches` for the same structural
-        # reason: the implementer brief MANDATES `writing-plans` for any change
-        # spanning >2 files, so the plan is written DURING implementation and cannot
-        # have existed when the contract declared its surfaces. define-goal can only
-        # stamp the plan path for a goal already plan-backed at DRAFTING time; a goal
-        # that BECOMES plan-backed had no way to declare it. Without this exemption
-        # such a goal FAIL_FIXABLEs on a doc the factory told it to write, with every
-        # other arm green — measured twice on real drains (2026-08-18, 2026-08-19).
-        # Markdown under a plans/ directory only: never code, so the scope guard keeps
-        # its teeth everywhere that matters.
+        # Plan docs stay exempt from the out-of-scope check. Until v16.0.0 the
+        # implementer brief mandated `writing-plans` (>2 files), so plans landed DURING
+        # implementation and could not be in `touches`; since v16.0.0 the brief writes
+        # no plan documents, but an implementer that checks a phase off in an
+        # ideate plan (`docs/goals/plans/`) or a repo skill that still writes one must
+        # not FAIL_FIXABLE on markdown. Markdown under a plans/ directory only: never
+        # code, so the scope guard keeps its teeth everywhere that matters.
         if is_plan_doc(p):
             continue
         if touches and not _any_match(p, touches):

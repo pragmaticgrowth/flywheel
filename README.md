@@ -4,7 +4,7 @@
 A skills-first plugin for [Claude Code](https://claude.com/claude-code) and
 [Factory Droid](https://factory.ai), from Pragmatic Growth.
 
-[![Version](https://img.shields.io/badge/version-15.0.0-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-16.0.0-8b5cf6)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
 ---
@@ -19,8 +19,8 @@ TDD on your branch, an independent reviewer plus your build/test commands gate
 the diff, and only work that passes is kept — failures roll back cleanly.
 
 The `pragmatic-growth` marketplace ships **one plugin** — `flywheel` — with
-nine skills and six read-only subagents: three reviewers (`gate-reviewer`,
-`fresh-check`, `contract-red-team`) and three recon roles (`recon-locator`,
+nine skills and five read-only subagents: two reviewers (`gate-reviewer`,
+`contract-red-team`) and three recon roles (`recon-locator`,
 `recon-analyzer`, `recon-patterns`) that ground every contract and plan in how
 the code actually works. No MCP servers, no daemons, no build step. The one
 hook bundle is the opt-in factory event log behind `/factory-report`: it stays
@@ -133,7 +133,7 @@ flywheel/
 ├── .claude-plugin/        # plugin manifest + the pragmatic-growth marketplace
 ├── hooks/                 # the opt-in factory event log (inert until enabled)
 ├── skills/                # the nine skills (+ their Python helpers)
-├── agents/                # six read-only roles: 3 reviewers + 3 recon
+├── agents/                # five read-only roles: 2 reviewers + 3 recon
 ├── CHANGELOG.md           # canonical version history
 ├── CLAUDE.md              # contributor guide — design invariants, release flow
 └── AGENTS.md              # short contributor brief

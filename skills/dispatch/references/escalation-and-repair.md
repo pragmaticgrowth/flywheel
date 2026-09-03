@@ -46,7 +46,7 @@ report); upheld → it goes back unfixed, and the re-gate treats it as an open f
 **The focused re-check** (when verified review findings drove the repair): one fresh
 read-only agent — the gate-reviewer plugin agent else the generic type, session model —
 scoped to exactly those findings PLUS a one-pass collateral scan of the repair diff
-itself (a fix can break a neighbor), not a new full panel; its budget is TIGHTER than
+itself (a fix can break a neighbor), not a new full review; its budget is TIGHTER than
 the full review's, ~8 tool calls, and the brief says so: the full review already
 happened, so nothing outside the named findings and the repair diff is in scope.
 

@@ -107,7 +107,7 @@ remaining budget allows.
    touch the main checkout, never switch branches, do NOT create further worktrees or
    branches, do NOT push, do NOT open a PR."
 4. In-lane gate, per returned implementer: Arm B reviews `<branch-HEAD>..lane/<id>` —
-   single reviewer or the escalated lens panel, sized by the diff exactly as SKILL.md
+   one reviewer (or the mechanical carve-out), exactly as SKILL.md
    Working a goal step 3 (read-only reviewers of DIFFERENT lanes may spawn
    concurrently in one message; Arm A background commands run inside each lane
    directory — `cd <lane>` first; `pg_validate.py` resolves the report directory from

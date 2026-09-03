@@ -17,10 +17,13 @@ the tree at a time holds: the orchestrator only reads while the fixer works.
 
 ## Admission — what the sweep takes
 
-An item enters the sweep when it is real (a verified reviewer finding, a Follow-ups
-line, a plan-outcome falsifier), outside this goal's contract, and a code change one
-fixer sitting can land and the gate can verify. Refusals, decided by the orchestrator
-before spawning, each recorded in the goal's report file under `## Sweep`:
+An item enters the sweep ONLY when it is a live defect — wrong behavior reachable on
+current code, with `path:line` evidence (a verified reviewer finding, a Follow-ups
+line, a plan-outcome falsifier) — outside this goal's contract, and a code change one
+fixer sitting can land and Arm A can verify. Nits, caption/doc/config wording, missing
+wiring that nothing yet calls, and new work never enter (v16.0.0: Report-only or
+`fyi: follow-up`). Refusals, decided by the orchestrator before spawning, each
+recorded in the goal's report file under `## Sweep`:
 
 - **Owner decision** (spend, data loss, irreversible or externally visible) →
   `needs-you:` class `owner decision`, with a recommendation. Never swept.
@@ -28,9 +31,8 @@ before spawning, each recorded in the goal's report file under `## Sweep`:
   conflict domains), a new drivable surface, anything needing its own contract → an
   `fyi:` line, class `follow-up`, `<gist> → /define-goal <one-line want>`. The owner
   decides whether it becomes a goal; the factory never mints one from a settle.
-- **Cap ~5 items per sweep**, live defects first, then new work; the overflow is
-  `fyi: follow-up` too. Report-only and Dismiss stay exactly as Settle triage defines
-  them.
+- **Cap ~5 items per sweep**; the overflow is `fyi: follow-up`. Report-only and
+  Dismiss stay exactly as Settle triage defines them.
 - The one-sitting test is Settle triage's (disposition 3): inside the evidence's
   files plus their tests, no conflict-domain file, no new drivable surface.
 
@@ -39,12 +41,9 @@ in the goal's report file. That record is what survives a crash (below).
 
 ## Tier — one fixer, the strongest any item needs
 
-Pick the tier from the items, never from the goal's stamp: **heavy** for anything
-that changes behavior — a live defect, missing wiring or a missing consumer, any test
-logic; **medium** for rote mechanical work only — a doc/comment/caption line, a
-constant, a config value, a typo-class rename; **light** never. One sweep spawns ONE
-fixer on the strongest tier its list needs (an all-mechanical list runs medium);
-never two writers. Map the tier at spawn exactly as the implementer's (opus/sonnet
+Every admitted item is a live defect, so the fixer is **heavy** (a config-value or
+constant fix with no logic change may run medium; **light** never). One sweep spawns
+ONE fixer; never two writers. Map the tier at spawn exactly as the implementer's (opus/sonnet
 pin on Claude Code, `complexity` on Droid). Name the tier per item in the report
 file.
 
@@ -77,35 +76,29 @@ The wait obeys Spawning-and-waiting (let the turn end; death needs the transcrip
 A fixer that returns no `SWEEP:` block → read `sweep_base..HEAD`; commits present →
 gate them as below; none → every item Report-only, `sweep: fixer died`.
 
-## The gate — the goal gate, re-pointed
+## The gate — Arm A only
 
 `sweep_base` = HEAD before the fixer spawn (the `feat(goal <id>)` commit, or the
-fast-forwarded branch tip). Over `sweep_base..HEAD`:
-
-- **Arm A** — the same ONE tracked, `timeout`-bounded background script: every
-  `config.verify` command with echoed exit codes and the `=== ARM A COMPLETE ===`
-  sentinel, plus `git diff --name-only <sweep_base>..HEAD -- docs/goals/` (any output
-  = FAIL, the fixer touched the queue). `pg_validate.py` is goal-scoped and does not
-  run here; the fixer's file discipline is checked by Arm B.
-- **Arm B** — sized by the DIFF exactly as the goal gate (mechanical carve-out, one
-  reviewer, or the 2–3-lens panel), scope = the item list: refute each fix, hunt files
-  outside the items' evidence, vacuous tests, behavior beyond the item. Same budget,
-  same anti-laundering rules.
-- **Join** — both arms in hand before any verdict; the flake and wedged rules apply
-  unchanged.
+fast-forwarded branch tip). Over `sweep_base..HEAD` run Arm A exactly as the goal
+gate does — the same ONE tracked, `timeout`-bounded background script: every
+`config.verify` command with echoed exit codes and the `=== ARM A COMPLETE ===`
+sentinel, plus `git diff --name-only <sweep_base>..HEAD -- docs/goals/` (any output =
+FAIL, the fixer touched the queue), plus `git diff --name-only <sweep_base>..HEAD`
+read against the admitted items' evidence files (a file outside them = FAIL). No Arm
+B and no repair round (v16.0.0): a sweep fixes a defect the goal's own reviewer
+already described, so a second reviewer bought nothing measurable, and the flake and
+wedged rules apply unchanged.
 
 PASS → `git reset --soft <sweep_base>` and commit ONE
 `chore(sweep <id>): <n> items — <gists>`; then `chore(goals): complete <id>` as step 4
 continues (plan mirror inside it). The sweep commit stays separate from the goal's
 `feat` commit — out-of-contract work never widens the goal's own diff.
 
-FAIL → ONE repair round per `escalation-and-repair.md` (the complete findings list,
-receiving-review rules appended, re-gate). Still failing and the failure plainly
-localizes to ONE item's commit → `git revert` that commit, mark the item
-`SKIPPED: failed the gate — <finding>`, re-run Arm A ONCE with no further review;
-anything else → `git reset --hard <sweep_base>`, every item Report-only with
-`sweep failed: <reason>`, one `fyi:` line class `sweep failed`. The goal still
-completes: the sweep never changes a goal's own verdict or status.
+FAIL, plainly localized to ONE item's commit → `git revert` that commit, mark the
+item `SKIPPED: failed the gate — <finding>`, re-run Arm A ONCE; anything else →
+`git reset --hard <sweep_base>`, every item Report-only with `sweep failed:
+<reason>`, one `fyi:` line class `sweep failed`. The goal still completes: the sweep
+never changes a goal's own verdict or status.
 
 ## Reporting
 

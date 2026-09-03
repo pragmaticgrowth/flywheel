@@ -18,10 +18,10 @@ them recoverable.) No MCP
 servers, no commands, no build step, and ONE hook bundle — root `hooks/`, the
 opt-in factory event log added in v13.0.0 (owner ask 2026-09-01), inert until
 `~/.local/state/pg-factory/` exists. TWO scoped exceptions to the
-skills-only rule — that hook bundle, and SIX plugin agent definitions under root
+skills-only rule — that hook bundle, and FIVE plugin agent definitions under root (six until v16.0.0 retired `fresh-check` with the review panel)
 `agents/`: the
-factory's read-only REVIEW roles `gate-reviewer`, `fresh-check`,
-`contract-red-team` (v5.4.0, owner-delegated decision 2026-07-16 after
+factory's read-only REVIEW roles `gate-reviewer` and `contract-red-team`
+(`fresh-check` shipped alongside them until v16.0.0) (v5.4.0, owner-delegated decision 2026-07-16 after
 transcript forensics on real dispatch runs showed hand-composed review briefs
 drifting across fires) plus the read-only RECON/orientation roles
 `recon-locator`, `recon-analyzer`, `recon-patterns` (v11.1.0, owner-delegated
@@ -729,6 +729,19 @@ never authoritative — 1–3 spawns per goal buying nothing.
   Arm B panel trigger is >10 files / edits EXISTING tests or test infra / architecture
   (the old `>3 files` fired on 8 of 8 goals, so the single-reviewer default never ran).
   Review by 2026-09-17 (CHANGELOG 15.1.0).
+  v16.0.0 (owner decision 2026-09-03 — "I am one person, only AI develops the product,
+  no more over-engineering, complete goals fast, fix bugs later"): THE DE-CEREMONY
+  RELEASE. Implementer thinking time measured 45–91 min per goal against 6–37 min of
+  shell, so the brief lost every ritual the gate already covers: no plan documents in
+  the repo, no mandatory writing-plans / TDD / verification-before-completion skill
+  loads (only `config.skills` + goal `skills:`), no mutation probes, no off-happy-path
+  probes, no claims gating, no whole-file reads; tests-first stays one line. Arm B is
+  ONE reviewer for every diff size — the 2–3-lens panel and `agents/fresh-check.md`
+  are gone. The settle sweep takes LIVE DEFECTS only (nits/new work → Report-only or
+  `fyi: follow-up`), one heavy fixer, Arm A only, no repair round. define-goal's
+  v14.3.1 docs-index touches rule is reverted (it put `docs/README.md` in every goal
+  and silenced parallel lanes: 16/16 queued nonresidenttax goals overlapped on it).
+  Review the next drains' per-goal minutes by 2026-09-17 (CHANGELOG 16.0.0).
 - **goals-status** (v5.2.0; simplified in v6.0.0) — read-only view of the
   docs/goals queue. Prints
   every OPEN goal — `in_progress`, `blocked`, `not_started` — with its title and
@@ -1081,7 +1094,7 @@ place; `git show v7.0.0:plugins/<name>` recovers any of them intact.
 ```
 .claude-plugin/plugin.json        # root flywheel plugin manifest — the ONLY plugin
 .claude-plugin/marketplace.json   # marketplace — name: pragmatic-growth, lists flywheel alone
-agents/<name>.md                  # six flywheel plugin agents — read-only review roles: gate-reviewer, fresh-check, contract-red-team (v5.4.0) + recon roles: recon-locator, recon-analyzer, recon-patterns (v11.1.0, adapted from riptide)
+agents/<name>.md                  # five flywheel plugin agents — read-only review roles: gate-reviewer, contract-red-team (v5.4.0; fresh-check retired v16.0.0) + recon roles: recon-locator, recon-analyzer, recon-patterns (v11.1.0, adapted from riptide)
 hooks/hooks.json + hooks/pg-log.sh # the ONE hook bundle (v13.0.0) — opt-in factory event log, inert until ~/.local/state/pg-factory/ exists; six events both harnesses document, one script serves both
 skills/<name>/SKILL.md            # nine flywheel skills (ideate, define-goal, dispatch, process-inbox, goals-status, factory-report, loop-architect, factory-doctor, show-me)
 skills/<name>/scripts/*.py        # dispatch/pg_validate.py (local gate), factory-doctor/doctor_checks.py, goals-status/goals_status.py (read-only queue view)

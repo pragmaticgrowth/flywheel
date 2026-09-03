@@ -137,10 +137,10 @@ rubric), and only rote mechanical goals run lighter implementers. Neither field 
 to override, and neither ever applies to read-only review agents — those always inherit
 the session model.
 
-**Named review agents (plugin-shipped).** The plugin ships three read-only agent
+**Named review agents (plugin-shipped).** The plugin ships two read-only agent
 definitions for the factory's review roles: gate-reviewer (the gate's independent
-second view, also used for focused re-checks), fresh-check (one lens of the gate's
-escalated review panel), and contract-red-team (define-goal's draft review). Spawn them
+second view, also used for focused re-checks) and contract-red-team (define-goal's
+draft review). Spawn them
 as `flywheel:gate-reviewer` etc. on Claude Code, bare `gate-reviewer` etc. on Droid
 (Droid auto-translates plugin agents and registers them unprefixed). Each definition
 carries the role brief, the output contract, and a tool allowlist with no write-capable
@@ -159,8 +159,8 @@ Explore type (Claude Code) or `explorer` (Droid) for any review role — search 
 **Droid spawns are awaited:** every dispatch spawn on Droid passes `await: true` on the
 Task call — a spawn without it runs in the background and its verdict can land AFTER
 the gate has ruled. Awaited does NOT mean one-at-a-time: K awaited `Task` calls issued
-in ONE message run CONCURRENTLY and return together — exactly how a wave and a review
-panel spawn on Droid.
+in ONE message run CONCURRENTLY and return together — exactly how a wave spawns on
+Droid.
 
 ## Hard rules (every iteration, before any action)
 
@@ -275,7 +275,7 @@ closest table command and say what is uncertain — never drop the `→` half.
 | `needs independent review` | a PASSed goal whose acceptance criteria carry the **needs independent review** marker (a non-blocking observation) | the command or surface from the implementer's report evidence, plus what to look for there (Working a goal, step 4) |
 | `owner decision` | a settle-triage item that spends money, deletes or exposes existing data, or is irreversible/externally visible (Settle triage, disposition 4) | the exact command or action, with the recommendation |
 | `follow-up` | goal-sized new work a settle surfaced that no sweep sitting can land, or a whole-outcome falsifier the sweep could not fix (a non-blocking observation) | `/define-goal <one-line want>` — the owner decides whether it becomes a goal |
-| `sweep failed` | a settle sweep whose gate failed after its repair round; the sweep was reset and its items are Report-only (a non-blocking observation) | the goal's report file `## Sweep` section |
+| `sweep failed` | a settle sweep whose Arm A failed; the sweep was reset and its items are Report-only (a non-blocking observation) | the goal's report file `## Sweep` section |
 
 The `contract defect` class keeps its specific detail in the `<reason>` half — the one
 row covers every contract-defect shape, and the reason string tells them apart.
@@ -554,8 +554,8 @@ For each claimed goal, in order:
 1. `anchor` = current HEAD (clean). `git commit` the claim → `gate_base` = HEAD now.
 2. Spawn ONE implementer (plain `Agent` spawn — no `name:`, never backgrounded; then
    wait per the Spawning-and-waiting rule) that works in this checkout on the current
-   branch under the method mandates (writing-plans, TDD,
-   verification-before-completion) + config.skills + the goal's `skills:`. The brief is
+   branch with tests first, invoking only config.skills + the goal's `skills:` (v16.0.0
+   — no plan documents, no other mandated skill loads). The brief is
    canonical (`$DISPATCH_REFS/implementer-brief.md` — Phase 3). It commits its work on
    the branch, writes its full evidence to a report file, and ends with a terse
    fixed-format `STATUS:` report. It never merges, never opens a PR, and it does NOT
@@ -597,22 +597,11 @@ For each claimed goal, in order:
      the role inline (Named review agents above; no model parameter) — over the
      `gate_base..HEAD` diff plus the goal file, handing it the implementer's
      report-file path to challenge. It runs even when the diff looks clean.
-   - **Escalate to the 2–3-lens PANEL instead of the single reviewer** ONLY when the
-     diff spans MORE than 10 files, EDITS existing tests or test infrastructure
-     (assertions rewritten, helpers/fixtures/config changed — adding new tests for new
-     code is the normal TDD shape and never triggers it), or touches architecture/
-     public interfaces. The prior `>3 files` trigger fired on 8 of 8 goals in one
-     audited drain, so the single-reviewer default never ran once — a panel is 3×
-     the review spend and must stay the exception. Spawn 2–3 fresh-check plugin
-     agents (else generic) as concurrent
-     foreground lenses in ONE message — (a) contract-conformance, (b) tests +
-     overbuild, (c) stray files + regressions — each read-only, no model parameter.
-     The panel REPLACES the single reviewer, never follows it — and it replaces ONLY
-     the reviewer, never Arm A: the deterministic arm runs unconditionally for every
+     ONE reviewer is the whole of Arm B for every diff size (v16.0.0 — the multi-lens
+     panel is gone: it fired on every real goal and tripled review spend for verdicts
+     the single reviewer already rendered). Arm A runs unconditionally for every
      gated goal, and no verdict, repair round, or focused re-check is rendered
-     without its output on record (the panel-only path once passed an auth diff
-     whose build/test arm had never been invoked). On Droid the panel is K awaited
-     Task calls in one message, exactly like a wave.
+     without its output on record.
    - **The mechanical carve-out (the ONLY legal review skip).** A genuinely one-file
      mechanical edit skips Arm B — legal ONLY when (a) the diff touches exactly one
      file, AND (b) the change is mechanical (a rename, a constant/config value, a
@@ -622,7 +611,7 @@ For each claimed goal, in order:
      either way (`last:` carries `reviewed` or `review-skipped: mechanical`) — a
      silent skip is indistinguishable from a forgotten reviewer in a later audit.
      Arm A still runs in full.
-   The reviewer/lens brief carries, verbatim where quoted: try to REFUTE the work, not
+   The reviewer brief carries, verbatim where quoted: try to REFUTE the work, not
    confirm it — (a) contract conformance: any acceptance criterion unmet or met
    vacuously; (b) test realness: proving tests assert real behavior, not tautologies —
    hunt the vacuous shapes by name: errors swallowed inside a proving loop, a sweep
@@ -635,7 +624,7 @@ For each claimed goal, in order:
    outcome, quoting the offending line. A scope-of-reading BUDGET, and it is a number:
    read the diff once; step outside it for AT MOST TWO risks the reviewer can NAME, one
    cheap read-only command each, both named in the report; the whole review is ~15 tool
-   calls (per lens: ~10), and passing that means stop and report what you have. What is
+   calls, and passing that means stop and report what you have. What is
    NEVER a focused check: running the build/lint/typecheck/test suite (Arm A owns
    those, concurrently), mutation-testing a copy of the tree, independently re-deriving
    what the diff computes, probing via a written scratch script — read-only covers the
@@ -776,18 +765,16 @@ in one line why it did not.
    worthless — a wrong test caption, a cosmetic nit — is Report-only; when both seem
    to fit, take Report-only. The record must not confuse "this was false" with "this
    was true and under the bar".
-3. **Sweep** — real, outside this goal's contract, and a code change one fixer
-   sitting can land and the gate can verify: a LIVE defect (wrong behavior reachable
-   on current code), genuinely NEW work (missing wiring, a missing consumer, a gap
-   the owner would want closed), or a caption/comment/doc/config nit that states
-   something FALSE (a test name claiming what its assertion does not pin, a doc
-   sentence contradicting the code); pure wording preference is Report-only. **The
-   one-sitting test, same in every skill:** the fix stays inside the files the
-   item's evidence names plus their tests, touches no migration/lockfile/CI/config
-   file, and adds no new drivable surface (route, screen, endpoint, job, command,
-   table); anything else is disposition 5. It goes to the settle sweep — `$DISPATCH_REFS/settle-sweep.md`: one
-   tiered fixer, the goal gate re-pointed at the sweep range, one repair round,
-   squash, then the complete flip. **The whole-outcome carve-out:** an item that
+3. **Sweep** — a LIVE DEFECT only (v16.0.0): wrong behavior reachable on current
+   code, outside this goal's contract, with `path:line` evidence, that one fixer
+   sitting can fix inside the files the evidence names plus their tests, touching no
+   migration/lockfile/CI/config file and adding no new drivable surface. Missing
+   wiring, new work, caption/doc/config nits, and "would be nice" items are NOT
+   swept: goal-sized ones are disposition 5, the rest Report-only — the owner's
+   standing instruction is complete goals fast and fix bugs later, and the v15
+   sweep measured 5–21 minutes per goal mostly on nits. It goes to the settle sweep —
+   `$DISPATCH_REFS/settle-sweep.md`: one heavy fixer, Arm A only over the sweep
+   range, no repair round, squash, then the complete flip. **The whole-outcome carve-out:** an item that
    would FALSIFY a bullet of the goal's linked plan `## What will be true when done`
    — if true, an outcome bullet's COMMAND fails or a `**needs independent review**`
    bullet is false; topical relation is not enough — is ALWAYS swept, never

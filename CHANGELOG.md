@@ -13,6 +13,50 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [16.0.0] — 2026-09-03
+
+The de-ceremony release. Owner decision 2026-09-03, same day as v15.1.0: "I am one
+person, only AI develops the product, I don't want over-engineering anymore, I need
+complete goals fast, we can fix bugs later." A major bump because the gate's shape and
+the sweep's scope change and one plugin agent is removed.
+
+The measurement behind it (the v15.1.0 audits): per goal, implementer THINKING time was
+45–91 minutes against 6–37 minutes of shell; the review panel ran on 8 of 8 goals; the
+settle sweep added 5–21 minutes, mostly on nits; and every queued goal in the field repo
+listed the docs index in `touches:`, so a 4-lane parallel config never opened a lane.
+
+### Changed
+
+- **dispatch — the implementer brief is a page, not a rulebook.** Removed: the
+  writing-plans mandate (and with it plan documents written into the repo), the
+  test-driven-development and verification-before-completion skill mandates (only
+  `config.skills` and the goal's `skills:` are invoked), the per-test mutation probe,
+  the off-happy-path probe, the claims-and-proofs gating, "read every file FULLY",
+  the llms.txt tip. Kept: read the contract like a skeptic and stop on ambiguity,
+  tests first in one line, commit working increments, run acceptance commands and
+  scoped tests only, kill watchers, the report file, the 15-line STATUS block, and
+  never touching `docs/` unless a criterion names it.
+- **dispatch — Arm B is ONE reviewer, always.** The 2–3-lens fresh-check panel is
+  deleted from the gate, the lane gate, the sweep gate, and process-inbox's sweep;
+  `agents/fresh-check.md` is removed (five plugin agents now). The mechanical
+  carve-out is unchanged.
+- **dispatch — the settle sweep takes live defects only.** Disposition 3 admits a
+  reachable wrong behavior with `path:line` evidence and nothing else; missing wiring,
+  new work, caption/doc/config nits go Report-only or `fyi: follow-up`. One heavy
+  fixer, the sweep gate is Arm A only (plus a files-outside-evidence check), no repair
+  round: a failing sweep reverts the item or resets to `sweep_base`.
+- **define-goal — the v14.3.1 docs-index `touches:` rule is reverted.** With no plan
+  document written by the implementer the index no longer stales, and declaring it on
+  every goal made every pair of goals overlap for admission control.
+
+### Field repo changes made alongside (nonresidenttax, not part of the plugin)
+
+`docs/README.md` stripped from `touches:` on the 15 queued goals so lanes can open;
+the preflight gate deadline raised from 13 to 30 minutes so a coverage gate under
+parallel load is no longer killed and re-run `--serial`.
+
+Review the next drains' per-goal minutes by 2026-09-17.
+
 ## [15.1.0] — 2026-09-03
 
 The pace release. Owner ask 2026-09-03: "agents run a shell command like a validation

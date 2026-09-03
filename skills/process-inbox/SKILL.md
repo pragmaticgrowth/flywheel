@@ -140,9 +140,8 @@ cluster's items (commit prefix `chore(inbox): <gist>`, one item per commit; the
 evidence path goes to `~/.local/state/pg-dispatch/<SLUG>/reports/inbox-<date>.md`);
 then the sweep gate over `sweep_base..HEAD` — Arm A as ONE tracked, `timeout`-bounded
 background script running every `config.verify` command plus the `docs/goals/`
-untouched check, Arm B sized by the diff (mechanical carve-out, one reviewer, or the
-panel), both joined before a verdict; one repair round; still failing and localized
-to one item's commit → revert that commit and re-run Arm A once; otherwise reset to
+untouched check — no Arm B (v16.0.0: the sweep gate is Arm A only); failing and
+localized to one item's commit → revert that commit and re-run Arm A once; otherwise reset to
 `sweep_base`, and every item in the cluster becomes PARK with `sweep failed:
 <reason>`. PASS → squash the cluster to ONE `chore(inbox): <n> items — <gists>`
 commit. A cap of ~5 items per sweep holds; a larger cluster runs as consecutive

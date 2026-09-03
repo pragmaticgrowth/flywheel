@@ -616,11 +616,11 @@ re-run these:
 1. **`touches:` closure — derive it from the contract's own text.** Every path the
    criteria, Constraints, or Context name as needing an edit must be covered by a
    `touches:` glob — including repo-mandated companions (a manifest/ledger regen a
-   criterion requires, the linked plan file on a plan-backed goal), and the docs
-   index a repo REGENERATES from its tracked docs (e.g. `docs/README.md` behind a
-   generator `--check` in the repo's gate): the implementer brief's own plan doc
-   lands under `docs/` and stales that index, so every goal in such a repo must
-   declare it.
+   criterion requires, the linked plan file on a plan-backed goal). A regenerated
+   docs index (`docs/README.md` behind a generator) is NOT declared unless a
+   criterion itself edits `docs/` — since v16.0.0 the implementer writes no plan
+   document into the repo (the v14.3.1 rule put the index in every goal's
+   `touches:`, which made every pair of goals overlap and silenced parallel lanes).
 2. **`touches:` existence.** Every glob must match at least one existing path (glob
    it), OR the goal's Context declares it a new file (`new file: <path>`). A glob
    matching nothing is a typo or an undeclared new file — the contract must say
