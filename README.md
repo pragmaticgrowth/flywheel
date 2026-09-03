@@ -4,7 +4,7 @@
 A skills-first plugin for [Claude Code](https://claude.com/claude-code) and
 [Factory Droid](https://factory.ai), from Pragmatic Growth.
 
-[![Version](https://img.shields.io/badge/version-16.0.0-8b5cf6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-17.0.0-8b5cf6)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-64748b)](LICENSE)
 
 ---
@@ -60,7 +60,7 @@ Update later with `/plugin marketplace update pragmatic-growth`, or
 | Skill | What it does |
 |---|---|
 | **ideate** | Fuzzy idea — or an unshaped list of N issues — → an approved **plan** with vertical-slice phases and open questions only you can answer. On Claude Code it also publishes the plan as a designed artifact page for the approval read (the repo file stays canonical). Never writes goals or code. |
-| **define-goal** | Plain-language want → a measurable, red-teamed goal contract in the queue (or a whole document of them). `--amend <id>` repairs a blocked goal's contract and requeues it. Never writes code. |
+| **define-goal** | Plain-language want → a measurable, red-teamed goal contract in the queue (or a whole document of them), each carrying executable **Implementation steps** — whole code, exact commands, expected results — so a medium-tier implementer can run it as a script. `--amend <id>` repairs a blocked goal's contract; `--steps <id>\|all` adds steps to queued goals that lack them. Never writes code. |
 | **dispatch** | The orchestrator: claim, implement with TDD, review, gate, keep or roll back. Drains the queue by default and **self-heals**: contract-defect blocks are amended in-run (red-team intact), disproven goals are retired, and every real finding a goal surfaces is **fixed in-run by a tiered fixer behind the same gate** (the settle sweep) — nothing is parked for later, no follow-up goals are minted, and the run ends `all complete` or with the short list of true owner decisions. `--count N` limits the run, `--serial` forces one goal at a time, `--parallel [K]` builds disjoint goals concurrently. |
 | **process-inbox** | One-command sweep for a legacy `docs/goals/inbox.md` (pre-v15 dispatch captured follow-ups there): re-verifies every item against current code, fixes the real ones directly with tiered subagents behind dispatch's gate, deletes the dead ones, parks the goal-sized ones with a one-line pointer — never converts them into goals. Only spend/irreversible items wait for you. |
 | **factory-report** | Read-only performance view across every repo with a queue: goal timing from git, agent cost from the opt-in event log, and the four execution failure signals — runaway, hung, stalled, oversized — told apart instead of lumped as "it took two hours". |
@@ -71,6 +71,18 @@ Update later with `/plugin marketplace update pragmatic-growth`, or
 
 Skills also activate automatically when your message matches what they're for,
 so most of the time you don't type the name.
+
+## Where the thinking happens
+
+Think hard once, upstream; execute cheaply, downstream. `/ideate` asks as many
+questions as the design needs and reads the code with recon subagents; `/define-goal`
+turns each phase into a goal whose **Implementation steps** section carries the
+whole code, the exact commands, and the expected result of every step. Run those two
+on your strongest model at high effort. Then run `/dispatch` in a **medium-effort**
+session: the implementer follows the steps on the goal's stamped tier (`medium` by
+default), the gate checks the result, and a step that fails as written comes back as
+a contract defect for define-goal to rewrite — not as a reason for a bigger model.
+Bugs the gate misses are fixed in the next goal.
 
 ## How the queue works
 

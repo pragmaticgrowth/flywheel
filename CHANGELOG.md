@@ -13,6 +13,56 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com).
 
 <!-- COMMIT-BASE: https://github.com/pragmaticgrowth/flywheel/commit/ -->
 
+## [17.0.0] — 2026-09-03
+
+The executable-goal release. Owner decision 2026-09-03 (the third that day): "ideate can
+ask many questions and run subagents to understand the code, but define-goal should
+write a plan so detailed that even a very stupid model can execute it — then I run
+dispatch on a low- or medium-reasoning model." Borrowed from superpowers' brainstorming
+(ask until the design is settled) and writing-plans (bite-sized tasks with the actual
+code, zero-context engineer as the reader). A major bump: the goal-file shape gains a
+required section and the default implementer tier changes.
+
+### Added
+
+- **define-goal — `## Implementation steps` on every queued goal.** Files with
+  `path:line` ranges, Interfaces on chains, then tasks of failing test → run →
+  implement → run → commit, each with the WHOLE code, the exact scoped command, and
+  the expected result. No placeholders, ever; a step that needs a decision is a fork
+  resolved upstream (a question round, or the plan's Open questions). Canonical
+  reference: `skills/define-goal/references/implementation-steps.md`. Recon subagents
+  now return the current code of every block to change (20–60 lines) plus the house
+  pattern's code, so the steps are concrete. Reality-check item 11 verifies line
+  ranges, `Create:` paths, commands, placeholder patterns, and criterion→task
+  coverage mechanically; the red-team gains item 10, **Executability**
+  (`agents/contract-red-team.md` in lockstep).
+- **define-goal — `--steps <id>` / `--steps all`.** Adds or rewrites the steps section
+  on queued `not_started` goals that lack one: recon, steps, Executability review,
+  re-stamp `model:`, one `chore(goals): amend <id> — steps` commit each. Criteria stay
+  byte-for-byte; no requeue.
+
+### Changed
+
+- **define-goal — the tier rubric flips.** `medium` is the DEFAULT once the steps pass
+  Executability, whatever the goal's `type:`; `heavy` only for named exceptions
+  (security/auth/payments/data-loss-adjacent work, a fork that could not be resolved,
+  an explicit ask) or dispatch's own escalation rung; `light` for one-file transcription.
+  Old-format goals without steps keep the pre-v17 heavy default. Amend mode may rewrite
+  steps freely — they are the implementer's script, not contract, so the ratchet governs
+  criteria only.
+- **dispatch — the implementer executes the steps as a script.** Tasks in order, code as
+  shown, commands as shown, expected results checked; the only self-adjustment is a moved
+  line range; a step that fails as written gets one local attempt and then a
+  `CONTRACT_AMBIGUOUS` stop naming the task — never a redesign. The skill header tells
+  the owner to run dispatch on a medium-effort session: the thinking was spent upstream.
+- **ideate** keeps signature altitude but must leave define-goal every signature, every
+  file, and the house pattern's actual code in Patterns to follow; a phase that cannot be
+  turned into steps without a design decision comes back as an Open question. Asking as
+  many questions as the design needs is restated as the point of the skill.
+- README gains "Where the thinking happens".
+
+Review the next drains' per-goal minutes and medium-tier block rate by 2026-09-17.
+
 ## [16.0.0] — 2026-09-03
 
 The de-ceremony release. Owner decision 2026-09-03, same day as v15.1.0: "I am one

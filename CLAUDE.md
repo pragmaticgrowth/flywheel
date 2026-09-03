@@ -742,6 +742,24 @@ never authoritative — 1–3 spawns per goal buying nothing.
   v14.3.1 docs-index touches rule is reverted (it put `docs/README.md` in every goal
   and silenced parallel lanes: 16/16 queued nonresidenttax goals overlapped on it).
   Review the next drains' per-goal minutes by 2026-09-17 (CHANGELOG 16.0.0).
+  v17.0.0 (owner decision 2026-09-03, third message: "ideate can ask many questions and
+  run subagents; define-goal should write a plan so detailed even a very stupid model
+  can execute it; then dispatch on a low/medium-reasoning model"): THE EXECUTABLE-GOAL
+  RELEASE. Every queued goal carries `## Implementation steps` — writing-plans-shaped
+  tasks (failing test → run → implement → run → commit) with WHOLE code, exact scoped
+  commands, and expected results (`skills/define-goal/references/implementation-steps.md`;
+  no placeholders, ever; a step needing a decision is a fork resolved upstream). Recon
+  subagents return the current code of every block to change (20–60 lines) plus the house
+  pattern's code; reality-check item 11 verifies line ranges/commands/placeholders; the
+  red-team gains item 10 Executability (agent in lockstep). The TIER RUBRIC FLIPS: `medium`
+  is the default once steps pass Executability, heavy only for named exceptions
+  (security/auth/payments/data-loss, unfixable fork, user ask); old-format goals keep the
+  heavy default. `--steps <id>|all` adds steps to queued not_started goals (steps-only
+  amend, criteria untouched, no requeue); amend mode may rewrite steps freely (not
+  ratcheted). The implementer brief executes the steps as a script and stops
+  CONTRACT_AMBIGUOUS on a step that fails as written; dispatch's header tells the owner to
+  run it on a medium-effort session. ideate keeps signature altitude but must leave
+  define-goal every signature, file, and the house pattern's CODE. Review by 2026-09-17.
 - **goals-status** (v5.2.0; simplified in v6.0.0) — read-only view of the
   docs/goals queue. Prints
   every OPEN goal — `in_progress`, `blocked`, `not_started` — with its title and
@@ -1112,8 +1130,8 @@ re-add a site, a deploy config, or a docs-sync mandate without an explicit ask.
 
 - **Skills-first (formerly skills-only).** Don't add MCP servers, commands,
   agents, or hooks here without an explicit ask. ONE exception to date: the
-  six root `agents/` definitions (three read-only review roles, owner-delegated
-  decision 2026-07-16; three read-only recon/orientation roles adapted from
+  five root `agents/` definitions (two read-only review roles, owner-delegated
+  decision 2026-07-16 — a third, `fresh-check`, was retired in v16.0.0; three read-only recon/orientation roles adapted from
   riptide, owner-delegated decision 2026-08-12). Keep it minimal: plugin agents
   must stay read-only-by-tools on BOTH harnesses (no Edit/Write/Create/
   ApplyPatch/Agent/Task; the allowlist names both shell tools `Bash` +

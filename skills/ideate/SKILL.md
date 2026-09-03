@@ -149,7 +149,12 @@ everything you write in it:
   type/method signatures with bodies elided, a created/modified file-tree diff
   with one line of responsibility each, a call-flow sketch only where control
   flow is non-obvious. Never function bodies: if implementations appear, the plan
-  has dropped a level.
+  has dropped a level. The bodies are define-goal's job (v17.0.0): it expands each
+  phase into `## Implementation steps` with whole code, so the plan must leave it
+  everything it needs — every signature, every file, and a `Patterns to follow`
+  section carrying the house pattern's actual code (recon-patterns output), not
+  just its path. A phase define-goal cannot turn into steps without a design
+  decision is a plan gap, and it comes back here as an Open question.
 
 For a simple single-goal outcome: no file — present the same content inline,
 scaled down.
@@ -225,9 +230,12 @@ carry OPEN questions — approval is about the design, not every fork), then
 invoke `define-goal` with the plan (or the fileless design). A plan
 is the interview already done: define-goal's plan-backed fast path runs ZERO
 question rounds, narrows recon to verify-and-complete, uses the phases as the
-batch item list, and links the plan from each goal's Context. define-goal still
-runs its own contract review and confirmation — the plan is input, never a
-bypass.
+batch item list, links the plan from each goal's Context, and writes each phase's
+executable Implementation steps from the plan's Design and Patterns. define-goal
+still runs its own contract review and confirmation — the plan is input, never a
+bypass. Ask as many questions here as the design needs — this is the one skill
+where asking is the tool, and every fork resolved here is one a cheap implementer
+never meets.
 
 ## Iterating an existing plan
 

@@ -20,6 +20,18 @@ restating the same criteria; the criteria govern). If the goal's Context carries
 it is the chain's shared architecture — the exact signatures, files, and interfaces
 your goal and its siblings agreed on. Follow its resolved decisions.
 
+When the goal file carries `## Implementation steps`, THAT IS YOUR SCRIPT: execute
+the tasks in order, step by step, exactly as written — the code shown is the code to
+write, the command shown is the command to run, the expected result is what you
+check. The only adjustment you make on your own is a `Modify:` line range that has
+moved (find the same lines by content). A step that cannot be executed as written —
+the file or symbol is not there, the test does not fail/pass as the step says, the
+code shown does not compile — gets ONE local attempt at the obvious fix; if that does
+not close it, STOP with `STATUS: CONTRACT_AMBIGUOUS` naming the task and step (never
+redesign around it: the fix is a rewritten step, and that is define-goal's job). Do
+not add work the steps do not name. A goal without a steps section is worked from the
+acceptance criteria as below.
+
 Read the contract like a skeptic before you touch anything: if any acceptance
 criterion has two materially different readings and the goal file + latest context +
 a quick read of the code cannot settle which, STOP before implementing — end your

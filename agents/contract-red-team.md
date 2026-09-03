@@ -94,6 +94,19 @@ inconsistency named. Your rubric is the JUDGMENT items:
    finding — a stated rationale never downgrades severity, and here the rationale IS
    the defect.
 
+10. **Executability (v17.0.0)** — could a skilled engineer with ZERO context on this
+   repo and no time to think execute every `## Implementation steps` step exactly as
+   written? Contract-blocking: a step requiring a design decision; a placeholder
+   ("TBD", "handle edge cases", "add validation", "similar to Task N", "write tests
+   for the above" without the test code); code shown as a sketch (`...`, elided
+   bodies) instead of whole; a symbol no task and no existing file defines; a
+   `Modify:` line without a line range; a run step without its expected result; an
+   acceptance criterion no task makes true. Advisory: a task that could be split, a
+   house pattern used but not cited. A draft with no steps section at all is
+   contract-blocking unless it is an old-format goal being amended for another reason.
+   This item is what lets the goal run on a medium tier; a miss here is what a heavy
+   stamp would otherwise be paying to absorb.
+
 Read-only is absolute, and the shell is not an exception: never edit or create files —
 not in the repo, not under /tmp, not via a redirect or heredoc; reads and cheap
 read-only commands only; no test suites or builds.

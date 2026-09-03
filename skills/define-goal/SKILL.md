@@ -1,10 +1,18 @@
 ---
 name: define-goal
-description: Use when the user states something they want — a goal, wish, feature, fix, or annoyance ("I want…", "set a goal", "/define-goal"), asks to clarify success criteria or turn fuzzy intent into a measurable objective, OR hands over a document with multiple items (bug report doc, feedback list, meeting notes) to convert. Also use to add work to the docs/goals queue, and to amend a blocked goal's defective contract and requeue it ("/define-goal --amend 004", "fix goal 004's contract", a needs-you contract defect). Defines and amends goals only; never starts the implementation work.
-argument-hint: "[want in plain language — or a doc of items to convert] [--amend <id>]"
+description: Use when the user states something they want — a goal, wish, feature, fix, or annoyance ("I want…", "set a goal", "/define-goal"), asks to clarify success criteria or turn fuzzy intent into a measurable objective, OR hands over a document with multiple items (bug report doc, feedback list, meeting notes) to convert. Also use to add work to the docs/goals queue, and to amend a blocked goal's defective contract and requeue it ("/define-goal --amend 004", "fix goal 004's contract", a needs-you contract defect), or to add the executable Implementation steps to queued goals that lack them ("/define-goal --steps 240", "--steps all"). Defines and amends goals only; never starts the implementation work.
+argument-hint: "[want in plain language — or a doc of items to convert] [--amend <id>] [--steps <id>|all]"
 ---
 
 # Define Goal
+
+**Where the thinking happens (v17.0.0).** This skill and ideate run on the strongest
+model in the session, with recon subagents reading the real code, and they spend that
+thinking ONCE: every queued goal leaves here with an `## Implementation steps` section
+so detailed that a medium-tier implementer on medium reasoning can execute it as a
+script (`references/implementation-steps.md`, adapted from superpowers' writing-plans).
+Dispatch's implementer follows the steps; it does not design. A step that cannot be
+written without a decision is a fork to resolve here — never a placeholder.
 
 ## Overview
 
@@ -28,6 +36,7 @@ decision logs, or resume files beyond the goal file itself.
 | `/define-goal <document>` | Batch mode: extract many items, one approval table, many goal files. |
 | `/define-goal --amend 004` (also `4`, `004-slug`, or *"fix goal 004's contract"*) | Amend mode: repair a **blocked** goal's defective contract in place and requeue it (see "Amend mode" below). |
 | `/define-goal convert inbox item <N>` (or "make a goal from inbox line …") | Inbox intake — EXPLICIT ask only: turn a named legacy `docs/goals/inbox.md` line into a goal (see "Inbox intake" below). Never offered, never chained. |
+| `/define-goal --steps 240` / `--steps all` | Steps mode (v17.0.0): add or rewrite the `## Implementation steps` section of a queued `not_started` goal (or every queued goal lacking one) — recon for the code excerpts, write the steps per `references/implementation-steps.md`, red-team on Executability, re-stamp `model:`, one `chore(goals): amend <id> — steps` commit each. Criteria stay byte-for-byte; no requeue. |
 
 Argument rules: `--amend` needs an id — `--amend` with no id, or an id matching no index
 entry, reports the usage line above plus the near-miss ids and stops (never falls
@@ -99,7 +108,10 @@ never keeps a defect the goals fixed. The plan's Phases enter batch mode as the 
 list, one goal per phase, `depends_on` following the phase order. Link the plan from
 each chain goal's Context — `Plan: docs/goals/plans/<file> — Phase <N>` — and let the
 plan's code-shaped Design section serve as the chain's Interfaces note (add a per-goal
-Interfaces line only for a name the plan doesn't already state). The single owner touch
+Interfaces line only for a name the plan doesn't already state). The plan's Design
+(signatures, file diff) and Patterns-to-follow (house-pattern code) are the raw
+material for each phase's `## Implementation steps`; recon fetches the exact current
+lines of each block the phase changes. The single owner touch
 is the normal draft confirmation / batch approval table; if a red-team finding or a
 plan gap opens a genuine fork the plan doesn't answer, that is the ONE case a
 plan-backed goal may ask — one targeted round, 1–2 questions, options with a
@@ -297,7 +309,10 @@ a one-liner you can already pin with certainty. Recon details:
   (recon-patterns), where similar features live and the surfaces to touch
   (recon-locator), constraints — migrations, auth, test layout (recon-analyzer).
 - **Contract per subagent**: return a summary, never file dumps — candidate files as
-  `path:line`, a hypothesis WITH evidence, confidence, and what would confirm it.
+  `path:line`, a hypothesis WITH evidence, confidence, and what would confirm it —
+  PLUS (v17.0.0, so the steps can be written concretely) the CURRENT code of every
+  block the goal will change, 20–60 lines each with `path:line`, and the house
+  pattern the new code should copy, with its code and its test's shape.
 - **Synthesize in your context**: agreeing findings → the goal file's Context section
   and acceptance criteria (for bugs, "failing test reproducing the root cause" is the
   first criterion). Conflicting hypotheses → record both and let the implementer's
@@ -434,10 +449,11 @@ title: Customers get a receipt email after payment
 created: 2026-06-12
 type: feature   # bug | feature | chore — shapes the contract, see below
 skills: []      # goal-specific skills the implementer must invoke, e.g. [agent-browser]
-model: heavy    # execution tier for dispatch: inherit | heavy | medium | light —
-                #   heavy is the default for features/bugs; medium only for rote
-                #   mechanical work. Stamp it LAST, after the acceptance criteria are
-                #   final (see "Implementer tier — decide it last")
+model: medium   # execution tier for dispatch: inherit | heavy | medium | light —
+                #   medium is the default once Implementation steps are complete;
+                #   heavy only when a step honestly could not be made executable, or
+                #   for security/data-loss-adjacent work. Stamp it LAST (see
+                #   "Implementer tier — decide it last")
 # size: M                    # optional: S|M|L rough effort
 # touches: [apps/orders/*]   # optional: declared surfaces (PRODUCT code) → local gate
 #                            #   scope allowlist. Do NOT enumerate test dirs — the gate
@@ -476,11 +492,18 @@ schema, paths, commands)>
 
 ## Out of scope
 <bullets>
+
+## Implementation steps
+<REQUIRED on every queued goal (v17.0.0): the executable plan — Files, Interfaces,
+then tasks of failing-test → run → implement → run → commit with the ACTUAL code and
+commands, per `references/implementation-steps.md`. Written last, after recon and the
+question rounds, on the session model.>
 ```
 
-**That is the whole file (the goal-file diet — target ≤60 lines for a simple goal;
-evidence-dense contracts legitimately run to ~100–120).** LENGTH ALONE IS NEVER A
-DEFECT — duplicated boilerplate and restated system rules are. Two former sections are
+**That is the whole file (the goal-file diet — target ≤60 lines for the contract
+sections above `## Implementation steps`; the steps run as long as executability
+needs, typically 100–250 lines).** LENGTH ALONE IS NEVER A DEFECT — duplicated
+boilerplate and restated system rules are. Two former sections are
 CUT from queued goal files because they were system rules duplicated into every file —
 both already bind every implementer via dispatch's canonical brief:
 
@@ -607,7 +630,7 @@ for an `S`, 20 for an `M`, 30 for an `L`).
 
 ## Contract reality check — mechanical, before the red-team (queue destination only)
 
-Run these ten checks yourself on every queued draft, BEFORE spawning the contract
+Run these eleven checks yourself on every queued draft, BEFORE spawning the contract
 red-team — each is cheap, and each encodes a defect class that has blocked CORRECT,
 finished work at gate time in real drains. These checks are YOURS, run mechanically
 against the repo; the red-team (next section) covers the judgment calls and does NOT
@@ -676,6 +699,15 @@ re-run these:
     draft and never fires on tightening or repair. Its whole point is the unattended
     path: self-heal rewrites a blocked contract with nobody watching, and the
     cheapest way to make a failing goal pass is to ask less of it.
+
+11. **Implementation steps are executable as written (v17.0.0).** Every `Modify:`
+    line's `path:line` range exists at HEAD (`sed -n` it); every `Create:` path does
+    not exist yet; every command in a step runs from the repo root with the runner
+    and config it names (a `--dry-run`/`--listTests` where the runner has one, else
+    the runner's help); the section contains none of the placeholder patterns in
+    `references/implementation-steps.md` rule 1 (grep for them); and every
+    acceptance criterion maps to at least one task. A miss here is fixed before the
+    red-team sees the draft.
 
 A defect these checks catch costs one edit; a defect neither you nor the red-team
 catches costs a full implementer run plus an amend.
@@ -748,6 +780,15 @@ on it, reporting that as contract-blocking with the inconsistency named.**
   time.
 - **Ratchet** (amend-mode drafts): any weakening per Amend mode's taxonomy is
   **contract-blocking** — under the drain waiver exactly as interactively.
+- **Executability (v17.0.0)**: could a skilled engineer with ZERO context on this
+  repo and no time to think execute every Implementation step exactly as written?
+  Contract-blocking: a step that requires a design decision, a placeholder (rule 1
+  of `references/implementation-steps.md`), code shown as a sketch (`...`, `{ }`,
+  "similar to") instead of whole, a symbol no task and no existing file defines, a
+  `Modify:` without a line range, a run step without its expected result, or a
+  criterion no task makes true. Advisory: a task that could be split, a house
+  pattern not cited. This is the item that lets the goal run on a medium tier — a
+  finding here is what a heavy stamp would otherwise be paying to absorb.
 
 The brief carries a BUDGET: ~10 tool calls for one draft, ~5 per additional draft in a
 batch (the mechanical repo lookups now live in the reality check, so the budget covers
@@ -787,7 +828,9 @@ Run the steps in this order:
    parser. A status that is not `blocked` stops the mode: it reports the actual status
    and what to do instead (`in_progress`: claimed by a running session — wait or block it;
    `completed`: define a NEW goal; `not_started`: already queued — amend only after it
-   blocks). Also stop if the working tree is dirty, if the goal file is missing, or if
+   blocks, EXCEPT steps mode: `--steps <id>` edits ONLY `## Implementation steps` and
+   the `model:` re-stamp on a `not_started` goal, criteria byte-for-byte, commit
+   `chore(goals): amend <id> — steps`, no status change). Also stop if the working tree is dirty, if the goal file is missing, or if
    the id matches no entry (report the near-misses).
 2. **Read the whole picture before asking anything.** Three sources: the goal file,
    the index entry's `reason` (dispatch's verdict — it names the defective criterion),
@@ -809,8 +852,12 @@ Run the steps in this order:
    fact the same way: from the repo/plan when discoverable, from one question round
    when only the owner holds it.
 4. **Rewrite ONLY the criteria the reason identifies as defective** — or, for a
-   `needs context` block, only the missing fact, added to Context. Everything else
-   stays byte-for-byte. An amend that rewrites the whole contract is a new goal
+   `needs context` block, only the missing fact, added to Context — and, when the
+   block reason or the implementer's report shows a step that failed as written, the
+   `## Implementation steps` section too: steps are the implementer's script, not
+   contract, so they may be rewritten freely (the ratchet below governs criteria
+   only), and a blocked medium-tier goal is usually a step written as a sketch.
+   Everything else stays byte-for-byte. An amend that rewrites the whole contract is a new goal
    wearing an old id — if the want really changed, archive this one and define a
    fresh goal. Re-stamp `model:` only if the amended criteria change the tightness
    rubric's answer. And status stays ONLY in `index.yaml` (the queue rules) — this
@@ -923,30 +970,32 @@ orchestrator itself always stays on the session model, and review agents inherit
 session model too — this field routes ONLY the goal's implementation work.
 
 Stamp it LAST, after the acceptance criteria are final (for queued goals: after the
-contract review). Two inputs, in order: the goal's `type:` picks the lane, then the
-finished contract confirms it — and when both lanes seem to fit, `type:` wins:
+contract review). Since v17.0.0 the deciding input is the Implementation steps: did
+they pass Executability? Then the named exceptions below; `type:` no longer picks a
+lane by itself:
 
-- **`heavy` — the DEFAULT for every `type: feature` and `type: bug` goal** (execution
-  quality is the factory's product, and a blocked goal plus the escalation ladder's
-  rescue costs more than heavy from the start). A tight contract is NOT a downgrade
-  reason — the only way a feature/bug goal lands on `medium` is the user explicitly
-  asking for cheap execution on that goal. Also the lane for flagship visual/design
-  craft, wide blast radius, ambiguous root-cause work, changes adjacent to security
-  or data loss, or contracts where subjective needs-independent-review criteria carry
-  real weight — whatever the type.
-- **`medium` — the mechanical lane: rote `type: chore`-shaped work only.** The WORK
-  must be transcription, not design: lint/format sweeps, doc syncs, config edits, a
-  port with an exact source of truth, a test sweep against settled behavior. Every
-  acceptance criterion an exact command with objective pass/fail AND nothing left to
-  design.
+- **`medium` — the DEFAULT for every goal whose `## Implementation steps` passed the
+  Executability review (v17.0.0).** The thinking was spent here: with whole code,
+  exact commands, and expected results per step, the implementer's work IS
+  transcription plus scoped test runs, whatever the goal's `type:`. This is the
+  owner's standing routing: strong model + recon upstream, cheap model downstream,
+  bugs the gate misses fixed in the next goal. (Pre-v17 rule, retired: heavy was the
+  default for every feature/bug goal.)
+- **`heavy` — the exception, named in Context.** Only when (a) a step honestly could
+  not be made executable and the fork could not be resolved here (rare — that is
+  usually a sign to split or recon more), (b) the work is adjacent to security, auth,
+  payments, or data loss, or (c) the user asks for it on this goal. Also the
+  escalation ladder's stronger-tier rung, which dispatch applies on its own when a
+  medium implementer blocks on capability.
 - **`inherit` — match the orchestrator's session model.** For the rare goal that must
   get the strongest model available in the session.
-- **`light` — only a truly rote one-file mechanical chore.** When in doubt, don't.
-  Turn count beats token price: a lighter tier takes 2–3× the turns on multi-step
-  work, so an under-tiered goal costs more, not less.
+- **`light` — a one-file transcription where the step IS the whole diff** (a constant,
+  a config value, a rename, a doc line). Turn count beats token price: a lighter tier
+  takes 2–3× the turns on anything multi-step, so `light` never gets a multi-task goal.
 
-Genuinely unsure between two tiers → pick the stronger. And if the honest reason a
-goal needs `heavy` is that its criteria are loose, tighten the contract first.
+Genuinely unsure between `medium` and `heavy` → the steps are not finished; finish
+them. A goal WITHOUT an Implementation steps section (old format) keeps the pre-v17
+rule: heavy for features/bugs.
 
 Include the choice in the draft you confirm with the user (batch mode: the `model`
 column in the approval table). Resolution at dispatch time: goal `model:` >

@@ -11,6 +11,16 @@ and its nested helpers hold the mess. Compose existing skills — never re-deriv
 skill already encodes. The queue is `docs/goals/index.yaml` (see `define-goal` for the
 format).
 
+**Model and effort (v17.0.0).** Run dispatch in a session on MEDIUM reasoning effort:
+the orchestrator's own calls are read-and-decide (claim, join two gate arms, triage),
+and the design thinking was spent upstream in ideate and define-goal, whose goals
+now carry an executable `## Implementation steps` section. Implementers run on the
+goal's stamped tier — `medium` by default since v17 (heavy only where define-goal
+named why); review agents inherit the session model. A medium implementer that blocks
+on capability gets the escalation ladder's one stronger-tier re-spawn, and a step
+that fails as written comes back as a contract defect for define-goal to rewrite —
+never as a reason to think harder downstream.
+
 Dispatch works ready goals **on the currently checked-out branch**. Integration is
 serial, one goal AT A TIME — and the flagless default is a DRAIN: keep working ready
 goals, one fully-settled cycle after another, until the queue is empty or a stop
@@ -132,8 +142,9 @@ the pin stays on unless the error text also names the model or provider.
 A non-`inherit` tier applies to EVERY code-writing agent you spawn for THAT goal — the
 implementer and any fix/repair agent alike; `inherit` means omit the mapping. This split
 keeps judgment on strong models: the orchestrator stays on the session model for
-claim/gate/review calls, features and bugs default to a `heavy` stamp (define-goal's
-rubric), and only rote mechanical goals run lighter implementers. Neither field is yours
+claim/gate/review calls, goals with executable Implementation steps default to a
+`medium` stamp (define-goal's v17 rubric; old-format goals stay heavy), and heavy is
+the named exception. Neither field is yours
 to override, and neither ever applies to read-only review agents — those always inherit
 the session model.
 
