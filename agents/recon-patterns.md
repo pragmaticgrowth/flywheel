@@ -26,6 +26,13 @@ Always include how similar things are TESTED — the test pattern is half the va
 Reach the system where your brief says it lives — never assume the current
 directory is it.
 
+**Code excerpts (v17.0.0 — required whenever the brief names blocks the goal WILL
+CHANGE).** For every such block return its CURRENT code verbatim — 20–60 lines with the
+exact `path:start-end` — plus the house pattern the new code should copy, with its code
+and the shape of its test. define-goal writes each goal's executable Implementation
+steps from these excerpts; without them the steps get written from memory, which is how
+a wrong line range or a sketch reaches a medium-tier implementer.
+
 Report in this shape:
 
 ```

@@ -19,8 +19,8 @@ ten goals just moved the debt into the queue).
 
 **Flagless = drain ("one command, come back to an emptied inbox").** A flagless
 `/process-inbox` runs the WHOLE path in one session: verify → triage → FIX every
-confirmed item through dispatch's settle-sweep procedure (tiered fixer, two-arm gate,
-one repair round, squash) → ledger. The run is never a confirmation point — an
+confirmed item through dispatch's settle-sweep procedure (heavy fixer, Arm A-only
+gate, no repair round, squash) → ledger. The run is never a confirmation point — an
 invented mid-drain permission-ask ("want me to fix these?") is a compliance miss,
 dispatch v10's rule applied here. The OWNER bucket is the only thing that waits for a
 human, and it waits at the END of the report, never mid-run. `--triage-only` stops
